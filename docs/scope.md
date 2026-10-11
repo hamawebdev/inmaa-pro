@@ -190,7 +190,7 @@ The declaration to the ANPDP stays the centre's duty. Offline does not remove it
 - P6. Client forms offer Saturday to Thursday; the older forms offered Friday, and the worker form still does.
 - P7. Three payment methods; electronic payment is gone. New: «كل أسبوعين», «مسدد أتعاب», «مكان التسديد».
 - P8. One cleanliness scale. No difficulty scale and no letter classes.
-- P9. His worker form replaces the plan's worker file. It registers, it does not employ: no zone, role, leave, skills, contract, start date, capacity or pay, and no status field. Its second page (18 articles) is signed with it, though the plan left conduct rules outside the system.
+- P9. His worker form replaces the plan's worker file. It registers, it does not employ: no zone, role, leave, skills, contract, start date, capacity or pay, and no status field. Its last two pages (18 articles of internal regulations; the form is four A4 pages in Word) are signed with it, though the plan left conduct rules outside the system.
 - P10. The letterhead says «مركز إنماء برو للتدريب والتنظيف والإحصاء» (UNMAA Pro Center), three activities; the plan says «مركز إنماء للخدمات»; the footer image carries both names and two Latin spellings. No tax identifier or address appears.
 - P11. Stock and equipment move from "later" to a main section.
 - P12. Article 8 forbids workers to photograph at clients' sites, against the plan's before and after photos.
@@ -209,7 +209,8 @@ The declaration to the ANPDP stays the centre's duty. Offline does not remove it
 - F8. Numbering slips: sections restart at 1 on the building contract; items run 1, 2, 1, 3 on the two request forms; three files are named «-01-», «-01-.docx» is a copy of the worker form, and the file names put organisations before housing, the reverse of his notes.
 - F9. Unclear terms: «اسم المتداول», «العنوان مدقق», «على عاتق صاحبها», «تخزين معدات», «تنظيف غ..الضيوف», «مدة التنفيذ» (hours or days), the قصير / طويل threshold, «BLC», «H/F».
 - F10. Typos: «مسأجر», «للخمات» (footer image), «مسئول» and «مسؤول», «الإثنين» and «الاثنين».
-- F11. Worker form: a score out of 100 over ten criteria with twelve score slots; «رفض المعني النهائي»; no trial length; «نعم لا» without boxes.
+- F11. Worker form: a score out of 100 over ten criteria with twelve score slots; «رفض المعني النهائي»; no trial length; «هل عملت في المجال: نعم لا» is ticked with two drawn ovals, not boxes; «الإمضاء والختم» is a borderless cell.
+- F13. The Checker's reading of the Word files adds findings K1 to K22 (page counts, the stretched letterhead that runs to the paper edge, unlabelled blanks before option lists, which side each tick box sits on, sibling differences). They are listed with their rows in `docs/checker/forms/differences.md`. The five client forms are two pages each and the building contract three, by estimate.
 - F12. Building contract: the residents table has 26 fixed rows and a «تاريخ التسجيل» per resident whose purpose is not said (third-party personal data); the number of flats is asked twice.
 
 **The academy app against your rules**
@@ -238,6 +239,7 @@ Done means: one seeded job runs end to end in each of the four divisions and sho
 - A5. The eight statuses appear as he lists them and print as ticks. «قديم» is ticked by the «قديم» button, one stage is current, and «متوقف» and «معاقب» are states on the client. A refused quote or a finished one-off job closes the file without a new status.
 - A6. Registration numbers follow his format. BLC and H/F as given, H or F chosen per worker. The other suffixes stay empty until he names them. Quotes, visits, invoices, receipts and complaints get plain sequences per year.
 - A7. «المبلغ إجمالي» is stored as he writes it, with a choice beside it: per payment period, or the whole contract. «تاريخ تسديد» is the first due date; later ones come from «دورية السداد».
+- A11. Print reproduces what his Word file prints: the letterhead at its placed size, his label strings, and the numbers Word generates, slips included. A screen shows each form's own wording without the stretching character. «حررت: بأم البواقي، بتاريخ» prints the file's issue date, and stays blank on an empty form.
 - A8. Wording follows his forms. I correct «مسأجر» to «مستأجر», and keep «تنظيف غ..الضيوف» as written until he confirms «غرف».
 - A9. Open questions become settings with working defaults: tax mode chosen at first run (16); the manager approves every quote (6); 40 hours a week and 8 a day, pay basis per worker (11); the commune as the zone (3); the plan's seven visit statuses (23); one order per team with a line per worker (8); the office types in (7); invoices at period end for visits done (15); inspections scored out of 100, client rating 1 to 5, complaints answered within 2 hours (25); no import (4).
 - A10. The program carries his letterhead name, «مركز إنماء برو». Arabic becomes the default language; French and English stay, so every new text is written in all three.
