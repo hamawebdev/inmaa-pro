@@ -1,0 +1,1699 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="ar" xml:lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>خطة نظام إدارة مركز إنماء للخدمات</title>
+  <style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+
+ul.task-list[class]{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+font-size: inherit;
+width: 0.8em;
+margin: 0 0.8em 0.2em -1.6em;
+vertical-align: middle;
+}
+.display.math{display: block; text-align: center; margin: 0.5rem auto;}
+</style>
+  <style type="text/css">
+@page {
+size: A4;
+margin: 20mm 16mm 20mm 16mm;
+@top-right {
+content: "خطة نظام إدارة مركز إنماء للخدمات";
+font-family: "Noto Sans Arabic", sans-serif;
+font-size: 8pt;
+color: #7a8580;
+}
+@bottom-center {
+content: "صفحة " counter(page) " من " counter(pages);
+font-family: "Noto Sans Arabic", sans-serif;
+font-size: 8pt;
+color: #7a8580;
+}
+}
+@page :first {
+@top-right { content: none; }
+}
+:root {
+--ink: #1f2a26;
+--quiet: #5d6b65;
+--accent: #0f6e5a;
+--tint: #eaf2ef;
+--rule: #cfd8d4;
+}
+html { direction: rtl; }
+body {
+margin: 0;
+font-family: "Noto Naskh Arabic", "Noto Sans", serif;
+font-size: 11pt;
+line-height: 1.75;
+color: var(--ink);
+-webkit-print-color-adjust: exact;
+print-color-adjust: exact;
+}
+
+#title-block-header {
+margin: 0 0 7mm;
+padding: 0 0 5mm;
+border-bottom: 2px solid var(--accent);
+}
+h1.title {
+font-family: "Noto Kufi Arabic", sans-serif;
+font-size: 21pt;
+line-height: 1.5;
+margin: 0 0 2mm;
+}
+#title-block-header .subtitle {
+font-family: "Noto Sans Arabic", sans-serif;
+font-size: 12pt;
+font-weight: 700;
+color: var(--accent);
+margin: 0;
+}
+#title-block-header .date {
+font-family: "Noto Sans Arabic", sans-serif;
+font-size: 10pt;
+color: var(--quiet);
+margin: 1mm 0 0;
+}
+
+nav#TOC {
+background: var(--tint);
+border-radius: 6px;
+padding: 4mm 6mm 3mm;
+margin: 0 0 7mm;
+break-inside: avoid;
+}
+nav#TOC h2 {
+font-size: 11pt;
+color: var(--ink);
+margin: 0 0 1mm;
+padding: 0;
+border: 0;
+}
+nav#TOC ul {
+margin: 0;
+padding-inline-start: 0;
+list-style: none;
+columns: 2;
+column-gap: 10mm;
+font-family: "Noto Sans Arabic", sans-serif;
+font-size: 10pt;
+line-height: 1.9;
+}
+nav#TOC a { color: var(--ink); text-decoration: none; }
+
+h2 {
+font-family: "Noto Kufi Arabic", sans-serif;
+font-size: 14.5pt;
+line-height: 1.5;
+color: var(--accent);
+margin: 8mm 0 3mm;
+padding-bottom: 1.5mm;
+border-bottom: 1px solid var(--rule);
+break-after: avoid;
+}
+h3 {
+font-family: "Noto Kufi Arabic", sans-serif;
+font-size: 11.5pt;
+line-height: 1.5;
+margin: 6mm 0 2mm;
+break-after: avoid;
+}
+h2#questions, h2#appendix { break-before: page; }
+p { margin: 0 0 3mm; }
+a { color: var(--accent); }
+
+table {
+width: 100%;
+border-collapse: collapse;
+margin: 2mm 0 6mm;
+font-family: "Noto Sans Arabic", "Noto Sans", sans-serif;
+font-size: 8.8pt;
+line-height: 1.6;
+}
+thead { display: table-header-group; }
+tr { break-inside: avoid; }
+th {
+background: var(--tint);
+font-weight: 700;
+text-align: right;
+padding: 1.8mm 2.2mm;
+border: 1px solid var(--rule);
+}
+td {
+text-align: right;
+vertical-align: top;
+padding: 1.6mm 2.2mm;
+border: 1px solid var(--rule);
+}
+
+.numbered td:first-child,
+.numbered th:first-child {
+text-align: center;
+white-space: nowrap;
+font-weight: 700;
+}
+
+.questions td { height: 17mm; }
+.questions td:last-child { background: #fbfcfb; }
+
+figure {
+margin: 2mm 0 3mm;
+text-align: center;
+break-inside: avoid;
+}
+figure img { width: 100%; }
+figcaption {
+font-family: "Noto Sans Arabic", sans-serif;
+font-size: 9.5pt;
+color: var(--quiet);
+margin-top: 1mm;
+}
+.ltr { direction: ltr; unicode-bidi: isolate; }
+</style>
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">خطة نظام إدارة مركز إنماء للخدمات</h1>
+<p class="subtitle">مقترح للمراجعة</p>
+<p class="date">10 أكتوبر 2026</p>
+</header>
+<nav id="TOC" role="doc-toc">
+<h2 id="toc-title">المحتويات</h2>
+<ul>
+<li><a href="#الخلاصة" id="toc-الخلاصة">الخلاصة</a></li>
+<li><a href="#رحلة-العمل-في-النظام" id="toc-رحلة-العمل-في-النظام">رحلة
+العمل في النظام</a></li>
+<li><a href="#ما-يحتاجه-المركز-عند-الانطلاق" id="toc-ما-يحتاجه-المركز-عند-الانطلاق">ما يحتاجه المركز عند
+الانطلاق</a></li>
+<li><a href="#ما-يؤجل-إلى-مرحلة-النمو" id="toc-ما-يؤجل-إلى-مرحلة-النمو">ما يُؤجَّل إلى مرحلة النمو</a></li>
+<li><a href="#ما-يبقى-خارج-النظام" id="toc-ما-يبقى-خارج-النظام">ما يبقى
+خارج النظام</a></li>
+<li><a href="#questions" id="toc-questions">أسئلة للتحقق من
+الخطة</a></li>
+<li><a href="#appendix" id="toc-appendix">ملحق: وثائقكم ومكانها في
+الخطة</a></li>
+</ul>
+</nav>
+<h2 id="الخلاصة">الخلاصة</h2>
+<p>نقترح نظاماً واحداً يدير عمل مركز إنماء للخدمات من أول اتصال بالعميل
+إلى التحصيل والتجديد، للأقسام الثلاثة: المنازل، المؤسسات، العمارات. يبدأ
+النظام بـ33 خاصية عند الانطلاق، وتنتظر 16 خاصية أخرى مرحلة النمو، لكل
+منها علامة تدل على أن وقتها حان.</p>
+<p>قرأنا دراسة المشروع واستماراتكم الثماني كأفكار تدرسونها لا كقرارات
+نهائية. في الجداول، «من وثائقكم» تعني أن الفكرة وردت عندكم، و«إضافة منّا»
+تعني أننا نقترحها ونشرح سببها؛ وحيث أضفنا تفصيلاً صغيراً إلى فكرة من
+وثائقكم كتبنا بجانبه «(إضافة منّا)». أغلب الإضافات مما تقدّمه برامج إدارة
+شركات التنظيف المعروفة، وبعضها يفرضه القانون الجزائري.</p>
+<p>المطلوب منكم الإجابة عن 26 سؤالاً في قسم «أسئلة للتحقق من الخطة». لا
+يحتاج أيٌّ منها معرفة تقنية، وحيث تختلف وثائقكم أو تترك أمراً مفتوحاً
+سألناكم بدل أن نختار عنكم. بإجاباتكم تكتمل الصورة التي نحتاجها لبدء
+البناء.</p>
+<h2 id="رحلة-العمل-في-النظام">رحلة العمل في النظام</h2>
+<figure>
+<img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgNjAgNzYwIDYyMCIgd2lkdGg9Ijc2MCIgaGVpZ2h0PSI2MjAiIGZvbnQtZmFtaWx5PSJOb3RvIFNhbnMgQXJhYmljLCBOb3RvIFNhbnMsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTMiIHJvbGU9ImltZyIgYXJpYS1sYWJlbD0i2LHYrdmE2Kkg2KfZhNiu2K/ZhdipINmB2Yog2KfZhNmG2LjYp9mFOiDYo9ix2KjYuSDZhdix2KfYrdmEINmI2KfYq9mG2KrYpyDYudi02LHYqSDYrti32YjYqSI+CiAgPGRlZnM+CiAgICA8bWFya2VyIGlkPSJhcnIiIHZpZXdCb3g9IjAgMCAxMCAxMCIgcmVmWD0iOSIgcmVmWT0iNSIgbWFya2VyV2lkdGg9IjYiIG1hcmtlckhlaWdodD0iNiIgb3JpZW50PSJhdXRvLXN0YXJ0LXJldmVyc2UiPgogICAgICA8cGF0aCBkPSJNMCAwTDEwIDVMMCAxMHoiIGZpbGw9IiM2ZjdkNzciLz4KICAgIDwvbWFya2VyPgogIDwvZGVmcz4KCiAgPCEtLSBTdGFnZXMgKGVhY2ggcm93IHJlYWRzIHJpZ2h0IHRvIGxlZnQpIC0tPgogIDxnIGZpbGw9IiNlYWYyZWYiPgogICAgPHJlY3QgeD0iMjQiIHk9Ijc2IiB3aWR0aD0iNjk2IiBoZWlnaHQ9IjEwNCIgcng9IjgiLz4KICAgIDxyZWN0IHg9IjI0IiB5PSIyMjAiIHdpZHRoPSI2OTYiIGhlaWdodD0iMTA0IiByeD0iOCIvPgogICAgPHJlY3QgeD0iMjQiIHk9IjM2NCIgd2lkdGg9IjY5NiIgaGVpZ2h0PSIxMDQiIHJ4PSI4Ii8+CiAgICA8cmVjdCB4PSIyNCIgeT0iNTA4IiB3aWR0aD0iNjk2IiBoZWlnaHQ9IjEwNCIgcng9IjgiLz4KICA8L2c+CiAgPGcgZm9udC1zaXplPSIxMS41IiBmb250LXdlaWdodD0iNzAwIiBmaWxsPSIjMGY2ZTVhIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj4KICAgIDx0ZXh0IHg9IjM4MCIgeT0iOTciPtmC2KjZhCDYp9mE2KrYudin2YLYrzwvdGV4dD4KICAgIDx0ZXh0IHg9IjM4MCIgeT0iMjQxIj7Yp9mE2KrYrdi22YrYsSDZiNin2YTYrNiv2YjZhNipPC90ZXh0PgogICAgPHRleHQgeD0iMzgwIiB5PSIzODUiPtmB2Yog2KfZhNmF2YjZgti5PC90ZXh0PgogICAgPHRleHQgeD0iMzgwIiB5PSI1MjkiPtio2LnYryDYp9mE2K7Yr9mF2Kk8L3RleHQ+CiAgPC9nPgoKICA8IS0tIENvbm5lY3RvcnMgLS0+CiAgPGcgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjNmY3ZDc3IiBzdHJva2Utd2lkdGg9IjEuMjUiPgogICAgPHBhdGggZD0iTTUwNCAxMzZINDcyIiBtYXJrZXItZW5kPSJ1cmwoI2FycikiLz4KICAgIDxwYXRoIGQ9Ik0yNzIgMTM2SDI0MCIgbWFya2VyLWVuZD0idXJsKCNhcnIpIi8+CiAgICA8cGF0aCBkPSJNNTA0IDI4MEg0NzIiIG1hcmtlci1lbmQ9InVybCgjYXJyKSIvPgogICAgPHBhdGggZD0iTTI3MiAyODBIMjQwIiBtYXJrZXItZW5kPSJ1cmwoI2FycikiLz4KICAgIDxwYXRoIGQ9Ik01MDQgNDI0SDQ3MiIgbWFya2VyLWVuZD0idXJsKCNhcnIpIi8+CiAgICA8cGF0aCBkPSJNMjcyIDQyNEgyNDAiIG1hcmtlci1lbmQ9InVybCgjYXJyKSIvPgogICAgPHBhdGggZD0iTTUwNCA1NjhINDcyIiBtYXJrZXItZW5kPSJ1cmwoI2FycikiLz4KICAgIDxwYXRoIGQ9Ik0yNzIgNTY4SDI0MCIgbWFya2VyLWVuZD0idXJsKCNhcnIpIi8+CiAgICA8cGF0aCBkPSJNMTQwIDE2NFYyMDBINjA0VjI1MiIgbWFya2VyLWVuZD0idXJsKCNhcnIpIi8+CiAgICA8cGF0aCBkPSJNMTQwIDMwOFYzNDRINjA0VjM5NiIgbWFya2VyLWVuZD0idXJsKCNhcnIpIi8+CiAgICA8cGF0aCBkPSJNMTQwIDQ1MlY0ODhINjA0VjU0MCIgbWFya2VyLWVuZD0idXJsKCNhcnIpIi8+CiAgICA8cGF0aCBkPSJNMTQwIDU5NlY2MzZINzQwVjI4MEg3MDQiIG1hcmtlci1lbmQ9InVybCgjYXJyKSIvPgogIDwvZz4KCiAgPCEtLSBTdGVwcyAtLT4KICA8ZyBmaWxsPSIjZmZmZmZmIiBzdHJva2U9IiM5YWE4YTIiIHN0cm9rZS13aWR0aD0iMS4yNSI+CiAgICA8cmVjdCB4PSI1MDQiIHk9IjEwOCIgd2lkdGg9IjIwMCIgaGVpZ2h0PSI1NiIgcng9IjgiLz4KICAgIDxyZWN0IHg9IjI3MiIgeT0iMTA4IiB3aWR0aD0iMjAwIiBoZWlnaHQ9IjU2IiByeD0iOCIvPgogICAgPHJlY3QgeD0iNDAiIHk9IjEwOCIgd2lkdGg9IjIwMCIgaGVpZ2h0PSI1NiIgcng9IjgiLz4KICAgIDxyZWN0IHg9IjUwNCIgeT0iMjUyIiB3aWR0aD0iMjAwIiBoZWlnaHQ9IjU2IiByeD0iOCIvPgogICAgPHJlY3QgeD0iMjcyIiB5PSIyNTIiIHdpZHRoPSIyMDAiIGhlaWdodD0iNTYiIHJ4PSI4Ii8+CiAgICA8cmVjdCB4PSI0MCIgeT0iMjUyIiB3aWR0aD0iMjAwIiBoZWlnaHQ9IjU2IiByeD0iOCIvPgogICAgPHJlY3QgeD0iNTA0IiB5PSIzOTYiIHdpZHRoPSIyMDAiIGhlaWdodD0iNTYiIHJ4PSI4Ii8+CiAgICA8cmVjdCB4PSIyNzIiIHk9IjM5NiIgd2lkdGg9IjIwMCIgaGVpZ2h0PSI1NiIgcng9IjgiLz4KICAgIDxyZWN0IHg9IjQwIiB5PSIzOTYiIHdpZHRoPSIyMDAiIGhlaWdodD0iNTYiIHJ4PSI4Ii8+CiAgICA8cmVjdCB4PSI1MDQiIHk9IjU0MCIgd2lkdGg9IjIwMCIgaGVpZ2h0PSI1NiIgcng9IjgiLz4KICAgIDxyZWN0IHg9IjI3MiIgeT0iNTQwIiB3aWR0aD0iMjAwIiBoZWlnaHQ9IjU2IiByeD0iOCIvPgogICAgPHJlY3QgeD0iNDAiIHk9IjU0MCIgd2lkdGg9IjIwMCIgaGVpZ2h0PSI1NiIgcng9IjgiLz4KICA8L2c+CiAgPGcgZm9udC13ZWlnaHQ9IjcwMCIgZmlsbD0iIzFmMmEyNiIgdGV4dC1hbmNob3I9Im1pZGRsZSI+CiAgICA8dGV4dCB4PSI2MDQiIHk9IjEzMiI+2KfZhNi32YTYqDwvdGV4dD4KICAgIDx0ZXh0IHg9IjM3MiIgeT0iMTMyIj7Yp9mE2YXYudin2YrZhtipPC90ZXh0PgogICAgPHRleHQgeD0iMTQwIiB5PSIxMzIiPtin2YTYudix2LYg2YjYp9mE2LnZgtivPC90ZXh0PgogICAgPHRleHQgeD0iNjA0IiB5PSIyNzYiPtin2YTYrNiv2YjZhNipINmI2KrZiNiy2YrYuSDYp9mE2LnZhdin2YQ8L3RleHQ+CiAgICA8dGV4dCB4PSIzNzIiIHk9IjI3NiI+2YTZiNit2Kkg2KfZhNmK2YjZhSDZiNin2YTYutmK2KfYqDwvdGV4dD4KICAgIDx0ZXh0IHg9IjE0MCIgeT0iMjc2Ij7Yo9mF2LEg2KfZhNmF2YfZhdipINmI2KfZhNiq2LDZg9mK2LE8L3RleHQ+CiAgICA8dGV4dCB4PSI2MDQiIHk9IjQyMCI+2KfZhNit2LbZiNixINmI2KfZhNin2YbYtdix2KfZgTwvdGV4dD4KICAgIDx0ZXh0IHg9IjM3MiIgeT0iNDIwIj7Yp9mE2YXZh9in2YUg2YjYp9mE2LXZiNixINmI2KfZhNio2YTYp9i62KfYqjwvdGV4dD4KICAgIDx0ZXh0IHg9IjE0MCIgeT0iNDIwIj7Yp9mE2KfYs9iq2YTYp9mFINmI2KfZhNiq2YLZitmK2YU8L3RleHQ+CiAgICA8dGV4dCB4PSI2MDQiIHk9IjU2NCI+2KfZhNis2YjYr9ipINmI2KfZhNi02YPYp9mI2Yk8L3RleHQ+CiAgICA8dGV4dCB4PSIzNzIiIHk9IjU2NCI+2KfZhNmB2KfYqtmI2LHYqSDZiNin2YTYqtit2LXZitmEPC90ZXh0PgogICAgPHRleHQgeD0iMTQwIiB5PSI1NjQiPtin2YTYqtmC2KfYsdmK2LEg2YjYp9mE2LHYqNit2YrYqTwvdGV4dD4KICA8L2c+CiAgPGcgZm9udC1zaXplPSIxMS41IiBmaWxsPSIjNWQ2YjY1IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj4KICAgIDx0ZXh0IHg9IjYwNCIgeT0iMTQ4Ij7Yp9mE2K7Yp9i12YrYqtin2YYgMSDZiDI8L3RleHQ+CiAgICA8dGV4dCB4PSIzNzIiIHk9IjE0OCI+2KfZhNiu2KfYtdmK2KkgMzwvdGV4dD4KICAgIDx0ZXh0IHg9IjE0MCIgeT0iMTQ4Ij7Yp9mE2K7Ytdin2KbYtSA0INmINSDZiDYg2YgyOTwvdGV4dD4KICAgIDx0ZXh0IHg9IjYwNCIgeT0iMjkyIj7Yp9mE2K7Yp9i12YrYqtin2YYgNyDZiDg8L3RleHQ+CiAgICA8dGV4dCB4PSIzNzIiIHk9IjI5MiI+2KfZhNiu2KfYtdmK2KrYp9mGIDkg2YgxMDwvdGV4dD4KICAgIDx0ZXh0IHg9IjE0MCIgeT0iMjkyIj7Yp9mE2K7Ytdin2KbYtSAxMSDZiDE2INmIMjY8L3RleHQ+CiAgICA8dGV4dCB4PSI2MDQiIHk9IjQzNiI+2KfZhNiu2LXYp9im2LUgMTIg2YgyNyDZiDI4PC90ZXh0PgogICAgPHRleHQgeD0iMzcyIiB5PSI0MzYiPtin2YTYrtin2LXZitiq2KfZhiAxMyDZiDE0PC90ZXh0PgogICAgPHRleHQgeD0iMTQwIiB5PSI0MzYiPtin2YTYrtin2LXZitipIDE1PC90ZXh0PgogICAgPHRleHQgeD0iNjA0IiB5PSI1ODAiPtin2YTYrtin2LXZitiq2KfZhiAxNyDZiDE4PC90ZXh0PgogICAgPHRleHQgeD0iMzcyIiB5PSI1ODAiPtin2YTYrti12KfYpti1IDE5INmIMjAg2YgzMSDZiDMyPC90ZXh0PgogICAgPHRleHQgeD0iMTQwIiB5PSI1ODAiPtin2YTYrti12KfYpti1IDIxINmIMjIg2YgzMDwvdGV4dD4KICAgIDx0ZXh0IHg9IjQ0MCIgeT0iNjU2Ij7Yp9mE2LLZitin2LHYqSDYp9mE2YLYp9iv2YXYqSDZiNiq2KzYr9mK2K8g2KfZhNi52YLYryDZiti52YjYr9in2YYg2KXZhNmJINin2YTYrNiv2YjZhNipPC90ZXh0PgogIDwvZz4KPC9zdmc+Cg==" alt="كل خدمة تمر بهذه الخطوات، والمعاينة عند الحاجة، ثم تعود إلى الجدولة. الأرقام تحت كل خطوة هي أرقام الخصائص في جداول الخطة." />
+<figcaption aria-hidden="true">كل خدمة تمر بهذه الخطوات، والمعاينة عند
+الحاجة، ثم تعود إلى الجدولة. الأرقام تحت كل خطوة هي أرقام الخصائص في
+جداول الخطة.</figcaption>
+</figure>
+<p>الخصائص 23 و24 و25 و33 (الصلاحيات، الترقيم، ملف العامل، حماية
+البيانات) تعمل في كل المراحل، لذلك لا تظهر في خطوة بعينها.</p>
+<h2 id="ما-يحتاجه-المركز-عند-الانطلاق">ما يحتاجه المركز عند
+الانطلاق</h2>
+<p>عند الانطلاق نقترح 33 خاصية تغطي دورة العمل كاملة: 24 منها وردت في
+وثائقكم، و9 نضيفها ونشرح سبب كل منها. أرقام العمود الأول تُستعمل للإحالة
+في بقية الخطة، و«س» تعني سؤالاً من قسم الأسئلة.</p>
+<h3 id="من-وثائقكم">من وثائقكم</h3>
+<div class="numbered">
+<table>
+<colgroup>
+<col style="width: 5%" />
+<col style="width: 17%" />
+<col style="width: 48%" />
+<col style="width: 28%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>#</th>
+<th>الخاصية</th>
+<th>ماذا تقدّم لكم</th>
+<th>أين وردت</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>1</td>
+<td>ملف العميل ومواقعه</td>
+<td>بطاقة واحدة لكل عميل تجمع كل مواقعه، والأشخاص المسؤولين وأدوارهم (من
+يوقّع الاستلام، من يستلم الفاتورة، الحارس)، وطريقة الدخول والمفاتيح التي
+تسلّمها المركز، والأماكن الممنوع دخولها والأشياء الممنوع لمسها، وموافقته
+على التصوير، وملخصاً سريعاً: آخر خدمة، الخدمة القادمة، حالة الدفع،
+التقييم. لكل قسم استمارة تسجيله.</td>
+<td>استمارات التسجيل الثلاث؛ ملف عميل المنازل ومنه «السجل المختصر
+للإدارة»</td>
+</tr>
+<tr class="even">
+<td>2</td>
+<td>متابعة الطلبات حتى التعاقد</td>
+<td>يُسجَّل كل طلب مع مصدره (هاتف، واتساب، فيسبوك، زيارة، توصية)، ونوع
+الخدمة المطلوبة وتكرارها وأول موعد والأيام المفضلة، ونوع العميل
+وأولويته. ويمر بمراحل موحّدة للأقسام الثلاثة نتفق عليها (س23)، مثل: جديد،
+معاينة، عرض سعر، متعاقد أو لم يتم التعاقد، ثم نشط أو متوقف أو منتهٍ. ترون
+في كل لحظة أين توقف كل طلب.</td>
+<td>«مصدر العميل» و«الخدمة المطلوبة» و«حالة الملف» في استمارات التسجيل؛
+«معلومات داخلية» في استمارة المؤسسات؛ رحلة العميل في الدراسة</td>
+</tr>
+<tr class="odd">
+<td>3</td>
+<td>المعاينة الميدانية</td>
+<td>استمارات المعاينة الثلاث تُملأ على الهاتف أو الحاسوب اللوحي: حالة كل
+مساحة، الصعوبة، الصور، تقدير عدد العمال والساعات، وتوصية المعاين.</td>
+<td>استمارات المعاينة الثلاث؛ «المعاينة الميدانية» في ملف المنازل
+واستمارة تسجيل المنازل</td>
+</tr>
+<tr class="even">
+<td>4</td>
+<td>حساب التكلفة والسعر</td>
+<td>يحسب التكلفة الداخلية (أجور، مواد، نقل، معدات، إشراف، احتياط، ونصيب
+الإدارة والضرائب والتأمين إن اعتمدتموه، س14)، ثم يضيف هامش الربح والخصم،
+ويعطي السعر للزيارة وللأسبوع وللشهر. لا يظهر هذا الحساب للعميل.</td>
+<td>«التكلفة الداخلية» و«السعر التجاري» في استمارات المعاينة؛ «حساب سعر
+الخدمة» في الدراسة</td>
+</tr>
+<tr class="odd">
+<td>5</td>
+<td>عرض السعر واعتماده</td>
+<td>عرض يُطبع أو يُرسل عبر واتساب، بتاريخ صلاحية وقائمة بما هو مشمول وغير
+مشمول، ويمكن أن يجمع تنظيفاً أولياً عميقاً ثم عقداً دورياً. يعتمده المسؤول
+قبل الإرسال (س6)، ثم تُسجَّل نتيجته: قبول، رفض، طلب تخفيض أو تعديل، مؤجل،
+لا رد.</td>
+<td>عرض السعر و«اعتماد السعر» و«نتيجة العرض» في الاستمارات</td>
+</tr>
+<tr class="even">
+<td>6</td>
+<td>العقد وتجديده</td>
+<td>نوع العقد ومدته (مرة واحدة، أسبوعي، شهري، 3 أو 6 أشهر، سنوي)، عدد
+الزيارات وأيامها وساعاتها، عدد العمال، من يوفّر المواد، ما يشمله العقد
+(كنقل النفايات)، وشروط الغياب والاستبدال والدفع. ينبّهكم النظام قبل
+انتهاء العقد (إضافة منّا).</td>
+<td>عقد الخدمة في ملف المنازل؛ «العقود الشهرية» و«تجديد العقد» في
+الدراسة؛ «التخلص من النفايات» في استمارة العمارات</td>
+</tr>
+<tr class="odd">
+<td>7</td>
+<td>الجدولة الدورية التلقائية</td>
+<td>ينشئ النظام زيارات كل عقد للأسابيع القادمة تلقائياً، مثلاً السبت
+والاثنين والأربعاء من 08:00 إلى 12:00، ضمن الأيام والساعات التي يسمح بها
+الموقع، ويوزّع الأعمال التي تأخذ أكثر من يوم على أيامها.</td>
+<td>تصنيف العقود حسب التكرار في الدراسة؛ «برنامج العمل المقترح»
+و«البرنامج الأسبوعي المقترح» في معاينتي المؤسسات والعمارات؛ «هل يتطلب
+العمل أكثر من يوم؟» في معاينة المنازل</td>
+</tr>
+<tr class="even">
+<td>8</td>
+<td>جدول العمال وعبء العمل</td>
+<td>أسبوع كل عامل بمواقعه ومنطقته وساعاته مقارنة بطاقته (مثلاً 40–45
+ساعة)، مع تنبيه عند تجاوز الحد اليومي (مثلاً 8 ساعات، س11) أو تداخل
+موعدين.</td>
+<td>«محفظة العاملة» و«نقاط عبء العمل» و«التقسيم الجغرافي» في
+الدراسة</td>
+</tr>
+<tr class="odd">
+<td>9</td>
+<td>الغياب والاستبدال</td>
+<td>عند تسجيل غياب يقترح النظام البدلاء المتاحين في المنطقة نفسها والوقت
+نفسه، بدءاً بعمال الاحتياط (س2)، ويجهّز رسالة إبلاغ العميل.</td>
+<td>«نظام الغياب» في الدراسة</td>
+</tr>
+<tr class="even">
+<td>10</td>
+<td>لوحة اليوم بالألوان</td>
+<td>مهام اليوم في شاشة واحدة: الوقت، العميل، المنطقة، العامل، والحالة
+(مؤكدة، بانتظار التأكيد، جارية، منفذة، مؤجلة، مشكلة، ملغاة؛ القائمة
+النهائية في س23). تتغير الحالة تلقائياً عند وصول العامل وانتهائه (إضافة
+منّا).</td>
+<td>«نظام الألوان» و«جدول العمليات اليومية» و«النظام اليومي داخل المكتب»
+في الدراسة</td>
+</tr>
+<tr class="odd">
+<td>11</td>
+<td>أمر المهمة</td>
+<td>يتسلّم العامل ما يحتاجه فقط: العنوان، الوقت، المهام، الأماكن
+الممنوعة، التعليمات وقواعد السلامة، المواد والمعدات المسلّمة له ومعدات
+الوقاية، المسؤول في الموقع ورقم المشرف، دون أسعار أو بيانات أخرى عن
+العميل. يُطبع لمن لا يستعمل الهاتف (س7).</td>
+<td>أمر مهمة العاملة في ملف المنازل؛ بطاقة توجيه العامل</td>
+</tr>
+<tr class="even">
+<td>12</td>
+<td>الحضور والانصراف</td>
+<td>يسجّل العامل الوصول وبداية العمل ونهايته والمغادرة بضغطة زر من هاتفه
+أو من جهاز مشترك في الموقع (إضافة منّا)، أو يسجّلها المشرف أو المكتب بدلاً
+منه، مع سبب أي تأخير.</td>
+<td>«سجل حضور العاملة» في ملف المنازل؛ «وقت الوصول والمغادرة» في بطاقة
+التوجيه</td>
+</tr>
+<tr class="odd">
+<td>13</td>
+<td>قائمة المهام والصور</td>
+<td>قائمة كل زيارة تُجمع من المهام اليومية والأسبوعية والشهرية المتفق
+عليها حسب يومها، ومن مهام خاصة بذلك اليوم، مرتبة حسب الموقع (غرف المنزل،
+مساحات المؤسسة، مداخل العمارة وطوابقها). يؤشر عليها العامل، مع صور قبل
+وبعد إذا وافق العميل.</td>
+<td>قوائم الفحص؛ الخدمات اليومية والأسبوعية والشهرية في معاينتي المؤسسات
+والعمارات؛ جدول الطوابق و«مهام خاصة لهذا اليوم» و«قائمة التحقق قبل
+المغادرة» في بطاقة التوجيه؛ «تصوير المكان» في الدراسة</td>
+</tr>
+<tr class="even">
+<td>14</td>
+<td>الإبلاغ عن مشكلة من الموقع</td>
+<td>يبلّغ العامل المشرف والمكتب فوراً بنقص مواد أو معدات، أو تلف سابق، أو
+خطر، أو شكوى ساكن، أو طلب خدمة إضافية يتحول إلى فرصة بيع.</td>
+<td>«ملاحظات العامل» في بطاقة التوجيه</td>
+</tr>
+<tr class="odd">
+<td>15</td>
+<td>نهاية الخدمة والاستلام والتقييم</td>
+<td>تقرير إنجاز (كامل، جزئي، لم يكتمل وسببه)، ثم استلام العميل (راضٍ، مع
+ملاحظات، غير راضٍ) بتوقيعه (س20)، ثم تقييمه من 1 إلى 5 وسؤاله عن الخدمة
+القادمة.</td>
+<td>تقرير نهاية الخدمة والاستلام والتقييم والمتابعة القادمة في ملف
+المنازل؛ «استلام الخدمة» في بطاقة التوجيه</td>
+</tr>
+<tr class="even">
+<td>16</td>
+<td>تذكير العميل قبل الموعد</td>
+<td>رسالة قبل الموعد بيوم فيها الوقت واسم المشرف وعدد العمال ورقم
+التواصل، تُرسل بضغطة عبر واتساب.</td>
+<td>«إرسال تأكيد للعميل» في الدراسة</td>
+</tr>
+<tr class="odd">
+<td>17</td>
+<td>تفتيش المشرف ودرجة الجودة</td>
+<td>زيارات تفتيش دورية (س25) بقائمة تقييم ودرجة جودة؛ إذا نزلت الدرجة عن
+الحد تُنشأ تلقائياً مهمة تصحيح بموعد ومسؤول (إضافة منّا)، ويقترح النظام
+تدريب العامل أو تغييره.</td>
+<td>«نظام مراقبة الجودة» في الدراسة؛ «تقييم المشرف» في بطاقة
+التوجيه</td>
+</tr>
+<tr class="even">
+<td>18</td>
+<td>سجل الشكاوى</td>
+<td>لكل شكوى رقم ونوع (جودة، تأخير، سلوك، معدات، تلف، غياب)، مرتبطة
+بالمهمة والعامل، مع عدّاد لوقت الاستجابة المستهدف (مثلاً ساعتان كما في
+الدراسة، س25) وطريقة التسوية (إعادة الخدمة أو خصم).</td>
+<td>«نظام الشكاوى» و«سياسة التعويض» في الدراسة</td>
+</tr>
+<tr class="odd">
+<td>19</td>
+<td>الفواتير</td>
+<td>يُصدر فاتورة بعد كل خدمة، أو أسبوعية، أو شهرية لكل عقد (س15)، ويجهّز
+فواتير العقود دفعة واحدة مع كشف بالزيارات المنجزة، بالخصم والترقيم
+التلقائي، للطباعة أو الإرسال.</td>
+<td>«الفاتورة والتحصيل» في ملف المنازل؛ «بيانات الفوترة» في استمارة
+المؤسسات و«البيانات المالية» في استمارة العمارات؛ خطوة «تقرير» قبل
+الفاتورة في رحلة العميل بالدراسة</td>
+</tr>
+<tr class="even">
+<td>20</td>
+<td>التحصيل والديون</td>
+<td>تسجيل كل دفعة (نقداً، CCP، تحويل بنكي، دفع إلكتروني) والمبلغ المتبقي،
+وقائمة بالفواتير المتأخرة لكل عميل مع رسالة تذكير بالدفع (إضافة
+منّا).</td>
+<td>«حالة الدفع» في ملف المنازل؛ «نظام الدفع» في الدراسة</td>
+</tr>
+<tr class="odd">
+<td>21</td>
+<td>ساعات عمل كل عامل</td>
+<td>مجموع الساعات المنجزة والغيابات والتأخيرات لكل عامل في الأسبوع أو
+الشهر، جاهزة لحساب الأجور.</td>
+<td>«تم تسجيل ساعات العمل» في بطاقة التوجيه؛ «ستدفع للعاملات أسبوعيًا أو
+شهريًا» في الدراسة</td>
+</tr>
+<tr class="even">
+<td>22</td>
+<td>التقارير والمؤشرات</td>
+<td>تقرير نهاية اليوم (المنجز، المؤجل، الملغى، الشكاوى، الغياب،
+الاستبدالات، المحصّل)، وتقارير أسبوعية وشهرية: الإيراد لكل عامل، والهامش
+محسوباً بتكلفة ساعة العمل التي تحددونها، ونسبة استغلال وقت العمال،
+والعملاء الجدد والمغادرون. المصاريف والربح الشهري تأتي مع الخاصية
+39.</td>
+<td>التقارير اليومية والأسبوعية والشهرية والمؤشرات في الدراسة</td>
+</tr>
+<tr class="odd">
+<td>23</td>
+<td>المستخدمون والصلاحيات</td>
+<td>لكل موظف حسابه ودوره (المدير، الاستقبال والمبيعات، العمليات، المشرف،
+المحاسب، العامل)، ولا يرى إلا ما يخصه: العامل يرى أمر مهمته فقط،
+والتكلفة الداخلية وهامش الربح للمدير.</td>
+<td>«تقسيم الملف إلى 4 مستويات» في ملف المنازل؛ «خاص بالإدارة» في
+استمارات المعاينة</td>
+</tr>
+<tr class="even">
+<td>24</td>
+<td>الترقيم الموحد</td>
+<td>رقم تلقائي لكل عميل وموقع ومعاينة وعرض وعقد ومهمة وفاتورة وشكوى،
+يربطها ببعضها فتتبعون أي ملف من أوله إلى آخره (س23).</td>
+<td>«نظام العملاء» في الدراسة؛ أرقام الملفات في كل الاستمارات</td>
+</tr>
+</tbody>
+</table>
+</div>
+<h3 id="إضافات-منا">إضافات منّا</h3>
+<div class="numbered">
+<table style="width:100%;">
+<colgroup>
+<col style="width: 5%" />
+<col style="width: 14%" />
+<col style="width: 38%" />
+<col style="width: 41%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>#</th>
+<th>الإضافة</th>
+<th>ماذا تقدّم لكم</th>
+<th>لماذا تهمّ مركزكم</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>25</td>
+<td>ملف العامل</td>
+<td>بطاقة لكل عامل: الهاتف، المنطقة، الصفة (عامل، قائد فريق) والجنس،
+الأيام المتاحة والإجازات المعروفة مسبقاً، الخدمات والآلات التي يتقنها،
+نوع العقد وتاريخ البدء، الطاقة الأسبوعية، الوثائق (نسخة بطاقة التعريف،
+صحيفة السوابق العدلية مثلاً) والتدريب الذي أتمّه.</td>
+<td>وثائقكم تفصّل ملف العميل ولا تتضمن أي استمارة للعامل، مع أن الجدولة
+والاستبدال والأجور تعتمد كلها على معرفة توفّر كل عامل ومنطقته ومهاراته،
+والإجازة المسجلة مسبقاً لا تُكتشف صباح يوم العمل. ووثائق العامل تطمئن
+العميل الذي يُدخل عمالكم بيته.</td>
+</tr>
+<tr class="even">
+<td>26</td>
+<td>موقع العميل على الخريطة</td>
+<td>لكل موقع رابط على الخريطة يفتحه العامل بضغطة.</td>
+<td>العناوين كثيراً ما تعتمد على «أقرب معلم»، والعامل البديل الذي يذهب
+لأول مرة يضيّع وقتاً في البحث عن المكان.</td>
+</tr>
+<tr class="odd">
+<td>27</td>
+<td>متابعة حضور العامل وسلامته</td>
+<td>عند تسجيل الوصول يُحفظ مكان العامل ويُقارن بمكان الموقع؛ وإذا لم يسجّل
+وصوله بعد دقائق من موعده يُنبَّه المكتب؛ وزر استغاثة يرسل مكانه إلى المشرف
+فوراً.</td>
+<td>في عقود العمارات والمؤسسات يتكرر خلاف «لم يأتِ أحد اليوم»؛ الوقت
+والمكان معاً يحسمانه. وتنبيه التأخر يسمح بإرسال بديل قبل أن يلاحظ العميل
+الغياب، وزر الاستغاثة يحمي العاملة التي تعمل وحدها داخل بيت.</td>
+</tr>
+<tr class="even">
+<td>28</td>
+<td>العمل دون إنترنت</td>
+<td>يحفظ هاتف العامل ما سجّله عند انقطاع الشبكة ويرسله عند عودتها.</td>
+<td>الأقبية والمرائب، وهي ضمن خدمات العمارات في وثائقكم، كثيراً ما تكون
+بلا تغطية؛ دون هذه الميزة تضيع تسجيلات الحضور والصور.</td>
+</tr>
+<tr class="odd">
+<td>29</td>
+<td>متابعة العروض المعلّقة</td>
+<td>تنبيه للموظف عندما يمرّ على عرض سعر عدد من الأيام دون رد، ليتصل
+بالعميل.</td>
+<td>جزء من العروض يضيع لمجرد غياب المتابعة، وبرامج إدارة الخدمات
+الميدانية المعروفة تجعل هذه المتابعة تلقائية.</td>
+</tr>
+<tr class="even">
+<td>30</td>
+<td>ربحية كل عقد</td>
+<td>يقارن الساعات المقدّرة في المعاينة بالساعات المنجزة فعلاً، ويحسب
+الهامش الحقيقي لكل عقد بتكلفة ساعة العمل التي تحددونها.</td>
+<td>الدراسة تجعل «اختبار الأسعار» هدف المرحلة الأولى، وهذه المقارنة تكشف
+العقد المسعّر بأقل من تكلفته، كعمارة قُدّرت بـ12 ساعة أسبوعياً وتأخذ فعلياً
+16، قبل أن تتراكم الخسارة.</td>
+</tr>
+<tr class="odd">
+<td>31</td>
+<td>البيانات القانونية في الفاتورة</td>
+<td>تحمل الفاتورة البيانات التي يفرضها مرسوم الفوترة <span class="ltr">05-468</span> (السجل التجاري والرقم الإحصائي للطرفين، طريقة
+الدفع وأجله، المبلغ بالأرقام والحروف…)، والرسم على القيمة المضافة حسب
+نظامكم الضريبي (س16)، وحق الطابع عند الدفع نقداً.</td>
+<td>الشركة العميلة لا تسترجع الرسم على القيمة المضافة من فاتورة ناقصة
+البيانات، فترفضها أو تؤخر دفعها.</td>
+</tr>
+<tr class="even">
+<td>32</td>
+<td>سند القبض في الموقع</td>
+<td>إذا قبض العامل أو المشرف مبلغاً من العميل يُصدر له سنداً، ويطابق المكتب
+آخر اليوم ما قُبض بما سُلّم. يُفعَّل حسب إجابتكم على س18.</td>
+<td>الدراسة تشترط ألا تمسك العاملة المال إلا بنظام رسمي؛ هذا هو ذلك
+النظام إن احتجتم إليه.</td>
+</tr>
+<tr class="odd">
+<td>33</td>
+<td>حماية البيانات</td>
+<td>سجل يحفظ من اطّلع على البيانات أو غيّرها ومتى (سعر، خصم، وقت حضور،
+دفعة، بيانات شخصية)؛ الفاتورة لا تُحذف بل تُلغى إلغاءً ظاهراً وتُحفظ طوال
+المدة التي يفرضها القانون؛ ونسخة احتياطية يومية من كل البيانات.</td>
+<td>حين يعمل عدة موظفين على الأسعار والحضور والنقود يمنع السجل الأخطاء
+والتلاعب، والنسخة الاحتياطية تحفظ ذاكرة المركز من أي عطل. والقانون يطلب
+ذلك أيضاً: قانون حماية المعطيات الشخصية المعدَّل سنة 2025 يفرض تسجيلاً آلياً
+لعمليات الاطلاع على البيانات الشخصية وتعديلها، ومرسوم الفوترة يفرض
+ترقيماً متسلسلاً وإلغاءً ظاهراً.</td>
+</tr>
+</tbody>
+</table>
+</div>
+<h2 id="ما-يؤجل-إلى-مرحلة-النمو">ما يُؤجَّل إلى مرحلة النمو</h2>
+<p>16 خاصية يمكن أن تنتظر دون أن يتعطل العمل. لكل منها علامة تدل على أن
+وقتها حان بدل تاريخ محدد، وبعضها يتقدم إلى الانطلاق حسب إجاباتكم.</p>
+<div class="numbered">
+<table>
+<colgroup>
+<col style="width: 5%" />
+<col style="width: 14%" />
+<col style="width: 20%" />
+<col style="width: 37%" />
+<col style="width: 22%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>#</th>
+<th>الخاصية</th>
+<th>المصدر</th>
+<th>ماذا تقدّم ولماذا</th>
+<th>متى يحين وقتها</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>34</td>
+<td>المخزون والمشتريات</td>
+<td>وثائقكم: «المخزن» و«المشتريات» في الدراسة، المواد المسلّمة للعامل في
+بطاقة التوجيه</td>
+<td>يتابع الكميات والحد الأدنى وطلبات الشراء، وما يُسلَّم لكل عامل
+وموقع.</td>
+<td>عندما يصبح لكم مخزن بكميات معتبرة أو أكثر من مشرف يوزّع المواد؛ قبل
+ذلك تكفي قائمة شراء (س26).</td>
+</tr>
+<tr class="even">
+<td>35</td>
+<td>المعدات وصيانتها</td>
+<td>وثائقكم: حالة المعدات («تحتاج صيانة») في بطاقة التوجيه</td>
+<td>يعرف أين توجد كل آلة وحالتها وموعد صيانتها.</td>
+<td>عندما تملكون آلات تتنقل بين المواقع، كآلة تنظيف الأرضيات.</td>
+</tr>
+<tr class="odd">
+<td>36</td>
+<td>عدة مشرفين ومناطق</td>
+<td>وثائقكم: مشرفة لكل 10–15 عاملة، ومشرفو المناطق عند 50 عاملة</td>
+<td>لكل مشرف لوحة بمنطقته وعماله ومهامه.</td>
+<td>عند تجاوز 15 عاملاً تقريباً أو فتح منطقة ثانية.</td>
+</tr>
+<tr class="even">
+<td>37</td>
+<td>التوظيف والتدريب</td>
+<td>وثائقكم: برنامج التدريب في الدراسة، والموارد البشرية عند 50
+عاملة</td>
+<td>متابعة المترشحين والمقابلات وأيام التدريب وتواريخ انتهاء
+الوثائق.</td>
+<td>عندما يصبح التوظيف منتظماً كل شهر.</td>
+</tr>
+<tr class="odd">
+<td>38</td>
+<td>حساب الأجور كاملاً</td>
+<td>وثائقكم: «ستدفع للعاملات أسبوعيًا أو شهريًا» و«مساهمات والتزامات» في
+الدراسة</td>
+<td>الأجر والساعات الإضافية والتسبيقات والاقتطاعات وكشف الراتب. عند
+الانطلاق تُسلَّم الساعات للمحاسب (الخاصية 21).</td>
+<td>عندما يصبح حساب الأجور يدوياً مكلفاً أو مصدر أخطاء (س11، س26).</td>
+</tr>
+<tr class="even">
+<td>39</td>
+<td>المصاريف والربح الشهري</td>
+<td>وثائقكم: «التكاليف» و«الربح التشغيلي» في تقرير نهاية الشهر</td>
+<td>تسجيل المصاريف (كراء، نقل، مواد، هاتف) لرؤية الربح الشهري دون انتظار
+كشف المحاسب.</td>
+<td>عندما تريدون معرفة الربح كل شهر دون انتظار المحاسب، أو من البداية
+حسب إجابتكم على س26.</td>
+</tr>
+<tr class="odd">
+<td>40</td>
+<td>متابعة زيارات المندوب</td>
+<td>وثائقكم: المندوب الذي يزور الشركات والعمارات في الدراسة</td>
+<td>قائمة بالمؤسسات والعمارات التي زارها المندوب ومواعيد إعادة الاتصال
+بها.</td>
+<td>عند توظيف مندوب مبيعات.</td>
+</tr>
+<tr class="even">
+<td>41</td>
+<td>التحليلات المتقدمة والتدفق النقدي</td>
+<td>وثائقكم: «نسبة الاحتفاظ بالعميل» و«آجال الدفع» في الدراسة</td>
+<td>الربحية حسب الخدمة والمنطقة والعميل، وتوقّع المداخيل والمصاريف للأشهر
+القادمة.</td>
+<td>بعد بضعة أشهر من التشغيل، حين تتوفر بيانات كافية.</td>
+</tr>
+<tr class="odd">
+<td>42</td>
+<td>الرسائل الآلية</td>
+<td>وثائقكم (التأكيد قبل 24 ساعة)، والإرسال الآلي إضافة منّا</td>
+<td>تُرسل التذكيرات ورسالة «العامل في الطريق» والفواتير وطلبات التقييم
+دون تدخل الموظف، عبر واتساب أو SMS، ويُدعى العميل الراضي إلى تقييم المركز
+على فيسبوك أو غوغل.</td>
+<td>عندما تتجاوز الزيارات اليومية ما يستطيع موظف إرساله بيده، نحو 20
+زيارة في اليوم مثلاً.</td>
+</tr>
+<tr class="even">
+<td>43</td>
+<td>الدفع بالبطاقة</td>
+<td>وثائقكم: «وسائل دفع إلكترونية» في الدراسة</td>
+<td>يدفع العميل بالبطاقة الذهبية أو CIB من رابط في الفاتورة، أو بقراءة
+رمز Baridi Pay من تطبيق بريدي موب، عبر مزوّد دفع معتمد، فيقلّ التعامل
+بالنقد ولا يُستحق على الدفع حق الطابع.</td>
+<td>عندما يطلبه العملاء أو يصبح النقد عبئاً (س19).</td>
+</tr>
+<tr class="odd">
+<td>44</td>
+<td>صفحة العميل</td>
+<td>إضافة منّا</td>
+<td>يرى العميل مواعيده وفواتيره وتقارير زياراته، ويطلب خدمة أو يشتكي دون
+الاتصال بالمكتب. ويجد ممثلو العمارات والشركات فيها كشفاً بالزيارات
+المنجزة يبرّرون به الدفع أمام السكان أو الإدارة.</td>
+<td>عندما يكثر عملاء العقود وتكثر مكالماتهم للمكتب (س22).</td>
+</tr>
+<tr class="even">
+<td>45</td>
+<td>الحجز عبر الإنترنت بسعر فوري</td>
+<td>إضافة منّا</td>
+<td>استمارة حجز تُنشر على فيسبوك وإنستغرام للخدمات البسيطة، تعطي السعر
+فوراً وتقترح موعداً متاحاً. دراستكم تضع فيسبوك وإنستغرام بين قنوات جلب
+عملاء المنازل، والاستمارة تحوّل الإعلان إلى طلب دون انتظار رد الموظف.
+والقانون يشترط أن يكون موقع البيع الإلكتروني مستضافاً في الجزائر بامتداد
+<span class="ltr">com.dz</span>.</td>
+<td>عندما يصبح الرد على رسائل الحجز عمل موظف كامل.</td>
+</tr>
+<tr class="odd">
+<td>46</td>
+<td>تنظيم التنقل والمسارات</td>
+<td>وثائقكم (النقل وزمن الوصول في استمارات المعاينة)، وترتيب المسار
+إضافة منّا</td>
+<td>ترتيب زيارات اليوم لكل فريق حسب الطريق، ومتابعة سيارات المركز، فيقلّ
+وقت الطريق وتكلفة النقل.</td>
+<td>عندما تملكون سيارات لنقل الفرق أو تغطون مناطق متباعدة (س9).</td>
+</tr>
+<tr class="even">
+<td>47</td>
+<td>الفروع</td>
+<td>إضافة منّا</td>
+<td>فصل البيانات والتقارير حسب الفرع أو الولاية، لأن دراستكم تخطط للوصول
+إلى 100 عامل وأكثر.</td>
+<td>عند فتح نشاط في ولاية أخرى.</td>
+</tr>
+<tr class="odd">
+<td>48</td>
+<td>الربط مع برنامج المحاسب</td>
+<td>إضافة منّا</td>
+<td>نقل الفواتير والمدفوعات آلياً إلى برنامج المحاسبة بدل التصدير اليدوي،
+فيوفّر وقت المحاسب ويقلّل أخطاء النقل.</td>
+<td>عندما يصبح التصدير الشهري عبئاً على المحاسب.</td>
+</tr>
+<tr class="even">
+<td>49</td>
+<td>رموز QR في العمارات والمؤسسات</td>
+<td>إضافة منّا</td>
+<td>يقرأ العامل بهاتفه رمز QR مثبتاً في كل مدخل أو طابق فيُسجَّل أنه مرّ به،
+ويقرأ الساكن أو الموظف رمزاً آخر ليبلّغ عن مشكلة مباشرة. يعطي ممثل العمارة
+دليلاً على تنظيف كل طابق لا تعطيه الصور وحدها.</td>
+<td>عندما يطلب عملاء العمارات أو المؤسسات دليلاً على كل طابق، أو تكثر
+شكاوى السكان.</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- مكان مقترح لقسم «التكلفة والمدة» يضيفه المطوّر قبل إرسال الخطة. -->
+<h2 id="ما-يبقى-خارج-النظام">ما يبقى خارج النظام</h2>
+<p>هذه البنود الثمانية وردت في وثائقكم، لكنها أعمال أو قرارات تُدار خارج
+النظام. العمود الأخير يوضح ما يفعله النظام بشأن كل منها.</p>
+<table>
+<colgroup>
+<col style="width: 31%" />
+<col style="width: 13%" />
+<col style="width: 20%" />
+<col style="width: 34%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>البند</th>
+<th>أين ورد</th>
+<th>لماذا خارج النظام</th>
+<th>ما يفعله النظام</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>محتوى برنامج التدريب (7 أيام) وقواعد سلوك العامل داخل المنازل</td>
+<td>الدراسة</td>
+<td>تدريب تقدّمونه أنتم</td>
+<td>يسجّل من أتمّ التدريب (25)، ويعرض الممنوعات في أمر المهمة (11).</td>
+</tr>
+<tr class="even">
+<td>الزي الموحد وبطاقة التعريف المطبوعة وحقيبة العاملة ومعدات
+الوقاية</td>
+<td>الدراسة؛ بطاقة التوجيه</td>
+<td>مشتريات وتجهيز</td>
+<td>يذكّر العامل بمعدات الوقاية في أمر المهمة (11)، وتُتابَع كمياتها مع
+المخزون (34).</td>
+</tr>
+<tr class="odd">
+<td>قواعد السلامة مع المواد الكيميائية، وتقييم الأعمال على
+الارتفاعات</td>
+<td>الدراسة؛ معاينة العمارات</td>
+<td>تدريب العمال، وقرار فني يتخذه المسؤول في الموقع</td>
+<td>يعرض قواعد السلامة في أمر المهمة (11)، ويسجّل في المعاينة أن العمل
+على الارتفاعات يحتاج تقييم سلامة، فلا يُدرج في العرض قبل اعتماده (3،
+5).</td>
+</tr>
+<tr class="even">
+<td>التسويق: صفحات التواصل والإعلانات وملف التعريف التجاري للمركز ورسالة
+«خدمة مُدارة»</td>
+<td>الدراسة</td>
+<td>عمل تسويقي</td>
+<td>يسجّل مصدر كل عميل لتعرفوا أي قناة تجلب العملاء (2).</td>
+</tr>
+<tr class="odd">
+<td>المحاسبة العامة والتصريحات الجبائية والاجتماعية</td>
+<td>الدراسة (محاسب خارجي)</td>
+<td>عمل المحاسب</td>
+<td>يسلّمه الفواتير والمدفوعات وساعات العمال جاهزة (19، 20، 21).</td>
+</tr>
+<tr class="even">
+<td>صياغة نصوص العقود وسياسة المسؤولية والتعويض</td>
+<td>الدراسة</td>
+<td>نصوص قانونية تكتبونها أو يراجعها مختص</td>
+<td>يطبعها في العقود ويطبّق شروطها، كالاستبدال والخصم (6، 18).</td>
+</tr>
+<tr class="odd">
+<td>نموذج الربحية الافتراضي والتوقعات المالية (10 عاملات × 100,000
+دج)</td>
+<td>الدراسة</td>
+<td>تخطيط مالي</td>
+<td>يعطيكم الأرقام الفعلية لمقارنتها بالتوقعات (22، 30).</td>
+</tr>
+<tr class="even">
+<td>الهيكل الإداري وقرارات التوظيف عند 10 و50 و100 عامل</td>
+<td>الدراسة</td>
+<td>قرارات تنظيمية</td>
+<td>يدعمها بالأدوار والصلاحيات (23).</td>
+</tr>
+</tbody>
+</table>
+<p>وخارج النظام أيضاً، وإن لم تذكره وثائقكم: يفرض القانون <span class="ltr">18-07</span> المعدَّل سنة 2025 على كل مؤسسة تعالج بيانات أشخاص
+(العملاء والعمال، ومكان العامل عند تسجيل الحضور) أن تصرّح بذلك مسبقاً لدى
+السلطة الوطنية لحماية المعطيات ذات الطابع الشخصي، وأن تعيّن مسؤولاً عن
+حمايتها. تسجيل الحضور بالبصمة يحتاج ترخيصاً مسبقاً منها، لذلك لم نقترحه،
+ونقل البيانات إلى خوادم خارج الجزائر يحتاج ترخيصاً نراعيه في اختيار مكان
+استضافة النظام. التصريح نفسه من مسؤولية المركز، والنظام لا يجمع إلا
+البيانات المصرّح بها ويحفظ سجل الاطلاع عليها (33).</p>
+<h2 id="questions">أسئلة للتحقق من الخطة</h2>
+<p>26 سؤالاً لا يحتاج أيٌّ منها معرفة تقنية. كل سؤال موجود لأن جوابه يغيّر
+ما سنبنيه، والعمود الثالث يوضح كيف. حيث تختلف وثائقكم أو تترك أمراً
+مفتوحاً سألناكم بدل أن نختار عنكم. يمكنكم الإجابة في العمود الأخير، أو
+برسالة تذكرون فيها رقم السؤال.</p>
+<!-- بعد إنشاء نموذج Google من ../questions-form.gs يمكن إضافة هذه الجملة مع الرابط:
+ويمكنكم الإجابة من الهاتف عبر هذا النموذج: [رابط النموذج](ضع-الرابط-هنا)
+-->
+<h3 id="البداية-والحجم">البداية والحجم</h3>
+<div class="numbered questions">
+<table>
+<colgroup>
+<col style="width: 5%" />
+<col style="width: 47%" />
+<col style="width: 29%" />
+<col style="width: 17%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>#</th>
+<th>السؤال</th>
+<th>لماذا نسأل</th>
+<th>إجابتكم</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>س1</td>
+<td>بأي الأقسام ستبدؤون: المنازل، المؤسسات، العمارات، أم الثلاثة
+معاً؟</td>
+<td>نبني أولاً استمارات القسم الذي ستبدؤون به وقوائم مهامه، ويدخل القسم
+المؤجَّل لاحقاً.</td>
+<td></td>
+</tr>
+<tr class="even">
+<td>س2</td>
+<td>كم عاملاً وكم موظف مكتب ستبدؤون بهم، وكم تتوقعون بعد سنة؟ الدراسة
+تذكر 5–10 عاملات ثم 20 ثم 100 فأكثر، وتترك المرحلة الثالثة فارغة. وكيف
+تنظّمون الاحتياط: عمال احتياط ثابتون (مثلاً 2 لكل 10 كما في الدراسة)، أم
+بديل لكل منطقة؟</td>
+<td>الحجم يحدد متى تنتقل خصائص مرحلة النمو إلى الانطلاق، مثل تعدد
+المشرفين (36) والمخزون (34)؛ وطريقة الاحتياط تحدد من يقترحه النظام بديلاً
+(9).</td>
+<td></td>
+</tr>
+<tr class="odd">
+<td>س3</td>
+<td>في أي مدينة أو ولايات ستعملون عند الانطلاق؟ وهل ستقسّمونها إلى مناطق
+من البداية كما تقترح الدراسة؟ إن نعم، ما هي المناطق؟</td>
+<td>المناطق أساس توزيع العمال واقتراح البدلاء (8، 9).</td>
+<td></td>
+</tr>
+<tr class="even">
+<td>س4</td>
+<td>هل لديكم الآن عملاء أو عمال مسجلون في مكان ما (دفتر، Excel، هاتف)؟
+كم عددهم تقريباً؟</td>
+<td>إن وُجدوا نُدخل بياناتهم في النظام قبل التشغيل.</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+</div>
+<h3 id="من-يفعل-ماذا">من يفعل ماذا</h3>
+<div class="numbered questions">
+<table>
+<colgroup>
+<col style="width: 5%" />
+<col style="width: 47%" />
+<col style="width: 29%" />
+<col style="width: 17%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>#</th>
+<th>السؤال</th>
+<th>لماذا نسأل</th>
+<th>إجابتكم</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>س5</td>
+<td>عند الانطلاق، من سيتولى كل مهمة من المهام التالية: تسجيل الطلبات،
+المعاينة، إعداد عروض الأسعار، اعتمادها، جدولة العمال، الإشراف الميداني،
+قبض المال، إصدار الفواتير؟ (يمكن لشخص واحد أن يتولى عدة مهام)</td>
+<td>لكل دور حساب وصلاحيات (23)؛ الدراسة تقترح خمسة أدوار بينما تبدؤون
+بفريق صغير.</td>
+<td></td>
+</tr>
+<tr class="even">
+<td>س6</td>
+<td>هل يجب أن يمر كل عرض سعر عليكم قبل إرساله، أم فقط العروض التي فيها
+خصم أو تتجاوز مبلغاً معيناً؟ وكم هذا المبلغ؟</td>
+<td>استمارات المعاينة تفصل بين من يعدّ السعر ومن يعتمده؛ الجواب يحدد متى
+يُوقف النظام العرض في انتظار موافقتكم (5).</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+</div>
+<h3 id="العمال-في-الميدان">العمال في الميدان</h3>
+<div class="numbered questions">
+<table>
+<colgroup>
+<col style="width: 5%" />
+<col style="width: 47%" />
+<col style="width: 29%" />
+<col style="width: 17%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>#</th>
+<th>السؤال</th>
+<th>لماذا نسأل</th>
+<th>إجابتكم</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>س7</td>
+<td>هل لدى كل العمال هاتف ذكي فيه إنترنت أثناء العمل؟ وهل يقرؤون العربية
+أو الفرنسية بسهولة؟ إن لم يكن ذلك للجميع، من يسجّل حضورهم ومهامهم بدلاً
+منهم: المشرف أم المكتب؟</td>
+<td>يحدد هل نبني تطبيقاً للعامل، أم نطبع أوامر المهام ويسجّل غيره بدلاً منه
+(11 إلى 14، 27، 28).</td>
+<td></td>
+</tr>
+<tr class="even">
+<td>س8</td>
+<td>هل يعمل العامل منفرداً في الغالب، أم ضمن فريق له قائد كما في بطاقة
+توجيه العمارات؟ وفي الفريق، هل يسجّل القائد حضور الجميع؟</td>
+<td>يحدد هل يُصدَر أمر المهمة ويُسجَّل الحضور لكل عامل أم لكل فريق (11،
+12).</td>
+<td></td>
+</tr>
+<tr class="odd">
+<td>س9</td>
+<td>كيف سيتنقل العمال إلى المواقع: سيارة المركز، النقل العمومي، أم
+وسيلتهم الخاصة؟ ومن يتحمل تكلفة التنقل؟</td>
+<td>يحدد هل يُحسب وقت الطريق بين موقعين في الجدول وتكلفة النقل في السعر
+(4، 8)، ومتى نحتاج تنظيم المسارات (46).</td>
+<td></td>
+</tr>
+<tr class="even">
+<td>س10</td>
+<td>ما أيام عمل المركز وأوقاته؟ الدراسة تجعل العمل من السبت إلى الخميس
+والجمعة عطلة، بينما تشمل استمارتا المؤسسات والعمارات يوم الجمعة. وهل
+تعملون بفترات ثابتة (تذكر الدراسة 09:00–12:00 و13:30–16:00، وفي موضع آخر
+08:00–12:00 وخدمات مسائية من 14:00) أم في أي ساعة يطلبها العميل؟ وهل
+ستقدّمون خدمات ليلية بين التاسعة مساءً والخامسة صباحاً؟</td>
+<td>هذه قواعد التقويم التي تُبنى عليها الجدولة الدورية وحساب طاقة العمال
+(7، 8)، وقانون العمل يمنع العمل الليلي للعاملات إلا بترخيص من مفتشية
+العمل، فينبّه النظام عند الجدولة.</td>
+<td></td>
+</tr>
+<tr class="odd">
+<td>س11</td>
+<td>كيف يُدفع أجر العامل: راتب شهري، أجر يومي، بالساعة، أم بالمهمة؟ وكل
+أسبوع أم كل شهر؟ وكم ساعة يعمل في الأسبوع بدوام كامل حسب عقده (الدراسة
+تذكر 40–45 ساعة مرة و40–48 مرة أخرى)، وكم ساعة في اليوم كحد أقصى (تقترح
+الدراسة 8 مثلاً)؟</td>
+<td>يحدد ما يسجّله النظام لكل عامل (ساعات أم مهام) والحدود التي ينبّه
+عندها (8، 21، 38). للعلم: يحدد القانون 40 ساعة أسبوعياً، والساعات
+الإضافية استثنائية في حدود 20% وبأجر أعلى.</td>
+<td></td>
+</tr>
+<tr class="even">
+<td>س12</td>
+<td>هل هناك عملاء أو خدمات تشترط عمالاً بعينهم؟ مثلاً: العامل نفسه في كل
+زيارة (كما في استمارتي المؤسسات والعمارات)، أو عاملات فقط داخل المنازل،
+أو عامل يتقن آلة معينة.</td>
+<td>يحدد القواعد التي يتبعها النظام حين يقترح عاملاً أو بديلاً، فلا يقترح
+من لا يقبله العميل (8، 9، 25).</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+</div>
+<h3 id="الأسعار-والعقود">الأسعار والعقود</h3>
+<div class="numbered questions">
+<table>
+<colgroup>
+<col style="width: 5%" />
+<col style="width: 47%" />
+<col style="width: 29%" />
+<col style="width: 17%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>#</th>
+<th>السؤال</th>
+<th>لماذا نسأل</th>
+<th>إجابتكم</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>س13</td>
+<td>هل ستبيعون باقات جاهزة بأسعار ثابتة، أم تسعّرون كل عميل بعد المعاينة؟
+الدراسة تقترح باقات تختلف في عدد الزيارات والخدمات (للعمارات: BASIC
+مرتين وSTANDARD ثلاث مرات وPREMIUM ست مرات أسبوعياً؛ وللمكاتب باقات حسب
+عدد الزيارات؛ وللمنازل باقات حسب نوع الخدمة)، بينما تذكر استمارة معاينة
+العمارات أربعة مستويات دون تعريفها (أساسي، قياسي، متقدم، شامل).</td>
+<td>الباقات تعني قائمة أسعار جاهزة في النظام؛ التسعير بعد المعاينة يعني
+حساباً لكل عميل (4، 5).</td>
+<td></td>
+</tr>
+<tr class="even">
+<td>س14</td>
+<td>كيف تحسبون السعر في كل قسم؟ استمارات المعاينة تحسبه من التكاليف
+المباشرة زائد هامش الربح، بينما تضيف الدراسة نصيب الإدارة والضرائب
+والتأمين؛ واستمارة تسجيل العمارات تقترح أيضاً السعر لكل زيارة أو حسب عدد
+المداخل أو الطوابق أو المساحة. وما الخدمات التي تسعّرونها بالهاتف دون
+معاينة، وعلى أي أساس (بالساعة، بالمتر المربع، بالغرفة، سعر ثابت)؟</td>
+<td>يحدد طريقة الحساب لكل قسم وبنود التكلفة فيه (4، 30)، وهل نضيف حاسبة
+سريعة لأسعار الهاتف.</td>
+<td></td>
+</tr>
+<tr class="odd">
+<td>س15</td>
+<td>كيف تفوترون: بعد كل خدمة، أسبوعياً، أم شهرياً (الاستمارات تذكر
+الثلاثة)؟ وفي العقود الشهرية، هل تُصدرون الفاتورة بمبلغ ثابت في بداية
+الشهر، كما تنصح الدراسة، أم في نهايته حسب الزيارات المنجزة فعلاً؟ وإذا
+فاتت زيارة دون بديل، هل تُخصم من الفاتورة أم تُعوَّض بزيارة أخرى؟ وإذا ألغى
+العميل في آخر لحظة أو لم يفتح الباب، هل تُحتسب الزيارة عليه؟</td>
+<td>يحدد كيف يحسب النظام الفواتير وما يُكتب في العقد عن الغياب والإلغاء
+(6، 19).</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+</div>
+<h3 id="الفواتير-والدفع">الفواتير والدفع</h3>
+<div class="numbered questions">
+<table>
+<colgroup>
+<col style="width: 5%" />
+<col style="width: 47%" />
+<col style="width: 29%" />
+<col style="width: 17%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>#</th>
+<th>السؤال</th>
+<th>لماذا نسأل</th>
+<th>إجابتكم</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>س16</td>
+<td>هل تفوترون بالرسم على القيمة المضافة (TVA)، أم أنتم في نظام الضريبة
+الجزافية الوحيدة (IFU)؟ محاسبكم يعرف الجواب. واسألوه أيضاً: هل يشترط
+القانون أن تصدر الفواتير أو تُسجَّل المبيعات من برنامج معتمد؟</td>
+<td>النظام الضريبي يغيّر شكل الفاتورة وطريقة حساب مبالغها (31). وإن كان
+البرنامج المعتمد شرطاً، نبني النظام ليستوفيه أو نربطه ببرنامج فوترة
+معتمد.</td>
+<td></td>
+</tr>
+<tr class="even">
+<td>س17</td>
+<td>هل تتوقعون عملاء من الإدارات العمومية أو الشركات الكبيرة؟ استمارة
+تسجيل المؤسسات تتضمن القطاع العام. وهل يطلب هؤلاء وثائق خاصة، كشهادة
+إنجاز الخدمة كل شهر أو استلام موقّع ومختوم؟</td>
+<td>إن نعم نضيف هذه الوثائق ونتابع آجال الدفع الطويلة في التحصيل (19،
+20).</td>
+<td></td>
+</tr>
+<tr class="odd">
+<td>س18</td>
+<td>عندما يدفع عميل منزلي نقداً في نهاية الخدمة، من يقبض المال: العامل،
+المشرف، أم يدفع للمكتب فقط؟ وهل تطلبون عربوناً قبل بعض الخدمات، كالتنظيف
+بعد البناء؟</td>
+<td>الدراسة تقول إن العاملة لا تمسك المال إلا بنظام رسمي؛ الجواب يحدد هل
+نفعّل سند القبض والمطابقة اليومية (32)، وهل نسجّل العربون قبل الخدمة
+(20).</td>
+<td></td>
+</tr>
+<tr class="even">
+<td>س19</td>
+<td>هل تريدون أن يدفع العملاء بالبطاقة الذهبية أو CIB من رابط في
+الفاتورة؟ هذا يتطلب اتفاقاً مع بنك أو مزوّد دفع. أم يكفي تسجيل ما يُدفع
+نقداً أو عبر CCP أو التحويل أو الصك؟</td>
+<td>الدفع بالبطاقة ربط إضافي نؤجله إلى مرحلة النمو ما لم تحتاجوه من
+البداية (43).</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+</div>
+<h3 id="التواصل-مع-العملاء">التواصل مع العملاء</h3>
+<div class="numbered questions">
+<table>
+<colgroup>
+<col style="width: 5%" />
+<col style="width: 47%" />
+<col style="width: 29%" />
+<col style="width: 17%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>#</th>
+<th>السؤال</th>
+<th>لماذا نسأل</th>
+<th>إجابتكم</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>س20</td>
+<td>هل يكفي أن يوقّع العميل على شاشة الهاتف (على استمارة التسجيل، وقبول
+عرض السعر، واستلام الخدمة)، أم يحتاج بعض العملاء، خاصة المؤسسات، إلى
+وثائق ورقية موقّعة ومختومة؟</td>
+<td>يحدد هل تكون التوقيعات رقمية فقط أم نطبع الوثائق أيضاً (2، 5،
+15).</td>
+<td></td>
+</tr>
+<tr class="even">
+<td>س21</td>
+<td>بأي لغة يعمل النظام وتصدر الوثائق: العربية، الفرنسية، أم الاثنتان؟
+مثلاً فواتير بالفرنسية للشركات وتطبيق بالعربية للعمال.</td>
+<td>اللغتان معاً تعني أن تُكتب كل شاشة ووثيقة بالاثنتين.</td>
+<td></td>
+</tr>
+<tr class="odd">
+<td>س22</td>
+<td>هل تريدون أن يتعامل العملاء مع النظام مباشرة منذ البداية (رابط
+لتأكيد الموعد أو للتقييم أو لرؤية الفواتير)، أم يمر كل شيء عبر المكتب
+بالهاتف وواتساب؟</td>
+<td>صفحة العميل مؤجلة إلى مرحلة النمو (44)؛ إن احتجتموها من البداية
+ننقلها إلى الانطلاق.</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+</div>
+<h3 id="توحيد-ما-تختلف-فيه-الوثائق">توحيد ما تختلف فيه الوثائق</h3>
+<div class="numbered questions">
+<table>
+<colgroup>
+<col style="width: 5%" />
+<col style="width: 47%" />
+<col style="width: 29%" />
+<col style="width: 17%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>#</th>
+<th>السؤال</th>
+<th>لماذا نسأل</th>
+<th>إجابتكم</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>س23</td>
+<td>وثائقكم تعطي الشيء نفسه رموزاً مختلفة (العميل CL أو CUS أو CL-H،
+المعاينة VIS أو INS، العرض QT أو Q، العقد CT أو CTR أو CON، العامل W أو
+EMP). نقترح ترقيماً واحداً للأقسام الثلاثة بحرف يدل على نوع الوثيقة (CL
+للعميل، INS للمعاينة، Q للعرض، CTR للعقد، JOB للمهمة): هل توافقون، أم
+تفضلون حرفاً يميّز القسم (مثل H للمنازل)؟ وقوائم الحالة تختلف كذلك: هل
+نعتمد مراحل واحدة للملف (جديد، معاينة، عرض سعر، متعاقد أو لم يتم
+التعاقد، ثم نشط أو متوقف أو منتهٍ)، وحالات واحدة للمهمة (مؤكدة، بانتظار
+التأكيد، جارية، منفذة، مؤجلة، مشكلة، ملغاة)؟</td>
+<td>النظام يرقّم الوثائق ويتابع المراحل والحالات تلقائياً، ويحتاج صيغة
+واحدة لكل منها (2، 10، 24).</td>
+<td></td>
+</tr>
+<tr class="even">
+<td>س24</td>
+<td>(أ) الحروف A إلى E تعني في وثائقكم أشياء مختلفة: تكرار العقد في
+الدراسة، مستوى الخدمة في معاينة المنازل، ودرجة الصعوبة في معاينة
+المؤسسات؛ و«التصنيف الأولي للعميل» A–D في استمارة المؤسسات بلا تعريف.
+ماذا يعني تصنيف العميل؟ وهل نحتفظ بالحروف أم نستعمل أسماء صريحة؟ (ب)
+لدرجة الصعوبة ثلاثة سلالم: أربع درجات في استمارتي المنازل، وثلاث لكل
+مساحة في معاينة المنازل، وخمس في معاينة المؤسسات. أيها تعتمدون؟ (ج) حالة
+النظافة تُقاس بسلالم من ثلاث إلى خمس درجات بتسميات مختلفة. أيها
+نعتمد؟</td>
+<td>إن كان للتصنيف أثر (أولوية، سعر، مشرف) نبنيه في النظام وإلا نحذفه،
+والسلّم الموحد يسمح بمقارنة المعاينات (2، 3، 7).</td>
+<td></td>
+</tr>
+<tr class="odd">
+<td>س25</td>
+<td>كيف تقيسون الجودة: درجة من 100 مع إجراء تحت 80 كما في الدراسة، أم
+تقدير من خمس درجات من «ممتاز» إلى «يحتاج إلى إعادة» كما في بطاقة
+التوجيه؟ وكم مرة يزور المشرف كل عقد للتفتيش (تذكر الدراسة زيارة أسبوعية،
+ومراقبة شهرية في مثال عقد العمارة)؟ وما الوقت المستهدف للرد على الشكوى
+(تقترح الدراسة ساعتين مثلاً)؟ وتقييم العميل: أربعة معايير كما في الدراسة،
+أم خمسة مع سؤال «هل توصي بنا؟» كما في ملف المنازل؟</td>
+<td>يحدد شكل استمارة التفتيش والتقييم، وعدد زيارات التفتيش، والحدود التي
+تطلق إجراءً أو تنبيهاً (15، 17، 18).</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+</div>
+<h3 id="نطاق-الانطلاق">نطاق الانطلاق</h3>
+<div class="numbered questions">
+<table>
+<colgroup>
+<col style="width: 5%" />
+<col style="width: 47%" />
+<col style="width: 29%" />
+<col style="width: 17%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>#</th>
+<th>السؤال</th>
+<th>لماذا نسأل</th>
+<th>إجابتكم</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>س26</td>
+<td>هل في قائمة مرحلة النمو ما تحتاجونه من اليوم الأول؟ مثلاً المخزون
+الذي تفصّله الدراسة (34)، أو حساب الأجور داخل النظام (38)، أو تسجيل
+المصاريف لرؤية الربح الشهري (39). وهل في قائمة الانطلاق ما لا
+تحتاجونه؟</td>
+<td>هذا يحدد مباشرة ما نبنيه أولاً.</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+</div>
+<h2 id="appendix">ملحق: وثائقكم ومكانها في الخطة</h2>
+<p>راجعنا كل نموذج وإجراء في وثائقكم التسع، ولكلٍّ مكانه هنا: رقم خاصية،
+أو سؤال (س)، أو «خارج النظام». «ملف المنازل» هو ملف العميل المتكامل لقسم
+المنازل، و«بطاقة التوجيه» هي بطاقة توجيه العامل في قسم العمارات.</p>
+<table>
+<colgroup>
+<col style="width: 15%" />
+<col style="width: 57%" />
+<col style="width: 27%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>الوثيقة</th>
+<th>الجزء</th>
+<th>مكانه في الخطة</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>الدراسة</td>
+<td>نموذج العمل: العميل يتعامل مع المركز لا مع العاملة</td>
+<td>1، 11، 23</td>
+</tr>
+<tr class="even">
+<td>الدراسة</td>
+<td>الأقسام الثلاثة وخدمات كل قسم</td>
+<td>1، 3؛ س1</td>
+</tr>
+<tr class="odd">
+<td>الدراسة</td>
+<td>رحلة العميل من الاتصال إلى التحصيل، ورحلة العمارة، والتصور
+النهائي</td>
+<td>الخطوات المبيّنة في رسم «رحلة العمل في النظام»</td>
+</tr>
+<tr class="even">
+<td>الدراسة</td>
+<td>رحلة العاملة من التوظيف إلى تنفيذ المهمة: التدريب والسلوك واللباس
+وأمر المهمة مفصّلة، والتوظيف نفسه غير مفصّل</td>
+<td>11، 25، 37؛ خارج النظام (محتوى التدريب)</td>
+</tr>
+<tr class="odd">
+<td>الدراسة</td>
+<td>التسعير بالهاتف أو بعد المعاينة، وحساب سعر الخدمة (ومنه الإدارة
+والضرائب والتأمين)</td>
+<td>3، 4؛ س14</td>
+</tr>
+<tr class="even">
+<td>الدراسة</td>
+<td>محفظة العاملة، نموذج «6 مهام»، نقاط عبء العمل، حدود 8 ساعات يومياً
+و40–48 أسبوعياً</td>
+<td>7، 8؛ س10، س11</td>
+</tr>
+<tr class="odd">
+<td>الدراسة</td>
+<td>مثال عملي: 10 عاملات لكل منهن 6 عملاء، أي 60 عقداً ونحو 100 مهمة
+أسبوعياً</td>
+<td>8؛ س2</td>
+</tr>
+<tr class="even">
+<td>الدراسة</td>
+<td>تصنيف العقود A–E حسب التكرار</td>
+<td>7؛ س24</td>
+</tr>
+<tr class="odd">
+<td>الدراسة</td>
+<td>الهيكل الإداري عند 10 و50 و100 عامل</td>
+<td>23، 36؛ خارج النظام (قرارات التوظيف)</td>
+</tr>
+<tr class="even">
+<td>الدراسة</td>
+<td>التقسيم الجغرافي إلى مناطق</td>
+<td>8، 9؛ س3</td>
+</tr>
+<tr class="odd">
+<td>الدراسة</td>
+<td>نظام الألوان، جدول العمليات اليومية، النظام اليومي داخل المكتب،
+التقارير اليومية والأسبوعية والشهرية</td>
+<td>10، 22؛ س23</td>
+</tr>
+<tr class="even">
+<td>الدراسة</td>
+<td>نظام الغياب والعاملات الاحتياط</td>
+<td>9؛ س2</td>
+</tr>
+<tr class="odd">
+<td>الدراسة</td>
+<td>العقود الشهرية والدفع المسبق وآجال الدفع</td>
+<td>6، 19، 20، 41؛ س15</td>
+</tr>
+<tr class="even">
+<td>الدراسة</td>
+<td>طرق الدفع وقاعدة «العاملة لا تمسك المال»</td>
+<td>20، 32، 43؛ س18، س19</td>
+</tr>
+<tr class="odd">
+<td>الدراسة</td>
+<td>المؤشرات: الإيراد والهامش لكل عاملة، نسبة الاستغلال، الاحتفاظ
+بالعميل</td>
+<td>22، 30، 41</td>
+</tr>
+<tr class="even">
+<td>الدراسة</td>
+<td>نموذج الربحية الشهري</td>
+<td>39؛ خارج النظام (التوقعات)</td>
+</tr>
+<tr class="odd">
+<td>الدراسة</td>
+<td>مراقبة الجودة، الشكاوى، سياسة التعويض</td>
+<td>17، 18؛ س25؛ خارج النظام (صياغة السياسة)</td>
+</tr>
+<tr class="even">
+<td>الدراسة</td>
+<td>الحماية من المسؤولية: المشمول وغير المشمول، الأشياء الثمينة، الأضرار
+السابقة</td>
+<td>1، 5، 14؛ خارج النظام (صياغة السياسة)</td>
+</tr>
+<tr class="odd">
+<td>الدراسة</td>
+<td>التدريب وقواعد السلوك واللباس وحقيبة العاملة وسلامة المواد</td>
+<td>11، 25؛ خارج النظام</td>
+</tr>
+<tr class="even">
+<td>الدراسة</td>
+<td>المخزن والمشتريات</td>
+<td>34؛ س26</td>
+</tr>
+<tr class="odd">
+<td>الدراسة</td>
+<td>نظام العملاء والأرقام (CUS، SITE، JOB، INV، CON)</td>
+<td>24؛ س23</td>
+</tr>
+<tr class="even">
+<td>الدراسة</td>
+<td>التسويق، ملف التعريف التجاري للمركز، المندوب الذي يزور الشركات
+والعمارات</td>
+<td>2، 40، 45؛ خارج النظام</td>
+</tr>
+<tr class="odd">
+<td>الدراسة</td>
+<td>الباقات (BASIC، STANDARD، PREMIUM وغيرها)</td>
+<td>س13</td>
+</tr>
+<tr class="even">
+<td>الدراسة</td>
+<td>مراحل التوسع والخطة المقترحة عند البداية (من 5–10 عاملات إلى 100
+فأكثر)</td>
+<td>تقسيم الانطلاق والنمو؛ س2</td>
+</tr>
+<tr class="odd">
+<td>الدراسة</td>
+<td>عناوين في الفهرس بلا قسم خاص بها: «الأخطاء التي يجب تجنبها»،
+و«النماذج والوثائق» (الاستمارات جاءت في وثائق مستقلة)، و«الحسابات
+والأجور والربحية» (الأجور غير مفصّلة)</td>
+<td>لا محتوى يُبنى عليه؛ الاستمارات مغطاة في الأسطر التالية، والأجور في
+21 و38 وس11</td>
+</tr>
+<tr class="even">
+<td>ملف المنازل</td>
+<td>البنود 1–11: التسجيل، السكن وتفاصيله، النوافذ، الحالة، الخدمة
+المطلوبة وتفاصيلها، نطاق العمل، المواد، التعليمات، الدخول</td>
+<td>1، 2، 3</td>
+</tr>
+<tr class="odd">
+<td>ملف المنازل</td>
+<td>البندان 12–13: المعاينة والصور</td>
+<td>3، 13</td>
+</tr>
+<tr class="even">
+<td>ملف المنازل</td>
+<td>البنود 14–16: حساب الخدمة، عرض السعر، العقد</td>
+<td>4، 5، 6</td>
+</tr>
+<tr class="odd">
+<td>ملف المنازل</td>
+<td>البنود 17–19: أمر المهمة، قائمة الفحص، سجل الحضور</td>
+<td>11، 12، 13</td>
+</tr>
+<tr class="even">
+<td>ملف المنازل</td>
+<td>البنود 20–22: تقرير نهاية الخدمة، الاستلام، التقييم</td>
+<td>15؛ س20، س25</td>
+</tr>
+<tr class="odd">
+<td>ملف المنازل</td>
+<td>البند 23: الفاتورة والتحصيل</td>
+<td>19، 20</td>
+</tr>
+<tr class="even">
+<td>ملف المنازل</td>
+<td>البندان 24–25: المتابعة القادمة والسجل المختصر للإدارة</td>
+<td>1، 7، 15</td>
+</tr>
+<tr class="odd">
+<td>ملف المنازل</td>
+<td>تقسيم الملف إلى 4 مستويات حسب من يطّلع عليه</td>
+<td>23</td>
+</tr>
+<tr class="even">
+<td>تسجيل المنازل</td>
+<td>البنود 1–10 والبند 14 (تأكيد العميل بتوقيعه)</td>
+<td>1، 2، 3؛ س20</td>
+</tr>
+<tr class="odd">
+<td>تسجيل المنازل</td>
+<td>الأيام المفضلة في البند 6 (من السبت إلى الخميس)</td>
+<td>2، 7؛ س10</td>
+</tr>
+<tr class="even">
+<td>تسجيل المنازل</td>
+<td>البنود 11–13 وقسم «للاستخدام الإداري» وحالة العميل النهائية</td>
+<td>2، 3، 24؛ س23</td>
+</tr>
+<tr class="odd">
+<td>معاينة المنازل</td>
+<td>أولاً إلى عاشراً: البيانات، المواصفات، الحالة، تقييم كل مساحة،
+الأعمال، الخدمات الإضافية، حجم العمل وعدد الأيام، المواد، النقل</td>
+<td>3، 4، 7</td>
+</tr>
+<tr class="even">
+<td>معاينة المنازل</td>
+<td>ثامناً: تصنيف مستوى الخدمة A–E</td>
+<td>س24</td>
+</tr>
+<tr class="odd">
+<td>معاينة المنازل</td>
+<td>الحادي عشر إلى الثالث عشر: التكلفة الداخلية، سعر البيع، الخدمات
+المستثناة</td>
+<td>4، 5</td>
+</tr>
+<tr class="even">
+<td>معاينة المنازل</td>
+<td>الرابع عشر والخامس عشر: الملاحظات والصور</td>
+<td>3، 13</td>
+</tr>
+<tr class="odd">
+<td>معاينة المنازل</td>
+<td>السادس عشر إلى التاسع عشر: التوصية، اعتماد السعر، نتيجة العميل،
+اعتماد العميل</td>
+<td>2، 5؛ س6، س20</td>
+</tr>
+<tr class="even">
+<td>معاينة المنازل</td>
+<td>الحالة الداخلية للمعاينة والعرض والمهمة</td>
+<td>2، 10؛ س23</td>
+</tr>
+<tr class="odd">
+<td>تسجيل المؤسسات</td>
+<td>البنود 1–8 و11–14 و16: الملف، المؤسسة، الاتصال، الموقع، المساحات،
+الحالة، الخدمات، المواد، التعليمات، الدخول والمفاتيح، موعد المعاينة،
+ملاحظات العميل</td>
+<td>1، 2، 3</td>
+</tr>
+<tr class="even">
+<td>تسجيل المؤسسات</td>
+<td>البند 9: دورية الخدمة والأيام المفضلة</td>
+<td>2، 6، 7؛ س10</td>
+</tr>
+<tr class="odd">
+<td>تسجيل المؤسسات</td>
+<td>البند 10: متطلبات المؤسسة بخصوص العمال</td>
+<td>1، 8؛ س12</td>
+</tr>
+<tr class="even">
+<td>تسجيل المؤسسات</td>
+<td>البند 15: بيانات الفوترة</td>
+<td>19، 31؛ س15، س16، س17</td>
+</tr>
+<tr class="odd">
+<td>تسجيل المؤسسات</td>
+<td>البند 17: الأولوية، نوع العميل، التصنيف A–D</td>
+<td>2؛ س24</td>
+</tr>
+<tr class="even">
+<td>تسجيل المؤسسات</td>
+<td>البنود 18–20: أرقام الملفات، التأكيد بالتوقيع والختم، الاعتماد
+والحالة النهائية</td>
+<td>2، 24؛ س20، س23</td>
+</tr>
+<tr class="odd">
+<td>معاينة المؤسسات</td>
+<td>«أولاً» والبنود 1–12: بيانات المعاينة، النشاط، الحالة، تقييم المساحات
+والأرضيات والزجاج ودورات المياه والمكاتب والمطبخ، الخدمات اليومية
+والأسبوعية والشهرية، النطاق</td>
+<td>3، 13</td>
+</tr>
+<tr class="even">
+<td>معاينة المؤسسات</td>
+<td>البنود 13–15: عدد العمال، الساعات، البرنامج المقترح</td>
+<td>3، 7، 8</td>
+</tr>
+<tr class="odd">
+<td>معاينة المؤسسات</td>
+<td>البند 16: وقت الوصول والتنقل</td>
+<td>4؛ س9</td>
+</tr>
+<tr class="even">
+<td>معاينة المؤسسات</td>
+<td>البند 17: المواد والمعدات</td>
+<td>4، 34</td>
+</tr>
+<tr class="odd">
+<td>معاينة المؤسسات</td>
+<td>البند 18: درجة الصعوبة A–E</td>
+<td>س24</td>
+</tr>
+<tr class="even">
+<td>معاينة المؤسسات</td>
+<td>البنود 19–21: التكلفة والسعر وشروطه</td>
+<td>4، 5</td>
+</tr>
+<tr class="odd">
+<td>معاينة المؤسسات</td>
+<td>البندان 22–23: شروط المؤسسة (الأيام والساعات المسموحة) والصور</td>
+<td>1، 7، 8، 13</td>
+</tr>
+<tr class="even">
+<td>معاينة المؤسسات</td>
+<td>البنود 24–26: التوصية، اعتماد الإدارة، نتيجة العرض</td>
+<td>2، 5؛ س6</td>
+</tr>
+<tr class="odd">
+<td>تسجيل العمارات</td>
+<td>البنود 1–9: الملف، العمارة، الجهة المتعاقدة، السكان، المواصفات،
+المساحات المشتركة، الحالة، المشاكل، الخدمات الإضافية</td>
+<td>1، 2</td>
+</tr>
+<tr class="even">
+<td>تسجيل العمارات</td>
+<td>البندان 10–11: البرنامج المطلوب وعدد العمال</td>
+<td>2، 6، 7؛ س10، س12</td>
+</tr>
+<tr class="odd">
+<td>تسجيل العمارات</td>
+<td>البنود 12–16: المواد، الدخول، مكان تخزين المعدات، النفايات، شخص
+الاستلام</td>
+<td>1، 5، 6</td>
+</tr>
+<tr class="even">
+<td>تسجيل العمارات</td>
+<td>البند 17: البيانات المالية (طريقة الاحتساب، الدفع، الفوترة، يوم
+الدفع)</td>
+<td>19، 20؛ س14، س15</td>
+</tr>
+<tr class="odd">
+<td>تسجيل العمارات</td>
+<td>البنود 18–23: المعاينة، الأرقام، الملاحظات، التأكيد، الاعتماد،
+الحالة</td>
+<td>2، 3، 24؛ س20، س23</td>
+</tr>
+<tr class="even">
+<td>معاينة العمارات</td>
+<td>البنود 1–12: البيانات الهندسية، جدول المداخل، تقييم المداخل والسلالم
+والممرات والمصاعد والأقبية والمساحات الخارجية، النظافة العامة، الخدمات
+اليومية والأسبوعية والشهرية</td>
+<td>3، 13</td>
+</tr>
+<tr class="odd">
+<td>معاينة العمارات</td>
+<td>البند 10: الأعمال على الارتفاعات</td>
+<td>3؛ خارج النظام (تقييم السلامة)</td>
+</tr>
+<tr class="even">
+<td>معاينة العمارات</td>
+<td>البند 13: مستوى الخدمة (أساسي، قياسي، متقدم، شامل)</td>
+<td>س13</td>
+</tr>
+<tr class="odd">
+<td>معاينة العمارات</td>
+<td>البنود 14–16: العمال، الساعات، البرنامج الأسبوعي ويوم الراحة
+وبديله</td>
+<td>3، 7، 8، 9، 13</td>
+</tr>
+<tr class="even">
+<td>معاينة العمارات</td>
+<td>البندان 17–18: احتياج المواد والمعدات</td>
+<td>4، 34، 35</td>
+</tr>
+<tr class="odd">
+<td>معاينة العمارات</td>
+<td>البنود 19–22: النقل، التكلفة، السعر الشهري، الخدمات غير
+المشمولة</td>
+<td>4، 5؛ س9</td>
+</tr>
+<tr class="even">
+<td>معاينة العمارات</td>
+<td>البنود 23–25: مسؤولية ممثل العمارة، ملاحظات السكان، الصور</td>
+<td>1، 13</td>
+</tr>
+<tr class="odd">
+<td>معاينة العمارات</td>
+<td>البنود 26–28: التوصية، الاعتماد، نتيجة العرض</td>
+<td>2، 5؛ س6</td>
+</tr>
+<tr class="even">
+<td>بطاقة التوجيه</td>
+<td>البنود 1–6: المهمة، العامل، المكان، المسؤول في الموقع، النطاق، جدول
+الطوابق والمداخل</td>
+<td>11، 13، 26</td>
+</tr>
+<tr class="odd">
+<td>بطاقة التوجيه</td>
+<td>صفة العامل في البند 2 (عامل، عامل رئيسي، قائد فريق)</td>
+<td>25؛ س8</td>
+</tr>
+<tr class="even">
+<td>بطاقة التوجيه</td>
+<td>البنود 7–10: المهام، مهام اليوم الخاصة، الممنوعات، التعليمات</td>
+<td>11، 13</td>
+</tr>
+<tr class="odd">
+<td>بطاقة التوجيه</td>
+<td>البندان 11–12: المواد المسلّمة ومعدات الوقاية</td>
+<td>11، 34، 35؛ خارج النظام (التجهيز)</td>
+</tr>
+<tr class="even">
+<td>بطاقة التوجيه</td>
+<td>البند 13: الوصول والمغادرة</td>
+<td>12، 27</td>
+</tr>
+<tr class="odd">
+<td>بطاقة التوجيه</td>
+<td>البنود 14–16: التحقق قبل المغادرة، ملاحظات العامل، حالة الإنجاز</td>
+<td>13، 14، 15</td>
+</tr>
+<tr class="even">
+<td>بطاقة التوجيه</td>
+<td>البند 17: تقييم المشرف</td>
+<td>17؛ س25</td>
+</tr>
+<tr class="odd">
+<td>بطاقة التوجيه</td>
+<td>البند 18: استلام الخدمة</td>
+<td>15؛ س20</td>
+</tr>
+<tr class="even">
+<td>بطاقة التوجيه</td>
+<td>البند 19: تقرير الإدارة</td>
+<td>يملأ النظام أغلبه تلقائياً من 10 و12 و14 و18 و21، ويبقى «الإجراء
+المتخذ» قراراً للمسؤول</td>
+</tr>
+<tr class="odd">
+<td>بطاقة التوجيه</td>
+<td>القسيمة المقتطعة في آخر البطاقة</td>
+<td>11 (أمر المهمة المطبوع)</td>
+</tr>
+</tbody>
+</table>
+</body>
+</html>

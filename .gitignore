@@ -1,0 +1,23 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Tauri / Rust build output
+src-tauri/target
+src-tauri/gen/schemas
+
+# Editor
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+
+# Local tool state
+.claude/
+.kilo/

@@ -1,0 +1,99 @@
+/* English developer notes — A4 landscape, for wide comparison tables. Rendered by headless Chrome (see build.sh). */
+
+@page {
+  size: A4 landscape;
+  margin: 15mm 15mm 16mm 15mm;
+  @top-left {
+    content: "Inmaa system · software scan and build notes";
+    font-family: "Noto Sans", sans-serif;
+    font-size: 8pt;
+    color: #7a8580;
+  }
+  @bottom-center {
+    content: "Page " counter(page) " of " counter(pages);
+    font-family: "Noto Sans", sans-serif;
+    font-size: 8pt;
+    color: #7a8580;
+  }
+}
+@page :first {
+  @top-left { content: none; }
+}
+
+:root {
+  --ink: #1f2a26;
+  --quiet: #5d6b65;
+  --accent: #0f6e5a;
+  --tint: #eaf2ef;
+  --rule: #cfd8d4;
+}
+
+body {
+  margin: 0;
+  font-family: "Noto Sans", "Liberation Sans", sans-serif;
+  font-size: 10pt;
+  line-height: 1.55;
+  color: var(--ink);
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+#title-block-header {
+  margin: 0 0 6mm;
+  padding: 0 0 4mm;
+  border-bottom: 2px solid var(--accent);
+}
+h1.title { font-size: 20pt; line-height: 1.3; margin: 0 0 1.5mm; }
+#title-block-header .subtitle { font-size: 11pt; font-weight: 700; color: var(--accent); margin: 0; }
+#title-block-header .date { font-size: 9.5pt; color: var(--quiet); margin: 1mm 0 0; }
+
+nav#TOC {
+  background: var(--tint);
+  border-radius: 6px;
+  padding: 3mm 5mm;
+  margin: 0 0 6mm;
+  break-inside: avoid;
+}
+nav#TOC h2 { font-size: 10pt; color: var(--ink); margin: 0 0 1mm; padding: 0; border: 0; }
+nav#TOC ul { margin: 0; padding-left: 0; list-style: none; columns: 3; column-gap: 8mm; font-size: 9.5pt; line-height: 1.8; }
+nav#TOC a { color: var(--ink); text-decoration: none; }
+
+h2 {
+  font-size: 14pt;
+  color: var(--accent);
+  margin: 7mm 0 2.5mm;
+  padding-bottom: 1.2mm;
+  border-bottom: 1px solid var(--rule);
+  break-after: avoid;
+}
+h3 { font-size: 11pt; margin: 5mm 0 1.5mm; break-after: avoid; }
+h2#gaps, h2#algeria, h2#questions { break-before: page; }
+
+p { margin: 0 0 2.5mm; }
+ul { margin: 0 0 2.5mm; padding-left: 6mm; }
+li { margin: 0 0 1mm; }
+a { color: var(--accent); }
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1.5mm 0 5mm;
+  font-size: 8.4pt;
+  line-height: 1.45;
+}
+thead { display: table-header-group; }
+tr { break-inside: avoid; }
+th {
+  background: var(--tint);
+  font-weight: 700;
+  text-align: left;
+  padding: 1.6mm 2mm;
+  border: 1px solid var(--rule);
+}
+td {
+  vertical-align: top;
+  padding: 1.4mm 2mm;
+  border: 1px solid var(--rule);
+}
+.fit td:nth-child(3), .kind td:nth-child(2) { font-weight: 700; white-space: nowrap; }
+.sources li { font-size: 8.8pt; }

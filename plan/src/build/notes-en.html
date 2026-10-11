@@ -1,0 +1,1238 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <meta name="dcterms.date" content="2026-10-10" />
+  <title>Inmaa system: software scan and build notes</title>
+  <style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+
+ul.task-list[class]{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+font-size: inherit;
+width: 0.8em;
+margin: 0 0.8em 0.2em -1.6em;
+vertical-align: middle;
+}
+.display.math{display: block; text-align: center; margin: 0.5rem auto;}
+</style>
+  <style type="text/css">
+@page {
+size: A4 landscape;
+margin: 15mm 15mm 16mm 15mm;
+@top-left {
+content: "Inmaa system · software scan and build notes";
+font-family: "Noto Sans", sans-serif;
+font-size: 8pt;
+color: #7a8580;
+}
+@bottom-center {
+content: "Page " counter(page) " of " counter(pages);
+font-family: "Noto Sans", sans-serif;
+font-size: 8pt;
+color: #7a8580;
+}
+}
+@page :first {
+@top-left { content: none; }
+}
+:root {
+--ink: #1f2a26;
+--quiet: #5d6b65;
+--accent: #0f6e5a;
+--tint: #eaf2ef;
+--rule: #cfd8d4;
+}
+body {
+margin: 0;
+font-family: "Noto Sans", "Liberation Sans", sans-serif;
+font-size: 10pt;
+line-height: 1.55;
+color: var(--ink);
+-webkit-print-color-adjust: exact;
+print-color-adjust: exact;
+}
+#title-block-header {
+margin: 0 0 6mm;
+padding: 0 0 4mm;
+border-bottom: 2px solid var(--accent);
+}
+h1.title { font-size: 20pt; line-height: 1.3; margin: 0 0 1.5mm; }
+#title-block-header .subtitle { font-size: 11pt; font-weight: 700; color: var(--accent); margin: 0; }
+#title-block-header .date { font-size: 9.5pt; color: var(--quiet); margin: 1mm 0 0; }
+nav#TOC {
+background: var(--tint);
+border-radius: 6px;
+padding: 3mm 5mm;
+margin: 0 0 6mm;
+break-inside: avoid;
+}
+nav#TOC h2 { font-size: 10pt; color: var(--ink); margin: 0 0 1mm; padding: 0; border: 0; }
+nav#TOC ul { margin: 0; padding-left: 0; list-style: none; columns: 3; column-gap: 8mm; font-size: 9.5pt; line-height: 1.8; }
+nav#TOC a { color: var(--ink); text-decoration: none; }
+h2 {
+font-size: 14pt;
+color: var(--accent);
+margin: 7mm 0 2.5mm;
+padding-bottom: 1.2mm;
+border-bottom: 1px solid var(--rule);
+break-after: avoid;
+}
+h3 { font-size: 11pt; margin: 5mm 0 1.5mm; break-after: avoid; }
+h2#gaps, h2#algeria, h2#questions { break-before: page; }
+p { margin: 0 0 2.5mm; }
+ul { margin: 0 0 2.5mm; padding-left: 6mm; }
+li { margin: 0 0 1mm; }
+a { color: var(--accent); }
+table {
+width: 100%;
+border-collapse: collapse;
+margin: 1.5mm 0 5mm;
+font-size: 8.4pt;
+line-height: 1.45;
+}
+thead { display: table-header-group; }
+tr { break-inside: avoid; }
+th {
+background: var(--tint);
+font-weight: 700;
+text-align: left;
+padding: 1.6mm 2mm;
+border: 1px solid var(--rule);
+}
+td {
+vertical-align: top;
+padding: 1.4mm 2mm;
+border: 1px solid var(--rule);
+}
+.fit td:nth-child(3), .kind td:nth-child(2) { font-weight: 700; white-space: nowrap; }
+.sources li { font-size: 8.8pt; }
+</style>
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">Inmaa system: software scan and build notes</h1>
+<p class="subtitle">For the developer, not for the client</p>
+<p class="date">10 October 2026</p>
+</header>
+<nav id="TOC" role="doc-toc">
+<h2 id="toc-title">Contents</h2>
+<ul>
+<li><a href="#bottom-line" id="toc-bottom-line">Bottom line</a></li>
+<li><a href="#products" id="toc-products">Products compared</a></li>
+<li><a href="#gaps" id="toc-gaps">What the client’s documents
+miss</a></li>
+<li><a href="#algeria" id="toc-algeria">Algeria constraints that shape
+the build</a></li>
+<li><a href="#questions" id="toc-questions">Question to build
+decision</a></li>
+<li><a href="#coverage" id="toc-coverage">Coverage check</a></li>
+<li><a href="#files" id="toc-files">Files</a></li>
+<li><a href="#sources" id="toc-sources">Sources</a></li>
+</ul>
+</nav>
+<h2 id="bottom-line">Bottom line</h2>
+<p>No existing product fits Inmaa well enough to replace a custom build.
+Three findings decide it:</p>
+<ul>
+<li><strong>Payment:</strong> USD-billed SaaS is impractical for an
+Algerian company. Service imports need bank domiciliation, and payments
+to foreign providers carry 30% withholding.</li>
+<li><strong>Data:</strong> storing client and worker data abroad,
+including worker locations, needs ANPDP authorisation, which points to
+hosting in Algeria.</li>
+<li><strong>Localisation:</strong> only Odoo handles Arabic, French, DZD
+and the Algerian chart of accounts. It needs Enterprise licences, Studio
+and a local partner, and its field app is view-only offline.</li>
+</ul>
+<p>If you would rather configure than build, Odoo is the only candidate.
+Budget for licences, a partner, a stamp-duty add-on, and a custom
+offline field app anyway.</p>
+<p>The custom build borrows proven patterns:</p>
+<ul>
+<li>Swept and Otuvy: geofenced attendance, site inspections, automatic
+corrective tasks.</li>
+<li>Jobber and ServiceM8: quote follow-ups and recurring visits.</li>
+<li>MaidCentral and Swept: budgeted vs actual hours per contract.</li>
+<li>Janitorial Manager: QR checkpoints in buildings.</li>
+</ul>
+<p>Two stopgaps if the client wants something running before the
+build:</p>
+<ul>
+<li><strong>Facturili:</strong> Algerian, billed in DZD, hosted in
+Algeria; issues compliant invoices.</li>
+<li><strong>Connecteam’s free plan (up to 10 users):</strong> clock-in
+and checklists. It stores worker locations abroad, so settle the ANPDP
+question first.</li>
+</ul>
+<p>For your cost estimate: UpGrowth in Algiers advertises custom
+management software from 1,000,000 DA excluding VAT for a first
+module.</p>
+<h2 id="products">Products compared</h2>
+<p>None of the 25 products in five groups fits well. I judged fit
+against three needs: Arabic and French with Algerian invoicing and
+payment methods; contract and building workflows (inspections, recurring
+visits, proof of presence); and a cost that suits 5–10 workers. Prices
+are list prices seen on 10 October 2026. Capterra, G2 and GetApp blocked
+automated access, so the independent signals are App Store ratings.</p>
+<h3 id="cleaning-specific-software">Cleaning-specific software</h3>
+<div class="fit">
+<table style="width:100%;">
+<colgroup>
+<col style="width: 16%" />
+<col style="width: 32%" />
+<col style="width: 6%" />
+<col style="width: 29%" />
+<col style="width: 16%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Product</th>
+<th>What it does well</th>
+<th>Fit</th>
+<th>Why, for Inmaa</th>
+<th>Price</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><a href="https://get.zenmaid.com/pricing">ZenMaid</a></td>
+<td>Recurring home-cleaning schedules; embeddable instant-booking form;
+automated SMS/email reminders and “on my way” texts; GPS clock-in,
+before/after photos, checklists (Pro).</td>
+<td>Poor</td>
+<td>Homes only: no contracts, inspections or building workflow. English
+only; card payments through Stripe or Square, neither of which serves
+Algeria.</td>
+<td>$19 / $39 / $49 a month per account (Starter capped at 40
+appointments); SMS extra</td>
+</tr>
+<tr class="even">
+<td><a href="https://www.maidcentral.com/pricing">MaidCentral</a></td>
+<td>Master schedule by skills and zones; customer scorecards scored
+0–100; payroll and performance-pay reports; batch invoicing; customer
+portal; multi-location KPIs.</td>
+<td>Poor</td>
+<td>Residential only, US payment processor, no inspections or contracts;
+per-job pricing grows with every recurring visit.</td>
+<td>$1.50 per completed job (vendor example: $450 a month for 300 jobs)
++ onboarding fee</td>
+</tr>
+<tr class="odd">
+<td><a href="https://www.bookingkoala.com/pricing">BookingKoala</a> and
+<a href="https://automaidsoftware.com/pricing">Automaid</a> (formerly
+Launch27)</td>
+<td>Booking forms with instant prices by rooms, hours or package; live
+availability; recurring bookings; customer accounts to rebook and rate;
+referrals and gift cards.</td>
+<td>Poor</td>
+<td>A booking front-end, not an operations system. Arabic and French
+only on BookingKoala Premium through Google Translate, RTL undocumented;
+DZD unconfirmed; card processors unavailable in Algeria.</td>
+<td>BookingKoala $27 / $57 / $197 a month (5 / 15 / 50 providers);
+Automaid $75 / $150 / $299</td>
+</tr>
+<tr class="even">
+<td><a href="https://www.sweptworks.com/pricing">Swept</a></td>
+<td>Geofenced clock-in with late and no-show alerts; per-site
+instructions and access notes; inspections with timestamped photos,
+offline sync and PDF/link reports; auto-translated checklists; supply
+requests; client portal; profit and travel-time reports.</td>
+<td>Partial</td>
+<td>Closest operational match for offices and buildings. But no quotes,
+invoices, payments or CRM; app in English, Spanish and Portuguese only;
+inspections need the $150 plan; app rated 2.7★ with crash
+complaints.</td>
+<td>From $30 / $150 / $225 a month by number of sites (entry band up to
+15); 20% off yearly</td>
+</tr>
+<tr class="odd">
+<td><a href="https://www.janitorialmanager.com/plans-pricing/">Janitorial
+Manager</a></td>
+<td>Scan4Clean QR codes (tasks for staff, “last cleaned” and a survey
+for occupants); work loading and bidding; job costing per customer; free
+client portal; equipment tracking; geofenced clock-in, kiosk, offline
+NFC.</td>
+<td>Poor</td>
+<td>Sold to North America (its quote form lists only US states and
+Canadian provinces), no Arabic, no invoicing of its own, and the entry
+price is far above a 10-worker budget.</td>
+<td>From $1,000 a month</td>
+</tr>
+<tr class="even">
+<td><a href="https://teamsoftware.com/winteam">WinTeam</a> (Team
+Software, owned by WorkWave)</td>
+<td>Janitorial ERP: payroll, receivables and payables, job
+profitability; GPS, biometric and kiosk time clock; staff and client
+portals (eHub); Lighthouse QR/NFC/beacon checkpoints and inspections
+with signature.</td>
+<td>Poor</td>
+<td>Enterprise system for large North-American contractors, with
+North-American payroll; quote-only pricing and a steep learning
+curve.</td>
+<td>Not published (SelectHub estimate: from $100–500)</td>
+</tr>
+<tr class="odd">
+<td><a href="https://www.otuvy.com/pricing">Otuvy</a> (formerly
+CleanTelligent; not a Team Software product)</td>
+<td>Inspections with custom scales, weighting, photos and e-signature;
+failed items create work orders automatically; branded client reports
+and portal; QR forms; frontline task lists with photo proof.</td>
+<td>Poor</td>
+<td>A quality add-on only, in English; useful as the pattern for plan
+feature 17, not as a system.</td>
+<td>QM Inspect $150 a month (5 users), QM Pro $250; Frontline $50 + $7
+per user</td>
+</tr>
+</tbody>
+</table>
+</div>
+<h3 id="general-field-service-software">General field-service
+software</h3>
+<div class="fit">
+<table style="width:100%;">
+<colgroup>
+<col style="width: 16%" />
+<col style="width: 32%" />
+<col style="width: 6%" />
+<col style="width: 29%" />
+<col style="width: 16%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Product</th>
+<th>What it does well</th>
+<th>Fit</th>
+<th>Why, for Inmaa</th>
+<th>Price</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><a href="https://www.getjobber.com/pricing/">Jobber</a></td>
+<td>Request, quote, job, invoice in one flow; automated quote
+follow-ups; optional line items and deposits; recurring visits; batch
+invoicing and reminders; client hub; online booking; route optimisation;
+checklists with photos; review requests.</td>
+<td>Poor</td>
+<td>The best quote-to-cash flow in the scan, built for North America:
+English (Spanish for staff), no Arabic or French, currency falls back to
+$, and card payments, SMS and tips work only in the US, Canada and
+UK.</td>
+<td>Core $29–49, Connect $99–399, Grow $149–499, Plus $399–699 a month;
+extra users $29</td>
+</tr>
+<tr class="even">
+<td><a href="https://www.housecallpro.com/pricing/">Housecall
+Pro</a></td>
+<td>Online booking around the clock; customer portal; recurring cleans;
+photo reports; checklists; signatures before and after the job, printed
+on the invoice; price book.</td>
+<td>Poor</td>
+<td>North American, English and Spanish only; route optimisation and
+service plans only in the top plan; phone features US and Canada
+only.</td>
+<td>Basic $59, Essentials $149, Max $299 a month (annual), + $35 per
+extra user</td>
+</tr>
+<tr class="odd">
+<td><a href="https://www.servicem8.com/pricing">ServiceM8</a></td>
+<td>Online booking with instant quote and deposit; up to five follow-ups
+on quotes and invoices; recurring jobs; automatic check-in on arrival;
+GPS shift history; mandatory job forms output as PDF; works offline on
+synced jobs.</td>
+<td>Poor</td>
+<td>English only. Pricing caps jobs per month, so daily contract visits
+get expensive: about 900 visits a month needs the $349 plan.</td>
+<td>Free (30 jobs), $29 (50), $79 (150), $149 (500), $349 (1,500+) a
+month; unlimited users</td>
+</tr>
+<tr class="even">
+<td><a href="https://www.zoho.com/fsm/pricing.html">Zoho FSM</a></td>
+<td>Request, estimate, work order, appointment; maintenance plans for
+periodic visits; dispatch Gantt with live location; assignment by
+skills, availability and distance; service reports with client
+signature; WhatsApp notifications.</td>
+<td>Partial</td>
+<td>Arabic and French interface (RTL undocumented, statuses stay in
+English). Per-appointment pricing punishes daily visits; offline is
+mostly read-only; no client portal; DZD unconfirmed.</td>
+<td>Free (30 appointments); $30 / $45 / $55 a month for 60 appointments;
+$290–590 at 1,000</td>
+</tr>
+<tr class="odd">
+<td><a href="https://www.odoo.com/pricing">Odoo</a> Field Service,
+Planning, Timesheets, Subscriptions</td>
+<td>Sale creates the field task; Gantt and map planning; worksheets
+signed on the phone; timesheets feed the invoice; stock per worker;
+customer portal; leave-aware planning with planned vs actual hours;
+recurring contract invoices. Arabic (RTL), French and DZD are built in;
+<a href="https://raw.githubusercontent.com/odoo/odoo/18.0/addons/l10n_dz/__manifest__.py">Algerian
+chart of accounts</a> with VAT 19/9/0%; <a href="https://www.odoo.com/partners/country/algeria-61">8 partners in
+Algeria</a>.</td>
+<td>Partial</td>
+<td>The only off-the-shelf candidate. Catches: Field Service, Planning,
+Subscriptions, Studio and the mobile app are Enterprise-only; worksheet
+templates need Studio, which forces the Custom plan; offline is
+view-only; stamp duty needs a third-party app; a partner is needed to
+configure it.</td>
+<td>Per user a month: Standard $8.95, Custom $16.40 (yearly, with
+first-year discounts); light field users $2.90. 3 office + 20 field
+users ≈ $98–107 a month before implementation</td>
+</tr>
+<tr class="even">
+<td><a href="https://www.servicetitan.com/pricing">ServiceTitan</a></td>
+<td>Enterprise platform for HVAC, plumbing and electrical trades.</td>
+<td>Poor</td>
+<td>No cleaning focus, US-centric; listed only as the upper bound.</td>
+<td>Quote only</td>
+</tr>
+</tbody>
+</table>
+</div>
+<h3 id="staff-scheduling-and-attendance-apps">Staff scheduling and
+attendance apps</h3>
+<div class="fit">
+<table style="width:100%;">
+<colgroup>
+<col style="width: 16%" />
+<col style="width: 32%" />
+<col style="width: 6%" />
+<col style="width: 29%" />
+<col style="width: 16%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Product</th>
+<th>What it does well</th>
+<th>Fit</th>
+<th>Why, for Inmaa</th>
+<th>Price</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><a href="https://connecteam.com/pricing/">Connecteam</a></td>
+<td>Geofenced clock-in, GPS trail and live map; recurring and open
+shifts; checklists with required before/after photos and GPS-stamped
+reports; chat; documents for e-signature; kiosk.</td>
+<td>Partial</td>
+<td>Free for up to 10 users, which matches launch size, and Arabic is
+listed (RTL unverified). But clock-in needs a connection, and it has no
+quotes, invoices, contracts or stock; billed in USD; geofencing from the
+Advanced plan. Could bridge the field side while the build is under
+way.</td>
+<td>Free up to 10 users; $29 / $49 / $99 per hub a month for 30 users
+(yearly); extra users $0.5–5</td>
+</tr>
+<tr class="even">
+<td><a href="https://www.deputy.com/pricing">Deputy</a></td>
+<td>Fills shifts by availability; replacement alerts; shift swaps; GPS
+clock-in with geofence; tablet kiosk with face check that works offline
+for 24 hours.</td>
+<td>Poor</td>
+<td>No Arabic; no photo proof or client reports; per-user price adds up
+(about $650 a month at 100 staff).</td>
+<td>Lite $5, Core $6.50, Pro $9 per user a month</td>
+</tr>
+</tbody>
+</table>
+</div>
+<h3 id="arabic-and-algerian-business-software">Arabic and Algerian
+business software</h3>
+<div class="fit">
+<table style="width:100%;">
+<colgroup>
+<col style="width: 16%" />
+<col style="width: 32%" />
+<col style="width: 6%" />
+<col style="width: 29%" />
+<col style="width: 16%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Product</th>
+<th>What it does well</th>
+<th>Fit</th>
+<th>Why, for Inmaa</th>
+<th>Price</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><a href="https://www.daftra.com/en/plans">Daftra</a></td>
+<td>Arabic-first cloud ERP with a cleaning-company page: contract file
+per client, visit appointments with SMS/email reminders, client portal
+and self-booking, work orders with profit summary, attendance by
+location radius or selfie, payroll, low-stock alerts.</td>
+<td>Partial</td>
+<td>Arabic and English only (no French invoices); no Algerian tax or
+payroll setup; weak field execution (no checklists, photos or signatures
+on work orders).</td>
+<td>$30 / $55 / $70 a month (Basic / Advanced / Premium) + $7–9.33 per
+extra user</td>
+</tr>
+<tr class="even">
+<td><a href="https://facturili.com/tarifs">Facturili</a> (Algeria)</td>
+<td>Invoicing and SCF accounting hosted in Algeria; invoices per Decree
+05-468; VAT 0/9/19%; stamp duty; pre-filled G50; recurring invoices;
+CIB, Edahabia and BaridiMob collection; French and Arabic with RTL.</td>
+<td>Partial</td>
+<td>No field operations. A candidate back-end for invoicing (plan
+feature 31) or export target (48), especially if certified billing
+software becomes mandatory.</td>
+<td>2,900 / 5,900 / 11,900 DZD a month</td>
+</tr>
+<tr class="odd">
+<td><a href="https://www.ratib-rh.com/">Ratib RH</a> and <a href="https://talenteo.com/en/conformite-rh-et-paie-algerie-2026-guide-complet/">Talenteo</a>
+(Algeria)</td>
+<td>Payroll and HR under Algerian rules: IRG, CNAS, DAS/ATS/G29; leave
+and loans; fingerprint terminals; French and Arabic.</td>
+<td>Partial</td>
+<td>A payroll target for the hours export (feature 21) instead of
+building payroll (38).</td>
+<td>Ratib: 15,000 / 40,000 / 99,000 DZD a year (up to 10 / 50 / 200
+staff); Talenteo has a free tier</td>
+</tr>
+<tr class="even">
+<td><a href="https://almawarid.app/tarifs/">Almawarid</a> (Oran)</td>
+<td>Payroll (CNAS/IRG), HR, bilingual contracts, invoicing and stock;
+offline on Android and desktop; accepts CIB, Edahabia, CCP and
+BaridiMob.</td>
+<td>Partial</td>
+<td>Broad back office, but no field-service workflow; its hosting claims
+contradict each other (Algeria vs “EU” storage).</td>
+<td>On request (annual)</td>
+</tr>
+<tr class="odd">
+<td><a href="https://dlg-net.com/tarifs.php">PC Compta / PC Paie</a>
+(DLG)</td>
+<td>Desktop accounting and payroll that many Algerian accountants
+know.</td>
+<td>Partial</td>
+<td>Probably what an external accountant uses: an export format to
+match, not a system to adopt.</td>
+<td>From 97,500 DA each; support 13,900 DA a year</td>
+</tr>
+</tbody>
+</table>
+</div>
+<h3 id="consumer-cleaning-apps-what-clients-now-expect">Consumer
+cleaning apps (what clients now expect)</h3>
+<div class="fit">
+<table style="width:100%;">
+<colgroup>
+<col style="width: 16%" />
+<col style="width: 32%" />
+<col style="width: 6%" />
+<col style="width: 29%" />
+<col style="width: 16%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Product</th>
+<th>What it does well</th>
+<th>Fit</th>
+<th>Why, for Inmaa</th>
+<th>Price</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><a href="https://www.justlife.com/">Justlife</a> (UAE, KSA), <a href="https://www.propertyfinder.ae/blog/cleaning-app-dubai/">Matic</a>
+(UAE), <a href="https://apps.apple.com/mx/app/darhna/id6758579154">Darhna</a>
+(Algeria)</td>
+<td>Price shown before booking; booking in under a minute; pick a slot
+or same day; cash or card; cleaner ratings; the same cleaner each time;
+subscriptions; free rescheduling up to 24 hours ahead.</td>
+<td>Benchmark only</td>
+<td>Benchmarks for the online booking form (plan feature 45). Darhna is
+an early Algerian home-services marketplace: a possible channel or
+competitor for the homes division.</td>
+<td>Matic from AED 29 an hour</td>
+</tr>
+</tbody>
+</table>
+</div>
+<h2 id="gaps">What the client’s documents miss</h2>
+<p>The scan surfaced 27 capabilities the documents lack or only hint at.
+Nine became launch additions (plan features 25–33), three became
+mechanisms inside existing features, eleven sit in the “later” list, and
+four were left out on purpose. Feature numbers refer to the Arabic
+plan.</p>
+<table>
+<colgroup>
+<col style="width: 37%" />
+<col style="width: 41%" />
+<col style="width: 20%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Capability</th>
+<th>Seen in</th>
+<th>Where it landed</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Worker file: availability, skills, documents, leave booked
+ahead</td>
+<td>Deputy, Connecteam, Swept, MaidCentral, Odoo Planning, Daftra</td>
+<td>Launch 25 (addition)</td>
+</tr>
+<tr class="even">
+<td>Location check at clock-in, late/no-show alert, SOS for lone
+workers</td>
+<td>Swept, Jobber, ServiceM8, Connecteam, Deputy, Lighthouse; SOS in
+ZenMaid</td>
+<td>Launch 27 (addition)</td>
+</tr>
+<tr class="odd">
+<td>Field app that works offline and syncs later</td>
+<td>Swept, ServiceM8, WinTeam, Janitorial Manager (NFC), Almawarid</td>
+<td>Launch 28 (addition)</td>
+</tr>
+<tr class="even">
+<td>Map pin per site</td>
+<td>ZenMaid, MaidCentral, Odoo</td>
+<td>Launch 26 (addition)</td>
+</tr>
+<tr class="odd">
+<td>Automatic follow-up on unanswered quotes</td>
+<td>Jobber, ServiceM8</td>
+<td>Launch 29 (addition)</td>
+</tr>
+<tr class="even">
+<td>Budgeted vs actual hours and margin per contract</td>
+<td>Swept, Janitorial Manager, WinTeam, MaidCentral, Daftra, Jobber,
+ServiceM8, Zoho FSM, Odoo</td>
+<td>Launch 30 (addition)</td>
+</tr>
+<tr class="odd">
+<td>Legally complete invoices: Decree 05-468 fields, VAT or IFU, stamp
+duty on cash</td>
+<td>Facturili, Odoo Algerian localisation plus add-ons, PC Compta</td>
+<td>Launch 31 (addition); Q16</td>
+</tr>
+<tr class="even">
+<td>Receipts for cash taken in the field, reconciled daily</td>
+<td>None of the foreign tools; reflects Algerian cash use</td>
+<td>Launch 32 (addition, depends on Q18)</td>
+</tr>
+<tr class="odd">
+<td>Access and change log; invoices voided, never deleted, kept for the
+legal retention period</td>
+<td>Required by Law 25-11 and Decree 05-468 rather than seen in a
+product</td>
+<td>Launch 33 (addition)</td>
+</tr>
+<tr class="even">
+<td>Clock-in from a shared device at the site</td>
+<td>Deputy, WinTeam, Janitorial Manager, Connecteam</td>
+<td>Mechanism inside launch 12</td>
+</tr>
+<tr class="odd">
+<td>Failed inspection creates a corrective task</td>
+<td>Otuvy (automatic), Janitorial Manager, Swept, WinTeam</td>
+<td>Mechanism inside launch 17</td>
+</tr>
+<tr class="even">
+<td>Monthly contract invoices generated in one batch, with payment
+reminders</td>
+<td>Jobber, Zoho FSM, Odoo Subscriptions, Facturili, Daftra</td>
+<td>Mechanism inside launch 19–20</td>
+</tr>
+<tr class="odd">
+<td>Client portal</td>
+<td>Jobber, Housecall Pro, ServiceM8, Odoo, Swept, Janitorial Manager,
+Otuvy, WinTeam eHub, Daftra, MaidCentral</td>
+<td>Later 44 (addition); Q22</td>
+</tr>
+<tr class="even">
+<td>Online booking with instant price</td>
+<td>ZenMaid, BookingKoala, Automaid, Jobber, Housecall Pro, ServiceM8,
+Odoo; Justlife and Matic</td>
+<td>Later 45 (addition)</td>
+</tr>
+<tr class="odd">
+<td>Automated messages: reminders, “on my way”, review requests</td>
+<td>ZenMaid, BookingKoala, Jobber, Housecall Pro, ServiceM8, Zoho FSM
+(WhatsApp)</td>
+<td>One-click at launch (16); automated later (42)</td>
+</tr>
+<tr class="even">
+<td>QR or NFC checkpoints per floor, plus feedback codes for
+occupants</td>
+<td>Janitorial Manager, Team Lighthouse, Otuvy</td>
+<td>Later 49 (addition)</td>
+</tr>
+<tr class="odd">
+<td>Route optimisation and map dispatch</td>
+<td>Jobber, Housecall Pro, ServiceM8, Zoho FSM, Odoo, Swept</td>
+<td>Later 46</td>
+</tr>
+<tr class="even">
+<td>Supply requests per site and equipment tracking</td>
+<td>Swept, Janitorial Manager, WinTeam</td>
+<td>Later 34–35 (stock itself is in the docs)</td>
+</tr>
+<tr class="odd">
+<td>Payroll under Algerian rules (CNAS, IRG)</td>
+<td>Ratib RH, PC Paie, Almawarid, Talenteo</td>
+<td>Later 38; launch exports hours (21)</td>
+</tr>
+<tr class="even">
+<td>Recruiting and onboarding</td>
+<td>BookingKoala Premium, Connecteam, Team Software</td>
+<td>Later 37</td>
+</tr>
+<tr class="odd">
+<td>Accounting integration</td>
+<td>Facturili, PC Compta, Odoo (the US tools use QuickBooks)</td>
+<td>Later 48</td>
+</tr>
+<tr class="even">
+<td>Several branches or wilayas</td>
+<td>MaidCentral, Odoo</td>
+<td>Later 47 (addition)</td>
+</tr>
+<tr class="odd">
+<td>Card and QR payment (CIB, Edahabia, Baridi Pay)</td>
+<td>Facturili, Almawarid; none of the foreign tools</td>
+<td>Later 43; Q19</td>
+</tr>
+<tr class="even">
+<td>Team chat</td>
+<td>Connecteam, Deputy, Swept, Almawarid</td>
+<td>Left out: WhatsApp already does this</td>
+</tr>
+<tr class="odd">
+<td>Tips, gift cards, referral programmes</td>
+<td>ZenMaid, BookingKoala, MaidCentral, Jobber</td>
+<td>Left out; review requests folded into 42</td>
+</tr>
+<tr class="even">
+<td>Auto-translated checklists</td>
+<td>Swept, BookingKoala, Otuvy</td>
+<td>Left out; interface language is Q21</td>
+</tr>
+<tr class="odd">
+<td>Fingerprint or face clock-in</td>
+<td>Deputy, WinTeam, Daftra, Ratib RH</td>
+<td>Left out: needs prior ANPDP authorisation</td>
+</tr>
+</tbody>
+</table>
+<h2 id="algeria">Algeria constraints that shape the build</h2>
+<p>Two of these rule out most foreign SaaS: paying for it as a company,
+and storing personal data abroad. The other four set hard requirements
+for the custom build. Confidence is the research’s own rating of the
+primary text. Nothing here is legal advice; the client’s accountant or
+lawyer should confirm before go-live.</p>
+<table>
+<colgroup>
+<col style="width: 13%" />
+<col style="width: 44%" />
+<col style="width: 30%" />
+<col style="width: 11%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Constraint</th>
+<th>Finding</th>
+<th>Impact on the build</th>
+<th>Confidence</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Paying for foreign SaaS</td>
+<td>A company pays foreign services only through bank domiciliation,
+with contract or invoice plus a certificate that the service was
+performed (Regulation 07-01, restated by the Bank of Algeria on 28 Jul
+2026). No text lets companies pay subscriptions by card. Payments to
+foreign providers without a local establishment carry 30% withholding
+(Direct Taxes Code arts. 150, 156). The €750 travel allowance may not be
+used for subscriptions.</td>
+<td>Every USD-billed product in the comparison is impractical for Inmaa
+as a company. Prefer services billed in DZD: hosting, SMS,
+payments.</td>
+<td>High for the texts; medium for how they apply to SaaS</td>
+</tr>
+<tr class="even">
+<td>Personal data (Law 18-07 as amended by Law 25-11 of 24 Jul
+2025)</td>
+<td>Declare each processing to the ANPDP before starting (online;
+receipt within 48 hours). Appoint a data-protection officer, keep a
+register of processing and an automated log of operations (collection,
+consultation, change, disclosure, erasure) with reason, date, time and,
+where possible, who. Transfers abroad need ANPDP authorisation and an
+adequate destination; penalty 1–5 years and 500,000–1,000,000 DA.
+Biometric attendance needs prior authorisation (deliberation of 6 May
+2026).</td>
+<td>Host in Algeria unless the client obtains transfer authorisation.
+Build feature 33’s log to the fields of art. 41 bis 3. No fingerprint or
+face clock-in. Record location only at check-in and check-out, never
+continuous tracking. Retention and deletion follow the declaration.</td>
+<td>High for the texts; “storage abroad counts as a transfer” is an
+inference (medium)</td>
+</tr>
+<tr class="odd">
+<td>Invoicing</td>
+<td>Decree 05-468 sets mandatory fields: both parties’ RC and NIS,
+payment method and due date, a sequential number, totals before and
+after tax, the total in words. Stamp and signature unless electronic;
+cancelled invoices stay, marked. Clients deducting VAT need your NIF,
+NIN and RC. Cleaning VAT is 19%; IFU businesses (natural persons up to
+8M DA turnover; 12% on services) may not show VAT. Cash payment carries
+stamp duty: 1 DA per 100 DA from 300 to 30,000 DA, 1.5 DA up to 100,000,
+2 DA above, minimum 5 DA. No e-invoicing mandate found.
+<strong>Unverified:</strong> the research read a 2027 rule in the
+turnover-tax code (art. 51 bis): software that records non-invoiced
+sales needs its publisher’s commitment on tamper-proofing and archiving,
+with 6-year retention. A second check found no Algerian source, and the
+wording matches France’s 2026 till-software rules. The Commercial Code
+(art. 12) is usually cited at 10 years for books and records.</td>
+<td>Invoice template driven by Q16. Total in words in Arabic and French.
+Stamp-duty calculation on cash. Immutable sequential numbering; void,
+never delete. Design for tamper evidence (append-only ledger or hash
+chain) and 10-year retention anyway: cheap insurance whichever rule is
+right. Q16 now asks the accountant whether certified software is
+required. Also ask whether stamp duty is banded or applies to the whole
+amount.</td>
+<td>High for Decree 05-468, VAT and stamp duty; the 19% rate for
+cleaning is an inference (medium–high); the 2027 rule and the retention
+period are unverified</td>
+</tr>
+<tr class="even">
+<td>Working time (Ordinance 97-03, Law 90-11)</td>
+<td>40 hours a week over at least 5 days; a working day spans at most 12
+hours. Overtime is exceptional, at most 20% (about 8 hours a week), paid
+at least 50% extra. Weekly rest is normally Friday and can rotate;
+working it earns rest plus the premium. Night is 21:00–05:00, and women
+may not work nights without a labour-inspector derogation. Part-time is
+at least half of legal hours; leave is 2.5 days a month.</td>
+<td>Capacity defaults: 40 hours, warn on overtime up to 48. Flag women
+scheduled between 21:00 and 05:00 (Q10). Rotate rest days for daily
+building contracts. Leave accrual matters only if payroll comes in-house
+(38).</td>
+<td>High for the original texts; later amendments not checked</td>
+</tr>
+<tr class="odd">
+<td>Online sales and card payments</td>
+<td>Law 18-05: selling online requires an RC and a site hosted in
+Algeria under .com.dz; e-payments only through bank or Algérie Poste
+platforms. Payment providers need Bank of Algeria approval and must host
+in Algeria (Regulation 25-02). Chargily Pay: free up to 300 transactions
+or 300,000 DZD, then 1.5% (min 15, max 1,500 DZD) or higher tiers. Slick
+Pay 1.4–2%. Baridi Pay QR (since June 2025) needs a commercial CCP
+account. The 2026 Finance Law lets firms deduct e-payment fees from
+taxable profit until 31 Dec 2026.</td>
+<td>Online booking (45) and card payment (43) need a .com.dz domain and
+Algerian hosting. Use a licensed aggregator, after checking that
+Chargily or Slick Pay holds the approval. A Baridi Pay QR on invoices is
+the cheapest option for households.</td>
+<td>High for the laws; medium for provider fees; licence status
+unverified</td>
+</tr>
+<tr class="even">
+<td>Automated messages</td>
+<td>WhatsApp Cloud API prices Algeria as “Rest of Africa”: about $0.004
+per utility template and $0.0225 per marketing template, plus reseller
+fees; replies inside the 24-hour window are free. Billing is in foreign
+currency. Twilio SMS costs $0.273 per segment; a named sender ID needs
+about 2 weeks of pre-registration, with no numeric sender and no two-way
+SMS. Local DZD SMS prices were not found.</td>
+<td>Keep launch reminders as one-click WhatsApp links with prefilled
+text, which cost nothing (feature 16). Automate (42) only through a
+DZD-billed local SMS provider or once foreign billing is solved.</td>
+<td>High for Meta and Twilio pages; Algerian eligibility for WhatsApp
+API unverified</td>
+</tr>
+</tbody>
+</table>
+<h2 id="questions">Question to build decision</h2>
+<p>Each of the 26 client questions settles at least one build decision,
+so a complete set of answers is enough to start building. Seven resolve
+contradictions between his documents, rather than me choosing. Feature
+numbers refer to the Arabic plan.</p>
+<div class="kind">
+<table>
+<colgroup>
+<col style="width: 5%" />
+<col style="width: 15%" />
+<col style="width: 67%" />
+<col style="width: 12%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Q</th>
+<th>Kind</th>
+<th>What the answer settles in the build</th>
+<th>Features</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Q1</td>
+<td>Left open</td>
+<td>Which division’s registration, inspection and checklist templates
+ship first; the data model supports all three regardless.</td>
+<td>1, 3, 13</td>
+</tr>
+<tr class="even">
+<td>Q2</td>
+<td>Left open</td>
+<td>Where the launch/later line falls (supervisor dashboards, stock) and
+expected data volume; the study’s phase 3 size is blank. Reserve model:
+fixed reserves (2 per 10 in the study) or one substitute per zone.</td>
+<td>9, 34, 36</td>
+</tr>
+<tr class="odd">
+<td>Q3</td>
+<td>Left open</td>
+<td>Zone list and whether scheduling and replacement suggestions filter
+by zone from day one.</td>
+<td>8, 9</td>
+</tr>
+<tr class="even">
+<td>Q4</td>
+<td>Missing from docs</td>
+<td>Whether a spreadsheet import is in scope before go-live.</td>
+<td>—</td>
+</tr>
+<tr class="odd">
+<td>Q5</td>
+<td>Left open</td>
+<td>Roles and the permission matrix; the study proposes five roles for a
+team that may be two or three people.</td>
+<td>23</td>
+</tr>
+<tr class="even">
+<td>Q6</td>
+<td>Left open</td>
+<td>Quote approval rule: always, above a discount or amount, or never;
+and the threshold.</td>
+<td>5</td>
+</tr>
+<tr class="odd">
+<td>Q7</td>
+<td>Left open</td>
+<td>Worker app vs printed orders with proxy entry by supervisor or
+office; offline needs; icon-first UI if literacy is low.</td>
+<td>11–14, 27, 28</td>
+</tr>
+<tr class="even">
+<td>Q8</td>
+<td>Left open</td>
+<td>Mission orders and attendance per worker or per team; a team-leader
+role.</td>
+<td>11, 12</td>
+</tr>
+<tr class="odd">
+<td>Q9</td>
+<td>Left open</td>
+<td>Travel time in scheduling, transport cost in pricing, vehicles as a
+resource later.</td>
+<td>4, 8, 46</td>
+</tr>
+<tr class="even">
+<td>Q10</td>
+<td>Contradiction</td>
+<td>Business calendar: Sat–Thu with Friday off (study) vs Fridays
+offered (organisations and buildings forms); fixed slots (the study
+gives 09:00–12:00 / 13:30–16:00 and elsewhere 08:00–12:00, afternoons
+from 14:00) vs free times; night-work flag for women.</td>
+<td>7, 8</td>
+</tr>
+<tr class="odd">
+<td>Q11</td>
+<td>Contradiction</td>
+<td>Pay basis (monthly, daily, hourly, per task) and period (weekly or
+monthly, both in the study); weekly capacity (40–45 vs 40–48 h in the
+study), daily maximum (8 h “for example”), overtime threshold.</td>
+<td>8, 21, 38</td>
+</tr>
+<tr class="even">
+<td>Q12</td>
+<td>Left open</td>
+<td>Assignment constraints: same worker per contract, women only in
+homes, skills or machines.</td>
+<td>8, 9, 25</td>
+</tr>
+<tr class="odd">
+<td>Q13</td>
+<td>Contradiction</td>
+<td>Package catalogue with fixed prices (study: building and office
+packages by visits and services, home packages by service type) vs four
+undefined levels (building inspection form) vs per-quote pricing
+only.</td>
+<td>4, 5</td>
+</tr>
+<tr class="even">
+<td>Q14</td>
+<td>Contradiction</td>
+<td>Pricing formula per division: direct cost plus margin (inspection
+forms) vs adding overhead, taxes and insurance (study) vs per visit,
+entrance, floor or m² (building form); phone quick-price rates.</td>
+<td>4, 30</td>
+</tr>
+<tr class="odd">
+<td>Q15</td>
+<td>Left open</td>
+<td>Billing frequency (per service, weekly, monthly: all offered by the
+forms); monthly contracts fixed and prepaid (study) vs per actual visit;
+rules for missed visits and late client cancellations.</td>
+<td>6, 19</td>
+</tr>
+<tr class="even">
+<td>Q16</td>
+<td>Missing from docs</td>
+<td>Invoice tax logic (19% VAT vs IFU with no VAT) and whether certified
+invoicing or sales software is required (the unverified 2027 rule, asked
+of his accountant).</td>
+<td>31, 33</td>
+</tr>
+<tr class="odd">
+<td>Q17</td>
+<td>Left open</td>
+<td>Extra documents for public and large clients (monthly service
+attestation, stamped acceptance) and long payment terms.</td>
+<td>19, 20</td>
+</tr>
+<tr class="even">
+<td>Q18</td>
+<td>Left open</td>
+<td>Cash taken in the field, receipts and daily reconciliation; deposits
+before large one-off jobs.</td>
+<td>20, 32</td>
+</tr>
+<tr class="odd">
+<td>Q19</td>
+<td>Left open</td>
+<td>Card or QR payment integration at launch or later.</td>
+<td>43</td>
+</tr>
+<tr class="even">
+<td>Q20</td>
+<td>Left open</td>
+<td>On-device signature vs printed, stamped paper, for registration,
+quote acceptance and service sign-off.</td>
+<td>2, 5, 15</td>
+</tr>
+<tr class="odd">
+<td>Q21</td>
+<td>Missing from docs</td>
+<td>Interface and document languages: Arabic, French or both (RTL and
+LTR, bilingual PDFs).</td>
+<td>All</td>
+</tr>
+<tr class="even">
+<td>Q22</td>
+<td>Missing from docs</td>
+<td>Client-facing pages at launch (confirm, rate, view invoices) vs
+office-only.</td>
+<td>15, 16, 44</td>
+</tr>
+<tr class="odd">
+<td>Q23</td>
+<td>Contradiction</td>
+<td>Numbering prefixes (CL/CUS/CL-H, VIS/INS, QT/Q, CT/CTR/CON, W/EMP):
+a proposed default to confirm. One file pipeline and one job-status list
+for all divisions (the study’s five colours vs the homes inspection
+form’s list).</td>
+<td>2, 10, 24</td>
+</tr>
+<tr class="even">
+<td>Q24</td>
+<td>Contradiction</td>
+<td>What client class A–D means; letters vs names; one difficulty scale
+(4, 3 or 5 levels in the forms); one cleanliness scale (3 to 5 levels
+with different labels across forms).</td>
+<td>2, 3, 7</td>
+</tr>
+<tr class="odd">
+<td>Q25</td>
+<td>Contradiction</td>
+<td>Inspection scoring (/100 with action below 80 vs five grades);
+supervisor visit frequency (weekly vs monthly in the study); complaint
+response target (2 h “for example”); client rating criteria (4 vs 5 plus
+“would you recommend”).</td>
+<td>15, 17, 18</td>
+</tr>
+<tr class="even">
+<td>Q26</td>
+<td>Scope</td>
+<td>Final launch scope: stock, in-house payroll, expenses and monthly
+profit.</td>
+<td>34, 38, 39</td>
+</tr>
+</tbody>
+</table>
+</div>
+<h2 id="coverage">Coverage check</h2>
+<p>All nine client documents map to the plan, with nothing left
+unmapped. The Arabic appendix has 80 rows, each pointing to a launch
+feature, a later feature, a question or an out-of-scope row. A second,
+independent pass checked every form section against the plan. Its fixes
+are applied: requested service and frequency in feature 2; daily, weekly
+and monthly task lists in 13; a statement of visits with contract
+invoices in 19; worker role and gender in 25; additions inside
+document-sourced rows marked; and wider questions on price basis,
+billing frequency, reserves, signatures and inspection frequency. The
+documents are the study (1.md), the homes client file (2.md), and
+registration and inspection forms for homes (3.md, 4.md), organisations
+(5.md, 6.md) and buildings (7.md, 8.md), plus the buildings worker card
+(9.md).</p>
+<ul>
+<li><strong>Out of scope:</strong> eight items from the documents:
+training content; uniforms, kit and PPE; chemical safety and work at
+height; marketing; bookkeeping and tax or social filings; contract and
+liability wording; financial projections; organisation design. The plan
+adds one legal step the documents never mention: the ANPDP declaration
+and data-protection officer.</li>
+<li><strong>Gaps in the documents themselves:</strong>
+<ul>
+<li>There is no worker form at all, which is why addition 25
+exists.</li>
+<li>There is no mission order or checklist for the organisations
+division, and no formal quote, contract or invoice template for
+organisations or buildings. The plan uses shared templates per division
+(features 5, 6, 11, 13, 19).</li>
+<li>The study’s contents list has three headings with no section of
+their own: “mistakes to avoid”, “forms and documents” (the forms came as
+separate files) and “accounts, wages and profitability” (wages are never
+detailed). Recruitment is also undescribed; features 25 and 37 cover
+it.</li>
+</ul></li>
+<li><strong>Truncations and leftovers:</strong>
+<ul>
+<li>The study leaves its phase 3 headcount blank, and its final sentence
+is cut off mid-phrase.</li>
+<li>The forms carry ChatGPT leftovers (“Écriture” headers, a stray “WOW
+Support Services +1” citation in 4.md). Nothing to build from them.</li>
+</ul></li>
+<li><strong>Data-model hints worth keeping:</strong>
+<ul>
+<li>One client has many sites (CL plus SITE or BLD).</li>
+<li>A building has entrances, and each entrance has floors; the worker
+card ticks floors off one by one.</li>
+<li>A contract can be an initial deep clean followed by a recurring
+service.</li>
+<li>Jobs can span several days (4.md) and have several workers with a
+team leader (9.md).</li>
+<li>Contacts per site carry roles: who opens up, who signs, who receives
+invoices.</li>
+<li>The homes file warns against storing alarm codes or passwords in
+access notes.</li>
+</ul></li>
+<li><strong>Wording in the Arabic plan:</strong>
+<ul>
+<li>Features are «خاصية / خصائص», not «وظيفة», which reads as “job” in a
+staffing plan.</li>
+<li>Scheduling is «الجدولة», not «البرمجة».</li>
+<li>The client’s company is «المركز», because «المؤسسات» is also the
+name of a division.</li>
+<li>Keep these terms when you add the cost and timeline section.</li>
+</ul></li>
+</ul>
+<h2 id="files">Files</h2>
+<ul>
+<li><code>plan/inmaa-system-plan-ar.pdf</code>: the Arabic plan for the
+client.</li>
+<li><code>plan/software-scan-notes-en.pdf</code>: these notes.</li>
+<li><code>plan/questions-form.gs</code>: a Google Apps Script that
+builds the 26 questions as a Google Form (79 answerable items on 8
+pages, same س codes as the plan). Paste it into a new project at
+script.google.com, run <code>createQuestionsForm</code>, and take the
+links from the execution log.</li>
+<li><code>plan/src/</code>: the sources. Edit <code>plan-ar.md</code> or
+<code>notes-en.md</code>, then run <code>./build.sh</code> (needs pandoc
+and Google Chrome). A comment in <code>plan-ar.md</code>, after the
+“later” section, marks where a cost and timeline section fits.</li>
+</ul>
+<h2 id="sources">Sources</h2>
+<p>The research opened these pages on 10 October 2026. Capterra, G2,
+GetApp, Software Advice and TrustRadius refused automated access (HTTP
+403), so none are cited.</p>
+<div class="sources">
+<p><strong>Products</strong></p>
+<ul>
+<li>Cleaning-specific: <a href="https://get.zenmaid.com/pricing">ZenMaid
+pricing</a> · <a href="https://www.maidcentral.com/pricing">MaidCentral
+pricing</a> · <a href="https://www.bookingkoala.com/pricing">BookingKoala pricing</a> ·
+<a href="https://help.bookingkoala.com/help/how-to-add-languages-and-translations">BookingKoala
+languages</a> · <a href="https://automaidsoftware.com/pricing">Automaid
+pricing</a> · <a href="https://www.sweptworks.com/pricing">Swept
+pricing</a> · <a href="https://sweptworks.com/features">Swept
+features</a> · <a href="https://www.janitorialmanager.com/plans-pricing/">Janitorial
+Manager plans</a> · <a href="https://teamsoftware.com/winteam">WinTeam</a> · <a href="https://teamsoftware.com/newsroom/workwave-acquires-team-software">WorkWave
+acquires Team Software</a> · <a href="https://www.selecthub.com/p/erp-software/winteam/">SelectHub on
+WinTeam</a> · <a href="https://www.otuvy.com/pricing">Otuvy
+pricing</a></li>
+<li>Field service: <a href="https://www.getjobber.com/pricing/">Jobber
+pricing</a> · <a href="https://www.getjobber.com/features/">Jobber
+features</a> · <a href="https://www.housecallpro.com/pricing/">Housecall
+Pro pricing</a> · <a href="https://www.servicem8.com/pricing">ServiceM8
+pricing</a> · <a href="https://support.servicem8.com/help-center/tips-trick-more/more/which-languages-are-supported">ServiceM8
+languages</a> · <a href="https://www.zoho.com/fsm/pricing.html">Zoho FSM
+pricing</a> · <a href="https://help.zoho.com/portal/en/kb/fsm/getting-started/articles/languages-supported">Zoho
+FSM languages</a> · <a href="https://www.odoo.com/pricing">Odoo
+pricing</a> · <a href="https://www.odoo.com/page/editions">Odoo
+editions</a> · <a href="https://raw.githubusercontent.com/odoo/odoo/18.0/addons/l10n_dz/__manifest__.py">Odoo
+Algeria localisation</a> · <a href="https://www.odoo.com/partners/country/algeria-61">Odoo partners in
+Algeria</a> · <a href="https://www.odoo.com/documentation/saas-19.1/applications/general/offline_mode.html">Odoo
+offline mode</a> · <a href="https://www.servicetitan.com/pricing">ServiceTitan
+pricing</a></li>
+<li>Staff apps: <a href="https://connecteam.com/pricing/">Connecteam
+pricing</a> · <a href="https://help.connecteam.com/en/articles/16287971-does-the-time-clock-support-offline-mode">Connecteam
+offline clock</a> · <a href="https://www.deputy.com/pricing">Deputy
+pricing</a></li>
+<li>Arabic and Algerian: <a href="https://www.daftra.com/en/plans">Daftra plans</a> · <a href="https://facturili.com/tarifs">Facturili pricing</a> · <a href="https://www.ratib-rh.com/">Ratib RH</a> · <a href="https://talenteo.com/en/conformite-rh-et-paie-algerie-2026-guide-complet/">Talenteo
+payroll guide 2026</a> · <a href="https://almawarid.app/tarifs/">Almawarid pricing</a> · <a href="https://dlg-net.com/tarifs.php">DLG pricing</a> · <a href="https://www.upgrowth.dz/logiciel-gestion-entreprise-algerie">UpGrowth
+custom software</a></li>
+<li>Consumer apps: <a href="https://www.justlife.com/">Justlife</a> · <a href="https://www.propertyfinder.ae/blog/cleaning-app-dubai/">Matic, via
+Property Finder</a> · <a href="https://apps.apple.com/mx/app/darhna/id6758579154">Darhna on the
+App Store</a></li>
+</ul>
+<p><strong>Algerian law, tax and payments</strong></p>
+<ul>
+<li>Foreign currency: <a href="https://www.bank-of-algeria.dz/stoodroa/2026/07/Instruction-N%C2%B007-2026-droit-de-change-du-13-07-2026.pdf">Instruction
+07-2026</a> · <a href="https://www.bank-of-algeria.dz/stoodroa/2023/01/reglement200701.pdf">Regulation
+07-01</a> · <a href="https://www.bank-of-algeria.dz/stoodroa/2026/07/Note-aux-banques-FR-du-28-07-2026.pdf">Bank
+of Algeria note, 28 Jul 2026</a> · <a href="https://www.mfdgi.gov.dz/files/803/2026/3726/CodedesImpotsDirectsetTaxesAssimilees2026fr">Direct
+Taxes Code 2026</a></li>
+<li>Personal data: <a href="https://anpdp.dz/ar/storage/2025/08/18-07-Edited.pdf">Law 18-07,
+consolidated by the ANPDP</a> · <a href="https://www.joradp.dz/FTP/jo-francais/2025/F2025048.pdf">Law
+25-11, Official Journal no. 48 of 2025</a> · <a href="https://www.gide.com/en/news-insights/protection-of-personal-data-focus-on-algerian-regulations/">Gide
+note, July 2026</a> · <a href="https://digitalpolicyalert.org/event/41149-data-protection-authority-adopted-deliberation-on-biometric-fingerprint-attendance-systems">ANPDP
+biometric attendance deliberation</a></li>
+<li>Invoicing and tax: <a href="https://www.commerce.gov.dz/fr/telecharger/reglementation/283/article">Executive
+Decree 05-468</a> · <a href="https://www.mfdgi.gov.dz/fr/professionnels/services-pro/regime-reel/la-taxe-sur-la-valeur-ajoutee">VAT
+guide</a> · <a href="https://www.mfdgi.gov.dz/files/803/2026/3725/CodedesTaxessurle-Chiffred-Affaires2026fr">Turnover
+Taxes Code 2026</a> · <a href="https://www.mfdgi.gov.dz/fr/professionnels/services-pro/regime-forfaitaire-unique/ifu">IFU
+regime</a> · <a href="https://www.mfdgi.gov.dz/files/658/Communiques-de-loi-de-finances/3378/Communique-general-de-la-loi-de-finances-2026">Finance
+Law 2026 summary</a> · <a href="https://www.mfdgi.gov.dz/files/803/2026/3724/CodedeTimbre2026fr">Stamp
+Code 2026</a></li>
+<li>Working time: <a href="https://www.joradp.dz/FTP/jo-francais/1997/F1997003.pdf">Ordinance
+97-03</a> · <a href="https://www.joradp.dz/FTP/jo-francais/1990/F1990017.pdf">Law
+90-11</a></li>
+<li>Online sales and payments: <a href="https://www.joradp.dz/FTP/jo-francais/2018/F2018028.pdf">Law
+18-05</a> · <a href="https://www.bank-of-algeria.dz/stoodroa/2025/05/Reglement-25-02-FR.pdf">Regulation
+25-02</a> · <a href="https://dev.chargily.com/pay-v2/fees">Chargily
+fees</a> · <a href="https://www.slick-pay.com/">Slick Pay</a> · <a href="https://www.algerie360.com/algerie-poste-lance-baridi-pay-une-nouvelle-solution-paiement-mobile-par-qr-code/">Baridi
+Pay launch</a></li>
+<li>Messaging: <a href="https://developers.facebook.com/docs/whatsapp/pricing">WhatsApp
+Business pricing</a> · <a href="https://www.twilio.com/en-us/sms/pricing/dz">Twilio SMS pricing,
+Algeria</a> · <a href="https://www.twilio.com/en-us/guidelines/dz/sms">Twilio SMS rules,
+Algeria</a></li>
+</ul>
+</div>
+</body>
+</html>

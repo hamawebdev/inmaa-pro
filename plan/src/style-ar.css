@@ -1,0 +1,168 @@
+/* Arabic client plan — A4, right to left. Rendered by headless Chrome (see build.sh). */
+
+@page {
+  size: A4;
+  margin: 20mm 16mm 20mm 16mm;
+  @top-right {
+    content: "خطة نظام إدارة مركز إنماء للخدمات";
+    font-family: "Noto Sans Arabic", sans-serif;
+    font-size: 8pt;
+    color: #7a8580;
+  }
+  @bottom-center {
+    content: "صفحة " counter(page) " من " counter(pages);
+    font-family: "Noto Sans Arabic", sans-serif;
+    font-size: 8pt;
+    color: #7a8580;
+  }
+}
+@page :first {
+  @top-right { content: none; }
+}
+
+:root {
+  --ink: #1f2a26;
+  --quiet: #5d6b65;
+  --accent: #0f6e5a;
+  --tint: #eaf2ef;
+  --rule: #cfd8d4;
+}
+
+html { direction: rtl; }
+
+body {
+  margin: 0;
+  font-family: "Noto Naskh Arabic", "Noto Sans", serif;
+  font-size: 11pt;
+  line-height: 1.75;
+  color: var(--ink);
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+/* Title block (pandoc metadata: title, subtitle, date) */
+#title-block-header {
+  margin: 0 0 7mm;
+  padding: 0 0 5mm;
+  border-bottom: 2px solid var(--accent);
+}
+h1.title {
+  font-family: "Noto Kufi Arabic", sans-serif;
+  font-size: 21pt;
+  line-height: 1.5;
+  margin: 0 0 2mm;
+}
+#title-block-header .subtitle {
+  font-family: "Noto Sans Arabic", sans-serif;
+  font-size: 12pt;
+  font-weight: 700;
+  color: var(--accent);
+  margin: 0;
+}
+#title-block-header .date {
+  font-family: "Noto Sans Arabic", sans-serif;
+  font-size: 10pt;
+  color: var(--quiet);
+  margin: 1mm 0 0;
+}
+
+/* Table of contents */
+nav#TOC {
+  background: var(--tint);
+  border-radius: 6px;
+  padding: 4mm 6mm 3mm;
+  margin: 0 0 7mm;
+  break-inside: avoid;
+}
+nav#TOC h2 {
+  font-size: 11pt;
+  color: var(--ink);
+  margin: 0 0 1mm;
+  padding: 0;
+  border: 0;
+}
+nav#TOC ul {
+  margin: 0;
+  padding-inline-start: 0;
+  list-style: none;
+  columns: 2;
+  column-gap: 10mm;
+  font-family: "Noto Sans Arabic", sans-serif;
+  font-size: 10pt;
+  line-height: 1.9;
+}
+nav#TOC a { color: var(--ink); text-decoration: none; }
+
+/* Headings */
+h2 {
+  font-family: "Noto Kufi Arabic", sans-serif;
+  font-size: 14.5pt;
+  line-height: 1.5;
+  color: var(--accent);
+  margin: 8mm 0 3mm;
+  padding-bottom: 1.5mm;
+  border-bottom: 1px solid var(--rule);
+  break-after: avoid;
+}
+h3 {
+  font-family: "Noto Kufi Arabic", sans-serif;
+  font-size: 11.5pt;
+  line-height: 1.5;
+  margin: 6mm 0 2mm;
+  break-after: avoid;
+}
+h2#questions, h2#appendix { break-before: page; }
+
+p { margin: 0 0 3mm; }
+a { color: var(--accent); }
+
+/* Tables */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 2mm 0 6mm;
+  font-family: "Noto Sans Arabic", "Noto Sans", sans-serif;
+  font-size: 8.8pt;
+  line-height: 1.6;
+}
+thead { display: table-header-group; }
+tr { break-inside: avoid; }
+th {
+  background: var(--tint);
+  font-weight: 700;
+  text-align: right;
+  padding: 1.8mm 2.2mm;
+  border: 1px solid var(--rule);
+}
+td {
+  text-align: right;
+  vertical-align: top;
+  padding: 1.6mm 2.2mm;
+  border: 1px solid var(--rule);
+}
+/* Tables whose first column is a number or question code */
+.numbered td:first-child,
+.numbered th:first-child {
+  text-align: center;
+  white-space: nowrap;
+  font-weight: 700;
+}
+/* Questions: leave room to write an answer on paper */
+.questions td { height: 17mm; }
+.questions td:last-child { background: #fbfcfb; }
+
+/* Diagram */
+figure {
+  margin: 2mm 0 3mm;
+  text-align: center;
+  break-inside: avoid;
+}
+figure img { width: 100%; }
+figcaption {
+  font-family: "Noto Sans Arabic", sans-serif;
+  font-size: 9.5pt;
+  color: var(--quiet);
+  margin-top: 1mm;
+}
+
+.ltr { direction: ltr; unicode-bidi: isolate; }

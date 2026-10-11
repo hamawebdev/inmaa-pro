@@ -1,0 +1,82 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 60 760 620" width="760" height="620" font-family="Noto Sans Arabic, Noto Sans, sans-serif" font-size="13" role="img" aria-label="رحلة الخدمة في النظام: أربع مراحل واثنتا عشرة خطوة">
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M0 0L10 5L0 10z" fill="#6f7d77"/>
+    </marker>
+  </defs>
+
+  <!-- Stages (each row reads right to left) -->
+  <g fill="#eaf2ef">
+    <rect x="24" y="76" width="696" height="104" rx="8"/>
+    <rect x="24" y="220" width="696" height="104" rx="8"/>
+    <rect x="24" y="364" width="696" height="104" rx="8"/>
+    <rect x="24" y="508" width="696" height="104" rx="8"/>
+  </g>
+  <g font-size="11.5" font-weight="700" fill="#0f6e5a" text-anchor="middle">
+    <text x="380" y="97">قبل التعاقد</text>
+    <text x="380" y="241">التحضير والجدولة</text>
+    <text x="380" y="385">في الموقع</text>
+    <text x="380" y="529">بعد الخدمة</text>
+  </g>
+
+  <!-- Connectors -->
+  <g fill="none" stroke="#6f7d77" stroke-width="1.25">
+    <path d="M504 136H472" marker-end="url(#arr)"/>
+    <path d="M272 136H240" marker-end="url(#arr)"/>
+    <path d="M504 280H472" marker-end="url(#arr)"/>
+    <path d="M272 280H240" marker-end="url(#arr)"/>
+    <path d="M504 424H472" marker-end="url(#arr)"/>
+    <path d="M272 424H240" marker-end="url(#arr)"/>
+    <path d="M504 568H472" marker-end="url(#arr)"/>
+    <path d="M272 568H240" marker-end="url(#arr)"/>
+    <path d="M140 164V200H604V252" marker-end="url(#arr)"/>
+    <path d="M140 308V344H604V396" marker-end="url(#arr)"/>
+    <path d="M140 452V488H604V540" marker-end="url(#arr)"/>
+    <path d="M140 596V636H740V280H704" marker-end="url(#arr)"/>
+  </g>
+
+  <!-- Steps -->
+  <g fill="#ffffff" stroke="#9aa8a2" stroke-width="1.25">
+    <rect x="504" y="108" width="200" height="56" rx="8"/>
+    <rect x="272" y="108" width="200" height="56" rx="8"/>
+    <rect x="40" y="108" width="200" height="56" rx="8"/>
+    <rect x="504" y="252" width="200" height="56" rx="8"/>
+    <rect x="272" y="252" width="200" height="56" rx="8"/>
+    <rect x="40" y="252" width="200" height="56" rx="8"/>
+    <rect x="504" y="396" width="200" height="56" rx="8"/>
+    <rect x="272" y="396" width="200" height="56" rx="8"/>
+    <rect x="40" y="396" width="200" height="56" rx="8"/>
+    <rect x="504" y="540" width="200" height="56" rx="8"/>
+    <rect x="272" y="540" width="200" height="56" rx="8"/>
+    <rect x="40" y="540" width="200" height="56" rx="8"/>
+  </g>
+  <g font-weight="700" fill="#1f2a26" text-anchor="middle">
+    <text x="604" y="132">الطلب</text>
+    <text x="372" y="132">المعاينة</text>
+    <text x="140" y="132">العرض والعقد</text>
+    <text x="604" y="276">الجدولة وتوزيع العمال</text>
+    <text x="372" y="276">لوحة اليوم والغياب</text>
+    <text x="140" y="276">أمر المهمة والتذكير</text>
+    <text x="604" y="420">الحضور والانصراف</text>
+    <text x="372" y="420">المهام والصور والبلاغات</text>
+    <text x="140" y="420">الاستلام والتقييم</text>
+    <text x="604" y="564">الجودة والشكاوى</text>
+    <text x="372" y="564">الفاتورة والتحصيل</text>
+    <text x="140" y="564">التقارير والربحية</text>
+  </g>
+  <g font-size="11.5" fill="#5d6b65" text-anchor="middle">
+    <text x="604" y="148">الخاصيتان 1 و2</text>
+    <text x="372" y="148">الخاصية 3</text>
+    <text x="140" y="148">الخصائص 4 و5 و6 و29</text>
+    <text x="604" y="292">الخاصيتان 7 و8</text>
+    <text x="372" y="292">الخاصيتان 9 و10</text>
+    <text x="140" y="292">الخصائص 11 و16 و26</text>
+    <text x="604" y="436">الخصائص 12 و27 و28</text>
+    <text x="372" y="436">الخاصيتان 13 و14</text>
+    <text x="140" y="436">الخاصية 15</text>
+    <text x="604" y="580">الخاصيتان 17 و18</text>
+    <text x="372" y="580">الخصائص 19 و20 و31 و32</text>
+    <text x="140" y="580">الخصائص 21 و22 و30</text>
+    <text x="440" y="656">الزيارة القادمة وتجديد العقد يعودان إلى الجدولة</text>
+  </g>
+</svg>
