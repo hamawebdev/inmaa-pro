@@ -21,3 +21,7 @@ src-tauri/gen/schemas
 # Local tool state
 .claude/
 .kilo/
+
+# Scratch copy of the reference frontend for side-by-side screenshots, and harness output
+.reference-scratch/
+.harness/

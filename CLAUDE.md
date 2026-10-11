@@ -45,14 +45,15 @@ Every file has one owner. Edit only your own. If you need a change in someone el
 
 | Path | Owner |
 |---|---|
-| `src-tauri/**`, `prisma/**`, `scripts/**`, config files at the root | Foundation |
-| `src/components/**`, `src/lib/**`, `src/navigation/**`, `src/i18n/**`, `src/hooks/**`, `src/stores/**`, `src/server/**`, `src/routes.tsx`, `src/main.tsx`, `src/lock/**` | Foundation |
-| `src/features/core/**`, `src/pages/dashboard/home/**`, `src/pages/dashboard/settings/**`, `src/pages/dashboard/layout.tsx` | Foundation |
+| `src-tauri/**`, `prisma/**`, `scripts/**`, `public/**`, `index.html`, `lock.html`, config files at the root | Foundation |
+| `src/components/**`, `src/lib/**`, `src/navigation/**`, `src/i18n/**`, `src/hooks/**`, `src/stores/**`, `src/server/**`, `src/config/**`, `src/assets/**`, `src/index.css`, `src/routes.tsx`, `src/main.tsx`, `src/lock/**` | Foundation |
+| `src/features/core/**`, `src/pages/dashboard/home/**`, `src/pages/dashboard/settings/**`, `src/pages/dashboard/layout.tsx`, `src/pages/not-found.tsx`, `src/pages/route-error.tsx` | Foundation |
 | `src/features/people/**`; pages `employees/`, `employee-attendance/`, `workers/`, `hiring/`, `hours-pay/` | People |
-| `src/features/clients/**`; pages `files/` (except the three sub-folders below), `clients/`, `rep-visits/` | Clients and contracts |
+| `src/features/clients/**`; pages `files/` (except the four sub-folders that Operations and Money own), `clients/`, `rep-visits/` | Clients and contracts |
 | `src/features/operations/**`; pages `supervisors/`, `work-program/`, `worker-attendance/`, `visits/`, `quality/`, `files/[id]/tasks/`, `files/[id]/visits/` | Operations |
 | `src/features/money/**`, `src/features/stock/**`; pages `expenses/`, `income/`, `invoices/`, `payments/`, `reports/`, `inventory/`, `handouts/`, `purchases/`, `maintenance/`, `files/[id]/handouts/`, `files/[id]/payments/` | Money and stock |
 | `docs/checker-table.md`, `docs/checker/**` | Checker |
+| Anything not listed | Foundation |
 | `CLAUDE.md`, `docs/scope.md` | Coordinator (Foundation maintains the last section of this file) |
 
 Pages live under `src/pages/dashboard/<first path segment>/`. Each feature folder holds that owner's services, validators, printed sheets, alert rules, seed data, message files and tests. Route lists and message files are split per owner so that two teammates never edit the same file.
