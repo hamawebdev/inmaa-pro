@@ -261,22 +261,54 @@ def flow(model):
 
 
 def table_edges(tbl, page):
-    """Distance of the table's right and left edges from the paper edges, mm."""
+    """Distance of the table's right and left edges from the paper edges, mm,
+    and how Word places it.
+
+    Word's rules, for a file saved by Word 2007 (no compatibility mode 15):
+      - a table centred, by jc=center or as a floating table with
+        tblpXSpec=center, is centred on the text area, and its tblInd is
+        ignored: Word applies the indent only to a table aligned to its
+        leading edge (its Table Properties offer "Indent from left" only for
+        that alignment);
+      - a table aligned to its trailing edge (jc=right on a right-to-left
+        table) stands against that margin, indent ignored;
+      - a table aligned to its leading edge puts the text of its first cell
+        at margin + tblInd, so its border stands out by the leading cell
+        padding (108 twips from the table style unless the table says
+        otherwise). Word 2013 files no longer do this; these are Word 2007.
+    None of it was seen rendered.
+    """
     width = tbl["width_tw"] or tbl["grid_sum_tw"]
-    if not width:
-        width = tbl["grid_sum_tw"]
     m = page["margins_tw"]
-    if tbl["floating"] and tbl["floating"].get("tblpXSpec") == "center":
-        over = (width - page["text_width_tw"]) / 2.0
-        return fx.mm_tw(m["right"] - over), fx.mm_tw(m["left"] - over), "centred on the text area (floating table)"
+    pad = tbl.get("cell_margins_tw") or {}
     if tbl["bidiVisual"]:
-        if tbl["jc"] == "right":  # end side of a right-to-left table: the left margin
-            left = m["left"] + tbl["ind_tw"]
-            return fx.mm_tw(page["width_tw"] - left - width), fx.mm_tw(left), "against the left margin (jc=right on a right-to-left table)"
-        right = m["right"] + tbl["ind_tw"]
-        return fx.mm_tw(right), fx.mm_tw(page["width_tw"] - right - width), "from the right margin, offset %s mm (tblInd %d)" % (mm(fx.mm_tw(tbl["ind_tw"])), tbl["ind_tw"])
-    left = m["left"] + tbl["ind_tw"]
-    return fx.mm_tw(page["width_tw"] - left - width), fx.mm_tw(left), "from the left margin"
+        lead_pad = pad.get("right", pad.get("end", 108))
+    else:
+        lead_pad = pad.get("left", pad.get("start", 108))
+    over = (width - page["text_width_tw"]) / 2.0
+    if tbl["floating"] and tbl["floating"].get("tblpXSpec") == "center":
+        return fx.mm_tw(m["right"] - over), fx.mm_tw(m["left"] - over), "centred on the text area (floating table, tblpXSpec=center)"
+    if tbl["jc"] == "center":
+        note = "centred on the text area (jc=center"
+        if tbl["ind_tw"]:
+            note += "; its tblInd %d is ignored: Word indents only a table aligned to its leading edge" % tbl["ind_tw"]
+        return fx.mm_tw(m["right"] - over), fx.mm_tw(m["left"] - over), note + ")"
+    if tbl["bidiVisual"]:
+        if tbl["jc"] in ("right", "end"):  # the trailing side of a right-to-left table: the left margin
+            left = m["left"]
+            note = "against the left margin (jc=right is the trailing side of a right-to-left table"
+            if tbl["ind_tw"]:
+                note += "; its tblInd %d is ignored" % tbl["ind_tw"]
+            return fx.mm_tw(page["width_tw"] - left - width), fx.mm_tw(left), note + ")"
+        right = m["right"] + tbl["ind_tw"] - lead_pad
+        return (fx.mm_tw(right), fx.mm_tw(page["width_tw"] - right - width),
+                "aligned to the right margin, its leading edge: the text of its first cell at tblInd %d twips (%s mm) from the margin, so its border %d twips further out, by the cell padding" % (
+                    tbl["ind_tw"], mm(fx.mm_tw(tbl["ind_tw"])), lead_pad))
+    if tbl["jc"] in ("right", "end"):
+        right = m["right"]
+        return fx.mm_tw(right), fx.mm_tw(page["width_tw"] - right - width), "against the right margin"
+    left = m["left"] + tbl["ind_tw"] - lead_pad
+    return fx.mm_tw(page["width_tw"] - left - width), fx.mm_tw(left), "aligned to the left margin, its leading edge, border out by the cell padding"
 
 
 def picture_place(pic, page, part):
@@ -538,7 +570,7 @@ def render_form(code, model, rows):
         w("### %s: %d columns, %d rows" % (blk["id"], len(blk["grid_tw"]), len(blk["rows"])))
         w("")
         w("- Width %s mm (%d twips), %s layout, %s." % (mm(fx.mm_tw(width)), width, blk["layout"], "right to left" if blk["bidiVisual"] else "left to right"))
-        w("- Position: %s. Right edge %s mm from the right paper edge, left edge %s mm from the left (%s within about 2 mm: Word's cell-margin rule is not in the file)." % (how, mm(right), mm(left), EST))
+        w("- Position: %s. Right edge %s mm from the right paper edge, left edge %s mm from the left (%s: Word's rules for a Word 2007 file, see `README.md` E4; not seen rendered)." % (how, mm(right), mm(left), EST))
         if blk["floating"]:
             f = blk["floating"]
             w("- Floating table: anchored to the text, %s mm (%s twips) from its anchor vertically, text kept %s mm away on each side. Where it lands on the page is %s." % (

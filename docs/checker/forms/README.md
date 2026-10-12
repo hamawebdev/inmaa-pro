@@ -49,7 +49,7 @@ His files name Traditional Arabic, Sakkal Majalla and Arabic Typesetting for tex
 - E1. The number of pages and where each page ends (section 6 of each form). Word's recorded count is file metadata; the reading comes from the saved row heights and assumed line heights.
 - E2. Every vertical position on the page: the top and bottom of the letterhead and footer pictures, where the body starts under the letterhead, where a text box or a floating table lands.
 - E3. What a printer clips near the paper edges (K4).
-- E4. The distance of each table's edges from the paper edges, within about 2 mm: Word shifts a table by its cell padding under a rule the file does not state.
+- E4. The distance of each table's edges from the paper edges. Computed with Word's rules for a Word 2007 file: a centred table (`jc=center`, or floating with `tblpXSpec=center`) is centred on the text area and its `tblInd` is ignored, because Word indents only a table aligned to its leading edge; a table aligned to its trailing edge stands against that margin; a table aligned to its leading edge puts the text of its first cell at the indent, so its border stands out by the cell padding (1.9 mm). With these rules every table of the five client forms has its right edge 7.3 to 7.4 mm and its left edge 10.1 to 10.2 mm from the paper edges, so they line up one under another. Not seen rendered.
 - E5. Printed row heights. The file gives a minimum per row; the printed height depends on the fonts.
 - E6. The spacing between options in a cell: it is typed with spaces.
 - E7. The numbers in front of labels: computed from `numbering.xml`, not seen printed.

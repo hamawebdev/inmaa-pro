@@ -48,6 +48,7 @@ FINDINGS = [
     ("K20", "Handwritten stock page, numbering: «1/ قسم جرد المخزون» is followed by «(2)/ قسم التسليم»; under it «1- نوع الخدمة» has no «2-» beside it, while its two values are numbered «1-» and «2-».", "N2-05, N2-07"),
     ("K21", "Handwritten red line: the box he drew after «قديم» has a mark inside it, where his forms print an empty ☐. It reads as the ticked «☐ قديم» box of «حالة الملف», which bears on H3. Weak read.", "N1-01"),
     ("K22", "The first half of the worker form's title («استمارة التسجيـ») carries a light-grey text highlight on top of the grey paragraph fill; the second half does not. Probably an accident of editing; Word prints it.", "W-001; `01-worker.md` section 7"),
+    ("K23", "On the two home forms the «2» of «م2» after «مساحة البناء» is a superscript run (`w:vertAlign`), so Word prints it raised: «م²». The layout tables and the table's rows write it «م2», as the text is stored; print must raise the digit. Found during the print audit of 2026-10-12, on which Clients' sheet already raises it.", "HR-021, HC-021"),
 ]
 
 PAGE_NOTE = {
@@ -133,7 +134,7 @@ ESTIMATED = [
     "E1. The number of pages and where each page ends (section 6). Word's recorded count is file metadata; the reading comes from the saved row heights and assumed line heights.",
     "E2. Every vertical position on the page: the top and bottom of the letterhead and footer pictures, where the body starts under the letterhead, where a text box or a floating table lands.",
     "E3. What a printer clips near the paper edges (K4).",
-    "E4. The distance of each table's edges from the paper edges, within about 2 mm: Word shifts a table by its cell padding under a rule the file does not state.",
+    "E4. The distance of each table's edges from the paper edges. Computed with Word's rules for a Word 2007 file: a centred table (jc=center, or floating with tblpXSpec=center) is centred on the text area and its tblInd is ignored; a table aligned to its trailing edge stands against that margin; a table aligned to its leading edge puts the text of its first cell at the indent, so its border stands out by the cell padding. With these rules every table of a client form has its right edge 7.3 to 7.4 mm and its left edge 10.1 to 10.2 mm from the paper edges. Not seen rendered.",
     "E5. Printed row heights. The file gives a minimum per row; the printed height depends on the fonts.",
     "E6. The spacing between options in a cell: it is typed with spaces.",
     "E7. The numbers in front of labels: computed from `numbering.xml`, not seen printed.",

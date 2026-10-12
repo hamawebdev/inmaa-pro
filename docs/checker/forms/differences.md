@@ -30,6 +30,7 @@ One shared print component for the five client sheets will erase what is listed 
 | K20 | Handwritten stock page, numbering: «1/ قسم جرد المخزون» is followed by «(2)/ قسم التسليم»; under it «1- نوع الخدمة» has no «2-» beside it, while its two values are numbered «1-» and «2-». | N2-05, N2-07 |
 | K21 | Handwritten red line: the box he drew after «قديم» has a mark inside it, where his forms print an empty ☐. It reads as the ticked «☐ قديم» box of «حالة الملف», which bears on H3. Weak read. | N1-01 |
 | K22 | The first half of the worker form's title («استمارة التسجيـ») carries a light-grey text highlight on top of the grey paragraph fill; the second half does not. Probably an accident of editing; Word prints it. | W-001; `01-worker.md` section 7 |
+| K23 | On the two home forms the «2» of «م2» after «مساحة البناء» is a superscript run (`w:vertAlign`), so Word prints it raised: «م²». The layout tables and the table's rows write it «م2», as the text is stored; print must raise the digit. Found during the print audit of 2026-10-12, on which Clients' sheet already raises it. | HR-021, HC-021 |
 
 ## 2. The same label on the five client forms
 

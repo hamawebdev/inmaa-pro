@@ -120,7 +120,7 @@ Columns and cells are listed in file order, which is right to left on paper: col
 ### T1: 6 columns, 12 rows
 
 - Width 192.5 mm (10915 twips), fixed layout, right to left.
-- Position: from the right margin, offset -0.8 mm (tblInd -45). Right edge 9.2 mm from the right paper edge, left edge 8.3 mm from the left (**estimated** within about 2 mm: Word's cell-margin rule is not in the file).
+- Position: aligned to the right margin, its leading edge: the text of its first cell at tblInd -45 twips (-0.8 mm) from the margin, so its border 108 twips further out, by the cell padding. Right edge 7.3 mm from the right paper edge, left edge 10.2 mm from the left (**estimated**: Word's rules for a Word 2007 file, see `README.md` E4; not seen rendered).
 - Borders: single, 0.5 pt, black, on all sides and between cells.
 - Cell padding: 1.9 mm left and right, none top and bottom (the default of the table style).
 
@@ -170,7 +170,7 @@ Columns and cells are listed in file order, which is right to left on paper: col
 ### T2: 9 columns, 8 rows
 
 - Width 192.5 mm (10915 twips), fixed layout, right to left.
-- Position: from the right margin, offset -0.8 mm (tblInd -45). Right edge 9.2 mm from the right paper edge, left edge 8.3 mm from the left (**estimated** within about 2 mm: Word's cell-margin rule is not in the file).
+- Position: centred on the text area (jc=center; its tblInd -45 is ignored: Word indents only a table aligned to its leading edge). Right edge 7.4 mm from the right paper edge, left edge 10.1 mm from the left (**estimated**: Word's rules for a Word 2007 file, see `README.md` E4; not seen rendered).
 - Borders: single, 0.5 pt, black, on all sides and between cells.
 - Cell padding: 1.9 mm left and right, none top and bottom (the default of the table style).
 
@@ -221,7 +221,7 @@ Columns and cells are listed in file order, which is right to left on paper: col
 ### T3: 4 columns, 2 rows
 
 - Width 192.5 mm (10915 twips), fixed layout, right to left.
-- Position: centred on the text area (floating table). Right edge 7.4 mm from the right paper edge, left edge 10.1 mm from the left (**estimated** within about 2 mm: Word's cell-margin rule is not in the file).
+- Position: centred on the text area (floating table, tblpXSpec=center). Right edge 7.4 mm from the right paper edge, left edge 10.1 mm from the left (**estimated**: Word's rules for a Word 2007 file, see `README.md` E4; not seen rendered).
 - Floating table: anchored to the text, 0.4 mm (21 twips) from its anchor vertically, text kept 2.5 mm away on each side. Where it lands on the page is **estimated**.
 - Borders: single, 0.5 pt, black, on all sides and between cells.
 - Cell padding: 1.9 mm left and right, none top and bottom (the default of the table style).
@@ -242,7 +242,7 @@ Columns and cells are listed in file order, which is right to left on paper: col
 ### T4: 4 columns, 18 rows
 
 - Width 192.5 mm (10915 twips), fixed layout, right to left.
-- Position: from the right margin, offset -0.8 mm (tblInd -45). Right edge 9.2 mm from the right paper edge, left edge 8.3 mm from the left (**estimated** within about 2 mm: Word's cell-margin rule is not in the file).
+- Position: aligned to the right margin, its leading edge: the text of its first cell at tblInd -45 twips (-0.8 mm) from the margin, so its border 108 twips further out, by the cell padding. Right edge 7.3 mm from the right paper edge, left edge 10.2 mm from the left (**estimated**: Word's rules for a Word 2007 file, see `README.md` E4; not seen rendered).
 - Borders: single, 0.5 pt, black, on all sides and between cells.
 - Cell padding: 1.9 mm left and right, none top and bottom (the default of the table style).
 
@@ -357,7 +357,7 @@ Columns and cells are listed in file order, which is right to left on paper: col
 - E1. The number of pages and where each page ends (section 6). Word's recorded count is file metadata; the reading comes from the saved row heights and assumed line heights.
 - E2. Every vertical position on the page: the top and bottom of the letterhead and footer pictures, where the body starts under the letterhead, where a text box or a floating table lands.
 - E3. What a printer clips near the paper edges (K4).
-- E4. The distance of each table's edges from the paper edges, within about 2 mm: Word shifts a table by its cell padding under a rule the file does not state.
+- E4. The distance of each table's edges from the paper edges. Computed with Word's rules for a Word 2007 file: a centred table (jc=center, or floating with tblpXSpec=center) is centred on the text area and its tblInd is ignored; a table aligned to its trailing edge stands against that margin; a table aligned to its leading edge puts the text of its first cell at the indent, so its border stands out by the cell padding. With these rules every table of a client form has its right edge 7.3 to 7.4 mm and its left edge 10.1 to 10.2 mm from the paper edges. Not seen rendered.
 - E5. Printed row heights. The file gives a minimum per row; the printed height depends on the fonts.
 - E6. The spacing between options in a cell: it is typed with spaces.
 - E7. The numbers in front of labels: computed from `numbering.xml`, not seen printed.
