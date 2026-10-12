@@ -17,7 +17,7 @@ worker phone: a phone feature is a printed office form typed in afterwards. Read
 | `services/programme.ts`      | `generateFileVisits` (the engine), `generateVisits`, `previewVisitGeneration`, `cancelFutureVisits`, `ensureProgramme`                                                                                                                                 |
 | `services/tasks.ts`          | `seedTasksFromServices`; a visit's tick lines: computed until frozen (`checklistOf`), frozen at first print or first typing (`freezeChecklist`)                                                                                                        |
 | `services/board.ts`          | `listDayBoard`, `listFileVisits`                                                                                                                                                                                                                       |
-| `services/mission-order.ts`  | `getMissionOrder` (the sheet's data from stored rows), `recordOrderPrinted` (freeze, count, DISCLOSE log)                                                                                                                                              |
+| `services/mission-order.ts`  | `getMissionOrder` (the sheet's data from stored rows; the hand-outs block from Money's `getHandOutsForVisit`), `recordOrderPrinted` (freeze, count, DISCLOSE log)                                                                                      |
 | `services/visit-entry.ts`    | `getVisitEntry`, `saveReturnedOrder` (one Save: seats, ticks, report, problems, status, `visit.signedOff`), `reportArrival`                                                                                                                            |
 | `services/assignment.ts`     | `listSeatCandidates`, `assignVisitWorker` (working-time rules, manager override → `RuleOverride`), `removeVisitWorker`, `confirmVisit`, `settleVisitTeam`                                                                                              |
 | `services/absences.ts`       | `recordWorkerAbsence`, `decideWorkerLeave`, `cancelWorkerAbsence`, `setAbsencePayTreatment`, `listWorkerAbsences` (People's exports), `suggestReplacements`, `replaceSeat`                                                                             |
@@ -69,7 +69,6 @@ Blank sheets: `visits/blank-<division>/print`, `visits/calls/blank/print`, `supe
 - `updateFutureVisits`, `copyFileSetup` (renewal), `site.changed` and `staff.unavailable` handlers: not written.
 - No screen yet for: the seat picker and the replacement suggestions (services exist), recording an absence,
   File › المهام (tasks and areas editor), the weekly «برنامج العمل», inspections, complaints.
-- The order's hand-outs block is empty until Money exports `getHandOutsForVisit`.
 - A no-show typed on an order is recorded as an absence of category OTHER, via NO_SHOW, for the visit's hours;
   People sets its pay treatment.
 - Foundation: seventh `StatusChip` tone; `DayBoard` on the home screen; an `onPrint` hook on `PrintButton`;

@@ -1,3 +1,5 @@
+import { getHandOutsForVisit } from "@/features/stock/services/handouts";
+import { UNIT_LABEL } from "@/features/stock/sheets/print-labels";
 import { requireSection } from "@/lib/access/session";
 import { logDisclose } from "@/lib/log";
 import { action, query } from "@/lib/service/action";
@@ -5,7 +7,7 @@ import type { Executor, ServiceContext } from "@/lib/service/context";
 import { ServiceError } from "@/lib/service/errors";
 
 import { endTimeOf } from "../rules/visit-dates";
-import type { MissionOrderData, OrderReturn, OrderTaskGroup, OrderWorker } from "../sheets/sheet-data";
+import type { MissionOrderData, OrderHandout, OrderReturn, OrderTaskGroup, OrderWorker } from "../sheets/sheet-data";
 import type {
   Bearer,
   Completion,
@@ -130,6 +132,16 @@ async function returnedPart(
   };
 }
 
+/** «المواد والمعدات المسلمة للعامل»: Money's hand-outs for the visit, items and quantities only. */
+async function handoutsOf(ex: Executor, ctx: ServiceContext, visitId: string): Promise<OrderHandout[]> {
+  const lines = await getHandOutsForVisit(ex, ctx, { visitId });
+  return lines.map((line) => ({
+    item: line.itemName,
+    quantity: `${line.qty / 1000} ${UNIT_LABEL[line.unit]}`,
+    condition: line.condition === "GOOD" || line.condition === "NEEDS_MAINTENANCE" ? line.condition : null,
+  }));
+}
+
 /** «اليوم 2 من 3» for a job of several days. */
 async function jobDayOf(ex: Executor, visit: { id: string; fileId: string; origin: string }) {
   if (visit.origin !== "ON_DEMAND") return null;
@@ -237,8 +249,7 @@ async function buildOrder(
       safetyNotes: site?.securityInstructionsText ?? null,
     },
     materialsBy: (file.materialsBearer as Bearer | null) ?? null,
-    // Money's getHandOutsForVisit fills this once it exists.
-    handouts: [],
+    handouts: await handoutsOf(ex, ctx, visit.id),
     returned: await returnedPart(ex, visit.id, lines),
   };
 }
