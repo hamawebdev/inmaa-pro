@@ -225,9 +225,6 @@ export function DayBoard({
     [t, listSeparator, serviceText, onReportArrival],
   );
 
-  // The rule warns that the React Compiler cannot memoise TanStack Table. This
-  // project does not run the compiler; the table is the academy's own pattern.
-  // eslint-disable-next-line react-hooks/incompatible-library
   const table = useReactTable({
     data: shown,
     columns,

@@ -1,3 +1,4 @@
+import { getSanctionStates } from "@/features/people/services/sanctions";
 import { requireCapability, requireSection } from "@/lib/access/session";
 import { newId } from "@/lib/db/rows";
 import { logChange } from "@/lib/log";
@@ -258,32 +259,25 @@ export async function absencesOnVisit(
 }
 
 /**
- * Shared. The workers suspended or penalised on a date («موقف / معاقب»), in the
- * states the setting `sanction.blockingStates` names.
- *
- * Stands in for People's `getSanctionStates("WORKER", ids)` (CONTRACTS.md
- * section 3) until it exists; then this becomes a call to it.
+ * Shared. Of these workers, those suspended or penalised on the day of a visit
+ * («موقف / معاقب»): People's `getSanctionStates` is the one way to read it
+ * (CONTRACTS.md section 3). It answers for today; a sanction that ends before
+ * the visit's day does not block that visit. The states that block are the
+ * setting `sanction.blockingStates`.
  */
 export async function sanctionedWorkers(
   ex: Executor,
+  ctx: ServiceContext,
   date: IsoDate,
-  workerIds?: readonly string[],
+  workerIds: readonly string[],
 ): Promise<Set<string>> {
   const found = new Set<string>();
-  const states = (await getSettings(ex, ["sanction.blockingStates"]))["sanction.blockingStates"].WORKER ?? [];
-  if (states.length === 0 || (workerIds && workerIds.length === 0)) return found;
-  const day = localDate(date);
-  let sanctions = ex
-    .selectFrom("Sanction")
-    .select("staffId")
-    .where("subjectKind", "=", "WORKER")
-    .where("staffId", "is not", null)
-    .where("liftedAt", "is", null)
-    .where("state", "in", states)
-    .where("startDate", "<=", day)
-    .where((eb) => eb.or([eb("endDate", "is", null), eb("endDate", ">=", day)]));
-  if (workerIds) sanctions = sanctions.where("staffId", "in", [...new Set(workerIds)]);
-  for (const row of await sanctions.execute()) if (row.staffId) found.add(row.staffId);
+  const blocking = (await getSettings(ex, ["sanction.blockingStates"]))["sanction.blockingStates"].WORKER ?? [];
+  if (blocking.length === 0 || workerIds.length === 0) return found;
+  const states = await getSanctionStates(ex, ctx, { kind: "WORKER", ids: [...new Set(workerIds)] });
+  for (const [workerId, state] of Object.entries(states)) {
+    if (state && blocking.includes(state.state) && (!state.until || state.until >= date)) found.add(workerId);
+  }
   return found;
 }
 
@@ -353,7 +347,7 @@ export async function judgeSeat(
   const site = await readSiteForOrder(ex, { siteId: visit.siteId, securityTicked: false });
   if (site?.womenOnly && worker.sex !== "FEMALE") throw new ServiceError("This site takes women workers only.");
   if (!fitsSite(worker, site)) throw new ServiceError("This worker does not have an ability this site requires.");
-  if ((await sanctionedWorkers(ex, visit.visitDate, [worker.id])).has(worker.id)) {
+  if ((await sanctionedWorkers(ex, ctx, visit.visitDate, [worker.id])).has(worker.id)) {
     throw new ServiceError("This worker is suspended or penalised.");
   }
 
@@ -570,7 +564,12 @@ export async function listSeatCandidates(
   const settings = await workTimeSettings(ex);
   const weekSeats = await weekSeatsByWorker(ex, visit.visitDate, { exceptVisitId: visit.id });
   const absences = await absencesOnVisit(ex, visit);
-  const sanctioned = await sanctionedWorkers(ex, visit.visitDate);
+  const sanctioned = await sanctionedWorkers(
+    ex,
+    ctx,
+    visit.visitDate,
+    workers.map((worker) => worker.id),
+  );
 
   const candidates = workers.map((worker): SeatCandidate => {
     const seats = weekSeats.get(worker.id) ?? [];

@@ -766,7 +766,12 @@ export async function suggestReplacements(
   const settings = await workTimeSettings(ex);
   const weekSeats = await weekSeatsByWorker(ex, visit.visitDate, { exceptVisitId: visit.id });
   const absences = await absencesOnVisit(ex, visit);
-  const sanctioned = await sanctionedWorkers(ex, visit.visitDate);
+  const sanctioned = await sanctionedWorkers(
+    ex,
+    ctx,
+    visit.visitDate,
+    workers.map((worker) => worker.id),
+  );
   const resting = await restingOn(ex, visit.visitDate);
   const atSite = await visitsAtSiteBefore(ex, visit.siteId, visit.visitDate);
   const alternates = await fileAlternates(ex, visit);

@@ -8,89 +8,46 @@
  * Two kinds of list live here:
  *
  *  - Operations' own lists (statuses of a visit, kinds of problem…).
- *  - Lists that belong to another owner or are shared, which Foundation will
- *    publish for everyone. Until that module exists they are copied below under
- *    "Read from other owners"; when it does, each one becomes a re-export and
- *    nothing else in this folder changes.
+ *  - Lists more than one owner uses: they are Foundation's (src/lib/options)
+ *    and are re-exported here, so the rest of this folder imports from one place.
  *
  * Arabic wording for paper is in ../sheets/print-labels.ts; labels for the
  * screen are in ../messages, checked through ../code-labels.ts.
  */
 
-// ── Read from other owners ──────────────────────────────────────────────────
+// ── Shared lists (src/lib/options, Foundation) ─────────────────────────────
+// One copy for every owner: the codes here, his words for paper as `…_AR`, and
+// the screen labels under `Options.…`. A change to one of them is asked of Foundation.
 
-/** His four divisions (shared; wording Clients). */
-export const DIVISIONS = ["HOUSING", "ORGANISATION", "BUILDING", "COMPLEX"] as const;
-export type Division = (typeof DIVISIONS)[number];
-
-/** «عند الطلب» / «عقد» (shared; wording Clients). */
-export const SERVICE_TYPES = ["ON_DEMAND", "CONTRACT"] as const;
-export type ServiceType = (typeof SERVICE_TYPES)[number];
-
-/** «تحديد الفترة» on his five client forms (Clients). */
-export const DAY_PERIODS = ["MORNING", "EVENING", "BOTH"] as const;
-export type DayPeriod = (typeof DAY_PERIODS)[number];
-
-/** The unit of «مدة التنفيذ» on the on-demand forms (Clients, office-only). */
-export const DURATION_UNITS = ["HOURS", "DAYS"] as const;
-export type DurationUnit = (typeof DURATION_UNITS)[number];
-
-/** «دخول الفريق» on his five client forms (Clients). */
-export const TEAM_ACCESS = ["VIA_GUARD", "OWN_KEY", "BUILDING_MANAGER", "OPEN_DOOR"] as const;
-export type TeamAccess = (typeof TEAM_ACCESS)[number];
-
-/** Who bears the cleaning materials and the transport: «على عاتق المركز» / «على عاتق صاحبها» (Clients). */
-export const BEARERS = ["CENTRE", "OWNER"] as const;
-export type Bearer = (typeof BEARERS)[number];
-
-/**
- * The weekday codes stored in code lists («الأيام المتاحة», «أيام التنفيذ»,
- * `work.days`), in the centre's week order. A code's index is the weekday
- * number Operations' rules use: 0 = SAT … 6 = FRI.
- */
-export const WEEKDAY_CODES = ["SAT", "SUN", "MON", "TUE", "WED", "THU", "FRI"] as const;
-export type WeekdayCode = (typeof WEEKDAY_CODES)[number];
-
-/** People's two sexes; the worker form prints them as the «/H/F» suffix. */
-export const SEXES = ["MALE", "FEMALE"] as const;
-export type Sex = (typeof SEXES)[number];
-
-/** «الصفة» on his buildings worker card (shared; wording People). */
-export const WORKER_ROLES = ["CLEANER", "SENIOR_WORKER", "TEAM_LEADER"] as const;
-export type WorkerRole = (typeof WORKER_ROLES)[number];
-
-/** «معدات الوقاية» on his buildings worker card (shared; wording Operations). */
-export const PPE = ["GLOVES", "SHOES", "WORKWEAR", "BADGE", "MASK", "EXTRA"] as const;
-export type Ppe = (typeof PPE)[number];
-
-/** «مناطق ممنوع دخولها أو لمسها» (stored on the site by Clients; wording Operations). */
-export const FORBIDDEN_PLACES = [
-  "RESIDENT_FLATS",
-  "TECH_ROOMS",
-  "ELECTRIC_ROOMS",
-  "EQUIPMENT_ROOMS",
-  "STORES",
-  "OTHER",
-] as const;
-export type ForbiddenPlace = (typeof FORBIDDEN_PLACES)[number];
-
-/** «تعليمات خاصة» (stored on the site by Clients; wording Operations). */
-export const SITE_INSTRUCTIONS = [
-  "NO_MOVE_PROPERTY",
-  "NO_TOUCH_DOCS",
-  "NO_UNAPPROVED_PRODUCTS",
-  "NO_MIXING",
-  "PROTECT_COMMON",
-  "KEEP_QUIET",
-  "KEEP_PASSAGES_SAFE",
-  "WET_FLOOR_SIGNS",
-  "REPORT_DAMAGE",
-] as const;
-export type SiteInstruction = (typeof SITE_INSTRUCTIONS)[number];
-
-/** What follows a low score (shared; wording Operations, from his study). */
-export const CORRECTIVE_ACTIONS = ["REDO_SERVICE", "FIX_ITEMS", "TRAIN_WORKER", "CHANGE_WORKER", "OTHER"] as const;
-export type CorrectiveAction = (typeof CORRECTIVE_ACTIONS)[number];
+export {
+  BEARERS,
+  CORRECTIVE_ACTIONS,
+  DAY_PERIODS,
+  DIVISIONS,
+  DURATION_UNITS,
+  FORBIDDEN_PLACES,
+  PPE,
+  SERVICE_TYPES,
+  SEXES,
+  SITE_INSTRUCTIONS,
+  TEAM_ACCESS,
+  WEEKDAYS,
+  WORKER_ROLES,
+  type Bearer,
+  type CorrectiveAction,
+  type DayPeriod,
+  type Division,
+  type DurationUnit,
+  type ForbiddenPlace,
+  type Ppe,
+  type ServiceType,
+  type Sex,
+  type SiteInstruction,
+  type TeamAccess,
+  type WorkerRole,
+} from "@/lib/options";
+/** A weekday code (`SAT` … `FRI`). Its index in `WEEKDAYS` is the weekday number Operations' rules use: 0 = SAT. */
+export type { Weekday as WeekdayCode } from "@/lib/options";
 
 // ── Operations' own lists ───────────────────────────────────────────────────
 

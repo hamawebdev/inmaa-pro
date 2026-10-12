@@ -33,8 +33,6 @@ import { readFileForScheduling, readSiteForOrder, readStaffNames } from "./upstr
  * is logged, since the order names the team.
  */
 
-const seatOrder = { ASSIGNED: 0, ABSENT: 1, RESTING: 2, REPLACED: 3, REMOVED: 4 } as Record<string, number>;
-
 async function visitOf(ex: Executor, visitId: string) {
   const visit = await ex.selectFrom("Visit").selectAll().where("id", "=", visitId).executeTakeFirst();
   if (!visit) throw new ServiceError("This visit does not exist.");
@@ -64,10 +62,9 @@ async function orderTeam(ex: Executor, visitId: string) {
     ])
     .where("VisitWorker.visitId", "=", visitId)
     .where("VisitWorker.seatStatus", "=", "ASSIGNED")
+    .orderBy("VisitWorker.createdAt")
     .execute();
-  return seats.sort(
-    (a, b) => (seatOrder[a.seatStatus] ?? 9) - (seatOrder[b.seatStatus] ?? 9) || a.createdAt.localeCompare(b.createdAt),
-  );
+  return seats;
 }
 
 function groupsOf(lines: readonly ChecklistLine[]): OrderTaskGroup[] {

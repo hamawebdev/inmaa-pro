@@ -1,4 +1,4 @@
-import { WEEKDAY_CODES } from "../validators/option-codes";
+import { WEEKDAYS } from "../validators/option-codes";
 
 /**
  * Dates and clock times as the whole schema writes them: a calendar date is
@@ -164,6 +164,6 @@ export function weekdaysOfCodes(codes: readonly string[] | string | null | undef
     }
   }
   if (!Array.isArray(list)) return [];
-  const order: readonly string[] = WEEKDAY_CODES;
+  const order: readonly string[] = WEEKDAYS;
   return [...new Set(list.map((code) => order.indexOf(String(code))).filter((day) => day >= 0))].sort((a, b) => a - b);
 }

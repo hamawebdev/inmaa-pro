@@ -227,6 +227,7 @@ function AttendanceCard({
         <CardDescription>{t("Cards.AttendanceHint")}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
+        {data.workers.length === 0 && <p className="text-base text-muted-foreground">{t("NoWorkers")}</p>}
         {data.workers.map((entry, index) => {
           const typed = values.workers[index];
           const attended = typed?.attended !== false;

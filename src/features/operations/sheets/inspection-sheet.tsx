@@ -1,9 +1,10 @@
 import { Ltr } from "@/components/ltr";
 import { DottedBlank, PrintSheet, SHEET_MARGINS_CLEAR_OF_LETTERHEAD, SheetCell, SheetRow } from "@/components/print";
+import { CORRECTIVE_ACTION_AR, DIVISION_AR } from "@/lib/options";
 
 import { QUALITY_LEVELS } from "../validators/option-codes";
 
-import { CORRECTIVE_ACTION_WORD, DIVISION_WORD, INSPECTION_ACTIONS, QUALITY_LEVEL_WORD } from "./print-labels";
+import { INSPECTION_ACTIONS, QUALITY_LEVEL_WORD } from "./print-labels";
 import type { InspectionSheetData } from "./sheet-data";
 import { LABEL_STYLE, ROW_MM, SMALL_STYLE, WRITING_ROW_MM, padTo, paperDate } from "./sheet-format";
 import {
@@ -43,7 +44,7 @@ export function InspectionSheet({ sheet }: { sheet: InspectionSheetData }) {
   return (
     <PrintSheet letterhead="client" margins={SHEET_MARGINS_CLEAR_OF_LETTERHEAD.client}>
       <OpsSheetBody>
-        <SheetHeading title="مراقبة الجودة" subtitle={`استمارة تفتيش المشرف – قسم ${DIVISION_WORD[sheet.division]}`}>
+        <SheetHeading title="مراقبة الجودة" subtitle={`استمارة تفتيش المشرف – قسم ${DIVISION_AR[sheet.division]}`}>
           <HeadingLine label="رقم التفتيش:">{sheet.number && <Ltr>{sheet.number}</Ltr>}</HeadingLine>
           <HeadingLine label="التاريخ المبرمج:">
             {sheet.plannedDate && <Ltr>{paperDate(sheet.plannedDate)}</Ltr>}
@@ -155,7 +156,7 @@ export function InspectionSheet({ sheet }: { sheet: InspectionSheetData }) {
                 gapMm={3}
                 items={INSPECTION_ACTIONS.map((action) => ({
                   key: action,
-                  label: CORRECTIVE_ACTION_WORD[action],
+                  label: CORRECTIVE_ACTION_AR[action],
                   checked: result?.action === action,
                 }))}
               />

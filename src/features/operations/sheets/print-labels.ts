@@ -1,20 +1,13 @@
 import type {
-  Bearer,
   CallPurpose,
   CallResult,
   Completion,
   CorrectiveAction,
   Division,
-  ForbiddenPlace,
-  Ppe,
   ProblemKind,
   QualityLevel,
-  Sex,
   SignoffStatus,
-  SiteInstruction,
   TaskFrequency,
-  TeamAccess,
-  WorkerRole,
 } from "../validators/option-codes";
 
 /**
@@ -28,73 +21,11 @@ import type {
  * study (1.md) and his five client forms.
  */
 
-/** The division, as his notes name the four. */
-export const DIVISION_WORD: Record<Division, string> = {
-  HOUSING: "المنازل",
-  ORGANISATION: "المؤسسات",
-  BUILDING: "العمارات",
-  COMPLEX: "التجمعات السكنية",
-};
-
 /** 0 = السبت … 6 = الجمعة. His client forms spell «الاثنين»; the worker form «الإثنين». */
 export const WEEKDAY_WORD = ["السبت", "الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة"] as const;
 
-/** «الصفة» on his worker card. */
-export function workerRoleWord(role: WorkerRole, sex: Sex): string {
-  if (role === "TEAM_LEADER") return "قائد فريق";
-  if (role === "SENIOR_WORKER") return "عامل رئيسي";
-  return sex === "FEMALE" ? "عاملة نظافة" : "عامل نظافة";
-}
-
-/** «دخول الفريق» on his client forms. */
-export const TEAM_ACCESS_WORD: Record<TeamAccess, string> = {
-  VIA_GUARD: "عن طريق الحارس",
-  OWN_KEY: "مفتاح خاص",
-  BUILDING_MANAGER: "مسؤول العمارة",
-  OPEN_DOOR: "باب مفتوح خلال ساعات العمل",
-};
-
-/** «مواد التنظيف» on his client forms. */
-export const BEARER_WORD: Record<Bearer, string> = {
-  CENTRE: "على عاتق المركز",
-  OWNER: "على عاتق صاحبها",
-};
-
-/** Card section 9, «مناطق ممنوع دخولها أو لمسها». */
-export const FORBIDDEN_PLACE_WORD: Record<ForbiddenPlace, string> = {
-  RESIDENT_FLATS: "شقق السكان",
-  TECH_ROOMS: "غرف تقنية",
-  ELECTRIC_ROOMS: "غرف كهرباء",
-  EQUIPMENT_ROOMS: "غرف معدات",
-  STORES: "مستودعات",
-  OTHER: "مناطق أخرى",
-};
-
 /** His sentence under the forbidden places. */
 export const FORBIDDEN_RULE = "لا يدخل العامل أي مساحة غير مدرجة في نطاق المهمة إلا بتوجيه من المسؤول المعتمد.";
-
-/** Card section 10, «تعليمات خاصة». */
-export const SITE_INSTRUCTION_WORD: Record<SiteInstruction, string> = {
-  NO_MOVE_PROPERTY: "عدم تحريك ممتلكات السكان",
-  NO_TOUCH_DOCS: "عدم لمس الوثائق أو الأغراض الشخصية",
-  NO_UNAPPROVED_PRODUCTS: "عدم استعمال مواد غير معتمدة",
-  NO_MIXING: "عدم خلط مواد التنظيف",
-  PROTECT_COMMON: "المحافظة على الممتلكات المشتركة",
-  KEEP_QUIET: "المحافظة على الهدوء وعدم إزعاج السكان",
-  KEEP_PASSAGES_SAFE: "إبقاء الممرات آمنة أثناء التنظيف",
-  WET_FLOOR_SIGNS: "وضع إشارات تحذيرية عند وجود أرضية مبللة",
-  REPORT_DAMAGE: "إبلاغ المشرف فوراً عن أي ضرر أو خطر",
-};
-
-/** Card section 12, «معدات الوقاية». */
-export const PPE_WORD: Record<Ppe, string> = {
-  GLOVES: "قفازات",
-  SHOES: "أحذية مناسبة",
-  WORKWEAR: "لباس العمل",
-  BADGE: "سترة/شارة تعريف",
-  MASK: "كمامة عند الحاجة",
-  EXTRA: "معدات حماية إضافية حسب طبيعة المهمة",
-};
 
 /** His study and inspection forms: «الخدمات اليومية / الأسبوعية / الشهرية / الخاصة». */
 export const TASK_FREQUENCY_WORD: Record<TaskFrequency, string> = {
@@ -200,14 +131,6 @@ export const QUALITY_LEVEL_WORD: Record<QualityLevel, string> = {
 
 /** His study: what follows a quality under 80. Only these three are offered on the inspection sheet. */
 export const INSPECTION_ACTIONS: readonly CorrectiveAction[] = ["REDO_SERVICE", "TRAIN_WORKER", "CHANGE_WORKER"];
-
-export const CORRECTIVE_ACTION_WORD: Record<CorrectiveAction, string> = {
-  REDO_SERVICE: "إعادة الخدمة",
-  FIX_ITEMS: "تصحيح النقائص",
-  TRAIN_WORKER: "تدريب العاملة",
-  CHANGE_WORKER: "تغيير العاملة",
-  OTHER: "أخرى",
-};
 
 /** The call list: why the office calls, and how the call ended. */
 export const CALL_PURPOSE_WORD: Record<CallPurpose, string> = {

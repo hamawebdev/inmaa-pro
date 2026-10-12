@@ -207,7 +207,8 @@
     "SaveFailed": "The returned order could not be saved.",
     "SavedComplete": "The returned order is saved and the visit is signed off.",
     "SavedPartial": "Saved. The entry is not complete yet.",
-    "CorrectionReason": "Reason for the correction"
+    "CorrectionReason": "Reason for the correction",
+    "NoWorkers": "No worker is assigned to this visit yet."
   },
   "ProblemKinds": {
     "MATERIAL_SHORTAGE": "Shortage of products",
@@ -284,7 +285,31 @@
     "WorkerRecordedAbsent": "This worker is recorded absent that day. Cancel the absence first.",
     "CorrectionNeedsReason": "Say why a time already typed is changed.",
     "VisitNotWaiting": "This visit is not waiting for its team.",
-    "SupervisorNotFound": "This supervisor does not exist."
+    "SupervisorNotFound": "This supervisor does not exist.",
+    "LeaveNeedsTypeAndDays": "A leave needs its type and its number of days.",
+    "ConfirmNeedsFullTeam": "A visit is confirmed only when every seat is filled.",
+    "VisitTeamFull": "Every seat of this visit is already filled.",
+    "AbsenceNeedsBothTimes": "Give both the start and the end time of the absence.",
+    "NightWorkNeedsDerogation": "Night work by a woman needs the reference of the labour inspector's derogation.",
+    "OnlyRequestedLeaveDecided": "Only a leave that was asked for can be approved or refused.",
+    "OnlyAssignedSeatRemoved": "Only an assigned worker can be taken off a visit.",
+    "SeatNotReplaceable": "Only a seat held or left by an absence can be replaced.",
+    "OnlyAwaitingVisitConfirmed": "Only a visit awaiting confirmation can be confirmed.",
+    "AbsenceEndsBeforeStart": "The absence cannot end before it starts.",
+    "EndTimeAfterStartTime": "The end time must be after the start time.",
+    "DaysZeroOrMore": "The number of days must be zero or more.",
+    "VisitTeamClosed": "The team of this visit can no longer change.",
+    "AbsenceNotFound": "This absence does not exist.",
+    "AbsenceAlreadyClosed": "This absence is already cancelled or refused.",
+    "SeatNeedsManager": "This seat breaks a working-time rule. Only the manager can allow it.",
+    "SeatNotFound": "This seat does not exist.",
+    "SiteWomenOnly": "This site takes women workers only.",
+    "WorkerHasOverlappingVisit": "This worker already has a visit at that time.",
+    "WorkerNotSchedulable": "This worker cannot be given visits.",
+    "WorkerNotFound": "This worker does not exist.",
+    "WorkerLacksSiteAbility": "This worker does not have an ability this site requires.",
+    "WorkerAlreadyOnVisit": "This worker is already on this visit.",
+    "WorkerSanctioned": "This worker is suspended or penalised."
   },
   "FileVisits": {
     "ProgrammeTitle": "Programme",

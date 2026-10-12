@@ -1,5 +1,14 @@
 import { Ltr } from "@/components/ltr";
 import {
+  BEARER_AR,
+  DIVISION_AR,
+  FORBIDDEN_PLACE_AR,
+  PPE_AR,
+  SITE_INSTRUCTION_AR,
+  TEAM_ACCESS_AR,
+  workerRoleAr,
+} from "@/lib/options";
+import {
   DottedBlank,
   KeepTogether,
   PrintSheet,
@@ -20,25 +29,18 @@ import {
 } from "../validators/option-codes";
 
 import {
-  BEARER_WORD,
   COMPLETION_WORD,
   DEFAULT_HANDOUT_ITEMS,
   DEPARTURE_CHECKS,
-  DIVISION_WORD,
-  FORBIDDEN_PLACE_WORD,
   FORBIDDEN_RULE,
   HANDOUT_CONDITION_WORD,
   ORDER_IS_NOT_A_CONTRACT,
-  PPE_WORD,
   PROBLEM_KIND_WORD,
   PROBLEM_KINDS_IN_PRINT_ORDER,
   RATING_CRITERIA,
   SIGNER_WORD,
-  SITE_INSTRUCTION_WORD,
   TASK_FREQUENCY_WORD,
-  TEAM_ACCESS_WORD,
   signoffWord,
-  workerRoleWord,
 } from "./print-labels";
 import type { MissionOrderData, OrderArea, OrderHandout, OrderTask, OrderTaskGroup, OrderWorker } from "./sheet-data";
 import {
@@ -152,7 +154,7 @@ export function MissionOrderSheet({ order }: { order: MissionOrderData }) {
   return (
     <PrintSheet letterhead="client" margins={SHEET_MARGINS_CLEAR_OF_LETTERHEAD.client}>
       <OpsSheetBody>
-        <SheetHeading title="أمر مهمة" subtitle={`بطاقة توجيه عامل – قسم ${DIVISION_WORD[order.division]}`}>
+        <SheetHeading title="أمر مهمة" subtitle={`بطاقة توجيه عامل – قسم ${DIVISION_AR[order.division]}`}>
           <HeadingLine label="رقم أمر المهمة:">{order.number && <Ltr>{order.number}</Ltr>}</HeadingLine>
           <HeadingLine label="تاريخ إصدار البطاقة:" widthMm={34}>
             {order.issuedOn && <Ltr>{paperDate(order.issuedOn)}</Ltr>}
@@ -221,7 +223,7 @@ export function MissionOrderSheet({ order }: { order: MissionOrderData }) {
               <TickList
                 items={TEAM_ACCESS.map((way) => ({
                   key: way,
-                  label: TEAM_ACCESS_WORD[way],
+                  label: TEAM_ACCESS_AR[way],
                   checked: order.access.ways.includes(way),
                 }))}
               />
@@ -251,7 +253,7 @@ export function MissionOrderSheet({ order }: { order: MissionOrderData }) {
               <ListCell ltr>{index + 1}</ListCell>
               <ListCell colSpan={2}>{worker.name}</ListCell>
               <ListCell ltr>{worker.number}</ListCell>
-              <ListCell>{worker.role && worker.sex ? workerRoleWord(worker.role, worker.sex) : null}</ListCell>
+              <ListCell>{worker.role && worker.sex ? workerRoleAr(worker.role, worker.sex) : null}</ListCell>
             </SheetRow>
           ))}
           <SheetRow heightMm={ROW_MM}>
@@ -334,7 +336,7 @@ export function MissionOrderSheet({ order }: { order: MissionOrderData }) {
               <TickList
                 items={FORBIDDEN_PLACES.map((place) => ({
                   key: place,
-                  label: FORBIDDEN_PLACE_WORD[place],
+                  label: FORBIDDEN_PLACE_AR[place],
                   checked: order.forbidden.places.includes(place),
                 }))}
               />
@@ -353,7 +355,7 @@ export function MissionOrderSheet({ order }: { order: MissionOrderData }) {
               <TickList
                 items={SITE_INSTRUCTIONS.map((code) => ({
                   key: code,
-                  label: SITE_INSTRUCTION_WORD[code],
+                  label: SITE_INSTRUCTION_AR[code],
                   checked: order.instructions.codes.includes(code),
                 }))}
               />
@@ -369,7 +371,7 @@ export function MissionOrderSheet({ order }: { order: MissionOrderData }) {
               <TickList
                 items={PPE.map((code) => ({
                   key: code,
-                  label: PPE_WORD[code],
+                  label: PPE_AR[code],
                   checked: order.instructions.ppe.includes(code),
                 }))}
               />
@@ -395,7 +397,7 @@ export function MissionOrderSheet({ order }: { order: MissionOrderData }) {
               <TickList
                 items={BEARERS.map((bearer) => ({
                   key: bearer,
-                  label: BEARER_WORD[bearer],
+                  label: BEARER_AR[bearer],
                   checked: order.materialsBy === bearer,
                 }))}
               />

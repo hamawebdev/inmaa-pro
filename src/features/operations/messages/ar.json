@@ -207,7 +207,8 @@
     "SaveFailed": "تعذّر حفظ أمر المهمة المُرجَع.",
     "SavedComplete": "تم حفظ أمر المهمة وتسجيل استلام الزيارة.",
     "SavedPartial": "تم الحفظ. الإدخال لم يكتمل بعد.",
-    "CorrectionReason": "سبب التصحيح"
+    "CorrectionReason": "سبب التصحيح",
+    "NoWorkers": "لم يُعيَّن أي عامل لهذه الزيارة بعد."
   },
   "ProblemKinds": {
     "MATERIAL_SHORTAGE": "نقص مواد",
@@ -284,7 +285,31 @@
     "WorkerRecordedAbsent": "هذا العامل مسجّل غائباً في ذلك اليوم. ألغِ الغياب أولاً.",
     "CorrectionNeedsReason": "اذكر سبب تغيير وقت سبق إدخاله.",
     "VisitNotWaiting": "هذه الزيارة لا تنتظر وصول فريقها.",
-    "SupervisorNotFound": "هذا المشرف غير موجود."
+    "SupervisorNotFound": "هذا المشرف غير موجود.",
+    "LeaveNeedsTypeAndDays": "الإجازة تحتاج إلى نوعها وعدد أيامها.",
+    "ConfirmNeedsFullTeam": "لا تُؤكَّد الزيارة إلا بعد اكتمال فريقها.",
+    "VisitTeamFull": "فريق هذه الزيارة مكتمل.",
+    "AbsenceNeedsBothTimes": "حدّد وقت بداية الغياب ووقت نهايته.",
+    "NightWorkNeedsDerogation": "العمل الليلي للمرأة يحتاج إلى مرجع ترخيص مفتش العمل.",
+    "OnlyRequestedLeaveDecided": "لا يُوافَق أو يُرفَض إلا طلب إجازة لم يُبتّ فيه.",
+    "OnlyAssignedSeatRemoved": "لا يُسحب من الزيارة إلا عامل معيَّن فيها.",
+    "SeatNotReplaceable": "لا يُعوَّض إلا عامل معيَّن في الزيارة أو غائب عنها.",
+    "OnlyAwaitingVisitConfirmed": "لا تُؤكَّد إلا زيارة بانتظار التأكيد.",
+    "AbsenceEndsBeforeStart": "لا يمكن أن ينتهي الغياب قبل بدايته.",
+    "EndTimeAfterStartTime": "وقت النهاية يجب أن يكون بعد وقت البداية.",
+    "DaysZeroOrMore": "عدد الأيام يجب أن يكون صفراً أو أكثر.",
+    "VisitTeamClosed": "لم يعد ممكناً تغيير فريق هذه الزيارة.",
+    "AbsenceNotFound": "هذا الغياب غير موجود.",
+    "AbsenceAlreadyClosed": "هذا الغياب ملغى أو مرفوض من قبل.",
+    "SeatNeedsManager": "هذا التعيين يخالف قاعدة من قواعد وقت العمل. لا يسمح به إلا المدير.",
+    "SeatNotFound": "هذا التعيين غير موجود.",
+    "SiteWomenOnly": "هذا الموقع لا يقبل إلا العاملات.",
+    "WorkerHasOverlappingVisit": "لهذا العامل زيارة أخرى في ذلك الوقت.",
+    "WorkerNotSchedulable": "لا يمكن تعيين هذا العامل في الزيارات.",
+    "WorkerNotFound": "هذا العامل غير موجود.",
+    "WorkerLacksSiteAbility": "هذا العامل لا يملك قدرة يشترطها الموقع.",
+    "WorkerAlreadyOnVisit": "هذا العامل معيَّن في هذه الزيارة من قبل.",
+    "WorkerSanctioned": "هذا العامل متوقف أو معاقب."
   },
   "FileVisits": {
     "ProgrammeTitle": "برنامج الزيارات",

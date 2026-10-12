@@ -207,7 +207,8 @@
     "SaveFailed": "L'ordre retourné n'a pas pu être enregistré.",
     "SavedComplete": "L'ordre retourné est enregistré et la visite est réceptionnée.",
     "SavedPartial": "Enregistré. La saisie n'est pas encore complète.",
-    "CorrectionReason": "Motif de la correction"
+    "CorrectionReason": "Motif de la correction",
+    "NoWorkers": "Aucun agent n'est encore affecté à cette visite."
   },
   "ProblemKinds": {
     "MATERIAL_SHORTAGE": "Manque de produits",
@@ -284,7 +285,31 @@
     "WorkerRecordedAbsent": "Cet agent est enregistré absent ce jour-là. Annulez d'abord l'absence.",
     "CorrectionNeedsReason": "Indiquez pourquoi une heure déjà saisie est modifiée.",
     "VisitNotWaiting": "Cette visite n'attend pas son équipe.",
-    "SupervisorNotFound": "Ce superviseur n'existe pas."
+    "SupervisorNotFound": "Ce superviseur n'existe pas.",
+    "LeaveNeedsTypeAndDays": "Un congé demande son type et son nombre de jours.",
+    "ConfirmNeedsFullTeam": "Une visite n'est confirmée que lorsque toute son équipe est désignée.",
+    "VisitTeamFull": "L'équipe de cette visite est déjà complète.",
+    "AbsenceNeedsBothTimes": "Indiquez l'heure de début et l'heure de fin de l'absence.",
+    "NightWorkNeedsDerogation": "Le travail de nuit d'une femme demande la référence de la dérogation de l'inspecteur du travail.",
+    "OnlyRequestedLeaveDecided": "Seul un congé demandé peut être accordé ou refusé.",
+    "OnlyAssignedSeatRemoved": "Seul un agent affecté peut être retiré d'une visite.",
+    "SeatNotReplaceable": "Seul un agent affecté à la visite, ou absent, peut être remplacé.",
+    "OnlyAwaitingVisitConfirmed": "Seule une visite en attente de confirmation peut être confirmée.",
+    "AbsenceEndsBeforeStart": "L'absence ne peut pas finir avant de commencer.",
+    "EndTimeAfterStartTime": "L'heure de fin doit suivre l'heure de début.",
+    "DaysZeroOrMore": "Le nombre de jours doit être zéro ou plus.",
+    "VisitTeamClosed": "L'équipe de cette visite ne peut plus changer.",
+    "AbsenceNotFound": "Cette absence n'existe pas.",
+    "AbsenceAlreadyClosed": "Cette absence est déjà annulée ou refusée.",
+    "SeatNeedsManager": "Cette affectation enfreint une règle du temps de travail. Seul le directeur peut l'autoriser.",
+    "SeatNotFound": "Cette affectation n'existe pas.",
+    "SiteWomenOnly": "Ce site n'accepte que des agentes.",
+    "WorkerHasOverlappingVisit": "Cet agent a déjà une visite à cette heure.",
+    "WorkerNotSchedulable": "Cet agent ne peut pas recevoir de visites.",
+    "WorkerNotFound": "Cet agent n'existe pas.",
+    "WorkerLacksSiteAbility": "Cet agent n'a pas une aptitude que le site exige.",
+    "WorkerAlreadyOnVisit": "Cet agent est déjà sur cette visite.",
+    "WorkerSanctioned": "Cet agent est suspendu ou sanctionné."
   },
   "FileVisits": {
     "ProgrammeTitle": "Programme",

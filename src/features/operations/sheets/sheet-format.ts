@@ -1,5 +1,7 @@
 import type { CSSProperties } from "react";
 
+import { SHEET_FONT_STAND_IN } from "@/components/print/sheet-constants";
+
 import { weekdayOf, type ClockTime, type IsoDate } from "../rules/calendar";
 
 import { WEEKDAY_WORD } from "./print-labels";
@@ -9,20 +11,14 @@ import { WEEKDAY_WORD } from "./print-labels";
  *
  * ## The face
  *
- * His six Word forms are set in Traditional Arabic and Sakkal Majalla, and the
- * print kit falls back on the bundled Arabic font where a PC lacks them. Those
- * faces draw much smaller than the bundled one at the same point size, so a
- * sheet sized for one overflows or shrinks in the other. His own forms must
- * accept that: they follow a Word file. These four sheets have no Word
- * original, so they are set in the bundled face on every PC. What is checked
- * here, page by page, is then what the centre's printer gives.
- *
- * Foundation is to bundle Noto Naskh Arabic as the print fallback for his
- * faces. Once it is bundled, naming it here (and not his faces) would give
- * these sheets the look of his forms and the same pages on every PC; the row
- * sizes below are then checked again against it.
+ * His six Word forms are set in Traditional Arabic and Sakkal Majalla; the
+ * print kit sets them in his face where a PC has it, and in the bundled Noto
+ * Naskh, scaled to take the room of his, where it has not. These four sheets
+ * have no Word original to follow, so they name the bundled Naskh itself,
+ * unscaled: the look of his forms, and the same pages on every PC. What is
+ * checked here, page by page, is then what the centre's printer gives.
  */
-export const OPS_SHEET_FONT = '"IBM Plex Sans Arabic", "Geist Variable", sans-serif';
+export const OPS_SHEET_FONT = `"${SHEET_FONT_STAND_IN}", serif`;
 
 /** The width between his side margins on the client forms: 210 − 10 − 12.7, rounded down. */
 export const SHEET_WIDTH_MM = 187;
