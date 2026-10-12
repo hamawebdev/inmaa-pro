@@ -14,6 +14,7 @@ import { labelKeyOf } from "@/features/clients/forms/screen-labels";
 import type { FileHub, StageOption } from "@/features/clients/services/file-reads";
 import { moveFileStageAction, STAGE_REFUSALS } from "@/features/clients/services/files";
 import { FILE_STAGES, type FileStage } from "@/features/clients/validators/option-lists";
+import { useSectionLevel } from "@/hooks/use-session";
 import { useErrorMessage } from "@/i18n/errors";
 import { useCodeLabel } from "@/i18n/use-code-label";
 import { cn } from "@/lib/utils";
@@ -40,6 +41,8 @@ export function StageStrip({ hub }: { hub: FileHub }) {
   const [back, setBack] = React.useState<FileStage | null>(null);
   const [busy, setBusy] = React.useState(false);
   const current = FILE_STAGES.indexOf(hub.stage);
+  // A role that only reads the requests sees where the file stands, not the moves its service would refuse.
+  const canWrite = useSectionLevel("REQUESTS") === "WRITE";
 
   async function move(to: FileStage, reason?: string) {
     setBusy(true);
@@ -114,7 +117,7 @@ export function StageStrip({ hub }: { hub: FileHub }) {
           {t("StageSince", { date: formatSheetDate(hub.stageChangedOn) })}
         </p>
 
-        {!hub.closed && hub.nextStages.length > 0 && (
+        {canWrite && !hub.closed && hub.nextStages.length > 0 && (
           <div className="space-y-3">
             <h3 className="text-base font-bold">{t("NextStage")}</h3>
             {hub.nextStages.map((option, index) => (
@@ -135,7 +138,7 @@ export function StageStrip({ hub }: { hub: FileHub }) {
           </div>
         )}
 
-        {!hub.closed && hub.backStages.length > 0 && (
+        {canWrite && !hub.closed && hub.backStages.length > 0 && (
           <div className="flex flex-wrap gap-2">
             {hub.backStages.map((stage) => (
               <Button

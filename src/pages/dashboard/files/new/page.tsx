@@ -17,8 +17,8 @@ import {
   type FormKind,
   type ServiceType,
 } from "@/features/clients/validators/option-lists";
+import { useCan } from "@/hooks/use-session";
 import { useCodeLabel } from "@/i18n/use-code-label";
-import { can, currentSession, hasSession } from "@/lib/access/session";
 import { pathKey } from "@/lib/compat/revalidate";
 import { DIVISIONS, SERVICE_TYPES } from "@/lib/options";
 import { cn } from "@/lib/utils";
@@ -86,6 +86,7 @@ export default function NewFilePage() {
   const divisionLabel = useCodeLabel("Options.Division");
   const serviceLabel = useCodeLabel("Options.ServiceType");
   const filter = useFilesFilter();
+  const readsResidents = useCan("residents.read");
   const [division, setDivision] = React.useState<Division>(filter.division);
   const [service, setService] = React.useState<ServiceType | "">(
     DIVISIONS_WITH_REQUESTS.includes(filter.division) ? (filter.service === "ALL" ? "" : filter.service) : "CONTRACT",
@@ -166,7 +167,7 @@ export default function NewFilePage() {
             dossierNumber={null}
             residents={
               kind === "BUILDING_CONTRACT" || kind === "COMPLEX_CONTRACT"
-                ? hasSession() && can(currentSession(), "residents.read")
+                ? readsResidents
                   ? "ALLOWED"
                   : "RESTRICTED"
                 : "NONE"

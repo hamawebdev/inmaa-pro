@@ -1271,7 +1271,7 @@ export const BUILDING_CONTRACT: FormDefinition = {
       t: "table",
       id: "T1",
       columnsMm: [32.49, 30.0, 27.52, 22.49, 32.51, 47.52],
-      offsetMm: -0.79,
+      offsetMm: -2.7,
       rows: [
         {
           minMm: 1.38,
@@ -1672,7 +1672,7 @@ export const BUILDING_CONTRACT: FormDefinition = {
       t: "table",
       id: "T2",
       columnsMm: [32.6, 25.03, 33.06, 33.07, 33.06, 35.72],
-      offsetMm: -0.79,
+      offsetMm: -2.6,
       rows: [
         {
           minMm: 11.02,
@@ -1824,7 +1824,7 @@ export const BUILDING_CONTRACT: FormDefinition = {
       t: "table",
       id: "T3",
       columnsMm: [32.6, 15.52, 9.51, 33.06, 5.57, 27.5, 20.64, 12.42, 35.72],
-      offsetMm: -0.79,
+      offsetMm: -2.6,
       rows: [
         {
           minMm: 11.02,
@@ -2266,7 +2266,7 @@ export const BUILDING_CONTRACT: FormDefinition = {
       t: "table",
       id: "T5",
       columnsMm: [32.49, 77.52, 32.49, 50.02],
-      offsetMm: -0.79,
+      offsetMm: -2.7,
       rows: [
         {
           minMm: 2.42,
@@ -2947,7 +2947,7 @@ export const BUILDING_CONTRACT: FormDefinition = {
       t: "residents",
       id: "T6",
       columnsMm: [17.5, 65.0, 67.52, 42.51],
-      offsetMm: -0.79,
+      offsetMm: -2.7,
       heading: "B-072",
       columns: ["B-073", "B-074", "B-075", "B-076"],
       lines: 26,

@@ -1,3 +1,4 @@
+import { getSanctionStates } from "@/features/people/services/sanctions";
 import { can, requireCapability, requireSection } from "@/lib/access/session";
 import { logConsult, logDisclose } from "@/lib/log";
 import { action, query } from "@/lib/service/action";
@@ -17,6 +18,7 @@ import { SITE_OFFICE_FLAGS, SITE_OFFICE_SETS } from "../validators/file-values";
 import {
   type ClientSanction,
   type Division,
+  type FileStatusTick,
   type FileStage,
   type FormKind,
   type ServiceType,
@@ -389,6 +391,8 @@ export interface FileForm {
   residents: "NONE" | "ALLOWED" | "RESTRICTED";
   /** Whether this user may change the sheet of a signed file. */
   canEditLocked: boolean;
+  /** «حالة الملف» as the program ticks it today. */
+  statusTicks: FileStatusTick[];
 }
 
 function siteOfficeOf(site: FileRecord["site"]): SiteOfficeInput {
@@ -449,6 +453,7 @@ export async function getFileForm(ex: Executor, ctx: ServiceContext, input: { fi
     siteOffice: siteOfficeOf(record.site),
     residents: !building ? "NONE" : can(ctx, "residents.read") ? "ALLOWED" : "RESTRICTED",
     canEditLocked: can(ctx, "file.editLocked"),
+    statusTicks: await statusTicksOf(ex, ctx, record),
   };
 }
 
@@ -522,23 +527,26 @@ export interface FileSheet {
   residentsRestricted: boolean;
 }
 
-/**
- * The sheet of a stored file, ready to print. The client's sanction ticks
- * nothing yet: «متوقف» and «معاقب» are read through People's
- * `getSanctionStates`, which is not there yet.
- */
+/** «متوقف» or «معاقب» on the client today, read the one way it is read: People's `getSanctionStates`. */
+async function clientSanctionOf(ex: Executor, ctx: ServiceContext, clientId: string): Promise<ClientSanction> {
+  const states = await getSanctionStates(ex, ctx, { kind: "CLIENT", ids: [clientId] });
+  return states[clientId]?.state ?? "NONE";
+}
+
+/** The eight boxes of «حالة الملف» as the program ticks them today. */
+async function statusTicksOf(ex: Executor, ctx: ServiceContext, record: FileRecord): Promise<FileStatusTick[]> {
+  return statusTicks({
+    stage: record.file.stage as FileStage,
+    isReturning: record.file.isReturning === 1,
+    clientSanction: await clientSanctionOf(ex, ctx, record.client.id),
+  });
+}
+
+/** The sheet of a stored file, ready to print, «حالة الملف» ticked as of today. */
 export async function openFileSheet(ex: Executor, ctx: ServiceContext, input: { fileId: string }): Promise<FileSheet> {
   requireSection(ctx, "REQUESTS", "READ");
   const record = await requireRecord(ex, input.fileId);
-  const clientSanction: ClientSanction = "NONE";
-  const values: FormValues = {
-    ...sheetValuesOf(record),
-    statusTicks: statusTicks({
-      stage: record.file.stage as FileStage,
-      isReturning: record.file.isReturning === 1,
-      clientSanction,
-    }),
-  };
+  const values: FormValues = { ...sheetValuesOf(record), statusTicks: await statusTicksOf(ex, ctx, record) };
   const building = FORM_DEFINITIONS[record.kind].family === "BUILDING";
   const allowed = building && can(ctx, "residents.read");
   const residents = allowed ? residentLinesOf(await readResidents(ex, ctx, record), ctx.today) : null;

@@ -152,3 +152,20 @@ export function sideText(row: FormRow, which: "note" | "other" | "label", values
   const value: unknown = values[key];
   return typeof value === "string" ? value : "";
 }
+
+/**
+ * A phone in his dotted pairs: the digits two by two from the right, so a
+ * nine-digit fixed line leaves its first part short («0 / 32 / 42 / 18 / 90»),
+ * and whatever is left over stays in the first part. Blank parts for no phone.
+ */
+export function phonePieces(phone: string | undefined, parts: number): string[] {
+  const digits = (phone ?? "").replace(/\D/g, "");
+  const pieces: string[] = [];
+  for (let end = digits.length; end > 0 && pieces.length < parts - 1; end -= 2) {
+    pieces.unshift(digits.slice(Math.max(0, end - 2), end));
+  }
+  const used = pieces.join("").length;
+  if (used < digits.length) pieces.unshift(digits.slice(0, digits.length - used));
+  while (pieces.length < parts) pieces.unshift("");
+  return pieces;
+}

@@ -8,13 +8,7 @@ import { useTranslations } from "use-intl";
 import { DetailScreen } from "@/components/detail-screen";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  fileQueryPath,
-  getFileFormQuery,
-  getFileHubQuery,
-  openResidentListAction,
-} from "@/features/clients/services/file-reads";
-import { statusTicks } from "@/features/clients/rules/status-ticks";
+import { fileQueryPath, getFileFormQuery, openResidentListAction } from "@/features/clients/services/file-reads";
 import { screenStateOf } from "@/features/clients/validators/file-screen";
 import { useCodeLabel } from "@/i18n/use-code-label";
 import { pathKey } from "@/lib/compat/revalidate";
@@ -43,10 +37,6 @@ export default function FileFormPage() {
   const form = useQuery({
     queryKey: [...pathKey(fileQueryPath(id)), "form"],
     queryFn: () => getFileFormQuery({ fileId: id }),
-  });
-  const hub = useQuery({
-    queryKey: [...pathKey(fileQueryPath(id)), "hub"],
-    queryFn: () => getFileHubQuery({ fileId: id }),
   });
   // The residents are third-party data: read, and logged, only when the form shows them.
   const showsResidents = form.data?.residents === "ALLOWED";
@@ -108,11 +98,7 @@ export default function FileFormPage() {
           canEditLocked: data.canEditLocked,
         }}
         initial={initial}
-        statusTicks={statusTicks({
-          stage: data.stage,
-          isReturning: hub.data?.isReturning ?? false,
-          clientSanction: "NONE",
-        })}
+        statusTicks={data.statusTicks}
         dossierNumber={data.values.dossierNumber ?? null}
         residents={data.residents}
       />

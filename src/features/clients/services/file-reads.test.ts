@@ -233,6 +233,27 @@ describe("the printed sheet of a file", () => {
     expect(restricted).toMatchObject({ residents: null, residentsRestricted: true });
   });
 
+  it("ticks «متوقف» or «معاقب» while People's sanction on the client is in force", async () => {
+    const { fileId, clientId } = await register("housingContract");
+    await test.rows.insert("Sanction", {
+      subjectKind: "CLIENT",
+      clientId,
+      staffId: null,
+      state: "SUSPENDED",
+      startDate: "2026-10-01" as never,
+      endDate: "2026-10-31" as never,
+    });
+    const sheet = await test.transact((ex, ctx) => openFileSheet(ex, ctx, { fileId }));
+    expect(sheet.values.statusTicks).toEqual(["NEW", "SUSPENDED"]);
+    expect((await test.transact((ex, ctx) => getFileForm(ex, ctx, { fileId }))).statusTicks).toEqual([
+      "NEW",
+      "SUSPENDED",
+    ]);
+
+    test.clock.set("2026-11-02T08:00:00.000Z");
+    expect((await test.transact((ex, ctx) => openFileSheet(ex, ctx, { fileId }))).values.statusTicks).toEqual(["NEW"]);
+  });
+
   it("logs every print as a disclosure", async () => {
     const { fileId } = await register("housingRequest");
     await test.transact((ex, ctx) => recordFilePrint(ex, ctx, { fileId, sheet: "FORM" }));

@@ -65,10 +65,13 @@ export function ResidentsCard({
   control,
   title,
   restricted,
+  disabled = false,
 }: {
   control: FormControl;
   title: string;
   restricted: boolean;
+  /** Seen by a reader, or on a closed file: nothing can be changed. */
+  disabled?: boolean;
 }) {
   const t = useTranslations("FileForm.Residents");
   const { fields, append, remove } = useFieldArray({ control, name: "residents" });
@@ -80,68 +83,70 @@ export function ResidentsCard({
         <CardDescription>{restricted ? t("Restricted") : t("Description")}</CardDescription>
       </CardHeader>
       {!restricted && (
-        <CardContent className="space-y-3">
-          {fields.length === 0 ? (
-            <p className="py-4 text-base text-muted-foreground">{t("Empty")}</p>
-          ) : (
-            <div className="space-y-3 overflow-x-auto">
-              <div className={`${COLUMNS} min-w-[42rem] text-sm font-bold text-muted-foreground`}>
-                <span>{t("Number")}</span>
-                <span>{t("Name")}</span>
-                <span>{t("Phone")}</span>
-                <span>{t("RegisteredDate")}</span>
-                <span className="w-11" />
-              </div>
-              {fields.map((line, index) => (
-                <div key={line.id} className={`${COLUMNS} min-w-[42rem]`}>
-                  <Cell
-                    control={control}
-                    path={`residents.${index}.number` as Path}
-                    label={t("Number")}
-                    inputMode="numeric"
-                  />
-                  <Cell control={control} path={`residents.${index}.name` as Path} label={t("Name")} />
-                  <Cell
-                    control={control}
-                    path={`residents.${index}.phone` as Path}
-                    label={t("Phone")}
-                    type="tel"
-                    dir="ltr"
-                    inputMode="tel"
-                  />
-                  <Cell
-                    control={control}
-                    path={`residents.${index}.registeredDate` as Path}
-                    label={t("RegisteredDate")}
-                    type="date"
-                    dir="ltr"
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    aria-label={t("Remove")}
-                    title={t("Remove")}
-                    onClick={() => remove(index)}
-                  >
-                    <Trash2 />
-                  </Button>
+        <CardContent>
+          <fieldset disabled={disabled} className="m-0 min-w-0 space-y-3 border-0 p-0">
+            {fields.length === 0 ? (
+              <p className="py-4 text-base text-muted-foreground">{t("Empty")}</p>
+            ) : (
+              <div className="space-y-3 overflow-x-auto">
+                <div className={`${COLUMNS} min-w-[42rem] text-sm font-bold text-muted-foreground`}>
+                  <span>{t("Number")}</span>
+                  <span>{t("Name")}</span>
+                  <span>{t("Phone")}</span>
+                  <span>{t("RegisteredDate")}</span>
+                  <span className="w-11" />
                 </div>
-              ))}
-            </div>
-          )}
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => {
-              const numbers = fields.map((line) => Number(line.number)).filter((number) => Number.isFinite(number));
-              const next = numbers.length ? Math.max(...numbers) + 1 : 1;
-              append({ number: String(next), name: "", phone: "", registeredDate: "" });
-            }}
-          >
-            <Plus />
-            {t("Add")}
-          </Button>
+                {fields.map((line, index) => (
+                  <div key={line.id} className={`${COLUMNS} min-w-[42rem]`}>
+                    <Cell
+                      control={control}
+                      path={`residents.${index}.number` as Path}
+                      label={t("Number")}
+                      inputMode="numeric"
+                    />
+                    <Cell control={control} path={`residents.${index}.name` as Path} label={t("Name")} />
+                    <Cell
+                      control={control}
+                      path={`residents.${index}.phone` as Path}
+                      label={t("Phone")}
+                      type="tel"
+                      dir="ltr"
+                      inputMode="tel"
+                    />
+                    <Cell
+                      control={control}
+                      path={`residents.${index}.registeredDate` as Path}
+                      label={t("RegisteredDate")}
+                      type="date"
+                      dir="ltr"
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      aria-label={t("Remove")}
+                      title={t("Remove")}
+                      onClick={() => remove(index)}
+                    >
+                      <Trash2 />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                const numbers = fields.map((line) => Number(line.number)).filter((number) => Number.isFinite(number));
+                const next = numbers.length ? Math.max(...numbers) + 1 : 1;
+                append({ number: String(next), name: "", phone: "", registeredDate: "" });
+              }}
+            >
+              <Plus />
+              {t("Add")}
+            </Button>
+          </fieldset>
         </CardContent>
       )}
     </Card>

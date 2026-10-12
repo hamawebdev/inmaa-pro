@@ -13,6 +13,7 @@ import {
 import {
   freeText,
   isTicked,
+  phonePieces,
   optionLabel,
   placeParts,
   sideText,
@@ -490,8 +491,18 @@ function Header({ definition, values }: Drawing) {
       <div style={{ ...lineStyle, height: `${HEADER_LINES_MM[0]}mm` }}>
         <span style={labelStyle}>{number?.raw}</span>
         <FillingBlank>{places.sequence && <Ltr>{places.sequence}</Ltr>}</FillingBlank>
-        <span style={type(16)}>/</span>
-        {places.suffix === null ? <ShortBlank widthMm={9} /> : <Ltr style={type(16)}>{places.suffix}</Ltr>}
+        {places.suffix === null ? (
+          <>
+            <span style={type(16)}>/</span>
+            <ShortBlank widthMm={9} />
+          </>
+        ) : (
+          // His file joins the slash and the suffix: «/BLC».
+          <span style={{ display: "inline-flex", ...type(16) }}>
+            <span>/</span>
+            <Ltr>{places.suffix}</Ltr>
+          </span>
+        )}
       </div>
       <div style={{ ...lineStyle, height: `${HEADER_LINES_MM[1]}mm` }}>
         <span style={labelStyle}>{date?.raw}</span>
@@ -544,21 +555,15 @@ function ResidentsTable({
             <DottedBlank fill>{line?.name}</DottedBlank>
           </SheetCell>
           <SheetCell style={cell}>
-            {/* His dotted pairs of digits; a typed phone is written across them. */}
-            {line?.phone ? (
-              <DottedBlank fill>
-                <Ltr>{line.phone}</Ltr>
-              </DottedBlank>
-            ) : (
-              <span style={{ display: "inline-flex", alignItems: "baseline", gap: "1mm" }}>
-                {Array.from({ length: phoneParts }, (_, pair) => (
-                  <span key={pair} style={{ display: "inline-flex", alignItems: "baseline", gap: "1mm" }}>
-                    {pair > 0 && <span>/</span>}
-                    <ShortBlank widthMm={8} />
-                  </span>
-                ))}
-              </span>
-            )}
+            {/* His dotted pairs of digits, read left to right; a typed phone is written in them. */}
+            <span dir="ltr" style={{ display: "inline-flex", direction: "ltr", alignItems: "baseline", gap: "1mm" }}>
+              {phonePieces(line?.phone, phoneParts).map((piece, pair) => (
+                <span key={pair} style={{ display: "inline-flex", alignItems: "baseline", gap: "1mm" }}>
+                  {pair > 0 && <span>/</span>}
+                  <ShortBlank widthMm={8}>{piece}</ShortBlank>
+                </span>
+              ))}
+            </span>
           </SheetCell>
           <SheetCell style={cell}>
             <DateBlanks iso={line?.registeredDate} widthsMm={[8, 8, 12]} />

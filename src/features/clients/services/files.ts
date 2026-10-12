@@ -46,9 +46,11 @@ import {
 } from "../validators/file-values";
 import {
   CLIENT_TYPE_OF,
+  CLOSE_REASONS,
   END_KINDS,
   FILE_STAGES,
   FORM_KIND_OF,
+  type CloseReason,
   type EndKind,
   type FileStage,
   type FormKind,
@@ -918,8 +920,197 @@ export async function moveFileStage(
   return { fileId: file.id, stage: to };
 }
 
+// ── Closing a file ───────────────────────────────────────────────────────────
+
+export interface CloseFileInput {
+  fileId: string;
+  /** Why (CLOSE_REASON): a refused quote, a finished job, no answer, … */
+  reason: CloseReason;
+  note?: string;
+  /** The day a finished job really ended; defaults to today. */
+  endedDate?: string;
+}
+
+/**
+ * Closes a file without a stage of its own (scope A5; CONTRACTS.md:
+ * `closeFile(fileId, { reason, note, endedDate })`).
+ *
+ *  - A file not yet signed (a refused quote, a request that went unanswered)
+ *    keeps the stage it stopped at, and nobody is told.
+ *  - A signed on-demand job whose last visit is done: Operations calls this
+ *    with JOB_DONE. The file reaches «انتهاء التعاقد» with its ending day and
+ *    the kind JOB_DONE, and `file.ended` tells Operations and Money. A second
+ *    call changes nothing, so a returned order typed in twice cannot fail.
+ *  - A signed contract that ends for another reason is ended from its stage
+ *    (`moveFileStage` to «انتهاء التعاقد» with the kind of ending), not closed here.
+ *
+ * Closing a finished job is the consequence of a returned order, and is done
+ * as whoever typed the order in; any other closing is the office's own act
+ * and needs the right to write the requests.
+ */
+export async function closeFile(
+  ex: Executor,
+  ctx: ServiceContext,
+  input: CloseFileInput,
+): Promise<{ fileId: string; closed: boolean }> {
+  if (!(CLOSE_REASONS as readonly string[]).includes(input.reason)) {
+    throw new Error(`clients: unknown close reason ${input.reason}`);
+  }
+  const jobDone = input.reason === "JOB_DONE";
+  if (!jobDone) requireSection(ctx, "REQUESTS", "WRITE");
+  const record = await loadFileRecord(ex, input.fileId);
+  if (!record) throw new ServiceError("This file does not exist.");
+  const { file } = record;
+  if (file.closedAt !== null) {
+    if (jobDone) return { fileId: file.id, closed: false };
+    throw new ServiceError("This file is closed and can no longer be changed.");
+  }
+
+  const note = textOrNull(input.note);
+  const from = file.stage as FileStage;
+  const set: Updateable<DB["File"]> = {
+    closedAt: ctx.now,
+    closeReason: input.reason,
+    closeNote: note,
+    updatedAt: ctx.now,
+    updatedByUserId: ctx.userId,
+  };
+  const changes: Record<string, readonly [unknown, unknown]> = {
+    closedAt: [null, ctx.now],
+    closeReason: [null, input.reason],
+  };
+
+  let ended: { endKind: EndKind; endedDate: LocalDate } | null = null;
+  if (from === "CONTRACTED") {
+    if (!jobDone) throw new ServiceError("A signed file is ended from its stage, with the kind of ending.");
+    const endedDate = (input.endedDate ?? ctx.today) as LocalDate;
+    if (!isDate(endedDate)) throw new ServiceError("Enter a valid date.");
+    ended = { endKind: "JOB_DONE", endedDate };
+    Object.assign(set, {
+      stage: "CONTRACT_ENDED",
+      stageChangedAt: ctx.now,
+      endedDate,
+      endKind: "JOB_DONE",
+      endNote: note,
+    } satisfies Updateable<DB["File"]>);
+    changes.stage = [from, "CONTRACT_ENDED"];
+  }
+
+  await ex.updateTable("File").set(set).where("id", "=", file.id).execute();
+  if (ended) {
+    await ex
+      .insertInto("FileStageEvent")
+      .values({
+        id: newId(),
+        fileId: file.id,
+        fromStage: from,
+        toStage: "CONTRACT_ENDED",
+        changedAt: ctx.now,
+        changedByUserId: ctx.userId,
+        note,
+        createdAt: ctx.now,
+      })
+      .execute();
+  }
+  await logChange(ex, ctx, {
+    owner: "CLIENTS",
+    action: "STATUS_CHANGE",
+    entity: "File",
+    entityId: file.id,
+    entityLabel: file.number,
+    subject: clientSubject(record.client),
+    changes,
+    context: { formKind: record.kind, closeReason: input.reason, ...(note ? { note } : {}) },
+  });
+
+  if (ended) await emit(ex, ctx, "file.ended", { fileId: file.id, ...ended });
+  return { fileId: file.id, closed: true };
+}
+
+// ── Contracts past their end date ────────────────────────────────────────────
+
+/**
+ * The day after «تاريخ النهاية», a live contract is at «انتهاء التعاقد»
+ * (DESIGN.md section 17, the first of the four endings): `endedDate` is its end
+ * date, `endKind` RENEWED when the contract that renews it is already
+ * «متعاقد», else EXPIRED, and `closedAt` stays empty for Money's list of
+ * contracts to renew. Run by the day-start job as the program; it catches up
+ * on every contract that ended while the program was closed, and a second run
+ * changes nothing.
+ */
+export async function endExpiredContracts(
+  ex: Executor,
+  ctx: ServiceContext,
+  input: { upTo: LocalDate },
+): Promise<{ ended: string[] }> {
+  const expired = await ex
+    .selectFrom("File")
+    .select(["id", "number", "endDate", "clientId", "formKind"])
+    .where("stage", "=", "CONTRACTED")
+    .where("closedAt", "is", null)
+    .where("deletedAt", "is", null)
+    .where("serviceType", "=", "CONTRACT")
+    .where("endDate", "is not", null)
+    .where("endDate", "<", input.upTo)
+    .orderBy("endDate")
+    .orderBy("id")
+    .execute();
+  const ended: string[] = [];
+  for (const file of expired) {
+    const endedDate = file.endDate as LocalDate;
+    const successor = await ex
+      .selectFrom("File")
+      .select("id")
+      .where("renewalOfFileId", "=", file.id)
+      .where("deletedAt", "is", null)
+      .where("stage", "in", ["CONTRACTED", "CONTRACT_ENDED"])
+      .executeTakeFirst();
+    const endKind: EndKind = successor ? "RENEWED" : "EXPIRED";
+    await ex
+      .updateTable("File")
+      .set({
+        stage: "CONTRACT_ENDED",
+        stageChangedAt: ctx.now,
+        endedDate,
+        endKind,
+        updatedAt: ctx.now,
+        updatedByUserId: ctx.userId,
+      })
+      .where("id", "=", file.id)
+      .where("stage", "=", "CONTRACTED")
+      .execute();
+    await ex
+      .insertInto("FileStageEvent")
+      .values({
+        id: newId(),
+        fileId: file.id,
+        fromStage: "CONTRACTED",
+        toStage: "CONTRACT_ENDED",
+        changedAt: ctx.now,
+        changedByUserId: ctx.userId,
+        note: null,
+        createdAt: ctx.now,
+      })
+      .execute();
+    await logChange(ex, ctx, {
+      owner: "CLIENTS",
+      action: "STATUS_CHANGE",
+      entity: "File",
+      entityId: file.id,
+      entityLabel: file.number,
+      subject: { kind: "CLIENT", id: file.clientId },
+      changes: { stage: ["CONTRACTED", "CONTRACT_ENDED"], endKind: [null, endKind], endedDate: [null, endedDate] },
+      context: { formKind: file.formKind, cause: "day-start" },
+    });
+    await emit(ex, ctx, "file.ended", { fileId: file.id, endKind, endedDate });
+    ended.push(file.id);
+  }
+  return { ended };
+}
+
 // ── What the screens call ────────────────────────────────────────────────────
 
 export const registerFileAction = action(registerFile, { revalidate: [...FILES_PATHS] });
 export const saveFileFormAction = action(saveFileForm, { revalidate: [...FILES_PATHS] });
 export const moveFileStageAction = action(moveFileStage, { revalidate: [...FILES_PATHS] });
+export const closeFileAction = action(closeFile, { revalidate: [...FILES_PATHS] });

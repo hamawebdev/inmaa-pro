@@ -4,6 +4,7 @@ import { useTranslations } from "use-intl";
 
 import { SectionScreen } from "@/components/section-screen";
 import { Button } from "@/components/ui/button";
+import { useSectionLevel } from "@/hooks/use-session";
 import { FILES_PATH } from "@/navigation/file-parts";
 
 import { useFilesFilter } from "./_components/files-filter";
@@ -20,6 +21,8 @@ export default function FilesPage() {
   const t = useTranslations("Files");
   const tForms = useTranslations("FileForms");
   const { division, service } = useFilesFilter();
+  // A role that only reads the requests is not offered what its service would refuse.
+  const canWrite = useSectionLevel("REQUESTS") === "WRITE";
   const params = new URLSearchParams({ division });
   if (service !== "ALL") params.set("service", service);
 
@@ -35,12 +38,14 @@ export default function FilesPage() {
               {tForms("EmptyForms")}
             </Link>
           </Button>
-          <Button asChild variant="add">
-            <Link to={`${FILES_PATH}/new?${params.toString()}`}>
-              <Plus />
-              {t("NewFile")}
-            </Link>
-          </Button>
+          {canWrite && (
+            <Button asChild variant="add">
+              <Link to={`${FILES_PATH}/new?${params.toString()}`}>
+                <Plus />
+                {t("NewFile")}
+              </Link>
+            </Button>
+          )}
         </>
       }
     >

@@ -1133,7 +1133,7 @@ export const ORG_REQUEST: FormDefinition = {
       t: "table",
       id: "T1",
       columnsMm: [32.49, 30.0, 7.51, 42.49, 32.51, 47.52],
-      offsetMm: -0.79,
+      offsetMm: -2.7,
       rows: [
         {
           minMm: 1.38,
@@ -1561,7 +1561,7 @@ export const ORG_REQUEST: FormDefinition = {
       t: "table",
       id: "T2",
       columnsMm: [32.6, 17.6, 7.43, 33.06, 6.74, 26.33, 16.4, 16.65, 35.72],
-      offsetMm: -0.79,
+      offsetMm: -2.6,
       rows: [
         {
           minMm: 11.02,

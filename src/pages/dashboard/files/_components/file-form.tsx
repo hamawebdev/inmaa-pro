@@ -17,6 +17,7 @@ import {
   type ParsedFileScreen,
 } from "@/features/clients/validators/file-screen";
 import { FORM_KIND_OF, type FileStatusTick, type FormKind } from "@/features/clients/validators/option-lists";
+import { useSectionLevel } from "@/hooks/use-session";
 import { matchErrorMessage, useErrorMessage } from "@/i18n/errors";
 import { useRouter } from "@/lib/compat/navigation";
 import { fileHubHref } from "@/navigation/file-parts";
@@ -130,8 +131,10 @@ export function FileForm({
   }, [form, stateRef]);
 
   const edit = mode.kind === "edit" ? mode : null;
+  // A role that only reads the requests sees the form, without the save its service would refuse.
+  const readOnly = useSectionLevel("REQUESTS") !== "WRITE";
   const closed = edit?.closed ?? false;
-  const sheetLocked = closed || (edit !== null && edit.locked && !edit.canEditLocked);
+  const sheetLocked = readOnly || closed || (edit !== null && edit.locked && !edit.canEditLocked);
   const cards = screenCardsOf(formKind);
   const contract = FORM_KIND_OF[formKind].serviceType === "CONTRACT";
 
@@ -188,7 +191,13 @@ export function FileForm({
     const title = t(`Cards.${card.titleKey}`);
     if (card.id === "residents") {
       return residents === "NONE" ? null : (
-        <ResidentsCard key={card.id} control={control} title={title} restricted={residents === "RESTRICTED"} />
+        <ResidentsCard
+          key={card.id}
+          control={control}
+          title={title}
+          restricted={residents === "RESTRICTED"}
+          disabled={readOnly || closed}
+        />
       );
     }
     return (
@@ -262,17 +271,21 @@ export function FileForm({
 
       {cards.map(renderCard)}
 
-      <FileOfficeCard control={control} contract={contract} />
-      <SitePlaceCard control={control} complex={formKind === "COMPLEX_CONTRACT"} />
-      <SiteWorkCard control={control} />
+      <fieldset disabled={readOnly || closed} className="m-0 min-w-0 space-y-6 border-0 p-0">
+        <FileOfficeCard control={control} contract={contract} />
+        <SitePlaceCard control={control} complex={formKind === "COMPLEX_CONTRACT"} />
+        <SiteWorkCard control={control} />
+      </fieldset>
 
       <div className="flex flex-col-reverse items-stretch justify-end gap-3 sm:flex-row sm:items-center">
         <Button type="button" variant="outline" onClick={() => router.back()}>
           {t("Actions.Cancel")}
         </Button>
-        <Button type="submit" disabled={busy || formState.isSubmitting || closed}>
-          {busy || formState.isSubmitting ? t("Actions.Saving") : edit ? t("Actions.Save") : t("Actions.Create")}
-        </Button>
+        {!readOnly && (
+          <Button type="submit" disabled={busy || formState.isSubmitting || closed}>
+            {busy || formState.isSubmitting ? t("Actions.Saving") : edit ? t("Actions.Save") : t("Actions.Create")}
+          </Button>
+        )}
       </div>
 
       <ReasonDialog

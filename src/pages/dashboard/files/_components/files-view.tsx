@@ -53,17 +53,19 @@ export function FilesView() {
   const divisionLabel = useCodeLabel("Options.Division");
   const serviceLabel = useCodeLabel("Options.ServiceType");
   const stageLabel = useCodeLabel("Options.FileStage");
-  const { division, service } = useFilesFilter();
+  const { division, service, ids, stage: askedStage } = useFilesFilter();
   const [search, setSearch] = React.useState("");
-  const [stage, setStage] = React.useState<FileStage | "CLOSED" | typeof ALL>(ALL);
+  const [stage, setStage] = React.useState<FileStage | "CLOSED" | typeof ALL>(askedStage ?? ALL);
   const [pagination, setPagination] = React.useState<PaginationState>({ pageIndex: 0, pageSize: 25 });
 
-  const filter = {
-    division,
-    serviceType: service === ALL ? undefined : service,
-    stage: stage === ALL ? undefined : stage,
-    search: search.trim() || undefined,
-  };
+  const filter = ids
+    ? { ids, search: search.trim() || undefined }
+    : {
+        division,
+        serviceType: service === ALL ? undefined : service,
+        stage: stage === ALL ? undefined : stage,
+        search: search.trim() || undefined,
+      };
   const { data } = useQuery({
     queryKey: [...pathKey(FILES_PATH), "list", filter],
     queryFn: () => listFilesQuery(filter),
@@ -188,12 +190,21 @@ export function FilesView() {
 
   return (
     <div className="space-y-5">
-      <div className="flex min-w-0 flex-wrap items-center gap-x-6 gap-y-3">
-        <ScreenTabs section="requests" items={divisionItems} value={division} ariaLabel={t("Divisions")} />
-        {withService && (
-          <ScreenTabs section="requests" items={serviceItems} value={service} ariaLabel={t("ServiceTypes")} />
-        )}
-      </div>
+      {ids ? (
+        <div className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-2">
+          <p className="text-base font-bold">{t("OnlyThese", { count: ids.length })}</p>
+          <Button variant="outline" size="sm" asChild>
+            <Link to={filesHref(division)}>{t("ShowAll")}</Link>
+          </Button>
+        </div>
+      ) : (
+        <div className="flex min-w-0 flex-wrap items-center gap-x-6 gap-y-3">
+          <ScreenTabs section="requests" items={divisionItems} value={division} ariaLabel={t("Divisions")} />
+          {withService && (
+            <ScreenTabs section="requests" items={serviceItems} value={service} ariaLabel={t("ServiceTypes")} />
+          )}
+        </div>
+      )}
 
       <div className="flex min-w-0 flex-wrap items-center gap-3">
         <TableSearch
@@ -206,6 +217,7 @@ export function FilesView() {
           }}
         />
         <Select
+          disabled={ids !== null}
           value={stage}
           onValueChange={(value) => {
             setStage(value as typeof stage);

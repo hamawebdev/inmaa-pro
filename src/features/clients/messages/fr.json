@@ -40,7 +40,9 @@
     "Open": "Ouvrir le dossier",
     "Form": "Formulaire",
     "Empty": "Il n'y a encore aucun dossier dans cette division.",
-    "NoMatch": "Aucun dossier ne correspond à la recherche."
+    "NoMatch": "Aucun dossier ne correspond à la recherche.",
+    "OnlyThese": "{count, plural, one {Le dossier compté par la tuile d'accueil} other {Les # dossiers comptés par la tuile d'accueil}}",
+    "ShowAll": "Tous les dossiers"
   },
   "FileHub": {
     "Title": "Dossier {number}",
@@ -450,6 +452,13 @@
     "AllowedHoursOrder": "Les heures autorisées doivent finir après leur début.",
     "ResidentNameRequired": "Le nom du résident est obligatoire.",
     "ResidentNumberTwice": "Deux résidents ont le même numéro.",
-    "ThreeDecimals": "Une valeur a au plus trois décimales."
+    "ThreeDecimals": "Une valeur a au plus trois décimales.",
+    "SignedFileEndsFromStage": "Un dossier signé se termine depuis son étape, avec le type de fin."
+  },
+  "Alerts": {
+    "QuoteFollowUp": {
+      "Title": "Devis à relancer",
+      "Hint": "Sans réponse depuis {days} jours ou plus : appelez le client"
+    }
   }
 }

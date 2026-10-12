@@ -1010,7 +1010,7 @@ export const HOUSING_REQUEST: FormDefinition = {
       t: "table",
       id: "T1",
       columnsMm: [32.49, 0.11, 15.52, 9.51, 7.37, 25.68, 1.82, 3.76, 13.76, 13.74, 18.75, 1.89, 12.42, 35.72],
-      offsetMm: -0.79,
+      offsetMm: -2.7,
       rows: [
         {
           minMm: 1.38,

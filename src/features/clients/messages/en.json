@@ -40,7 +40,9 @@
     "Open": "Open the file",
     "Form": "Form",
     "Empty": "There are no files in this division yet.",
-    "NoMatch": "No file matches the search."
+    "NoMatch": "No file matches the search.",
+    "OnlyThese": "{count, plural, one {The file the home tile counted} other {The # files the home tile counted}}",
+    "ShowAll": "Every file"
   },
   "FileHub": {
     "Title": "File {number}",
@@ -450,6 +452,13 @@
     "AllowedHoursOrder": "The allowed hours must end after they start.",
     "ResidentNameRequired": "A resident's name is required.",
     "ResidentNumberTwice": "Two residents have the same number.",
-    "ThreeDecimals": "A value has at most three decimals."
+    "ThreeDecimals": "A value has at most three decimals.",
+    "SignedFileEndsFromStage": "A signed file is ended from its stage, with the kind of ending."
+  },
+  "Alerts": {
+    "QuoteFollowUp": {
+      "Title": "Quotes to follow up",
+      "Hint": "No answer for {days} days or more: call the client"
+    }
   }
 }

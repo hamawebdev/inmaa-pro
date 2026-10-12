@@ -1,4 +1,10 @@
-import { DIVISIONS_WITH_REQUESTS, type Division, type ServiceType } from "@/features/clients/validators/option-lists";
+import {
+  DIVISIONS_WITH_REQUESTS,
+  FILE_STAGES,
+  type Division,
+  type FileStage,
+  type ServiceType,
+} from "@/features/clients/validators/option-lists";
 import { useSearchParams } from "@/lib/compat/navigation";
 import { DIVISIONS, SERVICE_TYPES } from "@/lib/options";
 import { FILES_PATH } from "@/navigation/file-parts";
@@ -6,7 +12,8 @@ import { FILES_PATH } from "@/navigation/file-parts";
 /**
  * Which division and which kind of service the list of files shows: both live
  * in the address (`?division=BUILDING&service=CONTRACT`), so the way back from
- * a file lands on the same list.
+ * a file lands on the same list. A home tile opens exactly the files it counted
+ * (`?ids=`) or a stage of the list (`?stage=QUOTE`).
  */
 
 export const ALL = "ALL";
@@ -20,6 +27,11 @@ export function filesHref(division: Division, service: ServiceType | typeof ALL 
 
 export function useFilesFilter() {
   const search = useSearchParams();
+  // A home tile opens exactly the files it counted (`?ids=`), or a stage of the list (`?stage=`).
+  const ids = search.has("ids") ? (search.get("ids") ?? "").split(",").filter(Boolean) : null;
+  const stage = (FILE_STAGES as readonly string[]).includes(search.get("stage") ?? "")
+    ? (search.get("stage") as FileStage)
+    : null;
   const division = (DIVISIONS as readonly string[]).includes(search.get("division") ?? "")
     ? (search.get("division") as Division)
     : "HOUSING";
@@ -28,5 +40,5 @@ export function useFilesFilter() {
     DIVISIONS_WITH_REQUESTS.includes(division) && (SERVICE_TYPES as readonly string[]).includes(requested ?? "")
       ? (requested as ServiceType)
       : ALL;
-  return { division, service } as const;
+  return { division, service, ids, stage } as const;
 }

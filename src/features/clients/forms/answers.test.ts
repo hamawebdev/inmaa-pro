@@ -8,6 +8,7 @@ import {
   freeText,
   isTicked,
   optionCode,
+  phonePieces,
   placeParts,
   wilayaName,
   writtenValue,
@@ -104,5 +105,16 @@ describe("which box is ticked", () => {
     // The second blank line, at the foot of the third column.
     const secondBlank = services.options!.findIndex((option, index) => option.free && ticked[index] === 1);
     expect(freeText(services, secondBlank, values)).toBe("تنظيف السلم");
+  });
+});
+
+describe("a resident's phone in his five dotted pairs", () => {
+  it("writes the digits two by two from the right, a fixed line's first part short", () => {
+    expect(phonePieces("0550 11 22 33", 5)).toEqual(["05", "50", "11", "22", "33"]);
+    expect(phonePieces("032 42 18 90", 5)).toEqual(["0", "32", "42", "18", "90"]);
+    expect(phonePieces(undefined, 5)).toEqual(["", "", "", "", ""]);
+    expect(phonePieces("123", 5)).toEqual(["", "", "", "1", "23"]);
+    // A longer number keeps what is left over in the first part.
+    expect(phonePieces("00213 550 11 22 33", 5)).toEqual(["002135", "50", "11", "22", "33"]);
   });
 });
