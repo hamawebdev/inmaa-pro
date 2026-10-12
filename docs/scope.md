@@ -249,7 +249,7 @@ Done means: one seeded job runs end to end in each of the four divisions and sho
 These came out of the data model. Each has a working default that is a setting or a seed row, so nothing waits for the answers.
 
 1. Is «متوقف» on his client forms the blocking state? In his older forms it meant a client who paused. Default: it blocks.
-2. «رقم التسجيل» and «رقم الملف»: one counter per form kind that never restarts, suffix BLC on the building contract and none on the others; one counter for all clients; workers numbered `n/H` or `n/F`. Does he already have numbers on paper to continue from?
+2. «رقم التسجيل» and «رقم الملف»: one counter per form kind that never restarts, suffix BLC on the building contract and none on the others (the complexes copy too, so its numbers never look like a building contract's); one counter for all clients; workers numbered `n/H` or `n/F`. Which suffixes does he want for the other forms and for complexes? Does he already have numbers on paper to continue from?
 3. «طريقة السداد»: can several be ticked? Default: yes on the file, one chosen on each invoice.
 4. Stamp duty on cash: on the whole tax-included amount from 300 DA, or by bands? Default: the whole amount.
 5. VAT or IFU, and when he quotes «المبلغ إجمالي» under VAT, is tax included? Default: asked at first run; read as tax included. Does he have a NIN to print?
