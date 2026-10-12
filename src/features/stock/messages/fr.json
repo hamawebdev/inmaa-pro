@@ -92,5 +92,15 @@
     "PieceNotInStore": "Cette pièce n'est pas au magasin.",
     "VisitNotOfFile": "Cette visite ne fait pas partie des visites de ce dossier.",
     "CountAllLines": "Saisissez la quantité comptée de chaque ligne avant de clôturer."
+  },
+  "Alerts": {
+    "StockLow": {
+      "Title": "Stock au seuil minimum",
+      "Hint": "Une demande d'achat est nécessaire"
+    },
+    "MaintenanceDue": {
+      "Title": "Maintenance à faire",
+      "Hint": "Dans les {days} jours, ou signalée"
+    }
   }
 }

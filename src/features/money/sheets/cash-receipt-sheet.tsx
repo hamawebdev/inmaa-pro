@@ -1,5 +1,5 @@
 import { LETTERHEAD } from "@/assets/letterhead/placement";
-import { DottedBlank, PrintSheet, SheetCell, SheetRow, SheetTable } from "@/components/print";
+import { DottedBlank, PageBreak, PrintSheet, SheetCell, SheetRow, SheetTable } from "@/components/print";
 
 import type { Centimes } from "../rules/centimes";
 import type { IsoDate } from "../rules/dates";
@@ -259,10 +259,10 @@ function ReceiptCopy({ receipt, copy }: { receipt: CashReceiptData; copy: string
   );
 }
 
-export function CashReceiptSheet({ receipt }: { receipt: CashReceiptData }) {
+/** The receipt's two copies, the client's above the centre's, with the line to cut along between them. */
+function ReceiptPair({ receipt }: { receipt: CashReceiptData }) {
   return (
-    // No page letterhead: each copy carries its own. Side margins as his client forms.
-    <PrintSheet margins={{ top: 7, right: 10, bottom: 6, left: 12.7 }}>
+    <>
       <ReceiptCopy receipt={receipt} copy={COPIES[0]} />
       <div style={{ borderTop: "0.75pt dashed #000", margin: "3mm 0", position: "relative" }}>
         <span
@@ -279,6 +279,29 @@ export function CashReceiptSheet({ receipt }: { receipt: CashReceiptData }) {
         </span>
       </div>
       <ReceiptCopy receipt={receipt} copy={COPIES[1]} />
+    </>
+  );
+}
+
+/** No page letterhead: each copy carries its own. Side margins as his client forms. */
+const RECEIPT_MARGINS = { top: 7, right: 10, bottom: 6, left: 12.7 };
+
+export function CashReceiptSheet({ receipt }: { receipt: CashReceiptData }) {
+  return (
+    <PrintSheet margins={RECEIPT_MARGINS}>
+      <ReceiptPair receipt={receipt} />
+    </PrintSheet>
+  );
+}
+
+/** A block of numbered blank receipts for a collector: one A4 page per receipt, both copies on it. */
+export function CashReceiptBatchSheet({ receipts }: { receipts: readonly CashReceiptData[] }) {
+  return (
+    <PrintSheet margins={RECEIPT_MARGINS}>
+      {receipts.flatMap((receipt, index) => [
+        index > 0 ? <PageBreak key={`break-${receipt.number}`} /> : null,
+        <ReceiptPair key={receipt.number} receipt={receipt} />,
+      ])}
     </PrintSheet>
   );
 }

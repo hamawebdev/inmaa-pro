@@ -1,33 +1,38 @@
-import { useMemo } from "react";
-
+import { useQuery } from "@tanstack/react-query";
 import { useTranslations } from "use-intl";
 
 import { SectionScreen } from "@/components/section-screen";
 import { centreToday } from "@/features/money/components/centre-today";
-import { SampleNotice } from "@/features/money/components/sample-notice";
-import { sampleIncome, SAMPLE_TAX } from "@/features/money/samples/income";
+import { ScreenSkeleton } from "@/features/money/components/screen-skeleton";
+import { readPeriod } from "@/features/money/rules/period";
+import { INCOME_PATH } from "@/features/money/services/paths";
+import { getIncomeDataQuery } from "@/features/money/services/reports";
+import { pathKey } from "@/lib/compat/revalidate";
+import { useSearchParams } from "@/lib/compat/navigation";
+import { AGGREGATE_QUERY_OPTIONS } from "@/lib/query-client";
+import { localDate } from "@/lib/units";
 
 import { IncomeView } from "./_components/income-view";
 
 /**
  * Section «المصاريف», tab «المداخيل حسب القسم».
  *
- * Closest academy screen: finance analytics (`/dashboard/finance`). Until the
- * services that read payments exist, the screen is drawn from sample rows and
- * says so.
+ * Closest academy screen: finance analytics (`/dashboard/finance`): the period
+ * in the address, its figures read once for that period.
  */
 export default function IncomePage() {
   const tNav = useTranslations("Nav");
-  const tCommon = useTranslations("MoneyCommon");
   const today = centreToday();
-  const sample = useMemo(() => sampleIncome(today), [today]);
+  const period = readPeriod(useSearchParams(), today);
+  const { data } = useQuery({
+    ...AGGREGATE_QUERY_OPTIONS,
+    queryKey: [...pathKey(INCOME_PATH), period.from, period.to],
+    queryFn: () => getIncomeDataQuery({ from: localDate(period.from), to: localDate(period.to) }),
+  });
 
   return (
     <SectionScreen section="money" title={tNav("MoneyHeading")}>
-      <div className="space-y-6">
-        <SampleNotice title={tCommon("SampleTitle")} description={tCommon("SampleDescription")} />
-        <IncomeView {...sample} taxMode={SAMPLE_TAX.taxMode} vatRate={SAMPLE_TAX.vatRate} today={today} />
-      </div>
+      {data ? <IncomeView {...data} today={today} /> : <ScreenSkeleton />}
     </SectionScreen>
   );
 }

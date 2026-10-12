@@ -1,6 +1,13 @@
 import type { CodeLabelCase } from "@/i18n/code-labels";
 
-import { STOCK_CATEGORIES, STOCK_KINDS, UNITS } from "./validators/option-codes";
+import {
+  HANDOUT_PURPOSES,
+  ITEM_CONDITIONS,
+  STOCK_CATEGORIES,
+  STOCK_KINDS,
+  STOCK_TRACKINGS,
+  UNITS,
+} from "./validators/option-codes";
 
 /**
  * The stored codes this folder shows through `useCodeLabel`, each paired with
@@ -14,4 +21,8 @@ export const codeLabelCases: readonly CodeLabelCase[] = [
   ["StockCodes.Kinds", STOCK_KINDS],
   ["StockCodes.Units", UNITS],
   ["StockCodes.Categories", STOCK_CATEGORIES],
+  ["StockCodes.Trackings", STOCK_TRACKINGS],
+  // «الحالة عند الاستلام» of a hand-out line.
+  ["StockCodes.Conditions", ITEM_CONDITIONS],
+  ["StockCodes.Purposes", HANDOUT_PURPOSES],
 ];

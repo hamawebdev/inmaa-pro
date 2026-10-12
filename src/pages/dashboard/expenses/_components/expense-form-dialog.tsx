@@ -21,6 +21,7 @@ import { Field, FieldContent, FieldDescription, FieldError, FieldLabel } from "@
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { useDivisionLabel, usePaymentMethodLabel } from "@/features/money/components/labels";
 import type { IsoDate } from "@/features/money/rules/dates";
 import { expenseFormSchema, type ExpenseFormValues } from "@/features/money/validators/expense";
 import {
@@ -32,11 +33,13 @@ import {
   type ExpenseDivision,
   type PaymentMethod,
 } from "@/features/money/validators/option-codes";
+import { createExpenseAction, updateExpenseAction } from "@/features/money/services/expenses";
 import type { ExpenseView } from "@/features/money/views";
 import { useErrorMessage } from "@/i18n/errors";
 import { useCodeLabel } from "@/i18n/use-code-label";
-import { dinarsToMoney, localDate, moneyToDinars } from "@/lib/units";
+import { moneyToDinars } from "@/lib/units";
 import { RECEIPT_UPLOAD_RULE } from "@/lib/uploads";
+import { saveManagedUpload } from "@/server/uploads";
 
 /** What the dialog opens with: the expense being edited, or a blank one dated today. */
 function startingValues(today: IsoDate, expense?: ExpenseView, division?: ExpenseDivision): Partial<ExpenseFormValues> {
@@ -67,7 +70,8 @@ interface DialogProps {
   expense?: ExpenseView;
   /** The division a new expense starts on: the tab being looked at. */
   defaultDivision?: ExpenseDivision;
-  onSave: (expense: ExpenseView) => void;
+  /** After a save: the screen refreshes by itself (the action names its path); this is for anything else. */
+  onSaved?: () => void;
 }
 
 /**
@@ -84,8 +88,8 @@ interface DialogProps {
  * blank on the tab being looked at. `open` and `onOpenChange` let the page
  * open it from the address (the Ctrl+K "new expense" entry).
  *
- * Until the services exist, saving hands the row to the screen, which shows
- * it, and says that nothing was kept.
+ * Saving stores the receipt first (`saveManagedUpload`), then the expense
+ * (services/expenses.ts); the action refreshes the screen.
  */
 export function ExpenseFormDialog({
   trigger,
@@ -111,13 +115,13 @@ export function ExpenseFormDialog({
   );
 }
 
-function ExpenseForm({ today, expense, defaultDivision, onSave, onDone }: DialogProps & { onDone: () => void }) {
+function ExpenseForm({ today, expense, defaultDivision, onSaved, onDone }: DialogProps & { onDone: () => void }) {
   const t = useTranslations("ExpenseForm");
   const tCommon = useTranslations("Common");
   const errorMessage = useErrorMessage();
-  const divisionLabel = useCodeLabel("MoneyCodes.Divisions");
+  const divisionLabel = useDivisionLabel();
   const categoryLabel = useCodeLabel("MoneyCodes.ExpenseCategories");
-  const methodLabel = useCodeLabel("MoneyCodes.PaymentMethods");
+  const methodLabel = usePaymentMethodLabel();
   const [receipt, setReceipt] = React.useState(createEmptyUploadSelection());
   const schema = React.useMemo(() => expenseFormSchema(today), [today]);
 
@@ -127,25 +131,38 @@ function ExpenseForm({ today, expense, defaultDivision, onSave, onDone }: Dialog
   });
   const { control } = form;
 
-  const submit = form.handleSubmit((values) => {
+  const [saving, setSaving] = React.useState(false);
+  const submit = form.handleSubmit(async (values) => {
     if (receipt.error) return;
-    onSave({
-      id: expense?.id ?? `sample-${crypto.randomUUID()}`,
-      date: localDate(values.date),
-      division: values.division,
-      category: values.category,
-      amount: dinarsToMoney(values.amount),
-      method: values.method,
-      paidTo: values.paidTo ?? null,
-      spentByName: values.spentByName ?? null,
-      recurrence: values.recurrence,
-      source: "MANUAL",
-      // A picked file is not kept: there is nowhere to keep it yet.
-      receiptUrl: receipt.removeExisting ? null : (expense?.receiptUrl ?? null),
-      note: values.note ?? null,
-    });
-    toast.success(t("ShownNotSaved"));
-    onDone();
+    setSaving(true);
+    try {
+      // The file is written first: bytes cannot be rolled back, the record then points at them.
+      let receiptUrl: string | null | undefined;
+      if (receipt.file) {
+        receiptUrl = await saveManagedUpload({
+          entity: "Expense",
+          field: "receiptUrl",
+          file: receipt.file,
+          rule: RECEIPT_UPLOAD_RULE,
+        });
+      } else if (receipt.removeExisting) {
+        receiptUrl = null;
+      }
+      const result = expense
+        ? await updateExpenseAction({ id: expense.id, values, receiptUrl })
+        : await createExpenseAction({ values, receiptUrl });
+      if (!result.success) {
+        toast.error(errorMessage(result.error, t("SaveFailed")));
+        return;
+      }
+      toast.success(expense ? t("Updated") : t("Recorded"));
+      onSaved?.();
+      onDone();
+    } catch (error) {
+      toast.error(errorMessage(error instanceof Error ? error.message : null, t("SaveFailed")));
+    } finally {
+      setSaving(false);
+    }
   });
 
   return (
@@ -356,7 +373,7 @@ function ExpenseForm({ today, expense, defaultDivision, onSave, onDone }: Dialog
         <Button type="button" variant="outline" onClick={onDone}>
           {tCommon("Cancel")}
         </Button>
-        <Button type="submit" form="expense-form" variant="success">
+        <Button type="submit" form="expense-form" variant="success" disabled={saving}>
           {expense ? t("SaveChanges") : t("Record")}
         </Button>
       </DialogFooter>

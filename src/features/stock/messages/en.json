@@ -92,5 +92,15 @@
     "PieceNotInStore": "This piece is not in the store.",
     "VisitNotOfFile": "This visit is not one of this file's visits.",
     "CountAllLines": "Type what was counted for every line before closing."
+  },
+  "Alerts": {
+    "StockLow": {
+      "Title": "Stock at its minimum",
+      "Hint": "A purchase request is needed"
+    },
+    "MaintenanceDue": {
+      "Title": "Maintenance due",
+      "Hint": "Within {days} days, or reported in need of it"
+    }
   }
 }

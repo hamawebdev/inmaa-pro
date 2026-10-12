@@ -1,6 +1,7 @@
 import { useLocale, useTranslations } from "use-intl";
 
 import { SectionHeading } from "@/components/screen";
+import { useDivisionLabel } from "@/features/money/components/labels";
 import { ALL, useDivisionParam } from "@/features/money/components/division-param";
 import { DivisionTabs } from "@/features/money/components/division-tabs";
 import { DivisionTiles } from "@/features/money/components/division-tiles";
@@ -34,18 +35,10 @@ function newestFirst(a: ExpenseView, b: ExpenseView): number {
  * table) for the shape, and expenses (expenses/_components/) for the list and
  * its dialog. An expense counts on the day it was paid, as in the academy.
  */
-export function ExpensesView({
-  expenses,
-  today,
-  onSave,
-}: {
-  expenses: readonly ExpenseView[];
-  today: IsoDate;
-  onSave: (expense: ExpenseView) => void;
-}) {
+export function ExpensesView({ expenses, today }: { expenses: readonly ExpenseView[]; today: IsoDate }) {
   const t = useTranslations("Expenses");
   const tCommon = useTranslations("MoneyCommon");
-  const divisionLabel = useCodeLabel("MoneyCodes.Divisions");
+  const divisionLabel = useDivisionLabel();
   const categoryLabel = useCodeLabel("MoneyCodes.ExpenseCategories");
   const money = useMoneyText();
   const count = new Intl.NumberFormat(intlLocaleFor(useLocale()));
@@ -138,7 +131,6 @@ export function ExpensesView({
             showDivision={division === ALL}
             today={today}
             defaultDivision={division === ALL ? undefined : division}
-            onSave={onSave}
           />
         </DivisionTabs>
       </section>

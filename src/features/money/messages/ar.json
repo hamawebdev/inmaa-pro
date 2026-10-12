@@ -31,10 +31,6 @@
   },
   "MoneyCodes": {
     "Divisions": {
-      "HOUSING": "المنازل",
-      "ORGANISATION": "المؤسسات",
-      "BUILDING": "العمارات",
-      "COMPLEX": "التجمعات السكنية",
       "COMMON": "عام"
     },
     "ExpenseCategories": {
@@ -52,11 +48,6 @@
       "TAXES": "ضرائب",
       "LOSSES": "خسائر/إلغاءات",
       "OTHER": "أخرى"
-    },
-    "PaymentMethods": {
-      "CASH": "نقدًا",
-      "BANK_TRANSFER": "تحويل بنكي",
-      "POSTAL_TRANSFER": "تحويل بريدي"
     },
     "Recurrences": {
       "NONE": "مرة واحدة",
@@ -186,5 +177,19 @@
     "ExpenseNotFound": "هذا المصروف غير موجود.",
     "ExpenseFromProgram": "هذا المصروف سجّله البرنامج: يُعدَّل من مصدره.",
     "AmountTooLarge": "هذا المبلغ كبير جدًا."
+  },
+  "Alerts": {
+    "ContractEnding": {
+      "Title": "عقود تقترب من نهايتها",
+      "Hint": "خلال {days} يومًا، أو انتهت دون تجديد"
+    },
+    "PaymentDueSoon": {
+      "Title": "استحقاقات يقترب موعدها",
+      "Hint": "تستحق خلال {days} أيام"
+    },
+    "PaymentOverdue": {
+      "Title": "استحقاقات متأخرة",
+      "Hint": "فات موعدها ولم تُسدد"
+    }
   }
 }

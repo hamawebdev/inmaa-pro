@@ -1,25 +1,12 @@
-import { useCallback, useMemo } from "react";
+import { useMemo } from "react";
 
-import { useLocale, useTranslations } from "use-intl";
+import { useLocale } from "use-intl";
 
 import { intlLocaleFor } from "@/i18n/config";
 
-import { formatMoney, type Centimes } from "../rules/centimes";
 
-/**
- * Amounts in centimes as the screens write them: the one money format
- * (`formatMoney`, «195.650,00»), then the currency word of the language
- * («دج», «DA»), in every language, as the academy's finance tiles do.
- * Display only: nothing computed here is stored.
- *
- *     const money = useMoneyText();
- *     money(4_567_500); // «45.675,00 دج»
- */
-export function useMoneyText(): (amount: Centimes) => string {
-  const t = useTranslations("Common");
-  const currency = t("Currency");
-  return useCallback((amount: Centimes) => `${formatMoney(amount)} ${currency}`, [currency]);
-}
+/** Amounts as every screen writes them: «195.650,00 دج». Foundation's, in src/hooks. */
+export { useMoneyText } from "@/hooks/use-money-text";
 
 /** A calendar date as the screens write it: «20 نوفمبر 2026», «20 nov. 2026». */
 export function useDateText() {

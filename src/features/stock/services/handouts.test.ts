@@ -16,6 +16,7 @@ import {
   recordHandOutReturn,
   type CreateHandOutInput,
 } from "./handouts";
+import { createSupplier, recordPurchase } from "./purchases";
 
 let test: TestDatabase;
 beforeEach(async () => {
@@ -381,5 +382,32 @@ describe("what the hand-out form offers", () => {
     // Nothing on the shelf, nothing to hand out.
     expect(choices.items.map((item) => item.name)).toEqual(["دلاء", "منظف أرضيات", "أكياس نفايات"]);
     expect(choices.items.find((item) => item.id === cleaner.id)).toMatchObject({ unit: "LITRE", onHandQty: 30_000 });
+    expect(choices.pieces).toEqual([]);
+  });
+
+  it("names the pieces in the store of a machine followed one by one", async () => {
+    const vacuum = await stockItem(test, {
+      nameAr: "مكنسة كهربائية",
+      kind: "EQUIPMENT",
+      category: "MACHINE",
+      unit: "PIECE",
+      tracking: "UNIT",
+      openingQty: 0,
+    });
+    const { id: supplierId } = await test.transact((ex, ctx) => createSupplier(ex, ctx, { name: "مؤسسة الصفاء" }));
+    await test.transact((ex, ctx) =>
+      recordPurchase(ex, ctx, {
+        date: "2026-10-12",
+        supplierId,
+        division: "COMMON",
+        method: "CASH",
+        lines: [{ itemId: vacuum.id, qty: 2, unitPrice: 2_500_000 }],
+      }),
+    );
+    const choices = await test.transact((ex, ctx) => getHandOutChoices(ex, ctx));
+    expect(choices.pieces).toEqual([
+      { id: expect.any(String), itemId: vacuum.id, number: expect.any(String), condition: "GOOD" },
+      { id: expect.any(String), itemId: vacuum.id, number: expect.any(String), condition: "GOOD" },
+    ]);
   });
 });

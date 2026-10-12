@@ -31,10 +31,6 @@
   },
   "MoneyCodes": {
     "Divisions": {
-      "HOUSING": "Homes",
-      "ORGANISATION": "Organisations",
-      "BUILDING": "Buildings",
-      "COMPLEX": "Residential complexes",
       "COMMON": "Common"
     },
     "ExpenseCategories": {
@@ -52,11 +48,6 @@
       "TAXES": "Taxes",
       "LOSSES": "Losses/cancellations",
       "OTHER": "Other"
-    },
-    "PaymentMethods": {
-      "CASH": "Cash",
-      "BANK_TRANSFER": "Bank transfer",
-      "POSTAL_TRANSFER": "Postal transfer"
     },
     "Recurrences": {
       "NONE": "Once",
@@ -186,5 +177,19 @@
     "ExpenseNotFound": "This expense does not exist.",
     "ExpenseFromProgram": "This expense was written by the program: it is changed where it came from.",
     "AmountTooLarge": "This amount is too large."
+  },
+  "Alerts": {
+    "ContractEnding": {
+      "Title": "Contracts ending",
+      "Hint": "Within {days} days, or ended without a renewal"
+    },
+    "PaymentDueSoon": {
+      "Title": "Payments due soon",
+      "Hint": "Due within {days} days"
+    },
+    "PaymentOverdue": {
+      "Title": "Overdue payments",
+      "Hint": "Past their date and not paid"
+    }
   }
 }

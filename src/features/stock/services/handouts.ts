@@ -802,6 +802,8 @@ export interface HandOutChoices {
   workers: { id: string; number: string; name: string }[];
   /** Items the store holds at least one of. */
   items: { id: string; name: string; kind: StockKind; unit: Unit; tracking: string; onHandQty: number }[];
+  /** The pieces in the store of the items followed one by one: which one goes out is named. */
+  pieces: { id: string; itemId: string; number: string; condition: ItemCondition }[];
 }
 
 export async function getHandOutChoices(ex: Executor, ctx: ServiceContext): Promise<HandOutChoices> {
@@ -833,6 +835,18 @@ export async function getHandOutChoices(ex: Executor, ctx: ServiceContext): Prom
     .orderBy("createdAt")
     .orderBy("code")
     .execute();
+  const followed = items.filter((item) => item.tracking === "UNIT").map((item) => item.id);
+  const pieces =
+    followed.length === 0
+      ? []
+      : await ex
+          .selectFrom("EquipmentUnit")
+          .select(["id", "itemId", "number", "condition"])
+          .where("locationKind", "=", "STORE")
+          .where("retiredAt", "is", null)
+          .where("itemId", "in", followed)
+          .orderBy("numberSeq")
+          .execute();
   return {
     files: files.map((file) => ({
       id: file.id,
@@ -853,6 +867,12 @@ export async function getHandOutChoices(ex: Executor, ctx: ServiceContext): Prom
       unit: oneOf(UNITS, item.unit, "unit"),
       tracking: item.tracking,
       onHandQty: item.onHandQty,
+    })),
+    pieces: pieces.map((piece) => ({
+      id: piece.id,
+      itemId: piece.itemId,
+      number: piece.number,
+      condition: oneOf(ITEM_CONDITIONS, piece.condition, "condition"),
     })),
   };
 }

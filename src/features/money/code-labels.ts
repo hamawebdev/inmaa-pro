@@ -1,12 +1,7 @@
 import type { CodeLabelCase } from "@/i18n/code-labels";
 
-import {
-  EXPENSE_CATEGORIES,
-  EXPENSE_DIVISIONS,
-  EXPENSE_SOURCES,
-  PAYMENT_METHODS,
-  RECURRENCES,
-} from "./validators/option-codes";
+import { DUE_READINESS } from "./services/invoices";
+import { DUE_STATES, EXPENSE_CATEGORIES, EXPENSE_SOURCES, PAYMENT_STATES, RECURRENCES } from "./validators/option-codes";
 
 /**
  * The stored codes this folder shows through `useCodeLabel`, each paired with
@@ -16,10 +11,13 @@ import {
  * three languages, which is what stops "FULL_DAY" appearing on an Arabic screen.
  */
 export const codeLabelCases: readonly CodeLabelCase[] = [
-  // His four divisions and «عام», the line of the expenses that belong to none.
-  ["MoneyCodes.Divisions", EXPENSE_DIVISIONS],
+  // «عام», the line of the expenses that belong to none of his four divisions (those are `Options.Division`).
+  ["MoneyCodes.Divisions", ["COMMON"]],
   ["MoneyCodes.ExpenseCategories", EXPENSE_CATEGORIES],
-  ["MoneyCodes.PaymentMethods", PAYMENT_METHODS],
   ["MoneyCodes.Recurrences", RECURRENCES],
   ["MoneyCodes.ExpenseSources", EXPENSE_SOURCES],
+  // Derived, never stored, and shown as chips: «حالة الدفع» in his words, a due's state, whether it can be invoiced.
+  ["MoneyCodes.PaymentStates", PAYMENT_STATES],
+  ["MoneyCodes.DueStates", DUE_STATES],
+  ["MoneyCodes.Readiness", DUE_READINESS],
 ];

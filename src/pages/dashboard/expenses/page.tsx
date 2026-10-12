@@ -1,5 +1,6 @@
-import { useCallback, useState } from "react";
+import { useState } from "react";
 
+import { useQuery } from "@tanstack/react-query";
 import { Plus } from "lucide-react";
 import { useTranslations } from "use-intl";
 
@@ -7,11 +8,15 @@ import { SectionScreen } from "@/components/section-screen";
 import { Button } from "@/components/ui/button";
 import { centreToday } from "@/features/money/components/centre-today";
 import { ALL, useDivisionParam } from "@/features/money/components/division-param";
-import { SampleNotice } from "@/features/money/components/sample-notice";
-import { sampleExpenses } from "@/features/money/samples/expenses";
+import { ScreenSkeleton } from "@/features/money/components/screen-skeleton";
+import { readPeriod } from "@/features/money/rules/period";
+import { listExpensesQuery } from "@/features/money/services/expenses";
+import { EXPENSES_PATH } from "@/features/money/services/paths";
 import { EXPENSE_DIVISIONS } from "@/features/money/validators/option-codes";
-import type { ExpenseView } from "@/features/money/views";
+import { pathKey } from "@/lib/compat/revalidate";
 import { useRouter, useSearchParams } from "@/lib/compat/navigation";
+import { AGGREGATE_QUERY_OPTIONS } from "@/lib/query-client";
+import { localDate } from "@/lib/units";
 
 import { ExpenseFormDialog } from "./_components/expense-form-dialog";
 import { ExpensesView } from "./_components/expenses-view";
@@ -24,22 +29,24 @@ import { ExpensesView } from "./_components/expenses-view";
  * for the list and the dialog, whose "add" button sits in the header here, as
  * on the academy's employees list.
  *
- * Until the services that read and write expenses exist, the screen is drawn
- * from sample rows and says so; what the dialog records is shown, not kept.
- *
  * `?new=1` opens the dialog: the Ctrl+K "new expense" entry lands here.
  */
 export default function ExpensesPage() {
   const tNav = useTranslations("Nav");
-  const tCommon = useTranslations("MoneyCommon");
   const t = useTranslations("ExpenseForm");
   const today = centreToday();
-  const division = useDivisionParam(EXPENSE_DIVISIONS);
-  const [rows, setRows] = useState<ExpenseView[]>(() => sampleExpenses(today));
   const params = useSearchParams();
   const router = useRouter();
+  const period = readPeriod(params, today);
+  const division = useDivisionParam(EXPENSE_DIVISIONS);
   const askedNew = params.get("new") === "1";
   const [adding, setAdding] = useState(false);
+
+  const { data: expenses } = useQuery({
+    ...AGGREGATE_QUERY_OPTIONS,
+    queryKey: [...pathKey(EXPENSES_PATH), period.from, period.to],
+    queryFn: () => listExpensesQuery({ from: localDate(period.from), to: localDate(period.to) }),
+  });
 
   function changeAdding(next: boolean) {
     setAdding(next);
@@ -49,14 +56,6 @@ export default function ExpensesPage() {
       router.replace(`?${rest.toString()}`);
     }
   }
-
-  const save = useCallback((expense: ExpenseView) => {
-    setRows((current) =>
-      current.some((row) => row.id === expense.id)
-        ? current.map((row) => (row.id === expense.id ? expense : row))
-        : [expense, ...current],
-    );
-  }, []);
 
   return (
     <SectionScreen
@@ -68,7 +67,6 @@ export default function ExpensesPage() {
           onOpenChange={changeAdding}
           today={today}
           defaultDivision={division === ALL ? undefined : division}
-          onSave={save}
           trigger={
             <Button variant="add">
               <Plus />
@@ -78,10 +76,7 @@ export default function ExpensesPage() {
         />
       }
     >
-      <div className="space-y-6">
-        <SampleNotice title={tCommon("SampleTitle")} description={tCommon("SampleDescription")} />
-        <ExpensesView expenses={rows} today={today} onSave={save} />
-      </div>
+      {expenses ? <ExpensesView expenses={expenses} today={today} /> : <ScreenSkeleton />}
     </SectionScreen>
   );
 }

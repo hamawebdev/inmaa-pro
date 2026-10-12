@@ -794,13 +794,24 @@ export interface InvoiceListRow {
   paymentState: PaymentState | null;
 }
 
+export interface InvoiceListFilter {
+  from?: LocalDate | null;
+  to?: LocalDate | null;
+  fileId?: string | null;
+}
+
 /** The invoices issued, the latest first. `from` and `to` are issue dates, both included. */
 export async function listInvoices(
   ex: Executor,
   ctx: ServiceContext,
-  input: { from?: LocalDate | null; to?: LocalDate | null; fileId?: string | null } = {},
+  input: InvoiceListFilter = {},
 ): Promise<InvoiceListRow[]> {
   requireSection(ctx, "MONEY", "READ");
+  return readInvoiceList(ex, input);
+}
+
+/** The list without the section check, for a reader that checked its own way (a file's part «التسديد»). */
+export async function readInvoiceList(ex: Executor, input: InvoiceListFilter): Promise<InvoiceListRow[]> {
   let rows = ex
     .selectFrom("Invoice")
     .innerJoin("File", "File.id", "Invoice.fileId")

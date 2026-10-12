@@ -7,17 +7,22 @@ import {
   type ColumnDef,
   type PaginationState,
 } from "@tanstack/react-table";
-import { Lock, Pencil, Repeat } from "lucide-react";
+import { Lock, Pencil, Repeat, Trash2 } from "lucide-react";
+import { toast } from "sonner";
 import { useTranslations } from "use-intl";
 
 import { DataTable, TablePager, TableSearch } from "@/components/data-table-shell";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useDivisionLabel, usePaymentMethodLabel } from "@/features/money/components/labels";
 import { useDateText, useMoneyText } from "@/features/money/components/use-money-text";
 import type { IsoDate } from "@/features/money/rules/dates";
 import { EXPENSE_CATEGORIES, type ExpenseDivision } from "@/features/money/validators/option-codes";
+import { ReasonDialog } from "@/features/money/components/reason-dialog";
+import { deleteExpenseAction } from "@/features/money/services/expenses";
 import type { ExpenseView } from "@/features/money/views";
+import { useErrorMessage } from "@/i18n/errors";
 import { useCodeLabel } from "@/i18n/use-code-label";
 
 import { ExpenseFormDialog } from "./expense-form-dialog";
@@ -41,18 +46,16 @@ export function ExpensesTable({
   showDivision,
   today,
   defaultDivision,
-  onSave,
 }: {
   rows: readonly ExpenseView[];
   showDivision: boolean;
   today: IsoDate;
   defaultDivision?: ExpenseDivision;
-  onSave: (expense: ExpenseView) => void;
 }) {
   const t = useTranslations("Expenses");
   const categoryLabel = useCodeLabel("MoneyCodes.ExpenseCategories");
-  const divisionLabel = useCodeLabel("MoneyCodes.Divisions");
-  const methodLabel = useCodeLabel("MoneyCodes.PaymentMethods");
+  const divisionLabel = useDivisionLabel();
+  const methodLabel = usePaymentMethodLabel();
   const sourceLabel = useCodeLabel("MoneyCodes.ExpenseSources");
   const recurrenceLabel = useCodeLabel("MoneyCodes.Recurrences");
   const money = useMoneyText();
@@ -60,6 +63,22 @@ export function ExpensesTable({
   const [search, setSearch] = React.useState("");
   const [category, setCategory] = React.useState<string>(ALL_CATEGORIES);
   const [pagination, setPagination] = React.useState<PaginationState>({ pageIndex: 0, pageSize: 10 });
+  const [removing, setRemoving] = React.useState<ExpenseView | null>(null);
+  const [busy, setBusy] = React.useState(false);
+  const errorMessage = useErrorMessage();
+
+  async function remove(reason: string) {
+    if (!removing) return;
+    setBusy(true);
+    const result = await deleteExpenseAction({ id: removing.id, reason });
+    setBusy(false);
+    if (!result.success) {
+      toast.error(errorMessage(result.error, t("RemoveFailed")));
+      return;
+    }
+    toast.success(t("Removed"));
+    setRemoving(null);
+  }
 
   const columns = React.useMemo<ColumnDef<ExpenseView>[]>(
     () => [
@@ -127,18 +146,28 @@ export function ExpensesTable({
           <div className="flex flex-wrap items-center justify-end gap-2">
             <ReceiptButton url={row.original.receiptUrl} />
             {row.original.source === "MANUAL" ? (
-              <ExpenseFormDialog
-                today={today}
-                expense={row.original}
-                defaultDivision={defaultDivision}
-                onSave={onSave}
-                trigger={
-                  <Button variant="outline" size="sm">
-                    <Pencil />
-                    {t("Edit")}
-                  </Button>
-                }
-              />
+              <>
+                <ExpenseFormDialog
+                  today={today}
+                  expense={row.original}
+                  defaultDivision={defaultDivision}
+                  trigger={
+                    <Button variant="outline" size="sm">
+                      <Pencil />
+                      {t("Edit")}
+                    </Button>
+                  }
+                />
+                <Button
+                  variant="outline"
+                  size="icon-sm"
+                  aria-label={t("Remove")}
+                  title={t("Remove")}
+                  onClick={() => setRemoving(row.original)}
+                >
+                  <Trash2 />
+                </Button>
+              </>
             ) : (
               <Badge variant="muted" title={t("ChangedAtSource")}>
                 <Lock aria-hidden />
@@ -156,7 +185,6 @@ export function ExpensesTable({
       divisionLabel,
       methodLabel,
       money,
-      onSave,
       recurrenceLabel,
       showDivision,
       sourceLabel,
@@ -174,9 +202,6 @@ export function ExpensesTable({
     });
   }, [category, rows, search]);
 
-  // The rule warns that the React Compiler cannot memoise TanStack Table. This
-  // project does not run the compiler; the table is the academy's own pattern.
-  // eslint-disable-next-line react-hooks/incompatible-library
   const table = useReactTable({
     data: filtered,
     columns,
@@ -223,6 +248,15 @@ export function ExpensesTable({
       </div>
       <DataTable table={table} columnCount={columns.length} emptyMessage={t("NoExpenses")} />
       <TablePager table={table} />
+      <ReasonDialog
+        open={removing !== null}
+        title={t("RemoveTitle")}
+        description={t("RemoveDescription")}
+        confirmLabel={t("Remove")}
+        busy={busy}
+        onConfirm={remove}
+        onCancel={() => setRemoving(null)}
+      />
     </div>
   );
 }

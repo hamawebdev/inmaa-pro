@@ -29,8 +29,8 @@ export const PAYMENT_METHOD_LABEL: Record<PaymentMethod, string> = {
   POSTAL_TRANSFER: "تحويل بريدي",
 };
 
-/** The currency as his forms write it after an amount: «… دج». */
-export const CURRENCY = "دج";
+/** The currency as his forms write it after an amount: «… دج». Foundation's word for paper. */
+export { MONEY_UNIT_AR as CURRENCY } from "@/lib/units";
 
 /** Where his forms are drawn up: «حررت: بأم البواقي، بتاريخ: …». A setting later (`centre.city`). */
 export const DEFAULT_PLACE = "أم البواقي";

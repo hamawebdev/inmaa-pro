@@ -31,10 +31,6 @@
   },
   "MoneyCodes": {
     "Divisions": {
-      "HOUSING": "Logements",
-      "ORGANISATION": "Établissements",
-      "BUILDING": "Immeubles",
-      "COMPLEX": "Ensembles résidentiels",
       "COMMON": "Commun"
     },
     "ExpenseCategories": {
@@ -52,11 +48,6 @@
       "TAXES": "Impôts et taxes",
       "LOSSES": "Pertes/annulations",
       "OTHER": "Autre"
-    },
-    "PaymentMethods": {
-      "CASH": "Espèces",
-      "BANK_TRANSFER": "Virement bancaire",
-      "POSTAL_TRANSFER": "Virement postal"
     },
     "Recurrences": {
       "NONE": "Une fois",
@@ -186,5 +177,19 @@
     "ExpenseNotFound": "Cette dépense n'existe pas.",
     "ExpenseFromProgram": "Cette dépense a été écrite par le programme : elle se modifie à sa source.",
     "AmountTooLarge": "Ce montant est trop élevé."
+  },
+  "Alerts": {
+    "ContractEnding": {
+      "Title": "Contrats arrivant à échéance",
+      "Hint": "Dans les {days} jours, ou terminés sans renouvellement"
+    },
+    "PaymentDueSoon": {
+      "Title": "Échéances proches",
+      "Hint": "À payer dans les {days} jours"
+    },
+    "PaymentOverdue": {
+      "Title": "Paiements en retard",
+      "Hint": "Date passée, non payés"
+    }
   }
 }

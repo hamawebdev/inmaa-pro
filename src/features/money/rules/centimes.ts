@@ -98,19 +98,7 @@ export function shareByWeights(total: Centimes, weights: readonly number[]): Cen
 
 /**
  * An amount as it is written, on screen and on paper, in every language:
- * `45.675,00`. The academy's format (its finance tiles print «195.650,00 دج»):
- * a dot between thousands, a comma before the centimes, always two decimals,
- * no currency word (the screen or the sheet adds «دج» / «DA» beside it).
- *
- * The one money format of the program (coordinator's ruling): nothing writes
- * an amount any other way. Wrap the result in `<Ltr>` where a minus sign could
- * move in Arabic.
+ * `45.675,00`. The program's one money format is Foundation's
+ * (`src/lib/units`); Money's rules and sheets import it from here.
  */
-export function formatMoney(amount: Centimes): string {
-  assertInteger(amount, "amount");
-  const abs = Math.abs(amount);
-  const dinars = Math.floor(abs / CENTIMES_PER_DINAR);
-  const cents = abs % CENTIMES_PER_DINAR;
-  const grouped = String(dinars).replace(/\B(?=(\d{3})+(?!\d))/g, ".");
-  return `${amount < 0 ? "-" : ""}${grouped},${String(cents).padStart(2, "0")}`;
-}
+export { formatMoney } from "@/lib/units";

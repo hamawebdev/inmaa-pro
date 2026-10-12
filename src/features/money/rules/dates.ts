@@ -130,3 +130,10 @@ export function minutesBetween(from: string, to: string): number {
   const end = read(to);
   return end >= start ? end - start : end + 24 * 60 - start;
 }
+
+/** A clock time moved by some minutes, on a 24-hour dial: `addMinutesToTime("09:00", 240)` is `"13:00"`. */
+export function addMinutesToTime(time: string, minutes: number): string {
+  const [hours, mins] = time.split(":").map(Number);
+  const total = (((hours * 60 + mins + minutes) % 1440) + 1440) % 1440;
+  return `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
+}

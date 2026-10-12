@@ -11,9 +11,9 @@ import { useTranslations } from "use-intl";
 
 import { DataTable, TablePager, TableSearch } from "@/components/data-table-shell";
 import { Ltr } from "@/components/ltr";
+import { useDivisionLabel, usePaymentMethodLabel } from "@/features/money/components/labels";
 import { useDateText, useMoneyText } from "@/features/money/components/use-money-text";
 import type { IncomePaymentView } from "@/features/money/views";
-import { useCodeLabel } from "@/i18n/use-code-label";
 
 /**
  * The payments counted as income in the period and division chosen.
@@ -23,8 +23,8 @@ import { useCodeLabel } from "@/i18n/use-code-label";
  */
 export function IncomeTable({ rows, showDivision }: { rows: readonly IncomePaymentView[]; showDivision: boolean }) {
   const t = useTranslations("Income");
-  const divisionLabel = useCodeLabel("MoneyCodes.Divisions");
-  const methodLabel = useCodeLabel("MoneyCodes.PaymentMethods");
+  const divisionLabel = useDivisionLabel();
+  const methodLabel = usePaymentMethodLabel();
   const money = useMoneyText();
   const dates = useDateText();
   const [search, setSearch] = React.useState("");
@@ -107,9 +107,6 @@ export function IncomeTable({ rows, showDivision }: { rows: readonly IncomePayme
     );
   }, [rows, search]);
 
-  // The rule warns that the React Compiler cannot memoise TanStack Table. This
-  // project does not run the compiler; the table is the academy's own pattern.
-  // eslint-disable-next-line react-hooks/incompatible-library
   const table = useReactTable({
     data: filtered,
     columns,

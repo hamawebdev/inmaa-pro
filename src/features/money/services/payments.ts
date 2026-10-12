@@ -371,13 +371,24 @@ export interface PaymentListRow {
   voided: boolean;
 }
 
+export interface PaymentListFilter {
+  from?: LocalDate | null;
+  to?: LocalDate | null;
+  fileId?: string | null;
+}
+
 /** The payments recorded, the latest first. `from` and `to` are the days the money was received, both included. */
 export async function listPayments(
   ex: Executor,
   ctx: ServiceContext,
-  input: { from?: LocalDate | null; to?: LocalDate | null; fileId?: string | null } = {},
+  input: PaymentListFilter = {},
 ): Promise<PaymentListRow[]> {
   requireSection(ctx, "MONEY", "READ");
+  return readPaymentList(ex, input);
+}
+
+/** The list without the section check, for a reader that checked its own way (a file's part «التسديد»). */
+export async function readPaymentList(ex: Executor, input: PaymentListFilter): Promise<PaymentListRow[]> {
   let rows = ex
     .selectFrom("Payment")
     .innerJoin("File", "File.id", "Payment.fileId")
@@ -707,6 +718,90 @@ export async function recordReceiptPrinted(
   return { id: receipt.id };
 }
 
+// ── A block of blank receipts ────────────────────────────────────────────────
+
+export interface Collector {
+  id: string;
+  kind: "EMPLOYEE" | "WORKER";
+  number: string;
+  name: string;
+}
+
+/**
+ * Who may be handed a block of blank receipts: the centre's employees and its
+ * workers on file who have not left (People's rows, read only). His
+ * regulations, article 12, allow a worker to take money only when authorised:
+ * the block is that authorisation, on paper.
+ */
+export async function listCollectors(ex: Executor, ctx: ServiceContext): Promise<Collector[]> {
+  requireCapability(ctx, "payment.record");
+  const rows = await ex
+    .selectFrom("StaffMember")
+    .select(["id", "kind", "number", "firstName", "lastName"])
+    .where("deletedAt", "is", null)
+    .where("kind", "in", ["EMPLOYEE", "WORKER"])
+    .where("engagementStatus", "in", ["ON_TRIAL", "ACCEPTED"])
+    .orderBy("kind")
+    .orderBy("numberSeq")
+    .execute();
+  return rows.map((row) => ({
+    id: row.id,
+    kind: row.kind === "WORKER" ? "WORKER" : "EMPLOYEE",
+    number: row.number,
+    name: `${row.lastName} ${row.firstName}`,
+  }));
+}
+
+export interface ReceiptBatchSheet {
+  batchId: string;
+  firstNumber: string;
+  lastNumber: string;
+  receipts: ReceiptSheet[];
+}
+
+/** The receipts of a block, in their numbers' order, each as its own sheet shows it. */
+export async function getReceiptBatch(
+  ex: Executor,
+  ctx: ServiceContext,
+  input: { batchId: string },
+): Promise<ReceiptBatchSheet> {
+  if (!can(ctx, "payment.record")) requireSection(ctx, "MONEY", "READ");
+  const batch = await ex.selectFrom("ReceiptBatch").select("id").where("id", "=", input.batchId).executeTakeFirst();
+  if (!batch) throw new ServiceError("This receipt does not exist.");
+  const ids = await ex
+    .selectFrom("Receipt")
+    .select("id")
+    .where("batchId", "=", batch.id)
+    .orderBy("numberSeq")
+    .execute();
+  const receipts: ReceiptSheet[] = [];
+  for (const { id } of ids) receipts.push(await getReceiptSheet(ex, ctx, { receiptId: id }));
+  return {
+    batchId: batch.id,
+    firstNumber: receipts[0]?.receipt.number ?? "",
+    lastNumber: receipts.at(-1)?.receipt.number ?? "",
+    receipts,
+  };
+}
+
+/** The block went to paper: each of its receipts is recorded as printed. */
+export async function recordReceiptBatchPrinted(
+  ex: Executor,
+  ctx: ServiceContext,
+  input: { batchId: string },
+): Promise<{ count: number }> {
+  if (!can(ctx, "payment.record")) requireSection(ctx, "MONEY", "READ");
+  const ids = await ex
+    .selectFrom("Receipt")
+    .select("id")
+    .where("batchId", "=", input.batchId)
+    .orderBy("numberSeq")
+    .execute();
+  if (ids.length === 0) throw new ServiceError("This receipt does not exist.");
+  for (const { id } of ids) await recordReceiptPrinted(ex, ctx, { receiptId: id });
+  return { count: ids.length };
+}
+
 // ── What the screens call ────────────────────────────────────────────────────
 
 export const listPaymentsQuery = query(listPayments);
@@ -716,3 +811,6 @@ export const recordPaymentAction = action(recordPayment, { revalidate: [...MONEY
 export const issueReceiptBatchAction = action(issueReceiptBatch, { revalidate: [...MONEY_PATHS] });
 export const voidPaymentAction = action(voidPayment, { revalidate: [...MONEY_PATHS] });
 export const recordReceiptPrintedAction = action(recordReceiptPrinted);
+export const getReceiptBatchQuery = query(getReceiptBatch);
+export const listCollectorsQuery = query((ex: Executor, ctx: ServiceContext) => listCollectors(ex, ctx));
+export const recordReceiptBatchPrintedAction = action(recordReceiptBatchPrinted);

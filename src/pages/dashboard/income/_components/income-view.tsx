@@ -3,6 +3,7 @@ import { useMemo } from "react";
 import { useTranslations } from "use-intl";
 
 import { SectionHeading } from "@/components/screen";
+import { useDivisionLabel } from "@/features/money/components/labels";
 import { ALL, useDivisionParam } from "@/features/money/components/division-param";
 import { DivisionTabs } from "@/features/money/components/division-tabs";
 import { DivisionTiles } from "@/features/money/components/division-tiles";
@@ -24,7 +25,6 @@ import {
 import { bucketTotals, granularityOf, isInPeriod, readPeriod } from "@/features/money/rules/period";
 import { DIVISIONS, isDivision, type Division, type TaxMode } from "@/features/money/validators/option-codes";
 import type { IncomeDueView, IncomeInvoiceView, IncomePaymentView } from "@/features/money/views";
-import { useCodeLabel } from "@/i18n/use-code-label";
 import { useSearchParams } from "@/lib/compat/navigation";
 
 import { IncomeTable } from "./income-table";
@@ -61,7 +61,7 @@ export function IncomeView({
 }) {
   const t = useTranslations("Income");
   const tCommon = useTranslations("MoneyCommon");
-  const divisionLabel = useCodeLabel("MoneyCodes.Divisions");
+  const divisionLabel = useDivisionLabel();
   const money = useMoneyText();
   const search = useSearchParams();
   const period = readPeriod(search, today);
