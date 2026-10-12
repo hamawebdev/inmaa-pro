@@ -74,6 +74,8 @@ export function emptyWorkerValues(today: string): WorkerFormValues {
     canCollectCash: false,
     collectAuthFrom: "",
     collectAuthNote: "",
+    cnasDeclared: false,
+    cnasNumber: "",
   };
 }
 
@@ -167,6 +169,8 @@ export interface StoredWorker {
   canCollectCash: number;
   collectAuthFrom: string | null;
   collectAuthNote: string | null;
+  cnasDeclared: number;
+  cnasNumber: string | null;
 }
 
 export interface StoredDocument {
@@ -249,6 +253,8 @@ export function valuesFromRecord(
     canCollectCash: worker.canCollectCash === 1,
     collectAuthFrom: text(worker.collectAuthFrom),
     collectAuthNote: text(worker.collectAuthNote),
+    cnasDeclared: worker.cnasDeclared === 1,
+    cnasNumber: text(worker.cnasNumber),
   };
 }
 

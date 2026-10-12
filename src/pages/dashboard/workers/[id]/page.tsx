@@ -9,7 +9,7 @@ import { ErrorState } from "@/components/error-state";
 import { Ltr } from "@/components/ltr";
 import { StatusChip } from "@/components/status-chip";
 import { Button } from "@/components/ui/button";
-import { may, todayAtTheCentre } from "@/features/people/components/may";
+import { todayAtTheCentre, useMay } from "@/features/people/components/may";
 import { useReasonDialog } from "@/features/people/components/reason-dialog";
 import { SanctionCard } from "@/features/people/components/sanction-card";
 import { SanctionChip } from "@/features/people/components/sanction-chip";
@@ -60,6 +60,8 @@ export default function WorkerPage() {
     retry: false,
   });
   const back = { href: "/dashboard/workers", label: tNav("WorkersList") };
+  const keepsFiles = useMay("staff.write");
+  const printsFilledForm = useMay("staff.printFilledForm");
 
   if (!file) {
     return (
@@ -117,7 +119,7 @@ export default function WorkerPage() {
       back={back}
       actions={
         <div className="flex flex-wrap gap-3">
-          {may("staff.write") &&
+          {keepsFiles &&
             (file.status === "LEFT" || file.status === "REFUSED" ? (
               <Button type="button" variant="outline" onClick={readmit}>
                 <RotateCcw />
@@ -129,7 +131,7 @@ export default function WorkerPage() {
                 {t("File.Leave")}
               </Button>
             ))}
-          {may("staff.printFilledForm") && (
+          {printsFilledForm && (
             <Button asChild variant="info">
               <Link to={`/dashboard/workers/${id}/print`}>
                 <Printer />

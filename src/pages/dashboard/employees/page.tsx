@@ -5,7 +5,7 @@ import { useTranslations } from "use-intl";
 
 import { SectionScreen } from "@/components/section-screen";
 import { Button } from "@/components/ui/button";
-import { may, mayIn } from "@/features/people/components/may";
+import { useMay, useMayIn } from "@/features/people/components/may";
 import { listEmployeesQuery } from "@/features/people/services/employees";
 import { pathKey } from "@/lib/compat/revalidate";
 
@@ -20,6 +20,9 @@ import { EmployeesTable } from "./_components/employees-table";
 export default function EmployeesPage() {
   const tNav = useTranslations("Nav");
   const t = useTranslations("Employees");
+  const keepsFiles = useMay("staff.write");
+  const writesEmployees = useMayIn("EMPLOYEES", "WRITE");
+  const canRegister = keepsFiles && writesEmployees;
   const { data: employees } = useQuery({
     queryKey: pathKey("/dashboard/employees"),
     queryFn: () => listEmployeesQuery({}),
@@ -30,8 +33,7 @@ export default function EmployeesPage() {
       section="employees"
       title={tNav("EmployeesHeading")}
       actions={
-        may("staff.write") &&
-        mayIn("EMPLOYEES", "WRITE") && (
+        canRegister && (
           <Button asChild variant="add">
             <Link to="/dashboard/employees/new">
               <Plus />

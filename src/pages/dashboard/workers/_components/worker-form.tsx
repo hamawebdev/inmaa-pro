@@ -18,7 +18,7 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { listCommunesQuery, listZonesQuery, PLACES_PATH } from "@/features/core/services/places";
-import { isolate, may } from "@/features/people/components/may";
+import { isolate, useMay } from "@/features/people/components/may";
 import { useSanctionGate } from "@/features/people/components/sanction-gate";
 import { workerFormRowByKey, YES_NO } from "@/features/people/forms/worker-form";
 import { WORKER_SCREEN_CARDS, type WorkerScreenCard } from "@/features/people/forms/worker-screen";
@@ -177,7 +177,7 @@ export function WorkerForm({ mode, defaultValues }: Props) {
   };
 
   // Somebody who reads the section without keeping the files sees the form, and changes nothing.
-  const readOnly = !may("staff.write");
+  const readOnly = !useMay("staff.write");
 
   return (
     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6" noValidate>
@@ -249,7 +249,8 @@ function ScreenCard({
 }) {
   const t = useTranslations("WorkerForm");
   const titleKey = card.heading ?? (card.titledByFirstRow ? card.rows[0] : undefined);
-  const locked = card.restricted !== undefined && !may(RESTRICTED_CAPABILITY[card.restricted]);
+  const holdsIt = useMay(RESTRICTED_CAPABILITY[card.restricted ?? "HEALTH"]);
+  const locked = card.restricted !== undefined && !holdsIt;
   return (
     <Card id={`worker-card-${card.id}`}>
       {titleKey && (
@@ -304,6 +305,7 @@ function RowField({
   const tOptions = useTranslations("Options");
   const locale = useLocale();
   const label = t(`Labels.${rowKey}`);
+  const mayDecide = useMay("hiring.decide");
   const row = workerFormRowByKey(rowKey);
 
   switch (rowKey) {
@@ -436,8 +438,8 @@ function RowField({
           options={HIRING_DECISIONS.map((code) => ({ value: code, label: t(`Decisions.${code}`) }))}
           // The card is titled with this label already.
           hideLabel
-          disabled={!may("hiring.decide")}
-          description={may("hiring.decide") ? undefined : t("Fields.decisionLocked")}
+          disabled={!mayDecide}
+          description={mayDecide ? undefined : t("Fields.decisionLocked")}
         />
       );
     default:
@@ -865,6 +867,7 @@ function OfficeCard({ control, zones }: { control: FormControl; zones: readonly 
   const t = useTranslations("WorkerForm");
   const sex = useWatch({ control, name: "sex" });
   const canCollect = useWatch({ control, name: "canCollectCash" });
+  const declared = useWatch({ control, name: "cnasDeclared" });
   const tOptions = useTranslations("Options");
   const roles = sex === "FEMALE" ? "WorkerRoleFeminine" : "WorkerRole";
   return (
@@ -937,6 +940,31 @@ function OfficeCard({ control, zones }: { control: FormControl; zones: readonly 
             <DateField control={control} name="collectAuthFrom" label={t("Fields.collectAuthFrom")} />
             <TextField control={control} name="collectAuthNote" label={t("Fields.collectAuthNote")} />
           </>
+        )}
+        <Controller
+          control={control}
+          name="cnasDeclared"
+          render={({ field }) => (
+            <div className="flex min-h-[52px] items-center gap-3">
+              <Checkbox
+                id="worker-cnasDeclared"
+                checked={field.value}
+                onCheckedChange={(checked) => field.onChange(checked === true)}
+              />
+              <Label htmlFor="worker-cnasDeclared" className="font-normal">
+                {t("Fields.cnasDeclared")}
+              </Label>
+            </div>
+          )}
+        />
+        {declared && (
+          <TextField
+            control={control}
+            name="cnasNumber"
+            label={t("Fields.cnasNumber")}
+            dir="ltr"
+            inputMode="numeric"
+          />
         )}
       </CardContent>
     </Card>

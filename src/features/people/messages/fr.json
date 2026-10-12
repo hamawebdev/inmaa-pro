@@ -96,7 +96,9 @@
       "collectAuthFrom": "Depuis",
       "collectAuthNote": "Document d'autorisation",
       "decisionLocked": "La direction enregistre elle-même sa décision.",
-      "zoneHint": "Laissée vide : la zone de la commune de résidence."
+      "zoneHint": "Laissée vide : la zone de la commune de résidence.",
+      "cnasDeclared": "Déclaré à la CNAS",
+      "cnasNumber": "Numéro de sécurité sociale"
     },
     "Office": {
       "Title": "Usage administratif",
@@ -186,7 +188,9 @@
       "AllZones": "Toutes les zones",
       "AllRoles": "Toutes les fonctions",
       "Count": "{shown} sur {total} agents",
-      "Empty": "Aucun agent trouvé."
+      "Empty": "Aucun agent trouvé.",
+      "AllDocuments": "Tous les documents",
+      "DocumentsToRenewOnly": "Documents à renouveler"
     },
     "File": {
       "Title": "Dossier de l'agent",
@@ -392,7 +396,9 @@
       "AllPositions": "Tous les postes",
       "AllStatuses": "Tous les états",
       "Count": "{shown} sur {total} employés",
-      "Empty": "Aucun employé trouvé."
+      "Empty": "Aucun employé trouvé.",
+      "AllContracts": "Tous les contrats",
+      "ContractsEnding": "Contrats qui se terminent"
     },
     "Form": {
       "SaveFailed": "Impossible d'enregistrer l'employé.",
@@ -429,6 +435,24 @@
       "NoAccount": "Aucun compte",
       "AccountDescription": "Le compte avec lequel cet employé se connecte. Les comptes se créent et se relient dans les Paramètres.",
       "AccountUser": "Nom d'utilisateur :"
+    }
+  },
+  "Alerts": {
+    "SanctionPending": {
+      "Title": "En attente de votre réponse",
+      "Hint": "Une personne suspendue ou sanctionnée est en cours d'inscription : l'autorisons-nous ?"
+    },
+    "DocumentExpiry": {
+      "Title": "Documents à renouveler",
+      "Hint": "Expirés, ou expirant dans les {days} jours"
+    },
+    "TrialEnding": {
+      "Title": "Fins de période d'essai",
+      "Hint": "L'essai d'un agent se termine dans les {days} jours : à décider"
+    },
+    "StaffContractEnding": {
+      "Title": "Contrats qui se terminent",
+      "Hint": "Le contrat d'un employé se termine dans les {days} jours"
     }
   },
   "Errors": {
@@ -480,6 +504,7 @@
     "PrintReasonRequired": "Écrivez le motif de l'impression de la fiche remplie.",
     "EmployeeSexRequired": "Indiquez s'il s'agit d'un homme ou d'une femme (employé).",
     "JobPositionRequired": "Choisissez le poste occupé.",
-    "ContractEndBeforeStart": "La fin du contrat ne peut pas précéder son début."
+    "ContractEndBeforeStart": "La fin du contrat ne peut pas précéder son début.",
+    "CnasNumberDigits": "Un numéro de sécurité sociale compte de 6 à 20 chiffres."
   }
 }

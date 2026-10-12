@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Field, FieldDescription, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { may } from "@/features/people/components/may";
+import { useMay } from "@/features/people/components/may";
 import { STATUS_TONE } from "@/features/people/components/status-tones";
 import type { DocumentState } from "@/features/people/rules/documents";
 import { setWorkerPhotoAction, setWorkerSignedScanAction } from "@/features/people/services/worker-files";
@@ -45,8 +45,10 @@ export function WorkerAttachmentsCard({ file }: { file: WorkerFile }) {
   const [scanError, setScanError] = React.useState<string>();
   const [busy, setBusy] = React.useState(false);
   const scanInput = React.useRef<HTMLInputElement>(null);
-  const canWrite = may("staff.write");
-  const canScan = may("staff.health.read") || may("staff.hiringScore.read");
+  const canWrite = useMay("staff.write");
+  const readsHealth = useMay("staff.health.read");
+  const readsScore = useMay("staff.hiringScore.read");
+  const canScan = readsHealth || readsScore;
   const subject = { kind: "WORKER" as const, id: file.id, label: `${file.values.lastName} ${file.values.firstName}` };
 
   const report = (result: { success: boolean; error?: string }, done: string) => {

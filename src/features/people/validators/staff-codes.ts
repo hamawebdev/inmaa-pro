@@ -27,6 +27,15 @@ export {
   type WorkerRole,
 } from "@/lib/options";
 
+export {
+  ABSENCE_TYPES,
+  LEAVE_TYPES,
+  PAYMENT_METHODS,
+  type AbsenceType,
+  type LeaveType,
+  type PaymentMethod,
+} from "@/lib/options";
+
 /** A centre employee or a cleaning worker: one table for both (A2). */
 export const STAFF_KINDS = ["WORKER", "EMPLOYEE"] as const;
 export type StaffKind = (typeof STAFF_KINDS)[number];
@@ -158,3 +167,63 @@ export type PayPeriod = (typeof PAY_PERIODS)[number];
 /** How a person is paid (plan question 11). */
 export const PAY_BASES = ["MONTHLY", "DAILY", "HOURLY", "PER_TASK"] as const;
 export type PayBasis = (typeof PAY_BASES)[number];
+
+// ── Hours and pay (features 21 and 38) ──────────────────────────────────────
+
+/** A correction of a person's minutes, by People. */
+export const HOURS_ADJUSTMENT_KINDS = ["TRAINING", "OFFICE_WORK", "CORRECTION", "OTHER"] as const;
+export type HoursAdjustmentKind = (typeof HOURS_ADJUSTMENT_KINDS)[number];
+
+export const PAY_RUN_STATUSES = ["DRAFT", "CLOSED", "VOID"] as const;
+export type PayRunStatus = (typeof PAY_RUN_STATUSES)[number];
+
+/** The lines of a payslip, in the order they print. */
+export const PAYSLIP_ITEM_TYPES = [
+  "BASE",
+  "OVERTIME_50",
+  "REST_DAY_PREMIUM",
+  "LEAVE_PAY",
+  "ALLOWANCE",
+  "BONUS",
+  "ABSENCE",
+  "CNAS",
+  "IRG",
+  "ADVANCE_REPAYMENT",
+  "DEDUCTION",
+  "OTHER",
+] as const;
+export type PayslipItemType = (typeof PAYSLIP_ITEM_TYPES)[number];
+
+export const PAYSLIP_ITEM_SOURCES = ["PAY_ITEM", "DEBT_ENTRY", "HOURS", "MANUAL"] as const;
+export type PayslipItemSource = (typeof PAYSLIP_ITEM_SOURCES)[number];
+
+/** A recurring line of a person's pay. */
+export const PAY_ITEM_TYPES = ["ALLOWANCE", "DEDUCTION"] as const;
+export type PayItemType = (typeof PAY_ITEM_TYPES)[number];
+
+export const PAYOUT_KINDS = ["ADVANCE", "WAGE", "OTHER"] as const;
+export type PayoutKind = (typeof PAYOUT_KINDS)[number];
+
+export const DEBT_DIRECTIONS = ["INCREASE", "DECREASE"] as const;
+export type DebtDirection = (typeof DEBT_DIRECTIONS)[number];
+
+export const DEBT_REASONS = [
+  "ADVANCE",
+  "DAMAGE",
+  "LOSS",
+  "OVERPAYMENT",
+  "REPAID_ON_PAYSLIP",
+  "REPAID_IN_CASH",
+  "WRITTEN_OFF",
+  "REVERSAL",
+  "OTHER",
+] as const;
+export type DebtReason = (typeof DEBT_REASONS)[number];
+
+// ── Centre employees' attendance ────────────────────────────────────────────
+
+export const CHECK_TYPES = ["CHECK_IN", "CHECK_OUT"] as const;
+export type CheckType = (typeof CHECK_TYPES)[number];
+
+export const LEAVE_STATUSES = ["REQUESTED", "APPROVED", "REFUSED", "CANCELLED"] as const;
+export type LeaveStatus = (typeof LEAVE_STATUSES)[number];

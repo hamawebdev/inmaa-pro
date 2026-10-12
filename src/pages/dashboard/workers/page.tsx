@@ -6,7 +6,7 @@ import { useTranslations } from "use-intl";
 import { SectionScreen } from "@/components/section-screen";
 import { Button } from "@/components/ui/button";
 import { listZonesQuery, PLACES_PATH } from "@/features/core/services/places";
-import { may, mayIn } from "@/features/people/components/may";
+import { useMay, useMayIn } from "@/features/people/components/may";
 import { listDecisionsQuery } from "@/features/people/services/sanction-decisions";
 import { SANCTIONS_PATH } from "@/features/people/services/sanctions";
 import { listWorkersQuery } from "@/features/people/services/worker-reads";
@@ -38,6 +38,9 @@ export default function WorkersPage() {
     queryFn: () => listDecisionsQuery({ status: "PENDING" }),
   });
   const pending = waiting?.length ?? 0;
+  const keepsFiles = useMay("staff.write");
+  const writesWorkers = useMayIn("WORKERS", "WRITE");
+  const canRegister = keepsFiles && writesWorkers;
 
   return (
     <SectionScreen
@@ -57,7 +60,7 @@ export default function WorkersPage() {
               {t("BlankForm")}
             </Link>
           </Button>
-          {may("staff.write") && mayIn("WORKERS", "WRITE") && (
+          {canRegister && (
             <Button asChild variant="add">
               <Link to="/dashboard/workers/new">
                 <Plus />

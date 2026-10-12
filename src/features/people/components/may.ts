@@ -1,24 +1,28 @@
 import type { Capability, SectionCode, SectionLevel } from "@/lib/access/catalogue";
-import { can, currentSession, hasSession, sectionLevel } from "@/lib/access/session";
+import { useCan, useSectionLevel } from "@/hooks/use-session";
+import { can, currentSession, hasSession } from "@/lib/access/session";
 import { toLocal } from "@/lib/clock";
 import { programClock } from "@/lib/service/program";
 import type { LocalDate } from "@/lib/units";
 
 /**
- * What the signed-in account holds, for deciding what a screen shows. The
- * services decide what is allowed; this only keeps a screen from offering what
- * they would refuse. Until sign-in exists the manager is signed in at start,
- * and holds everything.
+ * What the signed-in account holds, for deciding what a screen draws: a
+ * button it could only be refused by is left out. The services decide what is
+ * allowed; this only follows them. Both follow sign-in and sign-out.
  */
-export function may(capability: Capability): boolean {
-  return !hasSession() || can(currentSession(), capability);
+export function useMay(capability: Capability): boolean {
+  return useCan(capability);
 }
 
 /** Whether the account reaches a bar section at this level. */
-export function mayIn(section: SectionCode, level: SectionLevel): boolean {
-  if (!hasSession()) return true;
-  const held = sectionLevel(currentSession(), section);
+export function useMayIn(section: SectionCode, level: SectionLevel): boolean {
+  const held = useSectionLevel(section);
   return held !== null && (level === "READ" || held === "WRITE");
+}
+
+/** The same as `useMay`, for an event handler: what the account holds at this moment. */
+export function mayNow(capability: Capability): boolean {
+  return hasSession() && can(currentSession(), capability);
 }
 
 /** A number, a date or a code inside a sentence: kept left to right in Arabic. */

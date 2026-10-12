@@ -161,6 +161,11 @@ export const workerFormSchema = z
     canCollectCash: z.boolean(),
     collectAuthFrom: date,
     collectAuthNote: longText,
+    cnasDeclared: z.boolean(),
+    cnasNumber: z
+      .string()
+      .trim()
+      .refine((value) => value === "" || /^\d{6,20}$/.test(value.replace(/\s/g, "")), "A social security number is 6 to 20 digits."),
   })
   .superRefine((data, ctx) => {
     if (data.healthConditions.includes("NONE") && data.healthConditions.length > 1) {

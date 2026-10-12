@@ -10,7 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Field, FieldLabel } from "@/components/ui/field";
 import { listCommunesQuery, PLACES_PATH } from "@/features/core/services/places";
 import { ChoiceField, DateField, TextField, TickField } from "@/features/people/components/form-fields";
-import { isolate, may } from "@/features/people/components/may";
+import { isolate, useMay } from "@/features/people/components/may";
 import { useSanctionGate } from "@/features/people/components/sanction-gate";
 import { employeeIdentity, registerEmployeeAction, updateEmployeeAction } from "@/features/people/services/employees";
 import { employeeFormSchema, type EmployeeFormValues } from "@/features/people/validators/employee";
@@ -106,7 +106,7 @@ export function EmployeeForm({ mode, defaultValues }: { mode: Mode; defaultValue
   };
 
   // Somebody who reads the section without keeping the files sees the form, and changes nothing.
-  const readOnly = !may("staff.write");
+  const readOnly = !useMay("staff.write");
 
   return (
     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6" noValidate>

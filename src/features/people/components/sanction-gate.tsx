@@ -20,7 +20,7 @@ import { checkSanctionQuery, type CheckSanctionResult, type SanctionFound } from
 import type { SanctionContext, SanctionSubject } from "@/features/people/validators/staff-codes";
 import { useErrorMessage } from "@/i18n/errors";
 
-import { may } from "./may";
+import { mayNow } from "./may";
 import { SanctionFacts } from "./sanction-facts";
 
 /**
@@ -108,7 +108,7 @@ export function useSanctionGate(): [(attempt: GateAttempt) => Promise<GatePassag
   const ask = (attempt: GateAttempt, match: SanctionFound, nameConfirmed: boolean) => {
     setReason("");
     setTried(false);
-    setStage({ kind: may("sanction.answer") ? "ANSWER" : "REQUEST", attempt, match, nameConfirmed });
+    setStage({ kind: mayNow("sanction.answer") ? "ANSWER" : "REQUEST", attempt, match, nameConfirmed });
   };
 
   const pass = async (attempt: GateAttempt): Promise<GatePassage | null> => {

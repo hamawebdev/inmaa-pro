@@ -24,6 +24,8 @@ import { action, query } from "@/lib/service/action";
 import { changedColumns } from "@/lib/service/changes";
 import type { Executor, ServiceContext } from "@/lib/service/context";
 import { ServiceError } from "@/lib/service/errors";
+import { addDays } from "@/lib/clock";
+import { getSetting } from "@/lib/settings";
 import { normaliseName, phoneKeys } from "@/lib/text/normalise";
 import { dinarsToMoney, hoursToMinutes, localDate } from "@/lib/units";
 
@@ -284,6 +286,9 @@ export interface EmployeeListRow {
   email: string | null;
   status: EngagementStatus;
   startDate: string | null;
+  contractEndDate: string | null;
+  /** The contract ends within the lead time of `alerts.staffContractEndLeadDays`, or has ended, while in post. */
+  contractEnding: boolean;
   /** The login account that points at this employee, if any. */
   account: string | null;
   sanction: SanctionStateOf | null;
@@ -315,6 +320,7 @@ export async function listEmployees(
       "e.email",
       "e.engagementStatus",
       "e.startDate",
+      "e.contractEndDate",
       "u.username as account",
     ])
     .where("e.kind", "=", "EMPLOYEE")
@@ -322,7 +328,11 @@ export async function listEmployees(
   if (input.position) rows = rows.where("e.jobPosition", "=", input.position);
   if (input.activeOnly) rows = rows.where("e.engagementStatus", "=", "ACCEPTED");
   const found = await rows.orderBy("e.numberSeq", "desc").execute();
-  const states = await getSanctionStates(ex, ctx, { kind: "EMPLOYEE", ids: found.map((row) => row.id) });
+  const [states, leadDays] = await Promise.all([
+    getSanctionStates(ex, ctx, { kind: "EMPLOYEE", ids: found.map((row) => row.id) }),
+    getSetting(ex, "alerts.staffContractEndLeadDays"),
+  ]);
+  const until = addDays(ctx.today, leadDays);
   return found.map((row) => ({
     id: row.id,
     number: row.number,
@@ -336,6 +346,8 @@ export async function listEmployees(
     email: row.email,
     status: row.engagementStatus as EngagementStatus,
     startDate: row.startDate,
+    contractEndDate: row.contractEndDate,
+    contractEnding: row.engagementStatus !== "LEFT" && row.contractEndDate !== null && row.contractEndDate <= until,
     account: row.account,
     sanction: states[row.id] ?? null,
   }));

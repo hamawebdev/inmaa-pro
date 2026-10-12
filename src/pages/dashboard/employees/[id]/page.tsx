@@ -10,7 +10,7 @@ import { Ltr } from "@/components/ltr";
 import { StatusChip } from "@/components/status-chip";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { may, todayAtTheCentre } from "@/features/people/components/may";
+import { todayAtTheCentre, useMay } from "@/features/people/components/may";
 import { useReasonDialog } from "@/features/people/components/reason-dialog";
 import { SanctionCard } from "@/features/people/components/sanction-card";
 import { SanctionChip } from "@/features/people/components/sanction-chip";
@@ -62,6 +62,7 @@ export default function EmployeePage() {
     retry: false,
   });
   const back = { href: "/dashboard/employees", label: tNav("EmployeesList") };
+  const keepsFiles = useMay("staff.write");
 
   if (!file) {
     return (
@@ -115,7 +116,7 @@ export default function EmployeePage() {
       description={t("File.Description")}
       back={back}
       actions={
-        may("staff.write") &&
+        keepsFiles &&
         (file.status === "LEFT" ? (
           <Button type="button" variant="outline" onClick={readmit}>
             <RotateCcw />

@@ -9,7 +9,7 @@ import {
   useReactTable,
 } from "@tanstack/react-table";
 import { FileText } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { useTranslations } from "use-intl";
 
 import { DataTable, TablePager, TableSearch } from "@/components/data-table-shell";
@@ -33,6 +33,7 @@ import { normaliseName, phoneKey } from "@/lib/text/normalise";
  */
 
 const ALL = "all";
+const ENDING = "ENDING";
 
 export function EmployeesTable({ rows }: { rows: EmployeeListRow[] }) {
   const t = useTranslations("Employees");
@@ -40,6 +41,9 @@ export function EmployeesTable({ rows }: { rows: EmployeeListRow[] }) {
   const [search, setSearch] = React.useState("");
   const [position, setPosition] = React.useState(ALL);
   const [status, setStatus] = React.useState(ALL);
+  // The home screen's tile opens `?contract=ENDING`.
+  const [params] = useSearchParams();
+  const [contract, setContract] = React.useState(params.get("contract") === ENDING ? ENDING : ALL);
   const firstPage = () => setPagination((current) => ({ ...current, pageIndex: 0 }));
 
   const columns = React.useMemo<ColumnDef<EmployeeListRow>[]>(
@@ -112,6 +116,7 @@ export function EmployeesTable({ rows }: { rows: EmployeeListRow[] }) {
       if (position !== ALL && employee.jobPosition !== position) return false;
       if (status === "IN_POST" && employee.status === "LEFT") return false;
       if (status === "LEFT" && employee.status !== "LEFT") return false;
+      if (contract === ENDING && !employee.contractEnding) return false;
       if (!words && !digits) return true;
       const name = normaliseName(`${employee.lastName} ${employee.firstName} ${employee.fullNameLatin ?? ""}`);
       return (
@@ -119,7 +124,7 @@ export function EmployeesTable({ rows }: { rows: EmployeeListRow[] }) {
         (digits !== "" && (employee.phone.includes(digits) || String(employee.numberSeq) === digits))
       );
     });
-  }, [rows, search, position, status]);
+  }, [rows, search, position, status, contract]);
 
   const table = useReactTable({
     data: filtered,
@@ -176,6 +181,21 @@ export function EmployeesTable({ rows }: { rows: EmployeeListRow[] }) {
             <SelectItem value={ALL}>{t("Table.AllStatuses")}</SelectItem>
             <SelectItem value="IN_POST">{t("Statuses.IN_POST")}</SelectItem>
             <SelectItem value="LEFT">{t("Statuses.LEFT")}</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select
+          value={contract}
+          onValueChange={(value) => {
+            setContract(value);
+            firstPage();
+          }}
+        >
+          <SelectTrigger className="w-full sm:w-56" aria-label={t("Table.AllContracts")}>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={ALL}>{t("Table.AllContracts")}</SelectItem>
+            <SelectItem value={ENDING}>{t("Table.ContractsEnding")}</SelectItem>
           </SelectContent>
         </Select>
       </div>

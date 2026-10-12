@@ -8,7 +8,7 @@ import { Ltr } from "@/components/ltr";
 import { StatusChip } from "@/components/status-chip";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { may } from "@/features/people/components/may";
+import { useMay } from "@/features/people/components/may";
 import { useReasonDialog } from "@/features/people/components/reason-dialog";
 import { SanctionChip } from "@/features/people/components/sanction-chip";
 import { DECISION_TONE } from "@/features/people/components/status-tones";
@@ -55,8 +55,8 @@ export default function SanctionsPage() {
     queryKey: [...pathKey(SANCTIONS_PATH), "in-force"],
     queryFn: () => listSanctionsQuery({ inForceOnly: true }),
   });
-  const canAnswer = may("sanction.answer");
-  const canLift = may("sanction.set");
+  const canAnswer = useMay("sanction.answer");
+  const canLift = useMay("sanction.set");
 
   const report = (result: { success: boolean; error?: string }, done: string) => {
     if (result.success) toast.success(done);

@@ -96,7 +96,9 @@
       "collectAuthFrom": "Since",
       "collectAuthNote": "Document that authorises it",
       "decisionLocked": "The management records its decision.",
-      "zoneHint": "Left empty: the zone of the commune of residence."
+      "zoneHint": "Left empty: the zone of the commune of residence.",
+      "cnasDeclared": "Declared to the CNAS",
+      "cnasNumber": "Social security number"
     },
     "Office": {
       "Title": "For the office",
@@ -186,7 +188,9 @@
       "AllZones": "All zones",
       "AllRoles": "All roles",
       "Count": "{shown} of {total} workers",
-      "Empty": "No worker found."
+      "Empty": "No worker found.",
+      "AllDocuments": "All documents",
+      "DocumentsToRenewOnly": "Documents to renew"
     },
     "File": {
       "Title": "Worker's file",
@@ -392,7 +396,9 @@
       "AllPositions": "All posts",
       "AllStatuses": "All statuses",
       "Count": "{shown} of {total} employees",
-      "Empty": "No employee found."
+      "Empty": "No employee found.",
+      "AllContracts": "All contracts",
+      "ContractsEnding": "Contracts ending"
     },
     "Form": {
       "SaveFailed": "Could not save the employee.",
@@ -429,6 +435,24 @@
       "NoAccount": "No account",
       "AccountDescription": "The account this employee signs in with. Accounts are made and linked in Settings.",
       "AccountUser": "User name:"
+    }
+  },
+  "Alerts": {
+    "SanctionPending": {
+      "Title": "Waiting for your answer",
+      "Hint": "Somebody suspended or penalised is being registered: do we allow them?"
+    },
+    "DocumentExpiry": {
+      "Title": "Documents to renew",
+      "Hint": "Expired, or expiring within {days} days"
+    },
+    "TrialEnding": {
+      "Title": "Trials ending",
+      "Hint": "A worker's trial ends within {days} days: decide"
+    },
+    "StaffContractEnding": {
+      "Title": "Contracts ending",
+      "Hint": "An employee's contract ends within {days} days"
     }
   },
   "Errors": {
@@ -480,6 +504,7 @@
     "PrintReasonRequired": "Write why the filled form is printed.",
     "EmployeeSexRequired": "Choose whether the employee is a man or a woman.",
     "JobPositionRequired": "Choose the job position.",
-    "ContractEndBeforeStart": "The end of the contract cannot be before its start."
+    "ContractEndBeforeStart": "The end of the contract cannot be before its start.",
+    "CnasNumberDigits": "A social security number is 6 to 20 digits."
   }
 }

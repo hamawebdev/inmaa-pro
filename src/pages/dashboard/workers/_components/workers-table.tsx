@@ -9,7 +9,7 @@ import {
   useReactTable,
 } from "@tanstack/react-table";
 import { FileText } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { useTranslations } from "use-intl";
 
 import { DataTable, TablePager, TableSearch } from "@/components/data-table-shell";
@@ -34,6 +34,7 @@ import { normaliseName, phoneKey } from "@/lib/text/normalise";
  */
 
 const ALL = "all";
+const TO_RENEW = "TO_RENEW";
 
 export function WorkersTable({
   rows,
@@ -44,11 +45,14 @@ export function WorkersTable({
 }) {
   const t = useTranslations("Workers");
   const tOptions = useTranslations("Options");
+  // A tile of the home screen opens the list already filtered: `?status=ON_TRIAL`, `?documents=TO_RENEW`.
+  const [params] = useSearchParams();
   const [pagination, setPagination] = React.useState<PaginationState>({ pageIndex: 0, pageSize: 25 });
   const [search, setSearch] = React.useState("");
-  const [status, setStatus] = React.useState(ALL);
+  const [status, setStatus] = React.useState(params.get("status") ?? ALL);
   const [zone, setZone] = React.useState(ALL);
   const [role, setRole] = React.useState(ALL);
+  const [documents, setDocuments] = React.useState(params.get("documents") === TO_RENEW ? TO_RENEW : ALL);
   const firstPage = () => setPagination((current) => ({ ...current, pageIndex: 0 }));
 
   const columns = React.useMemo<ColumnDef<WorkerListRow>[]>(
@@ -126,6 +130,7 @@ export function WorkersTable({
       if (status !== ALL && worker.status !== status) return false;
       if (zone !== ALL && worker.zoneId !== zone) return false;
       if (role !== ALL && worker.role !== role) return false;
+      if (documents === TO_RENEW && worker.documentsToRenew === 0) return false;
       if (!words && !digits) return true;
       const name = normaliseName(`${worker.lastName} ${worker.firstName} ${worker.fullNameLatin ?? ""}`);
       return (
@@ -133,7 +138,7 @@ export function WorkersTable({
         (digits !== "" && (worker.phone.includes(digits) || String(worker.numberSeq) === digits))
       );
     });
-  }, [rows, search, status, zone, role]);
+  }, [rows, search, status, zone, role, documents]);
 
   const table = useReactTable({
     data: filtered,
@@ -202,6 +207,9 @@ export function WorkersTable({
           t("Table.AllRoles"),
           WORKER_ROLES.map((code) => ({ value: code, label: tOptions(`WorkerRole.${code}`) })),
         )}
+        {filter(documents, setDocuments, t("Table.AllDocuments"), [
+          { value: TO_RENEW, label: t("Table.DocumentsToRenewOnly") },
+        ])}
       </div>
       <p className="text-base text-muted-foreground">
         {t("Table.Count", { shown: filtered.length, total: rows.length })}

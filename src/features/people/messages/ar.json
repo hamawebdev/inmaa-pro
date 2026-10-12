@@ -96,7 +96,9 @@
       "collectAuthFrom": "منذ",
       "collectAuthNote": "وثيقة التخويل",
       "decisionLocked": "تسجّل الإدارة قرارها بنفسها.",
-      "zoneHint": "إن تُركت فارغة: منطقة بلدية الإقامة."
+      "zoneHint": "إن تُركت فارغة: منطقة بلدية الإقامة.",
+      "cnasDeclared": "مصرّح به لدى الضمان الاجتماعي",
+      "cnasNumber": "رقم الضمان الاجتماعي"
     },
     "Office": {
       "Title": "للاستخدام الإداري",
@@ -186,7 +188,9 @@
       "AllZones": "كل المناطق",
       "AllRoles": "كل الصفات",
       "Count": "{shown} من {total} عاملاً",
-      "Empty": "لا يوجد أي عامل."
+      "Empty": "لا يوجد أي عامل.",
+      "AllDocuments": "كل الوثائق",
+      "DocumentsToRenewOnly": "وثائق للتجديد"
     },
     "File": {
       "Title": "ملف العامل",
@@ -392,7 +396,9 @@
       "AllPositions": "كل الوظائف",
       "AllStatuses": "كل الحالات",
       "Count": "{shown} من {total} موظفاً",
-      "Empty": "لا يوجد أي موظف."
+      "Empty": "لا يوجد أي موظف.",
+      "AllContracts": "كل العقود",
+      "ContractsEnding": "عقود تنتهي"
     },
     "Form": {
       "SaveFailed": "تعذّر حفظ الموظف.",
@@ -429,6 +435,24 @@
       "NoAccount": "لا حساب",
       "AccountDescription": "الحساب الذي يدخل به هذا الموظف. تُنشأ الحسابات وتُربط في الإعدادات.",
       "AccountUser": "اسم المستخدم:"
+    }
+  },
+  "Alerts": {
+    "SanctionPending": {
+      "Title": "في انتظار جوابك",
+      "Hint": "يجري تسجيل شخص موقف أو معاقب: هل نسمح له أم لا؟"
+    },
+    "DocumentExpiry": {
+      "Title": "وثائق للتجديد",
+      "Hint": "منتهية الصلاحية، أو تنتهي خلال {days} يوماً"
+    },
+    "TrialEnding": {
+      "Title": "فترات تجربة تنتهي",
+      "Hint": "تنتهي تجربة عامل خلال {days} أيام: القرار للإدارة"
+    },
+    "StaffContractEnding": {
+      "Title": "عقود تنتهي",
+      "Hint": "ينتهي عقد موظف خلال {days} يوماً"
     }
   },
   "Errors": {
@@ -480,6 +504,7 @@
     "PrintReasonRequired": "اكتب سبب طباعة الاستمارة مملوءة.",
     "EmployeeSexRequired": "حدد هل الموظف رجل أم امرأة.",
     "JobPositionRequired": "اختر الوظيفة.",
-    "ContractEndBeforeStart": "لا يمكن أن تسبق نهاية العقد بدايته."
+    "ContractEndBeforeStart": "لا يمكن أن تسبق نهاية العقد بدايته.",
+    "CnasNumberDigits": "رقم الضمان الاجتماعي من 6 إلى 20 رقماً."
   }
 }

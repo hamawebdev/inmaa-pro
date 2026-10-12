@@ -1,6 +1,17 @@
 # People: handover
 
-Owner of features 21, 25, 37, 38: centre employees, cleaning workers, his worker form, hiring and training, hours, pay, and the suspended-or-penalised check. Paths: `src/features/people/**`, pages `employees/`, `employee-attendance/`, `workers/`, `hiring/`, `hours-pay/`. Updated at the end of round 1.
+Owner of features 21, 25, 37, 38: centre employees, cleaning workers, his worker form, hiring and training, hours, pay, and the suspended-or-penalised check. Paths: `src/features/people/**`, pages `employees/`, `employee-attendance/`, `workers/`, `hiring/`, `hours-pay/`. Updated at the start of round 2.
+
+## Round 2, in progress
+
+- **Done:** the worker form's tables moved to the Checker's corrected positions. T1 and T2 stand 5 mm outside the right margin, T3 against the left margin, T4 1.9 mm outside.
+- **This round:**
+  1. Hours (21): a worker's minutes per week and month from Operations' typed orders and absences, with lateness and orders not typed.
+  2. Pay (38): monthly runs, payslips, the seats each pays, arrears, advances and deductions, CNAS and IRG, closing and voiding, payouts (`payout.recorded` → Money posts the expense), the printed payslip.
+  3. Centre employees' attendance, absences and leave.
+  4. The exports others wait for: `setWorkerZone`, `canCollectCash`, `getHourlyLabourCost`, the pay exports.
+  5. Alerts (`document.expiry`, `trial.ending`, `staffContract.ending`, `sanction.pending`) and the day-start job (a dated sanction that ends).
+- **Not this round:** hiring and training (37), violations (article 17), the periodic evaluation (article 16).
 
 ## What exists
 

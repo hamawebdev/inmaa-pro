@@ -17,7 +17,7 @@ import { SANCTION_STATES, type SanctionState, type SanctionSubject } from "@/fea
 import { useErrorMessage } from "@/i18n/errors";
 import { pathKey } from "@/lib/compat/revalidate";
 
-import { isolate, may, todayAtTheCentre } from "./may";
+import { isolate, todayAtTheCentre, useMay } from "./may";
 import { useReasonDialog } from "./reason-dialog";
 import { SanctionChip } from "./sanction-chip";
 
@@ -41,7 +41,7 @@ export function SanctionCard({ subjectKind, subjectId }: { subjectKind: Sanction
   });
   const states = subjectKind === "CLIENT" ? "ClientStates" : "States";
   const live = sanctions.find((sanction) => sanction.inForce) ?? sanctions.find((sanction) => sanction.upcoming);
-  const canSet = may("sanction.set");
+  const canSet = useMay("sanction.set");
 
   const set = async () => {
     const answer = await askReason({

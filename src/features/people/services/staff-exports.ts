@@ -10,9 +10,14 @@ import {
   type Weekday,
   type WorkerRole,
 } from "@/features/people/validators/staff-codes";
+import { requireSection } from "@/lib/access/session";
+import { logChange } from "@/lib/log";
+import { action } from "@/lib/service/action";
+import { changedColumns } from "@/lib/service/changes";
 import type { Executor, ServiceContext } from "@/lib/service/context";
 import { ServiceError } from "@/lib/service/errors";
-import { localDate, type LocalDate } from "@/lib/units";
+import { getSettings } from "@/lib/settings";
+import { localDate, money, type LocalDate, type Money } from "@/lib/units";
 
 import { getSanctionStates, type SanctionStateOf } from "./sanctions";
 
@@ -24,7 +29,13 @@ import { getSanctionStates, type SanctionStateOf } from "./sanctions";
  *    on a day: who is active, where they live and work, what they can do and
  *    when, whether they are under sanction or in a training session;
  *  - `getStaffSummary`: a name, a number and a post or role, for the labels
- *    of other owners' lists.
+ *    of other owners' lists;
+ *  - `setWorkerZone`: a worker's zone, changed from Operations' supervisors
+ *    screen;
+ *  - `canCollectCash`: whether a worker may take a client's money (his
+ *    article 12), since when and on what paper;
+ *  - `getHourlyLabourCost`: what an hour of a person costs in wages, from the
+ *    pay terms in force on a day.
  *
  * Neither ever returns anything of `StaffConfidential`.
  */
@@ -282,3 +293,115 @@ export async function getStaffSummary(
     ]),
   );
 }
+
+/** A worker's zone, changed from Operations' supervisors screen (CONTRACTS section 3). Logged. */
+export async function setWorkerZone(
+  ex: Executor,
+  ctx: ServiceContext,
+  input: { workerId: string; zoneId: string | null },
+): Promise<void> {
+  requireSection(ctx, "WORKERS", "WRITE");
+  const before = await ex
+    .selectFrom("StaffMember")
+    .select(["id", "number", "lastName", "firstName", "zoneId"])
+    .where("id", "=", input.workerId)
+    .where("kind", "=", "WORKER")
+    .where("deletedAt", "is", null)
+    .executeTakeFirst();
+  if (!before) throw new ServiceError("This worker does not exist.");
+  if (input.zoneId) {
+    const zone = await ex
+      .selectFrom("Zone")
+      .select("id")
+      .where("id", "=", input.zoneId)
+      .where("isActive", "=", 1)
+      .executeTakeFirst();
+    if (!zone) throw new ServiceError("This zone does not exist or is not active.");
+  }
+  const { set, changes } = changedColumns(before, { zoneId: input.zoneId });
+  if (!changes) return;
+  await ex
+    .updateTable("StaffMember")
+    .set({ ...set, updatedAt: ctx.now, updatedByUserId: ctx.userId })
+    .where("id", "=", before.id)
+    .execute();
+  const label = `${before.lastName} ${before.firstName}`;
+  await logChange(ex, ctx, {
+    owner: "PEOPLE",
+    action: "UPDATE",
+    entity: "StaffMember",
+    entityId: before.id,
+    entityLabel: `${before.number} ${label}`,
+    subject: { kind: "WORKER", id: before.id, label },
+    changes,
+  });
+}
+
+export interface CollectAuthorisation {
+  /** On that day. */
+  authorised: boolean;
+  since: string | null;
+  /** The paper that authorises it. */
+  note: string | null;
+}
+
+/** His article 12: whether a worker may take a client's money on a day, since when, and on what paper. */
+export async function canCollectCash(
+  ex: Executor,
+  ctx: ServiceContext,
+  input: { staffId: string; date?: string },
+): Promise<CollectAuthorisation> {
+  const day = dayOf(ctx, input.date);
+  const person = await ex
+    .selectFrom("StaffMember")
+    .select(["canCollectCash", "collectAuthFrom", "collectAuthNote", "engagementStatus", "deletedAt"])
+    .where("id", "=", input.staffId)
+    .executeTakeFirst();
+  if (!person || person.canCollectCash !== 1) return { authorised: false, since: null, note: null };
+  const started = person.collectAuthFrom === null || person.collectAuthFrom <= day;
+  const inPost = person.deletedAt === null && ACTIVE_STATUSES.has(person.engagementStatus);
+  return { authorised: started && inPost, since: person.collectAuthFrom, note: person.collectAuthNote };
+}
+
+/**
+ * What an hour of this person costs in wages on a day, in centimes, from the
+ * pay terms in force that day (her `StaffEvent` history): an hourly rate as it
+ * is, a daily wage over the standard day, a monthly wage over the minutes a
+ * month pays. Nothing for a wage per task, or with no terms yet: Money then
+ * uses its own setting (`costing.hourlyLabourCost`). The employer's CNAS is
+ * not in it.
+ */
+export async function getHourlyLabourCost(
+  ex: Executor,
+  ctx: ServiceContext,
+  input: { staffId: string; date?: string },
+): Promise<Money | null> {
+  const day = dayOf(ctx, input.date);
+  const terms = await ex
+    .selectFrom("StaffEvent")
+    .select(["payBasis", "payRate"])
+    .where("staffId", "=", input.staffId)
+    .where("kind", "=", "PAY_TERMS")
+    .where("date", "<=", day)
+    .orderBy("date", "desc")
+    .orderBy("createdAt", "desc")
+    .executeTakeFirst();
+  if (!terms || terms.payBasis === null || terms.payRate === null) return null;
+  const settings = await getSettings(ex, ["work.dayMin", "pay.monthlyDivisorMin"]);
+  const perHour = (rate: number, minutes: number) => money(Math.round((rate * 60) / minutes));
+  switch (terms.payBasis) {
+    case "HOURLY":
+      return money(terms.payRate);
+    case "DAILY":
+      return perHour(terms.payRate, settings["work.dayMin"]);
+    case "MONTHLY":
+      return perHour(terms.payRate, settings["pay.monthlyDivisorMin"]);
+    default:
+      return null;
+  }
+}
+
+// What the screens import.
+export const setWorkerZoneAction = action(setWorkerZone, {
+  revalidate: ["/dashboard/workers", "/dashboard/supervisors"],
+});

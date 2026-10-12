@@ -142,6 +142,8 @@ function memberColumns(values: WorkerFormValues) {
     payBasis: values.payBasis ?? null,
     payRate: values.payRate === "" ? null : dinarsToMoney(decimal(values.payRate)),
     payPeriod: values.payPeriod ?? null,
+    cnasDeclared: values.cnasDeclared ? 1 : 0,
+    cnasNumber: values.cnasDeclared ? orNull(values.cnasNumber.replace(/\s/g, "")) : null,
   };
 }
 
