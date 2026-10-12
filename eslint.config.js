@@ -49,6 +49,12 @@ export default tseslint.config(
       // warnings rather than silently switched off.
       "react-hooks/static-components": "warn",
       "react-hooks/set-state-in-effect": "warn",
+      // TanStack Table's `useReactTable` hands back functions that the React
+      // Compiler cannot memoise, and this rule says so on every table. The
+      // compiler is not part of this build (vite.config.ts has no compiler
+      // plugin), so nothing is skipped and there is nothing to act on: off for
+      // the project, rather than disabled line by line in each table.
+      "react-hooks/incompatible-library": "off",
     },
   },
   {

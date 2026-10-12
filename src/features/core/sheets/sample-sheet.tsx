@@ -10,6 +10,7 @@ import {
   SheetTable,
   TickBox,
 } from "@/components/print";
+import { formatMoney } from "@/lib/units";
 
 /**
  * A sample sheet: every element of the print kit on three pages, with the
@@ -24,9 +25,9 @@ import {
  */
 
 const ROWS = [
-  { number: "0001/2026", label: "تنظيف دوري — عمارة", date: "2026-10-11", amount: "12 500,00" },
-  { number: "0002/2026", label: "تنظيف بعد البناء", date: "2026-10-12", amount: "48 000,00" },
-  { number: "0003/2026", label: "تنظيف شامل وعميق", date: "2026-10-14", amount: "7 600,00" },
+  { number: "0001/2026", label: "تنظيف دوري — عمارة", date: "2026-10-11", amount: formatMoney(1_250_000) },
+  { number: "0002/2026", label: "تنظيف بعد البناء", date: "2026-10-12", amount: formatMoney(4_800_000) },
+  { number: "0003/2026", label: "تنظيف شامل وعميق", date: "2026-10-14", amount: formatMoney(760_000) },
 ];
 
 const head = { fontFamily: SHEET_FONT.sakkal, fontSize: "14pt", fontWeight: 700 } as const;
@@ -122,7 +123,7 @@ export function SampleSheet() {
       <p style={{ margin: "5mm 0 2mm" }}>
         مبلغ الخدمة:{" "}
         <DottedBlank widthMm={35}>
-          <Ltr>12 500,00</Ltr>
+          <Ltr>{formatMoney(1_250_000)}</Ltr>
         </DottedBlank>{" "}
         دج، يسدد في أجل أقصاه <DottedBlank widthMm={30} /> .
       </p>

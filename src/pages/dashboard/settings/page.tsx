@@ -5,12 +5,11 @@ import { useTranslations } from "use-intl";
 
 import { Ltr } from "@/components/ltr";
 import { SectionScreen } from "@/components/section-screen";
-import { LockSettingsCard } from "@/components/security/lock-settings";
-import { ManagerPasswordSection } from "@/components/security/manager-password-section";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { APP_CONFIG } from "@/config/app-config";
 
+import { AccountCard } from "./_components/account-card";
 import { AppearanceCard, LanguageCard } from "./_components/appearance-cards";
 import { BackupCard } from "./_components/backup-card";
 import { CentreIdentityCard } from "./_components/centre-identity-card";
@@ -24,8 +23,8 @@ import { LicenseCard } from "./_components/license-card";
  *
  *  1. Identity, first because it is the only setting that reaches paper.
  *  2. Language and appearance: how this machine shows everything above.
- *  3. The password, then the picker that depends on it — choosing what to
- *     protect only makes sense once you have seen whether protection is on.
+ *  3. The account that is signed in: its password and, for the manager, his
+ *     recovery code. (Accounts and what each role may open are the third tab.)
  *  4. Backup, because it is the one action here with no undo.
  *  5. The licence, then System — two footers more than settings. The licence
  *     sits beside the version and the OS because that is the block a support
@@ -53,8 +52,7 @@ export default function SettingsPage() {
         <LanguageCard />
         <AppearanceCard />
 
-        <ManagerPasswordSection />
-        <LockSettingsCard />
+        <AccountCard />
 
         <BackupCard />
 

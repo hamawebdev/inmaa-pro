@@ -213,6 +213,10 @@
   --warning-ink: oklch(0.535 0.135 68);
   --info: oklch(0.505 0.145 245);
   --info-foreground: oklch(0.99 0.004 80);
+  /* Under way: «جارية». None of his five colours (green, yellow, blue, red, black), so that a visit
+     in progress is not read as confirmed or as done. Inmaa Pro's own; the academy has no such state. */
+  --progress: oklch(0.505 0.15 300);
+  --progress-foreground: oklch(0.99 0.004 80);
 
   /* Action colours. Colour carries meaning in this app, not just emphasis:
      green commits, blue prints, orange edits, emerald adds, violet exports, red
@@ -357,6 +361,8 @@
   --warning-ink: oklch(0.79 0.135 78);
   --info: oklch(0.715 0.13 248);
   --info-foreground: oklch(0.185 0.014 68);
+  --progress: oklch(0.725 0.13 300);
+  --progress-foreground: oklch(0.185 0.014 68);
 
   --edit: oklch(0.78 0.13 52);
   --edit-foreground: oklch(0.24 0.055 42);
@@ -456,6 +462,8 @@
   --color-warning-ink: var(--warning-ink);
   --color-info: var(--info);
   --color-info-foreground: var(--info-foreground);
+  --color-progress: var(--progress);
+  --color-progress-foreground: var(--progress-foreground);
   --color-edit: var(--edit);
   --color-edit-foreground: var(--edit-foreground);
   --color-add: var(--add);

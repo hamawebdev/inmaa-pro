@@ -5,13 +5,15 @@ import { DatabaseSync } from "node:sqlite";
 
 import { Kysely } from "kysely";
 
-import { firstRun, STAND_IN_MANAGER_ID } from "@/features/core/services/first-run";
+import { firstRun, FIRST_MANAGER_ID } from "@/features/core/services/first-run";
 import type { RoleCode } from "@/lib/access/catalogue";
 import { loadSession } from "@/lib/access/session";
 import { memoryByteStore } from "@/lib/attachments";
 import { memoryAnchorStore, writeAnchor, type AnchorStore } from "@/lib/chain/anchor";
 import { fixedClock, type FixedClock } from "@/lib/clock";
 import type { DB } from "@/lib/db/schema";
+import { loadFeatureAlerts } from "@/lib/alerts";
+import { loadFeatureDaily } from "@/lib/daily";
 import { loadFeatureEvents } from "@/lib/events";
 import { buildContext, SYSTEM_SESSION, type Executor, type ServiceContext, type Session } from "@/lib/service/context";
 import { createRunner, type Runner } from "@/lib/service/runner";
@@ -115,7 +117,11 @@ async function wrap(sqlite: DatabaseSync, options: TestDatabaseOptions, didFirst
   const temporary: string[] = [];
   const revalidated: string[] = [];
 
-  if (options.events !== false) loadFeatureEvents();
+  if (options.events !== false) {
+    loadFeatureEvents();
+    loadFeatureAlerts();
+    loadFeatureDaily();
+  }
 
   if (options.firstRun !== false && !didFirstRun) {
     const ctx = buildContext(SYSTEM_SESSION, clock);
@@ -124,7 +130,7 @@ async function wrap(sqlite: DatabaseSync, options: TestDatabaseOptions, didFirst
   }
 
   const hasManager = options.firstRun !== false || didFirstRun;
-  const manager = hasManager ? await loadSession(db, STAND_IN_MANAGER_ID) : SYSTEM_SESSION;
+  const manager = hasManager ? await loadSession(db, FIRST_MANAGER_ID) : SYSTEM_SESSION;
 
   let demo: Record<string, DemoNames> = {};
   if (options.demo && hasManager) {

@@ -108,15 +108,15 @@ Names are proposals; the plain-words column is the contract. Every function take
 | `assertClockSane()` | | throws, or asks the manager, when the clock went back or jumped forward (`system.clockJumpDays`); called before a legal document is issued |
 | `logCollect`, `logConsult`, `logChange`, `logDisclose`, `logErase`, `logSecurity` `(entry)` | entity, id, label, subject, reason, changes, context | one `AuditLog` row, chained; restricted values replaced by `"§"` |
 | `readRestricted({ capability, entity, id, part?, reason })` | | checks the capability, logs the consultation, returns the row (one column group of `StaffConfidential`) or the bytes of a restricted upload |
-| `requireCapability(ctx, key)`, `requireSection(ctx, section, level)`, `currentUser()` | | read the session snapshot loaded at sign-in, never the database; throw when not allowed |
-| `requestManagerApproval(ctx, { capability, reason })` and its dialog | | a manager types his password inside the current session; returns `{ approvedByUserId }` or a refusal |
+| `requireCapability(ctx, key)`, `requireSection(ctx, section, level)`, `can(ctx, key)`, `sectionLevel(ctx, section)` | | read the session snapshot loaded at sign-in, never the database; the first two throw when not allowed. On a screen: `useSession()`, `useCan(key)`, `useSectionLevel(section)` (`src/hooks/use-session.ts`) |
+| The manager's answer | | not a function (F3 ruling): the manager signs in himself and answers under his own name; the service checks his capability as any other. `requestManagerApproval` is not built |
 | `getSetting(key)`, `setSetting(key, value)` | | the typed value or its default; both take the executor |
 | `saveManagedUpload(file, { entity, field, kind?, caption?, takenByEmployeeId?, restrictedCapability? })` | **called before the transaction** | writes the bytes and the `Upload` row; returns the managed `url` |
 | `linkUpload(url, ownerId)`, `removeUpload(url, reason)`, `listUploads({ entity, ownerId, field? })` | inside the transaction | ties the file to its row; takes it off; the photo set of a row |
 | `linkAccountToStaff(userId, staffMemberId)` | People's employee file | sets `User.staffMemberId` (A2: an employee's login) |
-| `registerAlert(rule)` | key, owner, labels, tone, `count(ex, ctx)`, `rows(ex, ctx)`, route, lead setting | the home tile, its list link and the one-a-day notification |
+| `registerAlerts(register)`, exported from `src/features/<folder>/alerts.ts` | `register({ key, section, severity, name, icon, leadSetting?, capability?, route, count(ex, ctx, { days }) })` | the home tile and its list link (DESIGN.md section 13); the one-a-day notification follows in F3b |
 | `on(event, handler)`, `emit(event)` | | the event registry of section 4 |
-| `onDayStart(handler)` | | runs each handler once per local day, at start-up or when the date changes while the program is open, with `ctx.userId` null |
+| `registerDaily(daily)`, exported from `src/features/<folder>/daily.ts` | `daily(name, (ex, ctx, { today, since }) => …)` | runs each owner's handlers in one transaction, once per local day, at start-up or when the date changes while the program is open, with `ctx.userId` null (DESIGN.md section 13) |
 | `ensureCommune({ wilayaCode, nameAr })` | a commune the office typed | the row, created when it is new |
 | `ensureZoneForCommune(communeId)` | called by C when a site is saved and by P when a worker's residence is saved | the zone id of that commune, creating a zone named after it when none exists (A9) |
 | `remapCommune(communeId, zoneId)` | Settings › قواعد العمل | changes the commune's zone and emits `zone.remapped` |

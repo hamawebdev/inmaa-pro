@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { STAND_IN_MANAGER_ID } from "@/features/core/services/first-run";
+import { FIRST_MANAGER_ID } from "@/features/core/services/first-run";
 import { SYSTEM_SESSION } from "@/lib/service/context";
 import { createTestDatabase, type TestDatabase } from "@/testing/database";
 
@@ -58,7 +58,7 @@ describe("roles and capabilities", () => {
 
   it("sign in the stand-in manager until the sign-in screen exists", async () => {
     expect(test.manager).toMatchObject({
-      userId: STAND_IN_MANAGER_ID,
+      userId: FIRST_MANAGER_ID,
       roleId: "MANAGER",
       userName: "المدير",
       branchId: "branch-main",
@@ -66,13 +66,13 @@ describe("roles and capabilities", () => {
     const account = await test.db
       .selectFrom("User")
       .selectAll()
-      .where("id", "=", STAND_IN_MANAGER_ID)
+      .where("id", "=", FIRST_MANAGER_ID)
       .executeTakeFirstOrThrow();
     expect(account).toMatchObject({ username: "manager", passwordHash: "", staffMemberId: null, isActive: 1 });
   });
 
   it("keep one active manager at least, and refuse an account that is not active", async () => {
-    expect(() => test.raw.prepare(`UPDATE "User" SET "isActive" = 0 WHERE "id" = ?`).run(STAND_IN_MANAGER_ID)).toThrow(
+    expect(() => test.raw.prepare(`UPDATE "User" SET "isActive" = 0 WHERE "id" = ?`).run(FIRST_MANAGER_ID)).toThrow(
       "LAST_MANAGER:User",
     );
 

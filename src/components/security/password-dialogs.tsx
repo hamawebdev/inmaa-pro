@@ -1,7 +1,6 @@
 import * as React from "react";
 
-import { useQueryClient } from "@tanstack/react-query";
-import { Copy, KeyRound, ShieldAlert } from "lucide-react";
+import { Copy, KeyRound } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslations } from "use-intl";
 
@@ -17,32 +16,18 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  MIN_PASSWORD_LENGTH,
-  changePassword,
-  clearPassword,
-  createPassword,
-  formatRecoveryCode,
-  regenerateRecoveryCode,
-  verifyPassword,
-} from "@/lib/auth";
-import { SETTINGS_QUERY_KEY } from "@/features/core/services/settings";
-
-/** Shared: every dialog here writes settings, so every one must invalidate. */
-function useSettingsInvalidator() {
-  const qc = useQueryClient();
-  return React.useCallback(() => qc.invalidateQueries({ queryKey: SETTINGS_QUERY_KEY }), [qc]);
-}
+import { changeOwnPasswordAction, renewRecoveryCodeAction } from "@/features/core/services/sign-in";
+import { useErrorMessage } from "@/i18n/errors";
+import { formatRecoveryCode, isPasswordLongEnough, MIN_PASSWORD_LENGTH } from "@/lib/auth";
 
 /**
- * Step two of creating a password, and the only moment the recovery code exists
- * in readable form.
+ * The only moment a recovery code exists in readable form (a new one asked for
+ * in Settings; the first one is shown by the sign-in window itself).
  *
  * Deliberately **not dismissible** by Escape, an outside click or a close
  * button, and the Close button stays disabled until the acknowledgement is
  * ticked. Every other dialog in this app can be waved away; this one cannot,
- * because waving it away silently destroys the only route back into a locked
- * academy. The friction is the feature.
+ * because waving it away silently destroys the manager's only way back in. The friction is the feature.
  */
 export function RecoveryRevealDialog({ code, open, onClose }: { code: string; open: boolean; onClose: () => void }) {
   const t = useTranslations("Auth");
@@ -106,202 +91,104 @@ export function RecoveryRevealDialog({ code, open, onClose }: { code: string; op
   );
 }
 
-/** Sets the first password, then reveals the recovery code exactly once. */
-export function PasswordCreateDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
+/**
+ * The signed-in user changes his own password: the current one, then the new
+ * one twice. The manager's recovery code is unaffected: it replaces a
+ * password, it never reveals one, so it stays good across changes.
+ */
+export function PasswordChangeDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
   const t = useTranslations("Auth");
-  const invalidate = useSettingsInvalidator();
+  const errorMessage = useErrorMessage();
 
-  const [password, setPassword] = React.useState("");
-  const [confirmValue, setConfirmValue] = React.useState("");
+  const [current, setCurrent] = React.useState("");
+  const [next, setNext] = React.useState("");
+  const [again, setAgain] = React.useState("");
   const [error, setError] = React.useState("");
   const [busy, setBusy] = React.useState(false);
-  const [code, setCode] = React.useState<string | null>(null);
 
   /** Clears the typed fields as the dialog goes away, so a password never
    *  outlives the dialog it was entered into. */
-  function handleOpenChange(next: boolean) {
-    if (!next) {
-      setPassword("");
-      setConfirmValue("");
+  function handleOpenChange(nextOpen: boolean) {
+    if (!nextOpen) {
+      setCurrent("");
+      setNext("");
+      setAgain("");
       setError("");
     }
-    onOpenChange(next);
+    onOpenChange(nextOpen);
   }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (busy) return;
-    if (password.trim().length < MIN_PASSWORD_LENGTH) {
+    if (!isPasswordLongEnough(next)) {
       setError(t("PasswordTooShort", { min: MIN_PASSWORD_LENGTH }));
       return;
     }
-    if (password !== confirmValue) {
+    if (next !== again) {
       setError(t("PasswordsDoNotMatch"));
       return;
     }
     setBusy(true);
     setError("");
     try {
-      const generated = await createPassword(password);
-      await invalidate();
-      // Close the form and open the reveal, rather than showing both: the code
-      // must be the only thing on screen when it appears.
-      onOpenChange(false);
-      setCode(generated);
-    } catch {
-      toast.error(t("PasswordSaveFailed"));
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return (
-    <>
-      <Dialog open={open} onOpenChange={handleOpenChange}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{t("SetPassword")}</DialogTitle>
-            <DialogDescription>{t("SetPasswordDesc")}</DialogDescription>
-          </DialogHeader>
-          <form className="space-y-4" onSubmit={submit}>
-            <div className="grid gap-2">
-              <Label htmlFor="new_password">{t("NewPassword")}</Label>
-              <Input
-                id="new_password"
-                dir="ltr"
-                type="password"
-                autoComplete="new-password"
-                autoFocus
-                value={password}
-                onChange={(e) => {
-                  setPassword(e.target.value);
-                  if (error) setError("");
-                }}
-                aria-invalid={!!error}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="confirm_password">{t("ConfirmPassword")}</Label>
-              <Input
-                id="confirm_password"
-                dir="ltr"
-                type="password"
-                autoComplete="new-password"
-                value={confirmValue}
-                onChange={(e) => {
-                  setConfirmValue(e.target.value);
-                  if (error) setError("");
-                }}
-                aria-invalid={!!error}
-              />
-            </div>
-            {error && (
-              <p role="alert" className="text-base font-bold text-destructive">
-                {error}
-              </p>
-            )}
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>
-                {t("Cancel")}
-              </Button>
-              <Button type="submit" variant="success" loading={busy}>
-                <KeyRound />
-                {t("SetPassword")}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      <RecoveryRevealDialog code={code ?? ""} open={code !== null} onClose={() => setCode(null)} />
-    </>
-  );
-}
-
-/** Changes an existing password. The recovery code is unaffected — it clears the
- *  password, it never reveals it, so it stays valid across changes. */
-export function PasswordChangeDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
-  const t = useTranslations("Auth");
-  const invalidate = useSettingsInvalidator();
-
-  const [current, setCurrent] = React.useState("");
-  const [next, setNext] = React.useState("");
-  const [error, setError] = React.useState("");
-  const [busy, setBusy] = React.useState(false);
-
-  /** Clears the typed fields as the dialog goes away, so a password never
-   *  outlives the dialog it was entered into. */
-  function handleOpenChange(next: boolean) {
-    if (!next) {
-      setCurrent("");
-      setNext("");
-      setError("");
-    }
-    onOpenChange(next);
-  }
-
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
-    if (busy) return;
-    if (next.trim().length < MIN_PASSWORD_LENGTH) {
-      setError(t("PasswordTooShort", { min: MIN_PASSWORD_LENGTH }));
-      return;
-    }
-    setBusy(true);
-    setError("");
-    try {
-      if (!(await changePassword(current, next))) {
+      const result = await changeOwnPasswordAction({ currentPassword: current, newPassword: next });
+      if (!result.success) {
+        setError(errorMessage(result.error, t("PasswordSaveFailed")));
+        return;
+      }
+      if (!result.data.changed) {
         setError(t("WrongPassword"));
         setCurrent("");
         return;
       }
-      await invalidate();
       toast.success(t("PasswordChanged"));
-      onOpenChange(false);
+      handleOpenChange(false);
     } catch {
       toast.error(t("PasswordSaveFailed"));
     } finally {
       setBusy(false);
     }
   }
+
+  const fields = [
+    {
+      id: "current_password",
+      label: t("CurrentPassword"),
+      value: current,
+      set: setCurrent,
+      complete: "current-password",
+    },
+    { id: "next_password", label: t("NewPassword"), value: next, set: setNext, complete: "new-password" },
+    { id: "again_password", label: t("ConfirmPassword"), value: again, set: setAgain, complete: "new-password" },
+  ] as const;
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>{t("ChangePassword")}</DialogTitle>
+          <DialogDescription>{t("ChangePasswordDesc")}</DialogDescription>
         </DialogHeader>
         <form className="space-y-4" onSubmit={submit}>
-          <div className="grid gap-2">
-            <Label htmlFor="current_password">{t("CurrentPassword")}</Label>
-            <Input
-              id="current_password"
-              dir="ltr"
-              type="password"
-              autoComplete="current-password"
-              autoFocus
-              value={current}
-              onChange={(e) => {
-                setCurrent(e.target.value);
-                if (error) setError("");
-              }}
-              aria-invalid={!!error}
-            />
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor="next_password">{t("NewPassword")}</Label>
-            <Input
-              id="next_password"
-              dir="ltr"
-              type="password"
-              autoComplete="new-password"
-              value={next}
-              onChange={(e) => {
-                setNext(e.target.value);
-                if (error) setError("");
-              }}
-            />
-          </div>
+          {fields.map((field, index) => (
+            <div key={field.id} className="grid gap-2">
+              <Label htmlFor={field.id}>{field.label}</Label>
+              <Input
+                id={field.id}
+                dir="ltr"
+                type="password"
+                autoComplete={field.complete}
+                autoFocus={index === 0}
+                value={field.value}
+                onChange={(e) => {
+                  field.set(e.target.value);
+                  if (error) setError("");
+                }}
+                aria-invalid={!!error}
+              />
+            </div>
+          ))}
           {error && (
             <p role="alert" className="text-base font-bold text-destructive">
               {error}
@@ -311,7 +198,12 @@ export function PasswordChangeDialog({ open, onOpenChange }: { open: boolean; on
             <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>
               {t("Cancel")}
             </Button>
-            <Button type="submit" variant="success" loading={busy} disabled={!current.trim() || !next.trim()}>
+            <Button
+              type="submit"
+              variant="success"
+              loading={busy}
+              disabled={!current.trim() || !next.trim() || !again.trim()}
+            >
               {t("ChangePassword")}
             </Button>
           </DialogFooter>
@@ -321,101 +213,10 @@ export function PasswordChangeDialog({ open, onOpenChange }: { open: boolean; on
   );
 }
 
-/** Removes the password entirely — the gate goes fully open. Requires the
- *  current password, so a walk-up user cannot simply switch protection off. */
-export function PasswordRemoveDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
-  const t = useTranslations("Auth");
-  const invalidate = useSettingsInvalidator();
-
-  const [current, setCurrent] = React.useState("");
-  const [error, setError] = React.useState("");
-  const [busy, setBusy] = React.useState(false);
-
-  /** Clears the typed fields as the dialog goes away, so a password never
-   *  outlives the dialog it was entered into. */
-  function handleOpenChange(next: boolean) {
-    if (!next) {
-      setCurrent("");
-      setError("");
-    }
-    onOpenChange(next);
-  }
-
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
-    if (busy || !current.trim()) return;
-    setBusy(true);
-    setError("");
-    try {
-      if (!(await verifyPassword(current))) {
-        setError(t("WrongPassword"));
-        setCurrent("");
-        return;
-      }
-      await clearPassword();
-      await invalidate();
-      toast.success(t("PasswordRemoved"));
-      onOpenChange(false);
-    } catch {
-      toast.error(t("PasswordSaveFailed"));
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>{t("RemovePassword")}</DialogTitle>
-          <DialogDescription>{t("RemovePasswordDesc")}</DialogDescription>
-        </DialogHeader>
-        <form className="space-y-4" onSubmit={submit}>
-          <div className="border-app flex items-start gap-3 rounded-xl border-destructive/35 bg-destructive/5 p-4">
-            <ShieldAlert className="mt-0.5 size-5 shrink-0 text-destructive" />
-            <p className="min-w-0 text-base leading-relaxed">{t("RemovePasswordWarning")}</p>
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor="remove_password">{t("CurrentPassword")}</Label>
-            <Input
-              id="remove_password"
-              dir="ltr"
-              type="password"
-              autoComplete="current-password"
-              autoFocus
-              value={current}
-              onChange={(e) => {
-                setCurrent(e.target.value);
-                if (error) setError("");
-              }}
-              aria-invalid={!!error}
-            />
-          </div>
-          {error && (
-            <p role="alert" className="text-base font-bold text-destructive">
-              {error}
-            </p>
-          )}
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>
-              {t("Cancel")}
-            </Button>
-            <Button type="submit" variant="destructive" loading={busy} disabled={!current.trim()}>
-              {t("RemovePassword")}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
 /**
- * Issues a fresh recovery code for an academy that lost the paper slip.
- *
- * Requires the current password even though the caller is already unlocked: the
- * old code is invalidated by this, so an assistant who found an unlocked machine
- * could otherwise lock the owner out of their own recovery path.
+ * A new recovery code for the manager who lost the paper. He types his
+ * password to get it, so somebody who finds the program open cannot take the
+ * way back in for himself. The old code stops working at once.
  */
 export function RecoveryRegenerateDialog({
   open,
@@ -425,21 +226,19 @@ export function RecoveryRegenerateDialog({
   onOpenChange: (v: boolean) => void;
 }) {
   const t = useTranslations("Auth");
-  const invalidate = useSettingsInvalidator();
+  const errorMessage = useErrorMessage();
 
   const [current, setCurrent] = React.useState("");
   const [error, setError] = React.useState("");
   const [busy, setBusy] = React.useState(false);
   const [code, setCode] = React.useState<string | null>(null);
 
-  /** Clears the typed fields as the dialog goes away, so a password never
-   *  outlives the dialog it was entered into. */
-  function handleOpenChange(next: boolean) {
-    if (!next) {
+  function handleOpenChange(nextOpen: boolean) {
+    if (!nextOpen) {
       setCurrent("");
       setError("");
     }
-    onOpenChange(next);
+    onOpenChange(nextOpen);
   }
 
   async function submit(e: React.FormEvent) {
@@ -448,15 +247,20 @@ export function RecoveryRegenerateDialog({
     setBusy(true);
     setError("");
     try {
-      if (!(await verifyPassword(current))) {
+      const result = await renewRecoveryCodeAction({ password: current });
+      if (!result.success) {
+        setError(errorMessage(result.error, t("PasswordSaveFailed")));
+        return;
+      }
+      if (!result.data.recoveryCode) {
         setError(t("WrongPassword"));
         setCurrent("");
         return;
       }
-      const generated = await regenerateRecoveryCode();
-      await invalidate();
-      onOpenChange(false);
-      setCode(generated);
+      // Close the form and open the reveal, rather than showing both: the code
+      // must be the only thing on screen when it appears.
+      handleOpenChange(false);
+      setCode(result.data.recoveryCode);
     } catch {
       toast.error(t("PasswordSaveFailed"));
     } finally {
@@ -470,7 +274,9 @@ export function RecoveryRegenerateDialog({
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{t("RegenerateRecovery")}</DialogTitle>
-            <DialogDescription>{t("RegenerateRecoveryDesc")}</DialogDescription>
+            <DialogDescription>
+              {t("RegenerateRecoveryDesc")} {t("RegenerateRecoveryPassword")}
+            </DialogDescription>
           </DialogHeader>
           <form className="space-y-4" onSubmit={submit}>
             <div className="grid gap-2">
@@ -500,7 +306,7 @@ export function RecoveryRegenerateDialog({
               </Button>
               <Button type="submit" loading={busy} disabled={!current.trim()}>
                 <KeyRound />
-                {t("RegenerateRecovery")}
+                {t("RegenerateRecoveryAction")}
               </Button>
             </DialogFooter>
           </form>

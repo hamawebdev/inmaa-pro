@@ -64,6 +64,30 @@ export function moneyToDinars(amount: Money): number {
   return amount / 100;
 }
 
+/**
+ * An amount as it is written, on screen and on paper, in every language:
+ * `195.650,00`. The academy's format: a dot between thousands, a comma before
+ * the centimes, always two decimals. It is the program's one money format (the
+ * coordinator's ruling): nothing writes an amount any other way.
+ *
+ * No currency word: a screen adds the reader's («دج», «DA») with
+ * `useMoneyText()`, a sheet adds `MONEY_UNIT_AR`, or `formatMoneyAr` gives both.
+ * Digits read left to right: inside Arabic text the result goes in `<Ltr>`.
+ */
+export function formatMoney(amount: number): string {
+  whole(amount, "An amount in centimes");
+  const abs = Math.abs(amount);
+  const dinars = Math.floor(abs / 100);
+  const grouped = String(dinars).replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  return `${amount < 0 ? "-" : ""}${grouped},${String(abs % 100).padStart(2, "0")}`;
+}
+
+/** The currency word on paper, which is always Arabic. */
+export const MONEY_UNIT_AR = "دج";
+
+/** An amount with its currency word as a printed sheet writes it: «195.650,00 دج». */
+export const formatMoneyAr = (amount: number) => `${formatMoney(amount)} ${MONEY_UNIT_AR}`;
+
 /** A percentage of an amount, rounded half up to the centime. */
 export function percentOf(amount: Money, rate: BasisPoints): Money {
   return money(Math.floor((amount * rate + 5000) / 10000));

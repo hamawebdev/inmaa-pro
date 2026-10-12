@@ -1,18 +1,15 @@
-import { getAppSettings, saveAppSettings, type AppSettings } from "@/features/core/services/settings";
-
 /**
- * The manager password gating the protected sections, and the one-time recovery
- * code that clears it.
+ * Passwords and the manager's recovery code: how they are hashed and checked.
  *
- * Both are hashed with PBKDF2 via Web Crypto and stored on the manager's account
- * (`User.passwordHash`, `User.recoveryHash`; src/features/core/services/settings.ts).
- * STAND-IN: the sign-in screen replaces this shared manager password.
+ * Both are hashed with PBKDF2 through Web Crypto and kept on the account
+ * (`User.passwordHash`, `User.recoveryHash`). Nothing here reads or writes the
+ * database: the services that do are in src/features/core/services/sign-in.ts.
  *
  * **This is accountability, not hard security.** The database is an unencrypted
- * SQLite file on the academy's own machine; anyone with a SQLite browser can
- * clear the password row. The gate stops a front-desk assistant wandering into
- * payroll, teacher debt ledgers and the backup/restore controls on a shared
- * machine. It is not a defence against someone who has the disk.
+ * SQLite file on the centre's own machine; anyone with a SQLite browser can
+ * clear a password row. Sign-in decides what each person at a shared desk sees
+ * and puts a name beside what they do. It is not a defence against someone who
+ * has the disk.
  */
 
 /**
@@ -25,7 +22,7 @@ export const MIN_PASSWORD_LENGTH = 6;
 const KDF_ID = "pbkdf2-sha256";
 const KDF_FORMAT = 1;
 /**
- * OWASP's 2023 figure for PBKDF2-HMAC-SHA256. This runs once per unlock (plus on
+ * OWASP's 2023 figure for PBKDF2-HMAC-SHA256. This runs once per sign-in (plus on
  * create/change), behind a spinner. Raise or lower it freely: every stored record
  * carries its own iteration count, so old hashes keep verifying.
  */
@@ -63,12 +60,13 @@ async function derive(secret: string, salt: Uint8Array, iterations: number): Pro
  *           └─────────────── KDF id
  *
  * Carrying the parameters in the record is what lets the work factor change
- * later without a data migration.
+ * later without a data migration. `iterations` is given only by the demo data
+ * and by tests, whose throw-away passwords need no work factor.
  */
-async function hashSecret(secret: string): Promise<string> {
+export async function hashSecret(secret: string, iterations: number = KDF_ITERATIONS): Promise<string> {
   const salt = crypto.getRandomValues(new Uint8Array(SALT_BYTES));
-  const hash = await derive(secret, salt, KDF_ITERATIONS);
-  return [KDF_ID, KDF_FORMAT, KDF_ITERATIONS, toBase64(salt), toBase64(hash)].join("$");
+  const hash = await derive(secret, salt, iterations);
+  return [KDF_ID, KDF_FORMAT, iterations, toBase64(salt), toBase64(hash)].join("$");
 }
 
 /**
@@ -87,9 +85,9 @@ function equalBytes(a: Uint8Array, b: Uint8Array): boolean {
 /**
  * Verifies a secret against a stored record. Fails **closed** on every abnormal
  * input — empty, wrong field count, unknown KDF or version, absurd iteration
- * count, corrupt base64 — so a damaged settings row can never admit everyone.
+ * count, corrupt base64 — so a damaged row can never admit everyone.
  */
-async function verifySecret(secret: string, stored: string): Promise<boolean> {
+export async function verifySecret(secret: string, stored: string): Promise<boolean> {
   const parts = stored.split("$");
   if (parts.length !== 5) return false;
   const [id, version, iterations, saltB64, hashB64] = parts;
@@ -146,103 +144,12 @@ export function normalizeRecoveryCode(input: string): string {
     .replace(/\D/g, "");
 }
 
-/**
- * Whether a manager password is configured (i.e. the gate is active).
- *
- * Pure and synchronous by design: the route gate already holds the settings
- * object from `useSettings`, and making this await a second read would put a
- * database round-trip on every gated navigation.
- */
-export function isPasswordSet(settings: AppSettings | undefined): boolean {
-  return !!settings?.manager_password_hash?.trim();
+/** A password as it is hashed: what was typed, without the spaces around it. */
+export function normalizePassword(password: string): string {
+  return password.trim();
 }
 
-/** Whether a recovery code exists to fall back on. */
-export function isRecoverySet(settings: AppSettings | undefined): boolean {
-  return !!settings?.manager_recovery_hash?.trim();
-}
-
-/**
- * Verifies the manager password. Fails **closed** when nothing is stored —
- * callers decide whether a gate applies via `isPasswordSet`, never via this.
- */
-export async function verifyPassword(password: string): Promise<boolean> {
-  const s = await getAppSettings();
-  const stored = s.manager_password_hash?.trim();
-  if (!stored) return false;
-  return verifySecret(password.trim(), stored);
-}
-
-/**
- * Verifies a recovery code; the input is normalized first, so hyphens, spaces
- * and Arabic-Indic digits all work. Fails **closed** when nothing is stored.
- */
-export async function verifyRecoveryCode(code: string): Promise<boolean> {
-  const s = await getAppSettings();
-  const stored = s.manager_recovery_hash?.trim();
-  if (!stored) return false;
-  const normalized = normalizeRecoveryCode(code);
-  if (!normalized) return false;
-  return verifySecret(normalized, stored);
-}
-
-/**
- * Sets the first manager password and returns the plaintext recovery code — the
- * only moment it exists in readable form. Throws if a password is already set.
- */
-export async function createPassword(password: string): Promise<string> {
-  const pw = password.trim();
-  if (pw.length < MIN_PASSWORD_LENGTH) {
-    throw new Error(`password must be at least ${MIN_PASSWORD_LENGTH} characters`);
-  }
-  const current = await getAppSettings();
-  if (current.manager_password_hash?.trim()) {
-    throw new Error("a password is already set — use changePassword");
-  }
-
-  const code = generateRecoveryCode();
-  // Order is load-bearing. `saveAppSettings` loops individual upserts with no
-  // transaction, so recovery hash goes FIRST: a failure on the second write
-  // leaves an orphan recovery hash and no password — the gate stays open and the
-  // user simply retries. The reverse order would leave a live password with no
-  // way to recover it. Two calls rather than one object, because relying on
-  // `Object.entries` insertion order for a correctness property survives exactly
-  // one refactor.
-  await saveAppSettings({ manager_recovery_hash: await hashSecret(code) });
-  await saveAppSettings({ manager_password_hash: await hashSecret(pw) });
-  return code;
-}
-
-/**
- * Changes the password after checking `current`. Returns false when `current` is
- * wrong. The existing recovery code is kept: it clears the password, it does not
- * reveal it, so it stays valid across changes.
- */
-export async function changePassword(current: string, next: string): Promise<boolean> {
-  const pw = next.trim();
-  if (pw.length < MIN_PASSWORD_LENGTH) {
-    throw new Error(`password must be at least ${MIN_PASSWORD_LENGTH} characters`);
-  }
-  if (!(await verifyPassword(current))) return false;
-  await saveAppSettings({ manager_password_hash: await hashSecret(pw) });
-  return true;
-}
-
-/** Removes the password and its recovery code — the gate goes fully open. */
-export async function clearPassword(): Promise<void> {
-  // Mirror image of createPassword: password first, so a partial failure still
-  // opens the gate rather than stranding the academy behind a live password.
-  await saveAppSettings({ manager_password_hash: "" });
-  await saveAppSettings({ manager_recovery_hash: "" });
-}
-
-/**
- * Issues a fresh recovery code, invalidating the old one, and returns the
- * plaintext. For an academy that lost the paper slip: reachable only from an
- * unlocked Settings screen, so it is not a bypass.
- */
-export async function regenerateRecoveryCode(): Promise<string> {
-  const code = generateRecoveryCode();
-  await saveAppSettings({ manager_recovery_hash: await hashSecret(code) });
-  return code;
+/** Whether a password is long enough to be kept. */
+export function isPasswordLongEnough(password: string): boolean {
+  return normalizePassword(password).length >= MIN_PASSWORD_LENGTH;
 }

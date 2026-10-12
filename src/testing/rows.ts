@@ -76,6 +76,13 @@ const EXISTING: Readonly<Record<string, string>> = {
 /** Whole-number columns that must differ from row to row: they are part of a unique index. */
 const COUNTED = new Set(["numberSeq", "seq", "version"]);
 
+/**
+ * A row made by hand takes its document number from far above anything a
+ * counter gives in a test: `nextNumber` starts at 1, and a hand-made worker
+ * numbered 1 would take the number of the first one a service registers.
+ */
+const HAND_MADE_NUMBERS_FROM = 900_000;
+
 const isChained = (table: string): table is ChainedTable => (CHAINED_TABLES as readonly string[]).includes(table);
 
 /** One counter for every database a test file opens: a copy "restored" from another already holds its rows. */
@@ -169,6 +176,7 @@ export function createRows(test: Pick<TestDatabase, "db" | "ctx">): Rows {
       }
       if (need === "id") row[name] = uid(table);
       else if (references) row[name] = (await make(references, at)).id;
+      else if (kind === "int" && name === "numberSeq") row[name] = HAND_MADE_NUMBERS_FROM + ++counter;
       else if (kind === "int") row[name] = COUNTED.has(name) ? ++counter : 0;
       else if (kind === "bool") row[name] = 0;
       else if (kind === "date") row[name] = ctx.today;

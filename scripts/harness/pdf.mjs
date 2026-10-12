@@ -29,7 +29,7 @@ const USAGE = `Usage: node scripts/harness/pdf.mjs --route <path> [options]
   --now <datetime>    fixed clock in the centre's time, e.g. 2026-10-11T10:30:00
   --demo              start from the demo data (npm run demo); the clock defaults to the demo's,
                       and the route may name a record: /dashboard/files/{clients.housingFile}/print
-  --user <id>         account to be signed in as (reserved until sign-in exists)
+  --user <name>       sign-in name of the account to be signed in as (default manager)
   --wait <selector>   wait for this CSS selector before printing
   --keep              keep the run's database and browser profile under .harness/run
 

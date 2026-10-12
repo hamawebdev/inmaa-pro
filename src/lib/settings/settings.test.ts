@@ -61,10 +61,10 @@ describe("settings", () => {
 
   it("keep the program's own keys out of the log", async () => {
     const before = await logCount();
-    await test.transact((ex, ctx) => setSetting(ex, ctx, "shell.lockedSections", '["money"]'));
+    await test.transact((ex, ctx) => setSetting(ex, ctx, "system.dayStart", { clients: "2026-10-12" }));
 
     expect(await logCount()).toBe(before);
-    expect(await getSetting(test.db, "shell.lockedSections")).toBe('["money"]');
+    expect(await getSetting(test.db, "system.dayStart")).toEqual({ clients: "2026-10-12" });
   });
 
   it("are refused to a role that may not write Settings", async () => {

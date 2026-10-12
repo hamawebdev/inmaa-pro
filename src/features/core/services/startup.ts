@@ -1,25 +1,29 @@
-import { loadSession, setCurrentSession } from "@/lib/access/session";
 import { reconcileAnchor, writeAnchor, type AnchorComparison } from "@/lib/chain/anchor";
 import { desktopAnchorStore } from "@/lib/chain/anchor-desktop";
 import { systemClock } from "@/lib/clock";
 import { db } from "@/lib/db";
+import { loadFeatureAlerts } from "@/lib/alerts";
+import { loadFeatureDaily } from "@/lib/daily";
 import { loadFeatureEvents } from "@/lib/events";
 import { buildContext, SYSTEM_SESSION } from "@/lib/service/context";
 import { setProgramAnchor, setProgramClock } from "@/lib/service/program";
 import { getSetting } from "@/lib/settings";
 
-import { firstRun, isFirstRunDone, STAND_IN_MANAGER_ID } from "./first-run";
+import { startDayWatch } from "./day-start";
+import { firstRun, isFirstRunDone } from "./first-run";
 
 /**
  * What runs once, before the first screen is drawn.
  *
  *  1. the clock, at the centre's own offset;
  *  2. first run, on a database that never had one;
- *  3. the session. STAND-IN: the manager account is signed in without being
- *     asked, until the sign-in screen exists;
- *  4. the handlers of the events that cross owners;
+ *  3. the registries each folder fills: the handlers of the events that cross
+ *     owners, the alerts, and what each owner does when a day starts;
+ *  4. nobody is signed in: the first screen is the sign-in window
+ *     (src/main.tsx), and everything here runs as the program itself;
  *  5. the anchor against the database. What it found is kept for the screen
- *     that will ask the manager (`startupAnchor`); nothing is decided here.
+ *     that will ask the manager (`startupAnchor`); nothing is decided here;
+ *  6. the day's own work, when the anchor found nothing to ask about.
  */
 let anchorAtStart: AnchorComparison | null = null;
 
@@ -38,12 +42,24 @@ export async function startProgram(): Promise<void> {
     if (!(await desktopAnchorStore.read())) await writeAnchor(db, desktopAnchorStore, ctx.now);
   }
 
-  setCurrentSession(await loadSession(db, STAND_IN_MANAGER_ID));
   loadFeatureEvents();
+  loadFeatureAlerts();
+  loadFeatureDaily();
 
   try {
     anchorAtStart = await reconcileAnchor(db, desktopAnchorStore, clock.now().toISOString());
   } catch (error) {
     console.error("anchor: could not be compared at start", error);
+  }
+
+  // The day's own work (contracts past their end, suspensions ending) is the
+  // program writing by itself. A database found behind or apart from its anchor
+  // is the manager's to answer first: nothing is written to it before then.
+  if (anchorAtStart?.state === "normal") {
+    try {
+      await startDayWatch(clock);
+    } catch (error) {
+      console.error("daily: the day could not be started", error);
+    }
   }
 }

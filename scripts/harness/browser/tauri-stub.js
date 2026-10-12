@@ -7,7 +7,7 @@
  * scripts/harness.
  *
  * What it does:
- *  1. applies the run's choices (locale, theme, clock, signed-in user) from the
+ *  1. applies the run's choices (locale, theme, clock) from the
  *     query string, before the boot script reads localStorage;
  *  2. provides `window.__TAURI_INTERNALS__`, so `@tauri-apps/api` and the
  *     plugins work unchanged and every command goes to /__harness/invoke;

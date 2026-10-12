@@ -6,7 +6,7 @@ import { SYSTEM_SESSION } from "@/lib/service/context";
 import { getSetting } from "@/lib/settings";
 import { createTestDatabase } from "@/testing/database";
 
-import { firstRun, STAND_IN_MANAGER_ID } from "./first-run";
+import { firstRun, FIRST_MANAGER_ID } from "./first-run";
 
 describe("first run", () => {
   it("sets up a new database once: its id, the eight chains, the first entries of the log, the manager", async () => {
@@ -17,7 +17,7 @@ describe("first run", () => {
         SYSTEM_SESSION,
       );
 
-      expect(result).toEqual({ databaseId: "db-first-run", managerId: STAND_IN_MANAGER_ID });
+      expect(result).toEqual({ databaseId: "db-first-run", managerId: FIRST_MANAGER_ID });
       expect(await getSetting(test.db, "system.databaseId")).toBe("db-first-run");
       expect(await getSetting(test.db, "system.firstRunDone")).toBe(true);
 
@@ -42,7 +42,7 @@ describe("first run", () => {
       const manager = await test.db
         .selectFrom("User")
         .selectAll()
-        .where("id", "=", STAND_IN_MANAGER_ID)
+        .where("id", "=", FIRST_MANAGER_ID)
         .executeTakeFirstOrThrow();
       expect(manager).toMatchObject({
         username: "manager",

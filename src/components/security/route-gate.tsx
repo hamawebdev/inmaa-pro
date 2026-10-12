@@ -1,69 +1,70 @@
+import { ShieldOff } from "lucide-react";
 import { useLocation } from "react-router-dom";
+import { useLocale, useTranslations } from "use-intl";
 
-import { ErrorState } from "@/components/error-state";
-import { LockScreen } from "@/components/security/lock-screen";
-import { Skeleton } from "@/components/ui/skeleton";
-import { useSettings } from "@/hooks/use-settings";
-import { isPasswordSet } from "@/lib/auth";
-import { isSectionLocked, parseLockedSections } from "@/lib/lockable-sections";
+import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useSession } from "@/hooks/use-session";
+import { ROLE_CODES, ROLE_LABELS, type RoleCode } from "@/lib/access/catalogue";
+import { mayOpenSection } from "@/lib/access/session";
 import { resolveSection } from "@/navigation/sections";
-import { useUnlockStore } from "@/stores/unlock-store";
 
 /**
- * The manager-password gate, applied per section.
+ * Roles by section, applied to the page about to be drawn.
  *
- * When locked this renders the unlock screen *instead of* `children`, so the
- * protected page never mounts, never fires its queries and never puts its data
- * in the DOM. Gating button handlers instead protects nothing, because the page
- * has already loaded and displayed the payroll by the time any button is
- * pressed.
+ * A section the signed-in user's role holds no level on is answered with the
+ * "not open to your account" screen *instead of* `children`, so the page never
+ * mounts, never fires its queries and never puts its data in the DOM. Gating
+ * button handlers instead would protect nothing: the page has already loaded
+ * and displayed the payroll by the time any button is pressed.
  *
- * It wraps the router's `<Outlet/>` in the dashboard layout, which is what makes
- * the "never mounts" guarantee structural rather than a promise: a locked route
- * element is not rendered, so React never calls it and its `useQuery` calls
- * never run.
+ * It wraps the router's `<Outlet/>` in the dashboard layout, which is what
+ * makes "never mounts" structural rather than a promise: a route element that
+ * is not rendered is never called, so its `useQuery` calls never run.
  *
- * Which sections are protected is the owner's choice, read from
- * the setting `shell.lockedSections` — see src/lib/lockable-sections.ts. The overview
- * section is never lockable.
+ * The bar and the Ctrl+K list already leave out what the role cannot open;
+ * this is what answers an address reached another way (a link inside a page, a
+ * typed route). What a role may *change* inside a section it reads is decided
+ * by each service (`requireSection(ctx, …, "WRITE")`, `requireCapability`).
+ *
+ * This replaces the academy's manager password per section: who may open what
+ * now follows from who signed in.
  */
 export function RouteGate({ children }: { children: React.ReactNode }) {
   const { pathname } = useLocation();
-  const { data: settings, isPending, isError, refetch } = useSettings();
-  const unlocked = useUnlockStore((s) => s.unlocked);
-
+  const session = useSession();
   const section = resolveSection(pathname);
 
-  // Never guess while the query is in flight. Rendering the children for one
-  // frame would mount the protected page and fire its queries; rendering the
-  // prompt would flash a lock screen at every academy that has no password at
-  // all.
-  if (isPending) return <UnlockSkeleton />;
-
-  // Fail closed but recoverable: a settings read that failed must not open the
-  // gate, and React Query has already retried by the time we land here.
-  if (isError) return <ErrorState onRetry={() => void refetch()} className="mx-auto mt-12 max-w-xl" />;
-
-  // The gate is opt-in — with no password configured it is completely
-  // transparent, whatever the section list says.
-  if (!isPasswordSet(settings)) return <>{children}</>;
-
-  // One unlock opens every protected section for the rest of the run. Checked
-  // before the section so an unlocked session skips the parse entirely.
-  if (unlocked) return <>{children}</>;
-
-  if (!isSectionLocked(section, parseLockedSections(settings?.locked_pages))) return <>{children}</>;
-
-  return <LockScreen />;
+  // Nobody signed in: main.tsx is already drawing the sign-in window instead of this tree.
+  if (!session) return null;
+  // An address no section owns is the not-found page's to answer.
+  if (!section || mayOpenSection(session, section)) return <>{children}</>;
+  return <NoAccess roleId={session.roleId} />;
 }
 
-function UnlockSkeleton() {
+/**
+ * Shown in place of a page the role may not open. Inside the app shell, so the
+ * bar stays reachable: someone who lands here goes somewhere else instead of
+ * being stuck on a dead end.
+ */
+function NoAccess({ roleId }: { roleId: string | null }) {
+  const t = useTranslations("Auth");
+  const tCommon = useTranslations("Common");
+  const locale = useLocale();
+  const labels = (ROLE_CODES as readonly string[]).includes(roleId ?? "") ? ROLE_LABELS[roleId as RoleCode] : null;
+  const role = labels ? (labels[locale as keyof typeof labels] ?? labels.ar) : (roleId ?? "");
+
   return (
-    <div className="mx-auto mt-12 max-w-md space-y-5">
-      <Skeleton className="mx-auto size-16 rounded-full" />
-      <Skeleton className="mx-auto h-8 w-56" />
-      <Skeleton className="h-14 w-full" />
-      <Skeleton className="h-14 w-full" />
+    <div className="mx-auto w-full max-w-md px-5 pt-12 pb-16 tall:pt-20">
+      <Card>
+        <CardHeader className="place-items-center text-center">
+          <div className="border-app grid size-14 place-content-center rounded-full border-border bg-muted text-muted-foreground tall:size-16">
+            <ShieldOff className="size-7" />
+          </div>
+          <CardTitle className="mt-3">{t("NoAccessTitle")}</CardTitle>
+          <CardDescription>{t("NoAccessDesc", { role })}</CardDescription>
+        </CardHeader>
+      </Card>
+      <p className="mt-6 text-center text-base text-muted-foreground">{tCommon("LockNavHint")}</p>
     </div>
   );
 }

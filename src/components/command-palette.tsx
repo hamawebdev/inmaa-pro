@@ -13,8 +13,10 @@ import {
   CommandList,
   CommandSeparator,
 } from "@/components/ui/command";
+import { useSession } from "@/hooks/use-session";
+import { mayOpenSection, sectionCodeOf, sectionLevel } from "@/lib/access/session";
 import { QUICK_ACTIONS } from "@/navigation/quick-actions";
-import { SECTIONS } from "@/navigation/sections";
+import { resolveSection, SECTIONS } from "@/navigation/sections";
 
 /**
  * Ctrl+K / ⌘K navigation.
@@ -31,10 +33,10 @@ import { SECTIONS } from "@/navigation/sections";
  * or its tab strip; this is the shortcut for people who prefer typing, not the
  * primary way in.
  *
- * Navigating into a locked section is deliberately still allowed — the route
- * gate answers with the unlock screen, which is the correct response and also
- * the discoverable one. Filtering locked sections out of the palette would tell
- * a curious user which sections are worth attacking.
+ * It lists what the signed-in user's role can open, as the bottom bar does:
+ * a section it cannot open is left out, and a "new …" entry is offered only
+ * where the role may write. The route gate still answers an address reached
+ * another way.
  */
 
 export function CommandPalette() {
@@ -44,6 +46,13 @@ export function CommandPalette() {
   const tHeader = useTranslations("Header");
   // Quick-action labels live in their own folder's messages, under any namespace.
   const tAny = useTranslations();
+  const session = useSession();
+  const sections = SECTIONS.filter((section) => session !== null && mayOpenSection(session, section.id));
+  // A "new …" entry opens a form: it is for a role that may write in that form's section.
+  const quickActions = QUICK_ACTIONS.filter((entry) => {
+    const code = sectionCodeOf(resolveSection(entry.href) ?? "");
+    return session !== null && code !== null && sectionLevel(session, code) === "WRITE";
+  });
 
   React.useEffect(() => {
     const down = (e: KeyboardEvent) => {
@@ -73,7 +82,7 @@ export function CommandPalette() {
         <CommandList>
           <CommandEmpty>{tHeader("NoResults")}</CommandEmpty>
 
-          {SECTIONS.map((section, index) => (
+          {sections.map((section, index) => (
             <React.Fragment key={section.id}>
               {index > 0 && <CommandSeparator />}
               <CommandGroup heading={t(section.labelKey)}>
@@ -100,11 +109,11 @@ export function CommandPalette() {
             </React.Fragment>
           ))}
 
-          {QUICK_ACTIONS.length > 0 && (
+          {quickActions.length > 0 && (
             <>
               <CommandSeparator />
               <CommandGroup heading={tHeader("QuickActions")}>
-                {QUICK_ACTIONS.map((action) => (
+                {quickActions.map((action) => (
                   <CommandItem key={action.href} value={tAny(action.labelKey)} onSelect={() => go(action.href)}>
                     <action.icon />
                     <span>{tAny(action.labelKey)}</span>

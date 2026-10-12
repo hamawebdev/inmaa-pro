@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 
+import { DEMO_PASSWORD } from "@/features/core/demo";
 import { toLocal } from "@/lib/clock";
 
 import { fileAnchorStore } from "./anchor-file";
@@ -27,6 +28,9 @@ export interface DemoManifest {
   folders: string[];
   names: Record<string, DemoNames>;
   counts: Record<string, number>;
+  /** The sign-in names of the demo accounts, the manager first, and the one password they share: the harness's `--user`. */
+  accounts: string[];
+  password: string;
 }
 
 /** A fingerprint of the migrations, as scripts/harness/lib/demo.mjs computes it from the files. */
@@ -73,6 +77,10 @@ export async function buildDemoDatabase(
       folders: Object.keys(test.demo),
       names: test.demo,
       counts,
+      accounts: (
+        await test.db.selectFrom("User").select("username").where("isActive", "=", 1).orderBy("createdAt").execute()
+      ).map((account) => account.username),
+      password: DEMO_PASSWORD,
     };
   } finally {
     test.close();

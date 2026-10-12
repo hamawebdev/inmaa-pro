@@ -2,6 +2,7 @@ import { currentSession } from "@/lib/access/session";
 import { revalidatePath } from "@/lib/compat/revalidate";
 import { db } from "@/lib/db";
 
+import { SYSTEM_SESSION } from "./context";
 import { programAnchor, programClock } from "./program";
 import { createRunner } from "./runner";
 
@@ -27,6 +28,25 @@ const runner = createRunner({
 });
 
 export const { action, query, transact, anchorNow } = runner;
+
+/**
+ * The same three, run as the program itself (no user, every right): for what
+ * happens before anybody is signed in. Sign-in is the one screen that uses it;
+ * the day-start job has its own runner (src/lib/daily).
+ */
+const programRunner = createRunner({
+  db,
+  session: () => SYSTEM_SESSION,
+  clock: programClock,
+  anchor: programAnchor,
+  revalidate: revalidatePath,
+});
+
+export const asProgram = {
+  action: programRunner.action,
+  query: programRunner.query,
+  transact: programRunner.transact,
+};
 
 export type { ActionOptions, Service } from "./runner";
 export type { Executor, ServiceContext, Session } from "./context";

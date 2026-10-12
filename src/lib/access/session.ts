@@ -47,6 +47,23 @@ export function requireSection(who: Session, section: SectionCode, level: Sectio
   }
 }
 
+/** A bar section as the navigation names it ("requests") to the code its grants are stored under ("REQUESTS"). */
+export function sectionCodeOf(sectionId: string): SectionCode | null {
+  const code = sectionId.toUpperCase();
+  return (SECTION_CODES as readonly string[]).includes(code) ? (code as SectionCode) : null;
+}
+
+/**
+ * Whether somebody may open a bar section. Home is everybody's: the program
+ * always opens onto something, and what the home screen shows already follows
+ * the reader's role.
+ */
+export function mayOpenSection(who: Session, sectionId: string): boolean {
+  if (sectionId === "home") return true;
+  const code = sectionCodeOf(sectionId);
+  return code !== null && sectionLevel(who, code) !== null;
+}
+
 /** Loads a user's session snapshot. Called at sign-in, and by tests. */
 export async function loadSession(ex: Executor, userId: string): Promise<Session> {
   const user = await ex
@@ -90,10 +107,23 @@ export async function loadSession(ex: Executor, userId: string): Promise<Session
 // ── The session of the running program ─────────────────────────────────────
 
 let current: Session | null = null;
+const listeners = new Set<() => void>();
 
-/** Set at sign-in. Until sign-in exists, the stand-in manager is signed in at start (first-run.ts). */
+/** Set at sign-in, cleared at sign-out. Every screen that reads the session follows (`useSession`). */
 export function setCurrentSession(session: Session | null): void {
   current = session;
+  for (const listener of listeners) listener();
+}
+
+/** The signed-in user, or null: for a screen that must not throw when nobody is signed in. */
+export function peekSession(): Session | null {
+  return current;
+}
+
+/** Calls `listener` whenever somebody signs in or out. Returns how to stop. */
+export function subscribeToSession(listener: () => void): () => void {
+  listeners.add(listener);
+  return () => listeners.delete(listener);
 }
 
 /** The signed-in user. For the action wrapper and for screens; a service reads its `ctx` instead. */

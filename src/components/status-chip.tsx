@@ -1,4 +1,4 @@
-import { CircleAlert, CircleCheck, CircleMinus, CircleX, Clock, type LucideIcon } from "lucide-react";
+import { CircleAlert, CircleCheck, CircleMinus, CirclePlay, CircleX, Clock, type LucideIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
@@ -19,13 +19,19 @@ import { cn } from "@/lib/utils";
  * So `label` is required and the icon is chosen from the tone rather than passed
  * in, which means there is no way to build a chip that says less than this.
  */
-export type StatusTone = "success" | "warning" | "danger" | "info" | "neutral" | "pending";
+/**
+ * `progress` is this program's own: something under way («جارية», a visit the team is at). His colour
+ * list has green for confirmed, yellow for awaiting, blue for done, red for a problem and black for
+ * cancelled, and none for under way; it is violet so that it is taken for none of them.
+ */
+export type StatusTone = "success" | "warning" | "danger" | "info" | "progress" | "neutral" | "pending";
 
 const TONES: Record<StatusTone, { className: string; icon: LucideIcon }> = {
   success: { className: "border-success/35 bg-success/12 text-success", icon: CircleCheck },
   warning: { className: "border-warning-ink/35 bg-warning/15 text-warning-ink", icon: CircleAlert },
   danger: { className: "border-destructive/35 bg-destructive/10 text-destructive", icon: CircleX },
   info: { className: "border-info/35 bg-info/12 text-info", icon: CircleAlert },
+  progress: { className: "border-progress/35 bg-progress/12 text-progress", icon: CirclePlay },
   pending: { className: "border-border-strong bg-muted text-foreground/75", icon: Clock },
   neutral: { className: "border-border bg-muted text-muted-foreground", icon: CircleMinus },
 };

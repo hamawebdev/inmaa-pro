@@ -3,6 +3,8 @@ import { NavLink } from "react-router-dom";
 import { useTranslations } from "use-intl";
 
 import { LockMenu } from "@/components/lock-menu";
+import { useSession } from "@/hooks/use-session";
+import { mayOpenSection } from "@/lib/access/session";
 import { cn } from "@/lib/utils";
 import {
   PRIMARY_SECTIONS,
@@ -82,6 +84,11 @@ function accentClasses(accent: SectionAccent | undefined, active: boolean) {
  *    six-plus-two rather than as eight of a kind. Lock opens a menu, not a
  *    screen, so it has no hue.
  *
+ * A section the signed-in user's role cannot open is left out, and the others
+ * share its room: an item that only answers "not for you" is not navigation.
+ * The route gate still answers an address reached another way. Lock is
+ * everybody's.
+ *
  * At the bottom rather than the top because that is where the pointer already
  * is after working through a page, and because a bar at the bottom of a
  * `h-dvh` flex column cannot be scrolled away — it is a flex sibling of the
@@ -90,7 +97,10 @@ function accentClasses(accent: SectionAccent | undefined, active: boolean) {
  */
 export function BottomNav({ pathname }: { pathname: string }) {
   const t = useTranslations("Nav");
+  const session = useSession();
   const activeSection = resolveSection(pathname);
+  const sections = PRIMARY_SECTIONS.filter((section) => session !== null && mayOpenSection(session, section.id));
+  const settingsOpen = session !== null && mayOpenSection(session, SETTINGS_SECTION.id);
 
   // Narrow enough to read as secondary, wide enough for the longer of the two
   // languages ("الإعدادات") at the bar's own type size.
@@ -102,7 +112,7 @@ export function BottomNav({ pathname }: { pathname: string }) {
           compares the location against *this item's* href, and a section owns
           several paths (Staff owns /teachers, /rent-teachers and /employees).
           The section resolved from the location is the authority. */}
-      {PRIMARY_SECTIONS.map((section, i) => {
+      {sections.map((section, i) => {
         const active = activeSection === section.id;
         const accent = SECTION_ACCENT[section.id];
         return (
@@ -145,27 +155,28 @@ export function BottomNav({ pathname }: { pathname: string }) {
           </button>
         </LockMenu>
 
-        {(() => {
-          const active = activeSection === "settings";
-          const accent = SECTION_ACCENT.settings;
-          return (
-            <NavLink
-              to={SETTINGS_SECTION.href}
-              aria-current={active ? "page" : undefined}
-              className={cn(navItemBase, utility, "border-s-2 border-border", accentClasses(accent, active))}
-            >
-              <span
-                aria-hidden
-                className={cn(
-                  "absolute inset-x-0 top-0 h-1.5 transition-opacity",
-                  accent.rule,
-                  active ? "opacity-100" : "opacity-0",
-                )}
-              />
-              <NavItemInner icon={SETTINGS_SECTION.icon} label={t("Settings")} active={active} />
-            </NavLink>
-          );
-        })()}
+        {settingsOpen &&
+          (() => {
+            const active = activeSection === "settings";
+            const accent = SECTION_ACCENT.settings;
+            return (
+              <NavLink
+                to={SETTINGS_SECTION.href}
+                aria-current={active ? "page" : undefined}
+                className={cn(navItemBase, utility, "border-s-2 border-border", accentClasses(accent, active))}
+              >
+                <span
+                  aria-hidden
+                  className={cn(
+                    "absolute inset-x-0 top-0 h-1.5 transition-opacity",
+                    accent.rule,
+                    active ? "opacity-100" : "opacity-0",
+                  )}
+                />
+                <NavItemInner icon={SETTINGS_SECTION.icon} label={t("Settings")} active={active} />
+              </NavLink>
+            );
+          })()}
       </div>
     </nav>
   );

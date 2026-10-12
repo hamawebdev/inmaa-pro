@@ -2,9 +2,9 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 
 import { QueryClientProvider } from "@tanstack/react-query";
-import { RouterProvider } from "react-router-dom";
 import { z } from "zod";
 
+import { ProgramGate } from "@/components/security/program-gate";
 import { startProgram } from "@/features/core/services/startup";
 import { zodErrorMap } from "@/i18n/errors";
 import { I18nProvider } from "@/i18n/provider";
@@ -36,7 +36,7 @@ function renderProgram() {
                 has to follow the reading direction, and only a component under
                 I18nProvider can see the locale. */}
             <I18nProvider>
-              <RouterProvider router={router} />
+              <ProgramGate />
             </I18nProvider>
           </PreferencesStoreProvider>
         </TooltipProvider>
@@ -65,8 +65,8 @@ function renderStartFailure(error: unknown) {
   );
 }
 
-// First run, the session and the event handlers come before the first screen:
-// a page that drew earlier would have nobody signed in to read as.
+// First run and the event handlers come before the first screen, which is the
+// sign-in window: a page is drawn only once somebody has signed in.
 startProgram().then(renderProgram, (error: unknown) => {
   console.error("start: failed", error);
   renderStartFailure(error);

@@ -4,13 +4,15 @@ import { setSetting } from "@/lib/settings";
 import type { DemoNames, DemoTools } from "@/testing/demo";
 
 import { ensureCommune, ensureZoneForCommune } from "./services/places";
+import { setFirstPassword } from "./services/sign-in";
 import { createAccount } from "./services/users";
 
 /**
  * Foundation's demo data: what the other folders' demo data needs first.
  *
  *  - one account for each role besides the manager, whose account exists since
- *    first run. `tools.sessionOf("ACCOUNTANT")` gives the next folders its session;
+ *    first run. `tools.sessionOf("ACCOUNTANT")` gives the next folders its session.
+ *    All seven sign in with `DEMO_PASSWORD`: the harness types it (`--user hr`);
  *  - the centre's identity. The name, the city, the phone and the e-mail are
  *    his (letterhead and footer, defaults in code); the registration numbers,
  *    the address and the bank are DEMO values, not his: an invoice refuses to
@@ -26,6 +28,14 @@ export const DEMO_ACCOUNTS: ReadonlyArray<{ name: string; username: string; disp
   { name: "accountant", username: "accountant", displayName: "نادية لعريبي", roleId: "ACCOUNTANT" },
 ];
 
+/**
+ * The password of every demo account, the manager's included (username
+ * `manager`). A demo database is a development file: the password is public
+ * and hashed without a work factor, so building the data stays quick.
+ */
+export const DEMO_PASSWORD = "inmaa-demo";
+const DEMO_KDF_ITERATIONS = 1_000;
+
 /** Seeded communes the demo gives a zone (their ids carry the official code). */
 const DEMO_ZONES = [
   { name: "zoneOumElBouaghi", communeId: "commune-0401" },
@@ -39,6 +49,10 @@ export async function seedDemo(ex: Executor, ctx: ServiceContext, _tools: DemoTo
   for (const account of DEMO_ACCOUNTS) {
     const { id } = await createAccount(ex, ctx, account);
     names[account.name] = id;
+  }
+  // Each account has chosen its password, as its owner would at his first sign-in.
+  for (const userId of [names.manager, ...DEMO_ACCOUNTS.map((account) => names[account.name])]) {
+    await setFirstPassword(ex, ctx, { userId, password: DEMO_PASSWORD, iterations: DEMO_KDF_ITERATIONS });
   }
 
   // DEMO values: not his. Replaced at first run by what the office types.

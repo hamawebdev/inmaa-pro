@@ -40,6 +40,8 @@ export const SETTING_DEFAULTS = {
   "system.utcOffsetMin": 60 as number,
   "system.clockJumpDays": 3 as number,
   "system.alertsNotified": {} as Record<string, { date: string; count: number }>,
+  /** Per owner, the last day its day-start handlers completed (src/lib/daily). */
+  "system.dayStart": {} as Record<string, string>,
   "centre.nameAr": "مركز إنماء برو" as string,
   "centre.nameLatin": "UNMAA Pro Center" as string,
   "centre.legalForm": "" as string,
@@ -69,12 +71,6 @@ export const SETTING_DEFAULTS = {
   "backup.targetDir": "" as string,
   "backup.keepCount": 30 as number,
   "feature.siteQrOnOrder": false as boolean,
-  /**
-   * The academy shell's lock, kept until sign-in and role-by-section replace
-   * it: the bar sections that ask for the manager's password, as a JSON list.
-   * Null is "never chosen" (the defaults of src/lib/lockable-sections.ts apply).
-   */
-  "shell.lockedSections": null as string | null,
 
   // ── Work rules (قواعد العمل) ─────────────────────────────────────────────
   "work.days": ["SAT", "SUN", "MON", "TUE", "WED", "THU"] as string[],
@@ -199,5 +195,5 @@ export const SETTING_KEYS = Object.keys(SETTING_DEFAULTS) as SettingKey[];
 
 /** Written by the program for itself: not a change a person made, so not a log entry. */
 export function isSystemSetting(key: SettingKey): boolean {
-  return key.startsWith("system.") || key.startsWith("shell.");
+  return key.startsWith("system.");
 }

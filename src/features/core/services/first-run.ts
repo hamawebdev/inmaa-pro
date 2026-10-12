@@ -12,12 +12,12 @@ import { getSetting, setSetting } from "@/lib/settings";
  * starting point of each hash chain (which depends on that id), and the first
  * manager account. One transaction, done once, guarded by `system.firstRunDone`.
  *
- * STAND-IN until the sign-in screen exists: the manager account is created
- * here with a fixed id and no password, and the program signs it in at start
- * (startup.ts). The first-run screen will ask for the name and the password,
- * and for the centre's identity, tax mode, backup folder and paper numbers.
+ * The manager account is made here with a fixed id and no password: the first
+ * time the program opens, the sign-in window asks him to choose one and shows
+ * him his recovery code (src/features/core/services/sign-in.ts). The centre's
+ * identity, tax mode, backup folder and paper numbers are filled in Settings.
  */
-export const STAND_IN_MANAGER_ID = "user-manager";
+export const FIRST_MANAGER_ID = "user-manager";
 
 export interface FirstRunInput {
   /** Given by tests, so that hashes can be compared between runs. A new UUID otherwise. */
@@ -64,7 +64,7 @@ export async function firstRun(
   });
 
   // 4. The first manager account. It exists before any employee, so it points at none.
-  const managerId = input.manager?.id ?? STAND_IN_MANAGER_ID;
+  const managerId = input.manager?.id ?? FIRST_MANAGER_ID;
   const username = (input.manager?.username ?? "manager").trim().toLowerCase();
   const displayName = input.manager?.displayName?.trim() || "المدير";
   await ex
@@ -73,7 +73,7 @@ export async function firstRun(
       id: managerId,
       username,
       displayName,
-      // Empty means "no password set": the lock screen asks for one to be created.
+      // Empty means "no password yet": the sign-in window asks for one to be chosen.
       passwordHash: input.manager?.passwordHash ?? "",
       recoveryHash: input.manager?.recoveryHash ?? null,
       roleId: MANAGER_ROLE,

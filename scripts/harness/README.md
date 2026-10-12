@@ -50,12 +50,35 @@ node scripts/harness/csp-check.mjs --route /dashboard/home --route /dashboard/se
 | `--seed <file.sql>`                         | SQL run after the migrations; repeatable                                   |
 | `--demo`                                    | start from the demo data (`npm run demo`); see below                       |
 | `--now <datetime>`                          | a fixed clock that still ticks, in the centre's time zone (Africa/Algiers) |
-| `--user <id>`                               | reserved: the account to be signed in as, once sign-in exists              |
+| `--user <name>`                             | the account to sign in as, by sign-in name; `manager` when left out        |
+| `--signed-out`                              | stay on the sign-in window (`shot` only; the file is named `sign-in__…`)   |
+| `--before <js>`                             | evaluate this once settled, then settle again, before the picture          |
 | `--scroll bottom`, `--scroll-to <selector>` | scroll the main area before shooting                                       |
 | `--clip <selector>`                         | shoot one element                                                          |
 | `--eval <js>`                               | print the value of an expression evaluated in the page                     |
 | `--page lock.html --license expired`        | the lock window                                                            |
 | `--keep`                                    | keep the run's database and browser profile, for looking inside            |
+
+## Signing in
+
+The program opens on its sign-in window and draws nothing else until somebody has signed in. There is no way round
+it, in the source or in the built program, so the harness does what a person does on every page it opens: it picks
+the account, types the password, and on a new database, where the manager has no password yet, chooses one and says it
+wrote the recovery code down (`lib/sign-in.mjs`). One password serves every run, `inmaa-demo`: the demo data gives it
+to all its accounts.
+
+- Without `--user` the run is the manager's. On a new database he is the only account.
+- With `--demo`, `--user` is one of `manager`, `hr`, `admin`, `supervisor`, `reception`, `operations`, `accountant`:
+  one account for each role, with that role's sections on the bar. The picture is named `…__as-<user>__…`.
+- `--signed-out` leaves the sign-in window on screen. `--before` reaches its other steps:
+
+```sh
+npm run shot -- --demo --signed-out --locale ar --theme dark --both-sizes
+npm run shot -- --demo --signed-out --before "document.querySelector('[data-signin-user=accountant]').click()"
+npm run shot -- --demo --user accountant --route /dashboard/expenses
+```
+
+A refused sign-in stops the run and says what the window said.
 
 ## Demo data
 

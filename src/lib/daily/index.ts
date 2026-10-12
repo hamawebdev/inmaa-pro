@@ -1,0 +1,127 @@
+import type { Kysely } from "kysely";
+
+import type { Clock } from "@/lib/clock";
+import type { DB } from "@/lib/db/schema";
+import { buildContext, SYSTEM_SESSION, type Executor, type ServiceContext } from "@/lib/service/context";
+import { getSetting, setSetting } from "@/lib/settings";
+import type { LocalDate } from "@/lib/units";
+
+/**
+ * The day-start job: what the program does by itself when a new day begins.
+ *
+ * A contract past its end date ends; a suspension with an end date is lifted;
+ * a document expires. Nobody clicks for these. They run when the program
+ * opens on a day it has not started yet, and at midnight if it is open.
+ *
+ * Each owner registers what it does, in `src/features/<folder>/daily.ts`:
+ *
+ *     export function registerDaily(daily: RegisterDaily) {
+ *       daily("endExpiredContracts", async (ex, ctx, { today, since }) => { … });
+ *     }
+ *
+ * The rules of a handler:
+ *
+ *  - it is given `(ex, ctx, day)` like any service. `ctx` is the program's own
+ *    (`userId` null, name "system"): the log says the program did it;
+ *  - it may run twice for one day, and after days the PC was off: write it on
+ *    "on or before today", not "today", and so that a second run changes
+ *    nothing. `since` is the last day this owner's handlers completed (null the
+ *    first time);
+ *  - all of one owner's handlers run in ONE transaction, with the mark that
+ *    the day is done. If one throws, that owner's day is rolled back and tried
+ *    again at the next start or the next hour; the other owners are not held up.
+ */
+export interface DayStart {
+  /** The centre's date now. */
+  today: LocalDate;
+  /** The last day this owner's handlers completed, or null if they never ran. */
+  since: LocalDate | null;
+}
+
+export type DailyHandler = (ex: Executor, ctx: ServiceContext, day: DayStart) => Promise<void>;
+export type RegisterDaily = (name: string, handler: DailyHandler) => void;
+
+export const DAILY_OWNERS = ["core", "people", "clients", "operations", "money", "stock"] as const;
+export type DailyOwner = (typeof DAILY_OWNERS)[number];
+
+const handlers = new Map<DailyOwner, Array<{ name: string; handler: DailyHandler }>>();
+
+/** Registers one handler for an owner. Used through the function handed to each folder's `registerDaily`. */
+export function registerDailyHandler(owner: DailyOwner, name: string, handler: DailyHandler): void {
+  const list = handlers.get(owner) ?? [];
+  if (list.some((entry) => entry.name === name)) throw new Error(`daily: ${owner} registers ${name} twice`);
+  list.push({ name, handler });
+  handlers.set(owner, list);
+}
+
+/** Which handlers each owner has, in the order they run. For tests. */
+export function dailyHandlers(): Array<{ owner: DailyOwner; names: string[] }> {
+  return DAILY_OWNERS.flatMap((owner) => {
+    const list = handlers.get(owner);
+    return list?.length ? [{ owner, names: list.map((entry) => entry.name) }] : [];
+  });
+}
+
+let loaded = false;
+
+/** Registers the handlers of every feature folder that has a `daily.ts`. Called at start, and by the test database. */
+export function loadFeatureDaily(): void {
+  if (loaded) return;
+  loaded = true;
+  const modules = import.meta.glob<{ registerDaily?: (daily: RegisterDaily) => void }>("../../features/*/daily.ts", {
+    eager: true,
+  });
+  for (const [file, module] of Object.entries(modules)) {
+    const owner = /features\/([^/]+)\/daily\.ts$/.exec(file)?.[1] as DailyOwner | undefined;
+    if (!owner || !DAILY_OWNERS.includes(owner)) continue;
+    module.registerDaily?.((name, handler) => registerDailyHandler(owner, name, handler));
+  }
+}
+
+/** Forgets every handler and lets `loadFeatureDaily` run again. For tests. */
+export function resetFeatureDaily(): void {
+  loaded = false;
+  handlers.clear();
+}
+
+export interface DayStartReport {
+  today: LocalDate;
+  /** The owners whose day was started by this run. */
+  ran: DailyOwner[];
+  /** The owners whose day was already started. */
+  alreadyDone: DailyOwner[];
+  /** The owners whose handlers failed: rolled back, to be tried again. */
+  failed: Array<{ owner: DailyOwner; error: string }>;
+}
+
+/**
+ * Starts the day for every owner that has not started it: one transaction per
+ * owner, in owner order, as the program itself. Safe to call at any time; an
+ * owner whose day is done is skipped.
+ */
+export async function runDayStart(db: Kysely<DB>, clock: Clock): Promise<DayStartReport> {
+  const ctx = buildContext(SYSTEM_SESSION, clock);
+  const report: DayStartReport = { today: ctx.today, ran: [], alreadyDone: [], failed: [] };
+
+  for (const owner of DAILY_OWNERS) {
+    const list = handlers.get(owner);
+    if (!list?.length) continue;
+    try {
+      const ran = await db.transaction().execute(async (trx) => {
+        // Read inside the transaction: two windows of time cannot both start one owner's day.
+        const done = await getSetting(trx, "system.dayStart");
+        if (done[owner] === ctx.today) return false;
+        const day: DayStart = { today: ctx.today, since: (done[owner] as LocalDate | undefined) ?? null };
+        for (const { handler } of list) await handler(trx, ctx, day);
+        await setSetting(trx, ctx, "system.dayStart", { ...done, [owner]: ctx.today });
+        return true;
+      });
+      (ran ? report.ran : report.alreadyDone).push(owner);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error(`daily: the day-start handlers of ${owner} failed and were rolled back`, error);
+      report.failed.push({ owner, error: message });
+    }
+  }
+  return report;
+}

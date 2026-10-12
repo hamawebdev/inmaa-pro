@@ -1,8 +1,11 @@
 import { afterEach, describe, expect, it } from "vitest";
 
-import { DEMO_ACCOUNTS } from "@/features/core/demo";
+import { DEMO_ACCOUNTS, DEMO_PASSWORD } from "@/features/core/demo";
+import { listSignInAccounts, signIn } from "@/features/core/services/sign-in";
+import { DEFAULT_SECTION_LEVELS } from "@/lib/access/catalogue";
 import { verifyChains } from "@/lib/chain";
 import { compareAnchor } from "@/lib/chain/anchor";
+import { SYSTEM_SESSION } from "@/lib/service/context";
 import { getSettings } from "@/lib/settings";
 
 import { createTestDatabase, type TestDatabase } from "./database";
@@ -47,6 +50,36 @@ describe("the demo data", () => {
     // Written through the services: the log holds each act, the chains and the anchor agree.
     expect((await verifyChains(test.db)).ok).toBe(true);
     expect((await compareAnchor(test.db, test.anchor, test.ctx().now)).state).toBe("normal");
+  });
+
+  it("lets every demo account sign in with the demo password, each with its role's sections", async () => {
+    const test = await database({ demo: ["core"] });
+
+    const listed = await listSignInAccounts(test.db);
+    expect(listed.map((account) => account.username)).toEqual([
+      "manager",
+      ...DEMO_ACCOUNTS.map((account) => account.username),
+    ]);
+    expect(listed.every((account) => !account.needsPassword)).toBe(true);
+
+    for (const account of listed) {
+      const answer = await test.transact(
+        (ex, ctx) => signIn(ex, ctx, { userId: account.id, password: DEMO_PASSWORD }),
+        SYSTEM_SESSION,
+      );
+      if (!answer.ok) throw new Error(`${account.username} was refused: ${answer.reason}`);
+      expect(answer.session.roleId).toBe(account.roleId);
+      if (account.roleId !== "MANAGER") {
+        expect(answer.session.sections, account.username).toEqual(
+          DEFAULT_SECTION_LEVELS[account.roleId as keyof typeof DEFAULT_SECTION_LEVELS],
+        );
+      }
+    }
+    const wrong = await test.transact(
+      (ex, ctx) => signIn(ex, ctx, { userId: listed[1].id, password: "not-the-demo-password" }),
+      SYSTEM_SESSION,
+    );
+    expect(wrong).toEqual({ ok: false, reason: "WRONG_PASSWORD" });
   });
 
   it("gives the same ids on every build", async () => {

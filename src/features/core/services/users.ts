@@ -1,17 +1,22 @@
-import { ROLE_CODES, type RoleCode } from "@/lib/access/catalogue";
+import { MANAGER_ROLE, ROLE_CODES, type RoleCode } from "@/lib/access/catalogue";
 import { requireCapability } from "@/lib/access/session";
+import { hashSecret, isPasswordLongEnough, normalizePassword } from "@/lib/auth";
 import { newId } from "@/lib/db/rows";
-import { logCollect } from "@/lib/log";
+import { logCollect, logSecurity } from "@/lib/log";
 import type { Executor, ServiceContext } from "@/lib/service/context";
 import { ServiceError } from "@/lib/service/errors";
 
 /**
  * Sign-in accounts (plan feature 23, DESIGN.md section 12).
  *
- * The first step of what F3 builds around them: an account is made by someone
- * who may manage accounts, with a role, and is logged as personal data
- * collected. It has no password yet: `mustChangePassword` is set, and the
- * sign-in screen asks for one the first time.
+ * An account is made by someone who may manage accounts, with a role, and is
+ * logged as personal data collected. It has no password yet: the sign-in
+ * window asks its owner to choose one the first time
+ * (src/features/core/services/sign-in.ts).
+ *
+ * `giveAccountPassword` is for the person who forgot his: the manager types a
+ * password for him, and the sign-in window asks him to replace it at once.
+ * The manager's own way back is his recovery code, never this.
  */
 export interface CreateAccountInput {
   /** The sign-in name. Stored in lower case. */
@@ -70,4 +75,47 @@ export async function createAccount(
     context: { roleId: input.roleId },
   });
   return { id };
+}
+
+/** A password given by whoever manages accounts. Its owner must replace it the first time he signs in with it. */
+export async function giveAccountPassword(
+  ex: Executor,
+  ctx: ServiceContext,
+  input: { userId: string; password: string; iterations?: number },
+): Promise<{ id: string }> {
+  requireCapability(ctx, "users.manage");
+  const account = await ex
+    .selectFrom("User")
+    .select(["id", "username", "displayName", "roleId", "isActive"])
+    .where("id", "=", input.userId)
+    .executeTakeFirst();
+  if (!account?.isActive) throw new ServiceError("This account does not exist or is not active.");
+  if (account.roleId === MANAGER_ROLE && account.id !== ctx.userId) {
+    throw new ServiceError("A manager's password is changed by himself, or with his recovery code.");
+  }
+  if (!isPasswordLongEnough(input.password)) throw new ServiceError("The password is too short.");
+
+  await ex
+    .updateTable("User")
+    .set({
+      passwordHash: await hashSecret(normalizePassword(input.password), input.iterations),
+      // His own password is his own: only one given to somebody else must be replaced.
+      mustChangePassword: account.id === ctx.userId ? 0 : 1,
+      failedSignInCount: 0,
+      updatedAt: ctx.now,
+      updatedByUserId: ctx.userId,
+    })
+    .where("id", "=", account.id)
+    .execute();
+  await logSecurity(ex, ctx, {
+    owner: "FOUNDATION",
+    action: "PASSWORD_CHANGE",
+    entity: "User",
+    entityId: account.id,
+    entityLabel: account.username,
+    subject: { kind: "USER", id: account.id, label: account.displayName },
+    changes: { passwordHash: [null, null] },
+    context: { how: "GIVEN" },
+  });
+  return { id: account.id };
 }

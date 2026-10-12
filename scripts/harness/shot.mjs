@@ -35,7 +35,10 @@ const USAGE = `Usage: node scripts/harness/shot.mjs --route <path> [options]
   --now <datetime>    fixed clock in the centre's time, e.g. 2026-10-11T10:30:00
   --demo              start from the demo data (npm run demo); the clock defaults to the demo's,
                       and a route may name a record: /dashboard/files/{clients.housingFile}
-  --user <id>         account to be signed in as (reserved until sign-in exists)
+  --user <name>       sign-in name of the account to be signed in as (default manager; with --demo also
+                      hr, admin, supervisor, reception, operations, accountant)
+  --signed-out        stay on the sign-in window instead of signing in
+  --before <js>       evaluate this once the screen has settled, then let it settle again, before shooting
   --license <state>   unlocked | trial | expired (default unlocked)
   --page <file>       index.html (default) or lock.html
   --wait <selector>   wait for this CSS selector before shooting
@@ -49,9 +52,9 @@ const USAGE = `Usage: node scripts/harness/shot.mjs --route <path> [options]
 async function main() {
   const args = parseArgs(process.argv.slice(2), {
     lists: ["size", "seed"],
-    flags: ["reference", "both-sizes", "keep", "demo", "help"],
+    flags: ["reference", "both-sizes", "keep", "demo", "signed-out", "help"],
   });
-  if (args.help || (!args.route && !args.page)) {
+  if (args.help || (!args.route && !args.page && !args["signed-out"])) {
     process.stdout.write(USAGE);
     process.exit(args.help ? 0 : 2);
   }
@@ -72,6 +75,8 @@ async function main() {
     locale: args.locale,
     theme: args.theme,
     user: args.user,
+    signedOut: Boolean(args["signed-out"]),
+    before: args.before,
     now: args.now ?? demo?.manifest.demoLocal,
     wait: args.wait,
     clip: args.clip,
@@ -93,7 +98,9 @@ async function main() {
     const outDir = path.resolve(args["out-dir"] ?? path.join(HARNESS_DIR, "shots"));
     for (const shot of result.shots) {
       const name = [
-        routeSlug(view.route, view.page),
+        view.signedOut ? "sign-in" : routeSlug(view.route, view.page),
+        // Another account's view of a screen is another picture.
+        ...(view.user && !view.signedOut ? [`as-${view.user}`] : []),
         view.locale ?? "default",
         view.theme ?? "default",
         sizeLabel(shot.size),

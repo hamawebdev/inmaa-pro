@@ -47,7 +47,7 @@ export async function getSettings<K extends SettingKey>(
 
 /**
  * Writes one setting. A change a person made is logged with its old and new
- * value; the keys the program writes for itself (`system.*`, `shell.*`) are not.
+ * value; the keys the program writes for itself (`system.*`) are not.
  */
 export async function setSetting<K extends SettingKey>(
   ex: Executor,

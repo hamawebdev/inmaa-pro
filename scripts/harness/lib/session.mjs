@@ -11,6 +11,7 @@ import { fileURLToPath } from "node:url";
 import { createBackend } from "./backend.mjs";
 import { launchChrome } from "./browser.mjs";
 import { startDistServer } from "./dist-server.mjs";
+import { signIn } from "./sign-in.mjs";
 import { startViteServer } from "./vite-server.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -88,7 +89,7 @@ function sweepDeadRuns(runsDir) {
 
 function buildUrl(origin, view) {
   const query = new URLSearchParams();
-  for (const key of ["locale", "theme", "user", "now"]) {
+  for (const key of ["locale", "theme", "now"]) {
     if (view[key]) query.set(key, view[key]);
   }
   const page = view.page && view.page !== "index.html" ? view.page : "";
@@ -103,7 +104,10 @@ function buildUrl(origin, view) {
  * @property {string} [page]    "index.html" (default) or "lock.html"
  * @property {string} [locale]  "ar" | "fr" | "en"; omitted = the app's default
  * @property {string} [theme]   "light" | "dark" | "system"; omitted = the app's default
- * @property {string} [user]    reserved: the account to be signed in as
+ * @property {string} [user]    the sign-in name of the account to be signed in as (default "manager")
+ * @property {boolean} [signedOut] stay on the sign-in window instead of signing in
+ * @property {string} [before]  JavaScript evaluated once the screen has settled and before it is looked at;
+ *                              the screen is then left to settle again (open a dialog, pick an account)
  * @property {string} [now]     a fixed clock, local time, e.g. "2026-10-11T10:30:00"
  * @property {string} [wait]    CSS selector that must exist before the screen counts as settled
  * @property {"bottom"|number} [scroll] how far to scroll the app's main scroller
@@ -122,7 +126,8 @@ function buildUrl(origin, view) {
  *   content security policy instead of the source through Vite
  * @param {string} [options.timezone]
  * @param {boolean} [options.keep]     leave the run's folder behind for inspection
- * @param {{ db: string, anchor: string }} [options.demo] start from the demo database (lib/demo.mjs)
+ * @param {{ db: string, anchor: string, manifest?: { password?: string } }} [options.demo] start from the demo
+ *   database (lib/demo.mjs); its manifest names the password its accounts sign in with
  */
 export async function openHarness({
   root = PROJECT_ROOT,
@@ -229,7 +234,16 @@ export async function openHarness({
     await page.setViewport(firstSize.width, firstSize.height);
     const url = buildUrl(server.origin, view);
     await page.goto(url);
-    const { settled, state } = await page.waitUntilSettled({ selector: view.wait });
+    // The program opens on its sign-in window: what `view.wait` names is behind it.
+    let { settled, state } = await page.waitUntilSettled({ quietMs: 250 });
+    if (settled && !view.signedOut) {
+      await signIn(page, { user: view.user, password: demo?.manifest?.password });
+    }
+    ({ settled, state } = await page.waitUntilSettled({ selector: view.wait }));
+    if (settled && view.before) {
+      await page.evaluate(view.before);
+      ({ settled, state } = await page.waitUntilSettled({ selector: view.wait, quietMs: 300 }));
+    }
     if (settled && (view.scroll !== undefined || view.scrollTo)) {
       if (view.scrollTo) {
         const found = await page.evaluate(

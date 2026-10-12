@@ -2,6 +2,7 @@ import { useTranslations } from "use-intl";
 
 import { DetailScreen } from "@/components/detail-screen";
 import { PrintButton } from "@/components/print";
+import { FontCalibration } from "@/components/print/font-calibration";
 import { SampleSheet } from "@/features/core/sheets/sample-sheet";
 
 /**
@@ -26,6 +27,7 @@ export default function PrintSamplePage() {
       actions={<PrintButton />}
     >
       <SampleSheet />
+      <FontCalibration />
     </DetailScreen>
   );
 }

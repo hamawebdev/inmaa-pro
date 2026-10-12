@@ -317,6 +317,7 @@ for (const f of ["DESIGN.md", "CONTRACTS.md", "OPTION-CODES.md", "BUILD-NOTES.md
   };
   const quoted = (text) => new Set([...text.matchAll(/"([A-Z][A-Z0-9_]*)"/g)].map((x) => x[1]));
   const between = (text, from, to) => text.split(from)[1]?.split(to)[0] ?? "";
+  const quoted2 = (text) => new Set([...text.matchAll(/"([a-z][A-Za-z]*\.[A-Za-z]+)"/g)].map((x) => x[1]));
 
   const { SETTING_KEYS } = await import(resolve(ROOT, "src/lib/settings/catalogue.ts"));
   differ("settings (DESIGN section 11 / src/lib/settings/catalogue.ts)", settings, new Set(SETTING_KEYS));
@@ -374,6 +375,8 @@ for (const f of ["DESIGN.md", "CONTRACTS.md", "OPTION-CODES.md", "BUILD-NOTES.md
   inOrder("PROVIDED_SERVICE of BUILDING", subsets("PROVIDED_SERVICE", 5), PROVIDED_SERVICES_OF.BUILDING);
   inOrder("PROGRAMMED_SERVICE of ORGANISATION", subsets("PROGRAMMED_SERVICE", 3), PROGRAMMED_SERVICES_OF.ORGANISATION);
   inOrder("PROGRAMMED_SERVICE of HOUSING", subsets("PROGRAMMED_SERVICE", 4), PROGRAMMED_SERVICES_OF.HOUSING);
+  const alertKeys = quoted2(between(code("src/lib/alerts/index.ts"), "export const ALERT_KEYS = [", "]"));
+  differ("alerts (DESIGN section 13 / src/lib/alerts)", alerts, alertKeys);
   const wilayas = (await import(resolve(ROOT, "src/lib/geo/wilayas.ts"))).WILAYAS;
   if (wilayas.length !== 69) say(`src/lib/geo/wilayas.ts holds ${wilayas.length} wilayas; ruling 6 says 69`);
   const sizes = [

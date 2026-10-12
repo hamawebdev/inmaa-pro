@@ -1,6 +1,6 @@
 import type { Kysely } from "kysely";
 
-import { STAND_IN_MANAGER_ID } from "@/features/core/services/first-run";
+import { FIRST_MANAGER_ID } from "@/features/core/services/first-run";
 import type { RoleCode } from "@/lib/access/catalogue";
 import { loadSession } from "@/lib/access/session";
 import { fixedClock, type Clock } from "@/lib/clock";
@@ -103,7 +103,7 @@ export async function runDemo(
   db: Kysely<DB>,
   options: { clock: Clock; folders?: readonly string[]; modules?: readonly DemoModule[] },
 ): Promise<Record<string, DemoNames>> {
-  const manager = await loadSession(db, STAND_IN_MANAGER_ID);
+  const manager = await loadSession(db, FIRST_MANAGER_ID);
   const names: Record<string, DemoNames> = {};
   const modules = options.modules ? orderDemoModules(options.modules) : await loadDemoModules(options.folders);
 
