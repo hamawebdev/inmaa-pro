@@ -89,6 +89,7 @@ Run from the project root. `node_modules` is a copy of the reference's: **never 
 | Run one test file | `npx vitest run src/features/people/services/worker.test.ts` |
 | Format your paths | `npx prettier --write src/features/people src/pages/dashboard/workers`; width 120; `npm run format:check` is a gate |
 | See a screen | `npm run shot -- --route /dashboard/workers --locale ar --theme dark --both-sizes` |
+| See it as another role | `npm run shot -- --demo --user accountant --route /dashboard/expenses` (`hr`, `admin`, `supervisor`, `reception`, `operations`, `accountant`; `manager` when left out) |
 | Print a sheet to PDF | `npm run pdf -- --route /dashboard/files/1/form --png` |
 | Build the demo data | `npm run demo`; then `--demo` on `shot` and `pdf` opens it (see "Demo data" below) |
 | Everything about the two above | `scripts/harness/README.md` |
@@ -105,6 +106,8 @@ Nobody but the coordinator runs `npm run tauri dev` or a built binary: it opens 
 | Routes | `src/features/<owner>/routes.tsx` (core, people, clients, operations, money; stock's screens are in money's list) |
 | Services (reads and writes) | `src/features/<folder>/services/*.ts`, each with its `*.test.ts` beside it |
 | Handlers of other owners' events | `src/features/<folder>/events.ts` |
+| Alerts for the home screen | `src/features/<folder>/alerts.ts` |
+| What the folder does when a day starts | `src/features/<folder>/daily.ts` |
 | Demo data | `src/features/<folder>/demo.ts` |
 | Validators and code lists | `src/features/<folder>/validators/*.ts`; a list more than one owner uses is in `src/lib/options` (Foundation) |
 | Messages | `src/features/<folder>/messages/{en,ar,fr}.json` (core, people, clients, operations, money, stock) |
@@ -116,7 +119,7 @@ Nobody but the coordinator runs `npm run tauri dev` or a built binary: it opens 
 | Shared components | `src/components/`; shadcn primitives in `src/components/ui/`; the print kit in `src/components/print/` (Foundation) |
 | The data model: tables, who writes what, option codes, events | `docs/data-model/` (Foundation) |
 | Schema, migrations, generated types | `prisma/schema.prisma`, `prisma/triggers.sql`, `src-tauri/migrations/`, `src/lib/db/` (Foundation; generated) |
-| What every service calls | `src/lib/` (Foundation): `service`, `numbering`, `log`, `settings`, `access`, `events`, `attachments`, `restricted`, `chain`, `clock`, `units`, `text`, `geo` |
+| What every service calls | `src/lib/` (Foundation): `service`, `numbering`, `log`, `settings`, `access`, `events`, `alerts`, `daily`, `attachments`, `restricted`, `chain`, `clock`, `units`, `text`, `geo` |
 | A test database and test rows | `src/testing/` (Foundation; imported by tests only) |
 
 The folder names `services/`, `validators/` and `messages/` are not a matter of taste: tests find your files by them.
@@ -132,6 +135,9 @@ Every tab and every part of a file already has a page with a `<PagePlaceholder>`
 - Arabic is the default and reads right to left. Use logical classes (`ps-`, `pe-`, `ms-`, `me-`, `start-`, `end-`, `text-start`), never `left`/`right`. Compare an Arabic screen with `.harness/baseline/ar-direction-fixed/`: this program mounts the direction provider the academy forgot, so tab strips and everything inside tabs mirror here.
 - Put a phone number, a date or time written in digits, a number with its unit, a registration number or a code inside `<Ltr>` (`src/components/ltr.tsx`), on screen and on paper. Without it Arabic shows `0661 20 31 42` as `42 31 20 0661`.
 - Colours come from tokens (`text-success`, `bg-section-workers/10`, `SECTION_ACCENT`), never from the raw palette (`text-green-600`). A chart goes through `ChartContainer`. Confirm with `useConfirm()`, never `confirm()`.
+- `StatusChip` has seven tones: `success`, `warning`, `danger`, `info`, `pending`, `neutral` and `progress`. `progress` (violet, a play mark) is for what is under way now: «جارية».
+- An amount is written one way everywhere, «195.650,00 دج»: `useMoneyText()` (`src/hooks/use-money-text.ts`) on a screen, `formatMoneyAr()` or `formatMoney()` (`src/lib/units`) on a sheet. Amounts are whole centimes.
+- What a screen shows by role: `useCan("cost.read")` and `useSectionLevel("WORKERS") === "WRITE"` (`src/hooks/use-session.ts`) leave out a button the reader could only be refused by. The service checks again. `useCentreClock()` gives the centre's date and time to a screen.
 - Native date fields and file buttons stay as the academy has them.
 
 ### A route
@@ -233,7 +239,7 @@ export async function seedDemo(ex: Executor, ctx: ServiceContext, tools: DemoToo
 
 - The runner calls the folders in owner order (core, people, clients, operations, money, stock), each in one transaction, as the manager, after first run, on a clock standing at Monday 12 October 2026, 09:00. A folder that fails stops the build and is named.
 - `tools.names` holds what the folders before yours named (`tools.names.core.zoneAinBeida`); `tools.sessionOf("ACCOUNTANT")` is the session of the demo account of a role; `tools.at("2026-09-01T08:00:00.000Z", session?)` is a context at another instant, for history.
-- Foundation's own demo data runs first: an account for each role (usernames `hr`, `admin`, `supervisor`, `reception`, `operations`, `accountant`), the centre's identity (his name, city, phone and e-mail; demo registration numbers, address and bank, so an invoice can issue), tax mode IFU, and the zones of أم البواقي, عين البيضاء and عين مليلة.
+- Foundation's own demo data runs first: an account for each role (usernames `hr`, `admin`, `supervisor`, `reception`, `operations`, `accountant`; with `manager`, all seven sign in with the password `inmaa-demo`), the centre's identity (his name, city, phone and e-mail; demo registration numbers, address and bank, so an invoice can issue), tax mode IFU, and the zones of أم البواقي, عين البيضاء and عين مليلة.
 - Ids made while a folder runs are the same on every build (`demo-clients-0007`), and what a folder returns names its records: `npm run pdf -- --demo --route "/dashboard/files/{clients.housingFile}/print"`.
 - `npm run demo` writes `.harness/demo/inmaa-demo.db` and prints what each folder named. `--demo` on the harness opens it, and builds it again first if the migrations or a `demo.ts` changed; after you change a service your demo data uses, run `npm run demo`. `createTestDatabase({ demo: true })` builds the same data in a test (`demo: ["clients"]` for core's and yours only), and `test.demo.clients.housingFile` is your record.
 
@@ -248,7 +254,7 @@ export async function seedDemo(ex: Executor, ctx: ServiceContext, tools: DemoToo
 - **Numbers** (`src/lib/numbering`), in the transaction that writes the document: `nextNumber(ex, ctx, "QUOTE", { date })` gives `{ seq, year, display }` for `numberSeq`, `numberYear`, `number`; the year is the document's own date's. A file: `nextNumber(ex, ctx, fileSequenceKey(formKind), { date })` (`31/BLC` on a building contract). A block: `nextNumbers(ex, ctx, "VISIT", { date, count })`. A number typed from paper: `claimNumber(ex, ctx, key, { value, date, reason, isFree })`. A rolled-back transaction gives its numbers back. Invoices and receipts: `peekLegalNumber(ex, ctx, "INVOICE", { date })` gives the number the insert must carry and the earliest date allowed; the insert of the document moves the counter, and the database refuses any other number or date. Call `assertClockSane(ex, ctx)` (`src/lib/clock/sanity.ts`) before issuing one. Formats: DESIGN.md section 6.
 - **The log** (`src/lib/log`), in the same transaction as the change, one entry per operation on personal data (DESIGN.md section 9): `logCollect` (a row holding personal data created), `logConsult` (restricted data read, a person's file opened), `logChange` (with `changes: { field: [old, new] }`), `logDisclose` (a sheet naming a person printed, an export), `logErase` (a soft delete, a removed file), `logSecurity`. Each takes `{ owner, action, entity, entityId, entityLabel, subject: { kind, id, label }, changes, context, reason }`; the date, time and user come from `ctx`. The acts in `ACTIONS_NEEDING_A_TYPED_REASON` (void, cancel, soft delete, override, a number from paper, a sanction, an approval…) are refused without the reason the user typed. Health answers, the hiring score, password hashes and costs never reach `changes`. Nobody else writes `AuditLog`.
 - **Settings** (`src/lib/settings`): `getSetting(ex, "stamp.minimum")` is the typed value or its default; `getSettings(ex, [...])` reads several; `setSetting(ex, ctx, key, value)` writes and logs. Keys and defaults: `src/lib/settings/catalogue.ts` (DESIGN.md section 11). Read a setting in the action that uses it; never keep it.
-- **Who may do what** (`src/lib/access`): `requireSection(ctx, "MONEY", "WRITE")`, `requireCapability(ctx, "quote.approve")`, or `can(ctx, "cost.read")` to decide what a screen shows. The manager and the program itself hold everything. Roles, sections, capabilities and their default holders: `src/lib/access/catalogue.ts` (DESIGN.md section 12). Until the sign-in screen exists (F3) the program signs in the manager account made at first run, so every check passes on screen; test the refusals with `test.sessionFor(role)`.
+- **Who may do what** (`src/lib/access`): `requireSection(ctx, "MONEY", "WRITE")`, `requireCapability(ctx, "quote.approve")`, or `can(ctx, "cost.read")` to decide what a screen shows. The manager and the program itself hold everything. Roles, sections, capabilities and their default holders: `src/lib/access/catalogue.ts` (DESIGN.md section 12). The harness signs in as the manager unless `--user` names another account, so every check passes on screen by default; test the refusals with `test.sessionFor(role)`, and look at a screen as a role with `--demo --user`.
 - **Events between owners** (`src/lib/events`, CONTRACTS.md section 4): when something you own changes in a way another owner must follow, `await emit(ex, ctx, "file.contracted", { fileId })` in your transaction. To follow another owner's event, export `registerEvents` from your own `src/features/<folder>/events.ts`:
 
   ```ts
@@ -265,6 +271,59 @@ export async function seedDemo(ex: Executor, ctx: ServiceContext, tools: DemoToo
 - **Places** (`src/features/core/services/places.ts`): `ensureCommune(ex, ctx, { wilayaCode, nameAr })` and `ensureZoneForCommune(ex, ctx, { communeId })` when a site or a residence is saved; `listCommunes`, `listZones` for pickers. The 69 wilayas: `src/lib/geo/wilayas.ts`. Every `...Key` column is written with `normaliseName()` or `phoneKeys()` (`src/lib/text/normalise.ts`), so that two spellings of one name find each other.
 - **Restricted data** (`src/lib/restricted`): `StaffConfidential` is read only through `readRestricted(ex, ctx, { capability: "staff.health.read", entity: "StaffConfidential", id })`, which checks, logs, then returns that capability's columns only. Another restricted read (the residents list, a cost study) is `requireCapability`, then `logConsult`, then the select.
 - **Invoices, receipts, payments and the log are hash-chained** (`src/lib/chain`, DESIGN.md section 8). Rows of `AuditLog`, `Invoice`, `InvoiceLine`, `InvoiceVisit`, `Payment`, `PaymentAllocation`, `Receipt` and `LegalEvent` are written only by `appendChained(ex, ctx, table, row)`, every column given (an empty one as `null`, yes or no as 0 or 1, an instant as its ISO text), and never updated or deleted: a void is a `LegalEvent`. An invoice's lines and visit rows follow it in the same transaction, and the invoice carries `contentDigest: await invoiceContentDigest({ lines, visits })`, computed before anything is written. `verifyChains(ex)` checks it all. The anchor kept outside the database is Foundation's.
+
+### Sign-in and roles
+
+- Nobody is signed in when the program opens. The sign-in window (`src/components/security/sign-in-screen.tsx`, in the licence lock window's style) is drawn instead of the program: no page is mounted behind it. A person picks his name and types his password; an account with no password yet chooses one there; a password the manager gave is replaced at once by its owner; the manager alone has a recovery code, shown once. «قفل الآن» on the bar signs out. The services are `src/features/core/services/sign-in.ts`; DESIGN.md section 12 has the rules.
+- **Roles by section.** The bar and the Ctrl+K list leave out a section the signed-in role holds no level on; the route gate answers any other way in with "not open to your account", and the page is never mounted. الرئيسية is everybody's. A role that only reads a section sees its pages: every write must be refused by its service (`requireSection(ctx, …, "WRITE")` or a capability), and the screen should leave the button out (`useSectionLevel`, `useCan`).
+- **The manager answers under his own name.** There is no dialog that takes his password inside another user's session. What only he may do (`sanction.answer`, an approval, an override) he does signed in himself: the question waits in its owner's list and on its alert tile.
+- The harness signs in on every page it opens, as a person would (`scripts/harness/README.md`, "Signing in"). `--signed-out` shows the sign-in window; `--before <js>` reaches a step of it, or opens a dialog before a picture.
+
+### An alert
+
+An alert is a rule one owner knows and the home screen shows: a count, and the list to open. Export `registerAlerts` from your own `src/features/<folder>/alerts.ts`:
+
+```ts
+import { PackageMinus } from "lucide-react";
+
+import type { RegisterAlert } from "@/lib/alerts";
+
+export function registerAlerts(register: RegisterAlert) {
+  register({
+    key: "stock.low", // one of the 21 keys of DESIGN.md section 13
+    section: "stock", // the bar section its list is in: the tile wears its hue, and a role that cannot open it does not see the tile
+    severity: "warning", // "danger" | "warning" | "info": the order of the tiles
+    name: "StockLow", // messages `Alerts.StockLow.Title` and `.Hint`, in your three files
+    icon: PackageMinus,
+    route: "/dashboard/inventory?kind=MATERIAL&state=TO_BUY", // your list, already filtered
+    // leadSetting: "alerts.contractEndLeadDays",  → `days` below
+    // capability: "cost.read",                    → only for readers who hold it
+    count: async (ex, ctx, { days }) => countLowItems(ex, ctx), // a number, or { count, route } when the list depends on what was found
+  });
+}
+```
+
+A tile appears only when its count is above zero. `count` is a read: it runs outside a transaction, as the reader, every time the home screen opens. The worked example is `src/features/core/alerts.ts`.
+
+### The day-start job
+
+What an owner must do because the date changed, not because somebody pressed something: a contract past its end date, a dated suspension ending, a document expiring. Export `registerDaily` from your own `src/features/<folder>/daily.ts`:
+
+```ts
+import type { RegisterDaily } from "@/lib/daily";
+
+export function registerDaily(daily: RegisterDaily) {
+  daily("end contracts past their date", async (ex, ctx, { today, since }) => {
+    await endExpiredContracts(ex, ctx, { upTo: today }); // your own service, this ex
+  });
+}
+```
+
+The runner (`src/lib/daily`) calls each owner's handlers in one transaction, as the program (`ctx.userId` is null: `requireSection` and `requireCapability` pass), once per local day: when the program opens, and at midnight if it is open. `since` is the last day your handlers completed, or null the first time: catch up from there, the program may have been closed for a week. Write a handler so that running it twice changes nothing. One that throws rolls back its owner's whole day and is tried again within the hour; the other owners are not held up. In a test: `runDayStart(test.db, test.clock)`.
+
+### The home screen
+
+`src/pages/dashboard/home/page.tsx` has three places: today's tiles, the day board, and the alert tiles. The first two are Operations': `src/features/operations/home.tsx` exports `homeSlots: HomeSlots` (`{ today?, board? }`, components without props; `src/lib/home/slots.ts`). Until it does, Foundation's defaults beside the page draw them from Operations' own `DayBoard` and `boardCounts`.
 
 ### A message
 
@@ -314,6 +373,6 @@ Rule 1 is checked by tools, not left to care:
 
 ### Still provisional
 
-- Sign-in: the program signs in the manager account at start, without a password, and the academy's manager password and section lock (now kept on that account and in the setting `shell.lockedSections`) are what protect a section. Sign-in, roles by section, the four Settings tabs, the log screen, the daily backup and the guarded restore come in F3.
-- The home screen and three of the four Settings tabs are placeholders.
+- Settings: عام is the academy's page with this program's cards; قواعد العمل, المستخدمون والصلاحيات and السجل are placeholders (F3b). Until the users tab exists, accounts are made by the demo data or by a test (`createAccount`, `giveAccountPassword` in `src/features/core/services/users.ts`): a new installation has the manager only.
+- Backup is the academy's manual copy. The daily copy, the guarded restore, the screen that asks the manager about an anchor that does not agree, and the desktop notifications for alerts come in F3b.
 - Licence: a 7-day trial that counts real time, on this machine too. In a debug build, `INMAA_LICENSE_RESET=1` starts it again. The developer makes an unlock code with `cargo run --quiet --bin unlock-code -- <DEVICE-ID>` in `src-tauri/`.

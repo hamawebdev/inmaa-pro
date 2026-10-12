@@ -70,7 +70,11 @@ describe("registerEmployee", () => {
   it("registers a centre employee in the employees' own sequence, in post from the start date", async () => {
     const result = await register(SUPERVISOR);
     expect(result.number).toBe("1");
-    const row = await test.db.selectFrom("StaffMember").selectAll().where("id", "=", result.id).executeTakeFirstOrThrow();
+    const row = await test.db
+      .selectFrom("StaffMember")
+      .selectAll()
+      .where("id", "=", result.id)
+      .executeTakeFirstOrThrow();
     expect(row).toMatchObject({
       kind: "EMPLOYEE",
       numberSeq: 1,
@@ -93,12 +97,20 @@ describe("registerEmployee", () => {
       zoneId: null,
       role: null,
     });
-    const events = await test.db.selectFrom("StaffEvent").select(["kind", "date", "toStatus", "payRate"]).orderBy("kind").execute();
+    const events = await test.db
+      .selectFrom("StaffEvent")
+      .select(["kind", "date", "toStatus", "payRate"])
+      .orderBy("kind")
+      .execute();
     expect(events).toEqual([
       { kind: "PAY_TERMS", date: "2026-09-01", toStatus: null, payRate: 4_500_000 },
       { kind: "STATUS", date: "2026-09-01", toStatus: "ACCEPTED", payRate: null },
     ]);
-    const entry = await test.db.selectFrom("AuditLog").selectAll().where("entity", "=", "StaffMember").executeTakeFirstOrThrow();
+    const entry = await test.db
+      .selectFrom("AuditLog")
+      .selectAll()
+      .where("entity", "=", "StaffMember")
+      .executeTakeFirstOrThrow();
     expect(entry).toMatchObject({ operation: "COLLECT", subjectKind: "EMPLOYEE", entityLabel: "1 حداد مراد" });
 
     // Employees and workers are numbered apart.
@@ -145,7 +157,13 @@ describe("registerEmployee", () => {
       "An employee with this identity number is already registered. Open that employee's file.",
     );
     await test.transact((ex, ctx) =>
-      setSanction(ex, ctx, { subjectKind: "EMPLOYEE", subjectId: first.id, state: "SUSPENDED", reason: "خطأ جسيم", startDate: "2026-10-12" }),
+      setSanction(ex, ctx, {
+        subjectKind: "EMPLOYEE",
+        subjectId: first.id,
+        state: "SUSPENDED",
+        reason: "خطأ جسيم",
+        startDate: "2026-10-12",
+      }),
     );
     // His second phone on another employee, and on a worker.
     await expect(register({ ...HR, phone: "032 42 15 00" })).rejects.toThrow(
@@ -184,7 +202,12 @@ describe("updateEmployee", () => {
       jobPosition: ["SUPERVISOR", "OPERATIONS"],
       payRate: [4_500_000, 5_000_000],
     });
-    const terms = await test.db.selectFrom("StaffEvent").select(["date", "payRate"]).where("kind", "=", "PAY_TERMS").orderBy("date").execute();
+    const terms = await test.db
+      .selectFrom("StaffEvent")
+      .select(["date", "payRate"])
+      .where("kind", "=", "PAY_TERMS")
+      .orderBy("date")
+      .execute();
     expect(terms).toEqual([
       { date: "2026-09-01", payRate: 4_500_000 },
       { date: "2026-11-01", payRate: 5_000_000 },
@@ -201,7 +224,13 @@ describe("reading employees", () => {
     const hr = await register(HR);
     await test.sessionFor("SUPERVISOR", { staffMemberId: supervisor.id });
     await test.transact((ex, ctx) =>
-      setSanction(ex, ctx, { subjectKind: "EMPLOYEE", subjectId: hr.id, state: "PENALISED", reason: "تأخر", startDate: "2026-10-12" }),
+      setSanction(ex, ctx, {
+        subjectKind: "EMPLOYEE",
+        subjectId: hr.id,
+        state: "PENALISED",
+        reason: "تأخر",
+        startDate: "2026-10-12",
+      }),
     );
     const all = await test.transact((ex, ctx) => listEmployees(ex, ctx));
     expect(all.map((row) => [row.number, row.jobPosition, row.sanction?.state ?? null, row.account !== null])).toEqual([
@@ -217,8 +246,17 @@ describe("reading employees", () => {
     await test.sessionFor("SUPERVISOR", { staffMemberId: id });
     const file = await test.transact((ex, ctx) => openEmployeeFile(ex, ctx, { id }));
     expect(file.values).toEqual({ ...SUPERVISOR, phone: "0550102030", phone2: "032421500" });
-    expect(file).toMatchObject({ number: "1", status: "ACCEPTED", sanction: null, account: { roleId: "SUPERVISOR", isActive: true } });
-    const entry = await test.db.selectFrom("AuditLog").selectAll().where("action", "=", "VIEW").executeTakeFirstOrThrow();
+    expect(file).toMatchObject({
+      number: "1",
+      status: "ACCEPTED",
+      sanction: null,
+      account: { roleId: "SUPERVISOR", isActive: true },
+    });
+    const entry = await test.db
+      .selectFrom("AuditLog")
+      .selectAll()
+      .where("action", "=", "VIEW")
+      .executeTakeFirstOrThrow();
     expect(entry).toMatchObject({ operation: "CONSULT", entityId: id, subjectKind: "EMPLOYEE" });
   });
 });

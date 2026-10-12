@@ -5,6 +5,7 @@ import { useTranslations } from "use-intl";
 
 import { SectionScreen } from "@/components/section-screen";
 import { Button } from "@/components/ui/button";
+import { may, mayIn } from "@/features/people/components/may";
 import { listEmployeesQuery } from "@/features/people/services/employees";
 import { pathKey } from "@/lib/compat/revalidate";
 
@@ -29,12 +30,15 @@ export default function EmployeesPage() {
       section="employees"
       title={tNav("EmployeesHeading")}
       actions={
-        <Button asChild variant="add">
-          <Link to="/dashboard/employees/new">
-            <Plus />
-            {t("NewEmployee")}
-          </Link>
-        </Button>
+        may("staff.write") &&
+        mayIn("EMPLOYEES", "WRITE") && (
+          <Button asChild variant="add">
+            <Link to="/dashboard/employees/new">
+              <Plus />
+              {t("NewEmployee")}
+            </Link>
+          </Button>
+        )
       }
     >
       <EmployeesTable rows={employees ?? []} />

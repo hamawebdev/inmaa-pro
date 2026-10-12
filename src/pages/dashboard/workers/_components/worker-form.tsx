@@ -176,24 +176,41 @@ export function WorkerForm({ mode, defaultValues }: Props) {
     router.push(`/dashboard/workers/${result.data.id}`);
   };
 
+  // Somebody who reads the section without keeping the files sees the form, and changes nothing.
+  const readOnly = !may("staff.write");
+
   return (
     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6" noValidate>
-      {WORKER_SCREEN_CARDS.map((card) => (
-        <ScreenCard
-          key={card.id}
-          card={card}
-          opened={card.restricted ? opened[card.restricted] : true}
-          onOpen={card.restricted ? () => open(card.restricted as RestrictedPart) : undefined}
-        >
-          {card.rows.map((key) => (
-            <RowField key={key} rowKey={key} control={control} mode={mode} communes={communes.data ?? []} form={form} />
-          ))}
-        </ScreenCard>
-      ))}
+      <fieldset disabled={readOnly} className="m-0 min-w-0 space-y-6 border-0 p-0">
+        {WORKER_SCREEN_CARDS.map((card) => (
+          <ScreenCard
+            key={card.id}
+            card={card}
+            opened={card.restricted ? opened[card.restricted] : true}
+            onOpen={card.restricted ? () => open(card.restricted as RestrictedPart) : undefined}
+          >
+            {card.rows.map((key) => (
+              <RowField
+                key={key}
+                rowKey={key}
+                control={control}
+                mode={mode}
+                communes={communes.data ?? []}
+                form={form}
+              />
+            ))}
+          </ScreenCard>
+        ))}
 
-      <OfficeCard control={control} zones={zones.data ?? []} />
+        <OfficeCard control={control} zones={zones.data ?? []} />
+      </fieldset>
 
-      <div className="flex flex-col-reverse items-stretch justify-end gap-3 sm:flex-row sm:items-center">
+      <div
+        className={cn(
+          "flex flex-col-reverse items-stretch justify-end gap-3 sm:flex-row sm:items-center",
+          readOnly && "hidden",
+        )}
+      >
         {mode.kind === "new" && (
           <Button type="button" variant="outline" onClick={() => router.back()}>
             {t("Actions.Cancel")}

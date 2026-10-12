@@ -6,6 +6,7 @@ import { useTranslations } from "use-intl";
 import { SectionScreen } from "@/components/section-screen";
 import { Button } from "@/components/ui/button";
 import { listZonesQuery, PLACES_PATH } from "@/features/core/services/places";
+import { may, mayIn } from "@/features/people/components/may";
 import { listDecisionsQuery } from "@/features/people/services/sanction-decisions";
 import { SANCTIONS_PATH } from "@/features/people/services/sanctions";
 import { listWorkersQuery } from "@/features/people/services/worker-reads";
@@ -56,12 +57,14 @@ export default function WorkersPage() {
               {t("BlankForm")}
             </Link>
           </Button>
-          <Button asChild variant="add">
-            <Link to="/dashboard/workers/new">
-              <Plus />
-              {t("NewWorker")}
-            </Link>
-          </Button>
+          {may("staff.write") && mayIn("WORKERS", "WRITE") && (
+            <Button asChild variant="add">
+              <Link to="/dashboard/workers/new">
+                <Plus />
+                {t("NewWorker")}
+              </Link>
+            </Button>
+          )}
         </div>
       }
     >

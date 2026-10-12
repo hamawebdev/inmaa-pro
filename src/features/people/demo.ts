@@ -33,7 +33,8 @@ const BASIC_DOCUMENTS = { ID_CARD_COPY: "", BIRTH_CERT: "", RESIDENCE_CERT: "", 
 interface DemoWorker {
   name: string;
   registered: string;
-  values: Partial<RegisterWorkerInput> & Pick<RegisterWorkerInput, "sex" | "lastName" | "firstName" | "birthDate" | "phone">;
+  values: Partial<RegisterWorkerInput> &
+    Pick<RegisterWorkerInput, "sex" | "lastName" | "firstName" | "birthDate" | "phone">;
 }
 
 const WORKERS: readonly DemoWorker[] = [

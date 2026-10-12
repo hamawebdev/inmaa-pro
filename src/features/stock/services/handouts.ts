@@ -1,3 +1,4 @@
+import { sql } from "kysely";
 import type { z } from "zod";
 
 import { addDays, isIsoDate } from "@/features/money/rules/dates";
@@ -60,6 +61,13 @@ export interface CreateHandOutInput {
 }
 
 const text = (value: string | null | undefined) => (value && value.trim() !== "" ? value.trim() : null);
+
+/**
+ * The lines of a hand-out in the order they were typed. They are written in
+ * one instant and have no line number of their own, so the order is the one
+ * the database stored them in.
+ */
+const LINE_ORDER = sql`"HandOutLine"."rowid"`;
 
 function parseLine(values: unknown): z.infer<typeof handOutLineSchema> {
   const parsed = handOutLineSchema.safeParse(values);
@@ -635,8 +643,7 @@ export async function getHandOut(
       "EquipmentUnit.number as unitCode",
     ])
     .where("HandOutLine.handOutId", "=", handOut.id)
-    .orderBy("HandOutLine.createdAt")
-    .orderBy("HandOutLine.id")
+    .orderBy(LINE_ORDER)
     .execute();
 
   const lines: HandOutDetailLine[] = [];
@@ -748,7 +755,7 @@ export async function getHandOutsForVisit(
       ]),
     )
     .orderBy("HandOut.numberSeq")
-    .orderBy("HandOutLine.createdAt")
+    .orderBy(LINE_ORDER)
     .execute();
   return rows.map((row) => ({
     handOutNumber: row.number,
@@ -824,6 +831,7 @@ export async function getHandOutChoices(ex: Executor, ctx: ServiceContext): Prom
     .where("onHandQty", ">", qty(0))
     .orderBy("kind")
     .orderBy("createdAt")
+    .orderBy("code")
     .execute();
   return {
     files: files.map((file) => ({

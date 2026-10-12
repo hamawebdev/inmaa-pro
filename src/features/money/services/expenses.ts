@@ -1,3 +1,5 @@
+import { sql } from "kysely";
+
 import { requireSection } from "@/lib/access/session";
 import { linkUpload, removeUpload } from "@/lib/attachments";
 import { newId } from "@/lib/db/rows";
@@ -46,15 +48,19 @@ export async function listExpenses(
   input: { from: LocalDate; to: LocalDate },
 ): Promise<ExpenseView[]> {
   requireSection(ctx, "MONEY", "READ");
-  return ex
-    .selectFrom("Expense")
-    .select([...VIEW_COLUMNS])
-    .where("deletedAt", "is", null)
-    .where("date", ">=", input.from)
-    .where("date", "<=", input.to)
-    .orderBy("date", "desc")
-    .orderBy("createdAt", "desc")
-    .execute();
+  return (
+    ex
+      .selectFrom("Expense")
+      .select([...VIEW_COLUMNS])
+      .where("deletedAt", "is", null)
+      .where("date", ">=", input.from)
+      .where("date", "<=", input.to)
+      .orderBy("date", "desc")
+      .orderBy("createdAt", "desc")
+      // Two typed in the same instant: the later one first, as the database stored them.
+      .orderBy(sql`"Expense"."rowid"`, "desc")
+      .execute()
+  );
 }
 
 function parse(ctx: ServiceContext, values: unknown): ExpenseFormValues {
