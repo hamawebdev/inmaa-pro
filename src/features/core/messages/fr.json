@@ -174,7 +174,16 @@
     "PasswordIsTooShort": "Le mot de passe est trop court.",
     "PasswordSameAsGiven": "Choisissez un mot de passe différent de celui qui vous a été donné.",
     "RecoveryManagerOnly": "Seul le directeur possède un code de récupération.",
-    "ManagerPasswordOwn": "Le mot de passe d'un directeur est changé par lui-même, ou avec son code de récupération."
+    "ManagerPasswordOwn": "Le mot de passe d'un directeur est changé par lui-même, ou avec son code de récupération.",
+    "SettingEndAfterStart": "La fin doit venir après le début.",
+    "SettingBandsOrder": "Chaque tranche doit dépasser la précédente, et seule la dernière n'a pas de plafond.",
+    "SettingRestDayWorking": "Le jour de repos ne peut pas être un jour de travail.",
+    "SettingMissedVisitAmount": "Saisissez le montant facturé pour une visite manquée.",
+    "AccountSelfOff": "Vous ne pouvez pas désactiver le compte avec lequel vous êtes connecté.",
+    "AccountLinkEmployeeOnly": "Un compte ne peut être lié qu'à un employé du centre.",
+    "AccountLinkTaken": "Cet employé a déjà un compte.",
+    "RoleManagerFixed": "Le rôle du directeur a tous les droits et ne se modifie pas.",
+    "RoleNoRestore": "La restauration d'une sauvegarde appartient au seul directeur."
   },
   "Table": {
     "ScrollLeft": "Défiler à gauche",
@@ -235,7 +244,10 @@
       "Title": "Système",
       "Description": "Version et plateforme, pour lorsque vous devez signaler un problème.",
       "SampleSheet": "Feuille d'essai"
-    }
+    },
+    "RulesDescription": "Les règles que suit le programme pour planifier, facturer et payer. Chaque carte s'enregistre à part.",
+    "UsersDescription": "Qui se connecte sur ce PC, et ce que chaque rôle peut ouvrir et faire.",
+    "LogDescription": "Chaque opération sur des données personnelles et chaque événement de sécurité, comme la loi le demande : qui, quoi, quand et pourquoi."
   },
   "License": {
     "Title": "Essai gratuit",
@@ -545,6 +557,484 @@
     "BackupStale": {
       "Title": "Pas de sauvegarde récente",
       "Hint": "Aucune copie des données depuis {days} jours"
+    }
+  },
+  "SettingsForm": {
+    "Saved": "Enregistré.",
+    "SaveFailed": "Impossible d'enregistrer ces paramètres.",
+    "Discard": "Annuler les modifications",
+    "ReadOnly": "Seul le directeur, ou un compte qu'il autorise, modifie ces paramètres.",
+    "Groups": {
+      "centre": {
+        "Title": "Le centre sur ses documents",
+        "Description": "L'adresse, la ville et les contacts imprimés sur les documents du centre."
+      },
+      "taxIds": {
+        "Title": "Identifiants fiscaux et registre",
+        "Description": "Obligatoires sur chaque facture : aucune facture n'est émise tant que le RC, le NIS, le NIF ou l'article manque."
+      },
+      "bank": {
+        "Title": "Compte bancaire et postal",
+        "Description": "Imprimé sur les factures pour que les clients puissent payer par virement."
+      },
+      "program": {
+        "Title": "Le programme",
+        "Description": "Des choix qui valent pour tout le programme sur ce PC."
+      },
+      "workingTime": {
+        "Title": "Temps de travail",
+        "Description": "La semaine de travail, les deux périodes de la journée, les limites légales et les heures du bureau."
+      },
+      "visitsQuality": {
+        "Title": "Visites, réclamations et inspections",
+        "Description": "Les rappels avant une visite, le délai de réponse à une réclamation et les inspections du superviseur."
+      },
+      "alerts": {
+        "Title": "Délais des alertes",
+        "Description": "Combien de jours à l'avance l'écran d'accueil prévient."
+      },
+      "quotesCosting": {
+        "Title": "Devis et coûts",
+        "Description": "La durée d'un devis, qui l'approuve, et ce que compte une étude de coût."
+      },
+      "taxStamp": {
+        "Title": "Fiscalité et droit de timbre",
+        "Description": "Le régime fiscal du centre et le droit de timbre sur les paiements en espèces."
+      },
+      "invoicesExports": {
+        "Title": "Factures et exports",
+        "Description": "Ce que compte une facture, et comment sont écrits les fichiers pour le comptable."
+      },
+      "numbering": {
+        "Title": "Numérotation",
+        "Description": "Comment s'écrivent les numéros des documents, et où les compteurs commencent pour continuer les registres papier."
+      },
+      "pay": {
+        "Title": "Paie",
+        "Description": "Périodes de paie, majorations, congés et cotisations sociales. Les taux « à confirmer » attendent son comptable."
+      },
+      "staff": {
+        "Title": "Personnel",
+        "Description": "Période d'essai, évaluations, validité des documents remis, et qui peut être réinscrit."
+      }
+    },
+    "Keys": {
+      "centre_nameLatin": {
+        "Label": "Nom en lettres latines"
+      },
+      "centre_legalForm": {
+        "Label": "Forme juridique"
+      },
+      "centre_address": {
+        "Label": "Adresse"
+      },
+      "centre_city": {
+        "Label": "Ville",
+        "Hint": "Écrite après « حررت بـ » sur les contrats et les formulaires."
+      },
+      "centre_wilayaCode": {
+        "Label": "Wilaya"
+      },
+      "centre_phone": {
+        "Label": "Téléphone et WhatsApp"
+      },
+      "centre_email": {
+        "Label": "E-mail"
+      },
+      "centre_rc": {
+        "Label": "Registre du commerce (RC)"
+      },
+      "centre_nis": {
+        "Label": "Numéro d'identification statistique (NIS)"
+      },
+      "centre_nif": {
+        "Label": "Numéro d'identification fiscale (NIF)"
+      },
+      "centre_articleNumber": {
+        "Label": "Numéro d'article d'imposition"
+      },
+      "centre_nin": {
+        "Label": "Numéro d'identification national (NIN)",
+        "Hint": "Facultatif. Les clients qui déduisent la TVA peuvent le demander."
+      },
+      "centre_cnasEmployerNumber": {
+        "Label": "Numéro d'employeur CNAS"
+      },
+      "centre_bankName": {
+        "Label": "Banque"
+      },
+      "centre_bankAccount": {
+        "Label": "Compte bancaire (RIB)"
+      },
+      "centre_ccpNumber": {
+        "Label": "Compte CCP"
+      },
+      "centre_ccpKey": {
+        "Label": "Clé CCP"
+      },
+      "app_defaultLocale": {
+        "Label": "Langue d'une nouvelle installation",
+        "Hint": "Chaque PC garde la langue choisie sur lui dans la carte ci-dessus."
+      },
+      "feature_siteQrOnOrder": {
+        "Label": "Un code QR du site sur l'ordre de mission"
+      },
+      "work_days": {
+        "Label": "Jours de travail"
+      },
+      "work_restDay": {
+        "Label": "Jour de repos hebdomadaire"
+      },
+      "work_period_morning": {
+        "Label": "Période du matin"
+      },
+      "work_period_evening": {
+        "Label": "Période de l'après-midi"
+      },
+      "work_weekMin": {
+        "Label": "Durée légale de la semaine"
+      },
+      "work_overtimeCapMin": {
+        "Label": "Maximum d'heures par semaine, heures supplémentaires comprises"
+      },
+      "work_dayMin": {
+        "Label": "Une journée de travail complète",
+        "Hint": "C'est aussi la durée d'une journée d'absence complète."
+      },
+      "work_daySpanMin": {
+        "Label": "Journée la plus longue, du premier début à la dernière fin"
+      },
+      "work_night": {
+        "Label": "Heures de nuit"
+      },
+      "work_travelGapMin": {
+        "Label": "Temps entre deux sites"
+      },
+      "work_arrivalGraceMin": {
+        "Label": "Tolérance d'arrivée",
+        "Hint": "Après ce délai, un agent qui n'est pas arrivé apparaît sur le tableau du jour."
+      },
+      "office_hours": {
+        "Label": "Heures du bureau"
+      },
+      "calendar_hours": {
+        "Label": "Heures affichées dans le calendrier"
+      },
+      "calendar_closedDays": {
+        "Label": "Jours de fermeture du centre",
+        "Hint": "Jours fériés et autres jours sans visites."
+      },
+      "reminder_leadWorkingDays": {
+        "Label": "Rappeler le client avant une visite"
+      },
+      "reminder_mode": {
+        "Label": "Visites rappelées"
+      },
+      "complaint_targetMin": {
+        "Label": "Délai de réponse à une réclamation"
+      },
+      "inspection_threshold": {
+        "Label": "Note d'inspection minimale acceptable",
+        "Hint": "Sur 100. En dessous, une correction est demandée."
+      },
+      "inspection_defaultFrequency_contract": {
+        "Label": "Inspections d'un contrat"
+      },
+      "inspection_defaultFrequency_onDemand": {
+        "Label": "Inspections d'une prestation à la demande"
+      },
+      "inspection_missedAfterDays": {
+        "Label": "Une inspection est manquée après"
+      },
+      "corrective_dueDays": {
+        "Label": "Délai d'une action corrective"
+      },
+      "supervisor_maxWorkers": {
+        "Label": "Agents par superviseur, au plus"
+      },
+      "alerts_contractEndLeadDays": {
+        "Label": "Fin de contrat"
+      },
+      "alerts_paymentDueLeadDays": {
+        "Label": "Échéance de paiement"
+      },
+      "alerts_maintenanceLeadDays": {
+        "Label": "Entretien du matériel"
+      },
+      "alerts_quoteFollowUpDays": {
+        "Label": "Relancer un devis après"
+      },
+      "alerts_documentExpiryLeadDays": {
+        "Label": "Document du personnel qui expire"
+      },
+      "alerts_trialEndLeadDays": {
+        "Label": "Fin d'une période d'essai"
+      },
+      "alerts_staffContractEndLeadDays": {
+        "Label": "Fin du contrat d'un employé"
+      },
+      "alerts_backupStaleDays": {
+        "Label": "Pas de sauvegarde depuis"
+      },
+      "quote_validityDays": {
+        "Label": "Validité d'un devis"
+      },
+      "quote_approvalRule": {
+        "Label": "Qui approuve un devis"
+      },
+      "costing_hourlyLabourCost": {
+        "Label": "Coût d'une heure de travail",
+        "Hint": "Tant qu'il n'est pas saisi, les marges affichent « non défini »."
+      },
+      "costing_marginPercent": {
+        "Label": "Marge"
+      },
+      "costing_reservePercent": {
+        "Label": "Réserve"
+      },
+      "costing_adminSharePercent": {
+        "Label": "Part des frais généraux"
+      },
+      "costing_hoursOverrunPercent": {
+        "Label": "Dépassement d'heures admis"
+      },
+      "tax_mode": {
+        "Label": "Régime fiscal",
+        "Hint": "Rien n'est facturé avant qu'il soit choisi."
+      },
+      "tax_vatRate": {
+        "Label": "Taux de TVA"
+      },
+      "tax_pricesIncludeVat": {
+        "Label": "Les prix incluent la TVA",
+        "Hint": "Gardé sur chaque devis, chaque dossier au contrat et chaque facture."
+      },
+      "tax_ifuMention": {
+        "Label": "Mention sur les factures sous l'IFU"
+      },
+      "stamp_enabled": {
+        "Label": "Droit de timbre sur les paiements en espèces"
+      },
+      "stamp_mode": {
+        "Label": "Calcul du droit"
+      },
+      "stamp_bands": {
+        "Label": "Tranches du droit"
+      },
+      "stamp_exemptBelow": {
+        "Label": "Pas de droit en dessous de"
+      },
+      "stamp_minimum": {
+        "Label": "Droit minimal"
+      },
+      "stamp_maximum": {
+        "Label": "Droit maximal"
+      },
+      "stamp_roundUpToDinar": {
+        "Label": "Arrondir le droit au dinar supérieur"
+      },
+      "invoice_missedVisitRule": {
+        "Label": "Une visite non effectuée"
+      },
+      "invoice_missedVisitAmount": {
+        "Label": "Montant facturé pour une visite manquée"
+      },
+      "invoice_requireSignOff": {
+        "Label": "Ne facturer que les visites visées par le client"
+      },
+      "forecast_months": {
+        "Label": "Mois de la prévision de trésorerie"
+      },
+      "export_separator": {
+        "Label": "Séparateur de colonnes des fichiers exportés"
+      },
+      "export_decimalComma": {
+        "Label": "Virgule décimale dans les fichiers exportés"
+      },
+      "numbering_fileSuffix": {
+        "Label": "Lettres après un numéro de dossier",
+        "Hint": "« 31/BLC » sur un contrat d'immeuble."
+      },
+      "numbering_employeeSuffix": {
+        "Label": "Lettres après un numéro d'employé"
+      },
+      "numbering_width": {
+        "Label": "Chiffres d'un numéro de document"
+      },
+      "numbering_startAt": {
+        "Label": "Premier numéro de chaque registre",
+        "Hint": "Vide : le registre commence à 1. Pour continuer un registre papier, saisissez son numéro suivant."
+      },
+      "numbering_legalSeries": {
+        "Label": "Série des factures et reçus",
+        "Hint": "Vide, sauf si un second PC de la même entreprise émet ses propres factures."
+      },
+      "pay_runPeriods": {
+        "Label": "Périodes de paie"
+      },
+      "pay_overtimePremium": {
+        "Label": "Majoration des heures supplémentaires"
+      },
+      "pay_restDayPremium": {
+        "Label": "Majoration du jour de repos"
+      },
+      "pay_monthlyDivisorMin": {
+        "Label": "Heures d'un mois de paie"
+      },
+      "pay_leaveDaysPerMonth": {
+        "Label": "Congé acquis par mois"
+      },
+      "pay_leaveYearStart": {
+        "Label": "Début de l'année de congé"
+      },
+      "pay_leaveCapDays": {
+        "Label": "Congé maximal cumulé"
+      },
+      "pay_cnasEmployeeRate": {
+        "Label": "CNAS, part salariale",
+        "Hint": "À confirmer avec son comptable."
+      },
+      "pay_cnasEmployerRate": {
+        "Label": "CNAS, part patronale",
+        "Hint": "À confirmer avec son comptable."
+      },
+      "pay_irgTable": {
+        "Label": "Barème de l'IRG",
+        "Hint": "Saisi par son comptable. D'ici là, l'IRG de chaque bulletin est saisi à la main."
+      },
+      "pay_defaultBasis": {
+        "Label": "Base de paie habituelle"
+      },
+      "pay_defaultPeriod": {
+        "Label": "Période de paie habituelle"
+      },
+      "hiring_trialDays": {
+        "Label": "Période d'essai"
+      },
+      "evaluation_periodMonths": {
+        "Label": "Une évaluation tous les"
+      },
+      "evaluation_scaleMax": {
+        "Label": "Haut de l'échelle d'évaluation",
+        "Hint": "Gardé sur chaque évaluation : un changement vaut pour les suivantes."
+      },
+      "documents_validityMonths": {
+        "Label": "Validité d'un document remis",
+        "Hint": "Vide : il n'expire pas."
+      },
+      "sanction_blockingStates": {
+        "Label": "Qui est arrêté à l'inscription",
+        "Hint": "Une personne dans un état coché n'est inscrite qu'avec l'accord du directeur."
+      },
+      "sanction_matchAcrossKinds": {
+        "Label": "Chercher parmi agents, employés et clients"
+      }
+    },
+    "Units": {
+      "days": "jours",
+      "workingDays": "jours ouvrables",
+      "months": "mois",
+      "workers": "agents",
+      "points": "points",
+      "minutes": "minutes",
+      "hours": "heures",
+      "percent": "%",
+      "NotSet": "Non défini"
+    },
+    "Editors": {
+      "From": "de",
+      "To": "à",
+      "Add": "Ajouter",
+      "Remove": "Retirer",
+      "NoDates": "Aucun jour pour l'instant.",
+      "Day": "Jour",
+      "Month": "Mois",
+      "UpTo": "Jusqu'à",
+      "NoCeiling": "et au-delà",
+      "Per100": "par tranche de 100 DA",
+      "AddBand": "Ajouter une tranche",
+      "Rate": "taux",
+      "IrgOn": "Le barème est saisi : le programme calcule l'IRG.",
+      "IrgOff": "Pas de barème : l'IRG de chaque bulletin est saisi à la main.",
+      "InArabic": "En arabe",
+      "InFrench": "En français",
+      "Irg": {
+        "abatementBp": "Taux d'abattement",
+        "abatementMin": "Abattement minimal",
+        "abatementMax": "Abattement maximal",
+        "exemptUpTo": "Exonéré jusqu'à"
+      },
+      "IrgUse": "Un barème",
+      "IrgByHand": "À la main"
+    },
+    "Locales": {
+      "ar": "العربية",
+      "fr": "Français",
+      "en": "English"
+    },
+    "ReminderModes": {
+      "ALL": "Chaque visite",
+      "FIRST_AND_CHANGED": "La première visite, et une visite modifiée",
+      "NONE": "Aucune"
+    },
+    "InspectionFrequencies": {
+      "WEEKLY": "Hebdomadaire",
+      "MONTHLY": "Mensuelle",
+      "NONE": "Aucune"
+    },
+    "QuoteApprovalRules": {
+      "MANAGER_ALWAYS": "Le directeur, chaque devis"
+    },
+    "TaxModes": {
+      "VAT": "TVA",
+      "IFU": "IFU (impôt forfaitaire unique)"
+    },
+    "StampModes": {
+      "WHOLE": "Un taux sur tout le montant",
+      "PROGRESSIVE": "Tranche par tranche"
+    },
+    "MissedVisitRules": {
+      "BILL_DONE_ONLY": "Non facturée",
+      "FIXED_AMOUNT": "Facturée d'un montant fixe"
+    },
+    "Separators": {
+      "semicolon": "Point-virgule ( ; )",
+      "comma": "Virgule ( , )",
+      "tab": "Tabulation"
+    },
+    "FormKinds": {
+      "HOUSING_REQUEST": "Logement : demande",
+      "HOUSING_CONTRACT": "Logement : contrat",
+      "ORG_REQUEST": "Organisme : demande",
+      "ORG_CONTRACT": "Organisme : contrat",
+      "BUILDING_CONTRACT": "Immeuble : contrat",
+      "COMPLEX_CONTRACT": "Ensemble résidentiel : contrat"
+    },
+    "SequenceKeys": {
+      "STAFF_WORKER": "Agents",
+      "STAFF_EMPLOYEE": "Employés",
+      "CLIENT_DOSSIER": "Clients",
+      "FILE_HOUSING_REQUEST": "Demandes logement",
+      "FILE_HOUSING_CONTRACT": "Contrats logement",
+      "FILE_ORG_REQUEST": "Demandes organisme",
+      "FILE_ORG_CONTRACT": "Contrats organisme",
+      "FILE_BUILDING_CONTRACT": "Contrats immeuble",
+      "FILE_COMPLEX_CONTRACT": "Contrats ensemble résidentiel",
+      "QUOTE": "Devis",
+      "VISIT": "Visites",
+      "INVOICE": "Factures",
+      "RECEIPT": "Reçus",
+      "COMPLAINT": "Réclamations",
+      "INSPECTION": "Inspections",
+      "VIOLATION": "Infractions",
+      "PAY_RUN": "Paies",
+      "PAYSLIP": "Bulletins",
+      "PAYOUT": "Versements",
+      "HANDOUT": "Remises",
+      "COUNT": "Inventaires",
+      "PURCHASE_REQUEST": "Demandes d'achat",
+      "PURCHASE": "Achats",
+      "EQUIPMENT_UNIT": "Unités de matériel"
     }
   }
 }

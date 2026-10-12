@@ -174,7 +174,16 @@
     "PasswordIsTooShort": "كلمة المرور قصيرة جدًا.",
     "PasswordSameAsGiven": "اختر كلمة مرور مختلفة عن التي أُعطيت لك.",
     "RecoveryManagerOnly": "رمز الاسترداد للمدير وحده.",
-    "ManagerPasswordOwn": "كلمة مرور المدير يغيّرها هو نفسه، أو برمز الاسترداد."
+    "ManagerPasswordOwn": "كلمة مرور المدير يغيّرها هو نفسه، أو برمز الاسترداد.",
+    "SettingEndAfterStart": "يجب أن تأتي النهاية بعد البداية.",
+    "SettingBandsOrder": "يجب أن تعلو كل شريحة على التي قبلها، والأخيرة وحدها بلا سقف.",
+    "SettingRestDayWorking": "لا يمكن أن يكون يوم الراحة يوم عمل.",
+    "SettingMissedVisitAmount": "اكتب المبلغ المفوتر للزيارة الفائتة.",
+    "AccountSelfOff": "لا يمكنك إيقاف الحساب الذي دخلت به.",
+    "AccountLinkEmployeeOnly": "لا يُربط الحساب إلا بموظف من موظفي المركز.",
+    "AccountLinkTaken": "لهذا الموظف حساب من قبل.",
+    "RoleManagerFixed": "دور المدير يملك كل الصلاحيات ولا يُغيَّر.",
+    "RoleNoRestore": "استرجاع النسخة الاحتياطية للمدير وحده."
   },
   "Table": {
     "ScrollLeft": "مرّر لليسار",
@@ -235,7 +244,10 @@
       "Title": "النظام",
       "Description": "الإصدار والمنصة، لحين حاجتك للإبلاغ عن مشكلة.",
       "SampleSheet": "ورقة تجريبية"
-    }
+    },
+    "RulesDescription": "القواعد التي يتبعها البرنامج في التخطيط والفوترة ودفع الأجور. تُحفظ كل بطاقة وحدها.",
+    "UsersDescription": "من يدخل إلى البرنامج في هذا الحاسوب، وما يمكن لكل دور فتحه وفعله.",
+    "LogDescription": "كل عملية على المعطيات الشخصية وكل حدث أمني، كما يطلب القانون: من، ماذا، متى ولماذا."
   },
   "License": {
     "Title": "النسخة التجريبية المجانية",
@@ -545,6 +557,484 @@
     "BackupStale": {
       "Title": "لا توجد نسخة احتياطية حديثة",
       "Hint": "لم تُحفظ نسخة من البيانات منذ {days} أيام"
+    }
+  },
+  "SettingsForm": {
+    "Saved": "تم الحفظ.",
+    "SaveFailed": "تعذّر حفظ هذه الإعدادات.",
+    "Discard": "تجاهل التغييرات",
+    "ReadOnly": "لا يغيّر هذه الإعدادات إلا المدير أو حساب يأذن له.",
+    "Groups": {
+      "centre": {
+        "Title": "المركز على وثائقه",
+        "Description": "العنوان والمدينة ووسائل الاتصال المطبوعة على وثائق المركز."
+      },
+      "taxIds": {
+        "Title": "الأرقام الجبائية والسجل",
+        "Description": "مطلوبة في كل فاتورة: لا تصدر فاتورة ما دام رقم السجل التجاري أو NIS أو NIF أو رقم المادة ناقصًا."
+      },
+      "bank": {
+        "Title": "الحساب البنكي والبريدي",
+        "Description": "يُطبع على الفواتير ليدفع الزبائن بالتحويل."
+      },
+      "program": {
+        "Title": "البرنامج",
+        "Description": "اختيارات تسري على البرنامج كله في هذا الحاسوب."
+      },
+      "workingTime": {
+        "Title": "أوقات العمل",
+        "Description": "أيام العمل، فترتا اليوم، الحدود القانونية وساعات المكتب."
+      },
+      "visitsQuality": {
+        "Title": "الزيارات والشكاوى والتفتيش",
+        "Description": "التذكير قبل الزيارة، أجل الرد على الشكوى، وزيارات تفتيش المشرف."
+      },
+      "alerts": {
+        "Title": "آجال التنبيهات",
+        "Description": "كم يومًا مسبقًا تنبّه الشاشة الرئيسية."
+      },
+      "quotesCosting": {
+        "Title": "عروض الأسعار والتكلفة",
+        "Description": "مدة صلاحية العرض، من يوافق عليه، وما تحسبه دراسة التكلفة."
+      },
+      "taxStamp": {
+        "Title": "الضريبة وحقوق الطابع",
+        "Description": "النظام الجبائي للمركز وحقوق الطابع على الدفع نقدًا."
+      },
+      "invoicesExports": {
+        "Title": "الفواتير والتصدير",
+        "Description": "ما تحسبه الفاتورة، وكيف تُكتب الملفات المسلّمة للمحاسب."
+      },
+      "numbering": {
+        "Title": "الترقيم",
+        "Description": "كيف تُكتب أرقام الوثائق، ومن أين تبدأ العدادات لمواصلة السجلات الورقية."
+      },
+      "pay": {
+        "Title": "الأجور",
+        "Description": "فترات الدفع، العلاوات، العطل والاشتراكات الاجتماعية. النسب «للتأكيد» تنتظر محاسبه."
+      },
+      "staff": {
+        "Title": "المستخدمون",
+        "Description": "فترة التجربة، التقييمات، صلاحية الوثائق المسلّمة، ومن يمكن تسجيله من جديد."
+      }
+    },
+    "Keys": {
+      "centre_nameLatin": {
+        "Label": "الاسم بالحروف اللاتينية"
+      },
+      "centre_legalForm": {
+        "Label": "الشكل القانوني"
+      },
+      "centre_address": {
+        "Label": "العنوان"
+      },
+      "centre_city": {
+        "Label": "المدينة",
+        "Hint": "تُكتب بعد «حررت بـ» في العقود والاستمارات."
+      },
+      "centre_wilayaCode": {
+        "Label": "الولاية"
+      },
+      "centre_phone": {
+        "Label": "الهاتف وواتساب"
+      },
+      "centre_email": {
+        "Label": "البريد الإلكتروني"
+      },
+      "centre_rc": {
+        "Label": "رقم السجل التجاري (RC)"
+      },
+      "centre_nis": {
+        "Label": "رقم التعريف الإحصائي (NIS)"
+      },
+      "centre_nif": {
+        "Label": "رقم التعريف الجبائي (NIF)"
+      },
+      "centre_articleNumber": {
+        "Label": "رقم المادة الجبائية"
+      },
+      "centre_nin": {
+        "Label": "رقم التعريف الوطني (NIN)",
+        "Hint": "اختياري. قد يطلبه الزبائن الذين يسترجعون الرسم على القيمة المضافة."
+      },
+      "centre_cnasEmployerNumber": {
+        "Label": "رقم المستخدم لدى CNAS"
+      },
+      "centre_bankName": {
+        "Label": "البنك"
+      },
+      "centre_bankAccount": {
+        "Label": "رقم الحساب البنكي (RIB)"
+      },
+      "centre_ccpNumber": {
+        "Label": "رقم الحساب البريدي CCP"
+      },
+      "centre_ccpKey": {
+        "Label": "مفتاح CCP"
+      },
+      "app_defaultLocale": {
+        "Label": "لغة البرنامج عند التثبيت",
+        "Hint": "يحتفظ كل حاسوب باللغة المختارة فيه في البطاقة أعلاه."
+      },
+      "feature_siteQrOnOrder": {
+        "Label": "رمز QR للموقع في أمر المهمة"
+      },
+      "work_days": {
+        "Label": "أيام العمل"
+      },
+      "work_restDay": {
+        "Label": "يوم الراحة الأسبوعية"
+      },
+      "work_period_morning": {
+        "Label": "الفترة الصباحية"
+      },
+      "work_period_evening": {
+        "Label": "الفترة المسائية"
+      },
+      "work_weekMin": {
+        "Label": "مدة العمل الأسبوعية القانونية"
+      },
+      "work_overtimeCapMin": {
+        "Label": "أقصى ساعات في الأسبوع بالساعات الإضافية"
+      },
+      "work_dayMin": {
+        "Label": "يوم عمل كامل",
+        "Hint": "وهي أيضًا مدة يوم غياب كامل."
+      },
+      "work_daySpanMin": {
+        "Label": "أطول يوم عمل من أول بداية إلى آخر نهاية"
+      },
+      "work_night": {
+        "Label": "ساعات الليل"
+      },
+      "work_travelGapMin": {
+        "Label": "الوقت بين موقعين"
+      },
+      "work_arrivalGraceMin": {
+        "Label": "التسامح في وقت الوصول",
+        "Hint": "بعدها يظهر العامل الذي لم يصل في جدول اليوم."
+      },
+      "office_hours": {
+        "Label": "ساعات عمل المكتب"
+      },
+      "calendar_hours": {
+        "Label": "الساعات المعروضة في الرزنامة"
+      },
+      "calendar_closedDays": {
+        "Label": "أيام غلق المركز",
+        "Hint": "الأعياد والأيام الأخرى دون زيارات."
+      },
+      "reminder_leadWorkingDays": {
+        "Label": "تذكير الزبون قبل الزيارة"
+      },
+      "reminder_mode": {
+        "Label": "الزيارات التي يُذكَّر بها"
+      },
+      "complaint_targetMin": {
+        "Label": "أجل الرد على الشكوى"
+      },
+      "inspection_threshold": {
+        "Label": "أدنى نتيجة مقبولة في التفتيش",
+        "Hint": "من 100. دونها يُطلب تصحيح."
+      },
+      "inspection_defaultFrequency_contract": {
+        "Label": "تفتيش العقود"
+      },
+      "inspection_defaultFrequency_onDemand": {
+        "Label": "تفتيش الخدمات حسب الطلب"
+      },
+      "inspection_missedAfterDays": {
+        "Label": "يُعدّ التفتيش فائتًا بعد"
+      },
+      "corrective_dueDays": {
+        "Label": "أجل تنفيذ التصحيح"
+      },
+      "supervisor_maxWorkers": {
+        "Label": "أقصى عدد عمال لكل مشرف"
+      },
+      "alerts_contractEndLeadDays": {
+        "Label": "انتهاء العقد"
+      },
+      "alerts_paymentDueLeadDays": {
+        "Label": "استحقاق الدفع"
+      },
+      "alerts_maintenanceLeadDays": {
+        "Label": "صيانة العتاد"
+      },
+      "alerts_quoteFollowUpDays": {
+        "Label": "متابعة عرض السعر بعد"
+      },
+      "alerts_documentExpiryLeadDays": {
+        "Label": "انتهاء صلاحية وثيقة"
+      },
+      "alerts_trialEndLeadDays": {
+        "Label": "نهاية فترة التجربة"
+      },
+      "alerts_staffContractEndLeadDays": {
+        "Label": "نهاية عقد موظف"
+      },
+      "alerts_backupStaleDays": {
+        "Label": "لا نسخة احتياطية منذ"
+      },
+      "quote_validityDays": {
+        "Label": "مدة صلاحية عرض السعر"
+      },
+      "quote_approvalRule": {
+        "Label": "من يوافق على عرض السعر"
+      },
+      "costing_hourlyLabourCost": {
+        "Label": "تكلفة ساعة عمل",
+        "Hint": "ما لم تُكتب، تظهر الهوامش «غير محددة»."
+      },
+      "costing_marginPercent": {
+        "Label": "هامش الربح"
+      },
+      "costing_reservePercent": {
+        "Label": "الاحتياط"
+      },
+      "costing_adminSharePercent": {
+        "Label": "حصة المصاريف الإدارية"
+      },
+      "costing_hoursOverrunPercent": {
+        "Label": "تجاوز الساعات المسموح"
+      },
+      "tax_mode": {
+        "Label": "النظام الجبائي",
+        "Hint": "لا تصدر أي فاتورة قبل اختياره."
+      },
+      "tax_vatRate": {
+        "Label": "نسبة الرسم على القيمة المضافة"
+      },
+      "tax_pricesIncludeVat": {
+        "Label": "الأسعار تشمل الرسم",
+        "Hint": "يُحفظ مع كل عرض سعر وكل ملف عند التعاقد وكل فاتورة."
+      },
+      "tax_ifuMention": {
+        "Label": "العبارة على الفواتير في نظام الضريبة الجزافية"
+      },
+      "stamp_enabled": {
+        "Label": "حقوق الطابع على الدفع نقدًا"
+      },
+      "stamp_mode": {
+        "Label": "طريقة حساب الحق"
+      },
+      "stamp_bands": {
+        "Label": "شرائح الحق"
+      },
+      "stamp_exemptBelow": {
+        "Label": "لا حق دون"
+      },
+      "stamp_minimum": {
+        "Label": "أدنى حق"
+      },
+      "stamp_maximum": {
+        "Label": "أقصى حق"
+      },
+      "stamp_roundUpToDinar": {
+        "Label": "تقريب الحق إلى الدينار الأعلى"
+      },
+      "invoice_missedVisitRule": {
+        "Label": "الزيارة التي لم تُنجز"
+      },
+      "invoice_missedVisitAmount": {
+        "Label": "المبلغ المفوتر للزيارة الفائتة"
+      },
+      "invoice_requireSignOff": {
+        "Label": "فوترة الزيارات الموقّعة من الزبون فقط"
+      },
+      "forecast_months": {
+        "Label": "أشهر توقع الخزينة"
+      },
+      "export_separator": {
+        "Label": "فاصل الأعمدة في الملفات المصدّرة"
+      },
+      "export_decimalComma": {
+        "Label": "الفاصلة العشرية في الملفات المصدّرة"
+      },
+      "numbering_fileSuffix": {
+        "Label": "الحروف بعد رقم الملف",
+        "Hint": "«31/BLC» في عقد العمارة."
+      },
+      "numbering_employeeSuffix": {
+        "Label": "الحروف بعد رقم الموظف"
+      },
+      "numbering_width": {
+        "Label": "عدد أرقام رقم الوثيقة"
+      },
+      "numbering_startAt": {
+        "Label": "أول رقم في كل سجل",
+        "Hint": "فارغ: يبدأ السجل من 1. لمواصلة سجل ورقي، اكتب الرقم الموالي فيه."
+      },
+      "numbering_legalSeries": {
+        "Label": "سلسلة الفواتير والوصولات",
+        "Hint": "فارغة، إلا إذا أصدر حاسوب ثانٍ للمؤسسة نفسها فواتيره."
+      },
+      "pay_runPeriods": {
+        "Label": "فترات دفع الأجور"
+      },
+      "pay_overtimePremium": {
+        "Label": "علاوة الساعات الإضافية"
+      },
+      "pay_restDayPremium": {
+        "Label": "علاوة العمل يوم الراحة"
+      },
+      "pay_monthlyDivisorMin": {
+        "Label": "ساعات الشهر في حساب الأجر"
+      },
+      "pay_leaveDaysPerMonth": {
+        "Label": "العطلة المكتسبة في الشهر"
+      },
+      "pay_leaveYearStart": {
+        "Label": "بداية سنة العطل"
+      },
+      "pay_leaveCapDays": {
+        "Label": "أقصى رصيد عطلة"
+      },
+      "pay_cnasEmployeeRate": {
+        "Label": "اشتراك CNAS على العامل",
+        "Hint": "للتأكيد مع محاسبه."
+      },
+      "pay_cnasEmployerRate": {
+        "Label": "اشتراك CNAS على المستخدم",
+        "Hint": "للتأكيد مع محاسبه."
+      },
+      "pay_irgTable": {
+        "Label": "جدول الضريبة على الدخل (IRG)",
+        "Hint": "يكتبه محاسبه. وإلى ذلك الحين تُكتب الضريبة في كل كشف يدويًا."
+      },
+      "pay_defaultBasis": {
+        "Label": "أساس الأجر المعتاد"
+      },
+      "pay_defaultPeriod": {
+        "Label": "فترة الدفع المعتادة"
+      },
+      "hiring_trialDays": {
+        "Label": "فترة التجربة"
+      },
+      "evaluation_periodMonths": {
+        "Label": "تقييم كل"
+      },
+      "evaluation_scaleMax": {
+        "Label": "أعلى درجة في سلم التقييم",
+        "Hint": "تُحفظ مع كل تقييم: التغيير يسري على التقييمات القادمة."
+      },
+      "documents_validityMonths": {
+        "Label": "مدة صلاحية الوثيقة المسلّمة",
+        "Hint": "فارغ: لا تنتهي صلاحيتها."
+      },
+      "sanction_blockingStates": {
+        "Label": "من يُوقف عند التسجيل",
+        "Hint": "الشخص في حالة مؤشَّر عليها لا يُسجَّل إلا بموافقة المدير."
+      },
+      "sanction_matchAcrossKinds": {
+        "Label": "البحث بين العمال والموظفين والزبائن"
+      }
+    },
+    "Units": {
+      "days": "يوم",
+      "workingDays": "يوم عمل",
+      "months": "شهر",
+      "workers": "عامل",
+      "points": "نقطة",
+      "minutes": "دقيقة",
+      "hours": "ساعة",
+      "percent": "%",
+      "NotSet": "غير محدد"
+    },
+    "Editors": {
+      "From": "من",
+      "To": "إلى",
+      "Add": "إضافة",
+      "Remove": "حذف",
+      "NoDates": "لا يوجد يوم بعد.",
+      "Day": "اليوم",
+      "Month": "الشهر",
+      "UpTo": "حتى",
+      "NoCeiling": "فما فوق",
+      "Per100": "لكل 100 دج",
+      "AddBand": "إضافة شريحة",
+      "Rate": "النسبة",
+      "IrgOn": "الجدول مكتوب: البرنامج يحسب الضريبة.",
+      "IrgOff": "لا جدول: تُكتب الضريبة في كل كشف يدويًا.",
+      "InArabic": "بالعربية",
+      "InFrench": "بالفرنسية",
+      "Irg": {
+        "abatementBp": "نسبة التخفيض",
+        "abatementMin": "أدنى تخفيض",
+        "abatementMax": "أقصى تخفيض",
+        "exemptUpTo": "لا ضريبة حتى"
+      },
+      "IrgUse": "جدول",
+      "IrgByHand": "يدويًا"
+    },
+    "Locales": {
+      "ar": "العربية",
+      "fr": "Français",
+      "en": "English"
+    },
+    "ReminderModes": {
+      "ALL": "كل زيارة",
+      "FIRST_AND_CHANGED": "الزيارة الأولى والزيارة التي تغيّرت",
+      "NONE": "لا شيء"
+    },
+    "InspectionFrequencies": {
+      "WEEKLY": "أسبوعية",
+      "MONTHLY": "شهرية",
+      "NONE": "بدون"
+    },
+    "QuoteApprovalRules": {
+      "MANAGER_ALWAYS": "المدير، كل عرض"
+    },
+    "TaxModes": {
+      "VAT": "الرسم على القيمة المضافة",
+      "IFU": "الضريبة الجزافية الوحيدة"
+    },
+    "StampModes": {
+      "WHOLE": "نسبة واحدة على كامل المبلغ",
+      "PROGRESSIVE": "شريحة بشريحة"
+    },
+    "MissedVisitRules": {
+      "BILL_DONE_ONLY": "لا تُفوتر",
+      "FIXED_AMOUNT": "تُفوتر بمبلغ ثابت"
+    },
+    "Separators": {
+      "semicolon": "فاصلة منقوطة ( ; )",
+      "comma": "فاصلة ( , )",
+      "tab": "مسافة جدولة"
+    },
+    "FormKinds": {
+      "HOUSING_REQUEST": "سكن: طلب",
+      "HOUSING_CONTRACT": "سكن: عقد",
+      "ORG_REQUEST": "مؤسسة: طلب",
+      "ORG_CONTRACT": "مؤسسة: عقد",
+      "BUILDING_CONTRACT": "عمارة: عقد",
+      "COMPLEX_CONTRACT": "تجمع سكني: عقد"
+    },
+    "SequenceKeys": {
+      "STAFF_WORKER": "العمال",
+      "STAFF_EMPLOYEE": "الموظفون",
+      "CLIENT_DOSSIER": "الزبائن",
+      "FILE_HOUSING_REQUEST": "طلبات السكن",
+      "FILE_HOUSING_CONTRACT": "عقود السكن",
+      "FILE_ORG_REQUEST": "طلبات المؤسسات",
+      "FILE_ORG_CONTRACT": "عقود المؤسسات",
+      "FILE_BUILDING_CONTRACT": "عقود العمارات",
+      "FILE_COMPLEX_CONTRACT": "عقود التجمعات السكنية",
+      "QUOTE": "عروض الأسعار",
+      "VISIT": "الزيارات",
+      "INVOICE": "الفواتير",
+      "RECEIPT": "الوصولات",
+      "COMPLAINT": "الشكاوى",
+      "INSPECTION": "زيارات التفتيش",
+      "VIOLATION": "المخالفات",
+      "PAY_RUN": "دورات الأجور",
+      "PAYSLIP": "كشوف الأجور",
+      "PAYOUT": "الدفعات",
+      "HANDOUT": "التسليمات",
+      "COUNT": "الجرد",
+      "PURCHASE_REQUEST": "طلبات الشراء",
+      "PURCHASE": "المشتريات",
+      "EQUIPMENT_UNIT": "وحدات العتاد"
     }
   }
 }

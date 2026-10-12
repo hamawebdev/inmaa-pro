@@ -1,8 +1,8 @@
 # Foundation: handover
 
 For a teammate who continues Foundation's work. Read CLAUDE.md first (its last section is Foundation's and is the
-manual for builders), then this page. Updated at the end of every round. **Last update: end of F3, items 1 to 3**
-(on top of the checkpoints f177b44 and 963de70; what changed since is not committed yet: the coordinator commits).
+manual for builders), then this page. Updated at the end of every round. **Last update: start of F3b**
+(F3 items 1 to 3 accepted and committed in d114590).
 
 ## What exists, and where
 
@@ -33,8 +33,12 @@ manual for builders), then this page. Updated at the end of every round. **Last 
 - Communes of أم البواقي checked (2026-10-12); ids carry the official codes. Wilayas 59 to 69 stay flagged (press, not the Journal officiel).
 - `Inspection.correctionNeeded`; `centre.phone` and `centre.email` from his footer (defaults, not rows).
 - F3: one money format on screen and on paper, the academy's: «195.650,00 دج».
-- F3: the manager answers sanction decisions while signed in. I read it as: no dialog takes his password inside
-  another user's session, `requestManagerApproval` is not built (DESIGN.md sections 12 and 19 say so).
+- F3: the manager answers sanction decisions while signed in. My reading was accepted: no dialog takes his password
+  inside another user's session, `requestManagerApproval` is not built (DESIGN.md sections 12 and 19 say so). No
+  lockout on wrong passwords; the recovery code and the demo password `inmaa-demo` are accepted.
+- F3b: an idle lock. Setting `security.idleLockMinutes` (default 15; 0 switches it off), the manager's to change;
+  after that many minutes without input the program signs out to the sign-in window (a form in progress is lost, as
+  with «قفل الآن»), logged as LOCK with cause IDLE.
 - F3: the low-stock tile opens `/dashboard/inventory?kind=MATERIAL&state=TO_BUY` (or `EQUIPMENT`): an alert's `count`
   may answer `{ count, route }`.
 - Git: teammates run no git command that writes; the coordinator commits.
@@ -51,17 +55,27 @@ types. Contracts between owners: `docs/data-model/CONTRACTS.md`. Since F3 also: 
 
 ## Open items
 
-- **F3b, in the coordinator's order:** (4) Settings in four tabs: every setting of DESIGN.md section 11 with a form,
-  identity and tax identifiers, accounts and role grants (the services `createAccount` and `giveAccountPassword`
-  exist; switching an account off, editing grants and `linkAccountToStaff` do not), the log screen with its logged
-  export; (5) the daily backup to a chosen folder and the guarded restore, with the screen that asks the manager when
-  `startupAnchor()` is not "normal"; (6) desktop notifications for new alerts (`system.alertsNotified`,
-  `ALERTS_QUERY_KEY`); (7) the commune picker with its add action and the zone picker.
-- `backup.stale` is seen only by a role that opens Settings and holds `backup.run`: by default the manager alone
-  (ADMINISTRATION holds the capability but not the section). Settle with item 5.
-- Sign-in has no lockout and no idle lock: failures are counted and logged. Nobody asked for either.
-- A new installation's manager is «المدير» / `manager`: renaming an account is part of the users tab.
-- When Money removes `src/features/money/rules/hash-chain.ts`, drop its mention in `src/lib/chain/canonical.ts`.
+**F3b (this round), in the coordinator's order:**
+
+1. Settings in four tabs. «عام»: the centre's identity and tax identifiers, my account, system. «قواعد العمل»: every
+   setting of DESIGN.md section 11 with a form, grouped as the document groups them. «المستخدمون والصلاحيات»:
+   accounts (create, give a password, switch off, link to a centre employee with `linkAccountToStaff`) and role grants
+   by section and capability. «السجل»: filters by person, entity, operation and date; an export is itself logged as
+   a disclosure.
+2. Backup and restore: the daily automatic copy to a folder or USB the manager chooses (refuse a folder a cloud client
+   synchronises, where that can be told), the guarded restore of DESIGN.md section 8 with the screen that asks the
+   manager when the anchor disagrees (`startupAnchor()`), and who sees `backup.stale` (to settle here: today only a
+   role that opens Settings and holds `backup.run`, so the manager alone by default).
+3. Desktop notifications for new alerts (`system.alertsNotified`; the notification plugin is already in the build).
+4. The commune picker (any wilaya, with an add action) and the zone picker; the once-a-day CONSULT helper (ruling 29:
+   a person's file page once per user, record and day; restricted data at every read); `--before` and `--routes
+   <file>` on `pdf.mjs`; the harness under several teammates printing at once ("never settled", EMFILE at 20 to 50
+   runs); the `hash-chain.ts` mention in `src/lib/chain/canonical.ts` once Money removes its file.
+5. The idle lock (rulings above).
+
+Still open from before:
+
+- Sign-in has no idle lock until item 5; no lockout (accepted).
 - Arabic Typesetting's stand-in scale (62%) is an estimate: measure it with the print sample's calibration panel on a
   PC that has his fonts.
 - Each builder folder's `uploads.ts` is no longer read (F2); their owners may delete them.

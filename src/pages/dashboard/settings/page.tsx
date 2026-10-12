@@ -14,6 +14,7 @@ import { AppearanceCard, LanguageCard } from "./_components/appearance-cards";
 import { BackupCard } from "./_components/backup-card";
 import { CentreIdentityCard } from "./_components/centre-identity-card";
 import { LicenseCard } from "./_components/license-card";
+import { SettingsGroups } from "./_components/settings-form/settings-groups";
 
 /**
  * Settings › عام: everything the centre configures once and then leaves alone.
@@ -21,10 +22,13 @@ import { LicenseCard } from "./_components/license-card";
  * These are the academy shell's cards, in the academy's order, which runs from
  * what the centre *is* to what the program *does with it*:
  *
- *  1. Identity, first because it is the only setting that reaches paper.
- *  2. Language and appearance: how this machine shows everything above.
- *  3. The account that is signed in: its password and, for the manager, his
+ *  1. Identity, first because it is what reaches paper: the name and logo,
+ *     then the address and contacts, the tax and registration numbers an
+ *     invoice needs, and the bank (DESIGN.md section 11, «عام»).
+ *  2. The account that is signed in: its password and, for the manager, his
  *     recovery code. (Accounts and what each role may open are the third tab.)
+ *  3. Language and appearance: how this machine shows everything above; then
+ *     the choices that apply to the whole program.
  *  4. Backup, because it is the one action here with no undo.
  *  5. The licence, then System — two footers more than settings. The licence
  *     sits beside the version and the OS because that is the block a support
@@ -49,10 +53,13 @@ export default function SettingsPage() {
     >
       <div className="flex flex-col gap-6 tall:gap-7">
         <CentreIdentityCard />
-        <LanguageCard />
-        <AppearanceCard />
+        <SettingsGroups tab="general" only={["centre", "taxIds", "bank"]} />
 
         <AccountCard />
+
+        <LanguageCard />
+        <AppearanceCard />
+        <SettingsGroups tab="general" only={["program"]} />
 
         <BackupCard />
 
