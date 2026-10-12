@@ -27,23 +27,22 @@ import {
 
 type ExecuteResult = { rowsAffected: number; lastInsertId: number };
 
-/** Statements that never return rows, so we can pick the right command. */
+/**
+ * Statements that never return rows, so we can pick the right command.
+ *
+ * The Rust side accepts one statement whose first word is select, with, insert,
+ * update, delete, begin, commit or rollback, and nothing else: the schema
+ * changes through migrations only (src-tauri/src/db.rs, `check_statement`).
+ */
 function isMutation(sql: string): boolean {
-  const head = sql.trimStart().slice(0, 12).toLowerCase();
+  const head = sql.trimStart().slice(0, 8).toLowerCase();
   return (
     head.startsWith("insert") ||
     head.startsWith("update") ||
     head.startsWith("delete") ||
-    head.startsWith("replace") ||
     head.startsWith("begin") ||
     head.startsWith("commit") ||
-    head.startsWith("rollback") ||
-    head.startsWith("savepoint") ||
-    head.startsWith("release") ||
-    head.startsWith("pragma") ||
-    head.startsWith("create") ||
-    head.startsWith("drop") ||
-    head.startsWith("alter")
+    head.startsWith("rollback")
   );
 }
 
@@ -77,7 +76,21 @@ class TauriDriver implements Driver {
   /** Tail of the queue of callers waiting for the single connection. */
   #queue: Promise<void> = Promise.resolve();
 
-  async init(): Promise<void> {}
+  /**
+   * The connection outlives the page. If the webview was reloaded in the middle
+   * of a transaction, the BEGIN is still open on the Rust side and every later
+   * statement would join it, to be lost with it. So the first thing a new page
+   * does is close whatever the last one left.
+   */
+  async init(): Promise<void> {
+    try {
+      await this.#connection.executeQuery(CompiledQuery.raw("ROLLBACK"));
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : String((error as { message?: unknown })?.message ?? error);
+      if (!message.includes("no transaction is active")) throw error;
+    }
+  }
 
   async acquireConnection(): Promise<DatabaseConnection> {
     // Take a ticket: wait for everyone ahead of us, and make everyone behind us

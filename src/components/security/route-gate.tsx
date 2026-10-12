@@ -24,7 +24,7 @@ import { useUnlockStore } from "@/stores/unlock-store";
  * never run.
  *
  * Which sections are protected is the owner's choice, read from
- * `Setting.locked_pages` — see src/lib/lockable-sections.ts. The overview
+ * the setting `shell.lockedSections` — see src/lib/lockable-sections.ts. The overview
  * section is never lockable.
  */
 export function RouteGate({ children }: { children: React.ReactNode }) {

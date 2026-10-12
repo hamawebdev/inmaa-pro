@@ -38,7 +38,7 @@ pub mod code;
 mod device;
 pub mod secret;
 pub mod state;
-mod vault;
+pub(crate) mod vault;
 
 #[cfg(test)]
 mod tests;

@@ -116,10 +116,10 @@ pub async fn restore_from(app: tauri::AppHandle, source: String) -> Result<(), C
 /// with whatever the PC reads PDFs with. Images are shown in the program
 /// itself; this serves them too, for when a copy is wanted.
 ///
-/// `segments` are the four parts of the stored address after `/api/uploads/`
-/// (owner, entity, field, file). They come from the database, which the user
-/// can edit, so each one is checked: a crafted value must not be able to name
-/// a file outside the uploads folder.
+/// `segments` are the parts of the stored address after `/uploads/`: entity,
+/// field and file, with `restricted` in front for a restricted file. They come
+/// from the database, which the user can edit, so each one is checked: a
+/// crafted value must not be able to name a file outside the uploads folder.
 #[tauri::command]
 #[specta::specta]
 pub async fn export_upload(
@@ -140,10 +140,15 @@ pub async fn export_upload(
     Ok(())
 }
 
-/// The file a stored upload address names, or `None` if the address is not the
-/// four plain names it must be.
+/// The file a stored upload address names, or `None` if the address is not
+/// three plain names, or four beginning with `restricted`.
 fn upload_path(uploads: &Path, segments: &[String]) -> Option<PathBuf> {
-    if segments.len() != 4 {
+    let shaped = match segments.len() {
+        3 => segments[0] != "restricted",
+        4 => segments[0] == "restricted",
+        _ => false,
+    };
+    if !shaped {
         return None;
     }
     let mut path = uploads.to_path_buf();
@@ -167,7 +172,7 @@ fn upload_path(uploads: &Path, segments: &[String]) -> Option<PathBuf> {
 mod tests {
     use super::*;
 
-    fn segments(parts: [&str; 4]) -> Vec<String> {
+    fn segments(parts: &[&str]) -> Vec<String> {
         parts.iter().map(|part| part.to_string()).collect()
     }
 
@@ -176,23 +181,29 @@ mod tests {
         let uploads = Path::new("/data/uploads");
 
         assert_eq!(
-            upload_path(uploads, &segments(["local-admin", "workers", "photo", "a.png"])),
-            Some(PathBuf::from("/data/uploads/local-admin/workers/photo/a.png"))
+            upload_path(uploads, &segments(&["StaffMember", "photoUrl", "a.png"])),
+            Some(PathBuf::from("/data/uploads/StaffMember/photoUrl/a.png"))
+        );
+        assert_eq!(
+            upload_path(uploads, &segments(&["restricted", "StaffDocument", "fileUrl", "a.pdf"])),
+            Some(PathBuf::from("/data/uploads/restricted/StaffDocument/fileUrl/a.pdf"))
         );
 
         for crafted in [
-            ["..", "..", "..", "passwd"],
-            ["local-admin", "workers", "photo", "../../../inmaa.db"],
-            ["local-admin", "workers", "photo", "..\\..\\inmaa.db"],
-            ["local-admin", "workers", "", "a.png"],
-            ["local-admin", "workers", ".", "a.png"],
-            ["local-admin", "workers", "photo", "/etc/passwd"],
-            ["local-admin", "workers", "photo", "C:secret.txt"],
+            vec!["..", "..", "passwd"],
+            vec!["StaffMember", "photoUrl", "../../../inmaa.db"],
+            vec!["StaffMember", "photoUrl", "..\\..\\inmaa.db"],
+            vec!["StaffMember", "", "a.png"],
+            vec!["StaffMember", ".", "a.png"],
+            vec!["StaffMember", "photoUrl", "/etc/passwd"],
+            vec!["StaffMember", "photoUrl", "C:secret.txt"],
+            // The word "restricted" is not a way to add a level, and four parts need it.
+            vec!["restricted", "photoUrl", "a.png"],
+            vec!["x", "StaffMember", "photoUrl", "a.png"],
+            vec!["a", "b"],
+            vec!["restricted", "a", "b", "c", "d"],
         ] {
-            assert_eq!(upload_path(uploads, &segments(crafted)), None, "{crafted:?} must be refused");
+            assert_eq!(upload_path(uploads, &segments(&crafted)), None, "{crafted:?} must be refused");
         }
-
-        // Three parts, or five, are not an upload address at all.
-        assert_eq!(upload_path(uploads, &["a".to_string(), "b".to_string(), "c".to_string()]), None);
     }
 }

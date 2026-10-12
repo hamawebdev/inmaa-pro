@@ -100,6 +100,68 @@ function sqliteError(error) {
   return commandError(`error returned from database: (code: ${code}) ${text}`);
 }
 
+/** The statements the app's two database commands accept (`ALLOWED_STATEMENTS` in src-tauri/src/db.rs). */
+const ALLOWED_STATEMENTS = new Set(["select", "with", "insert", "update", "delete", "begin", "commit", "rollback"]);
+
+/**
+ * The same guard as `check_statement` in src-tauri/src/db.rs: one statement,
+ * of an allowed kind. Strings, quoted names and comments are stepped over, so
+ * a semicolon inside a value is not taken for a second statement.
+ */
+function checkStatement(sql) {
+  let i = 0;
+  let firstWord = null;
+  let ended = false;
+  while (i < sql.length) {
+    const c = sql[i];
+    if (c === "-" && sql[i + 1] === "-") {
+      while (i < sql.length && sql[i] !== "\n") i += 1;
+      continue;
+    }
+    if (c === "/" && sql[i + 1] === "*") {
+      const close = sql.indexOf("*/", i + 2);
+      i = close === -1 ? sql.length : close + 2;
+      continue;
+    }
+    if (/\s/.test(c)) {
+      i += 1;
+      continue;
+    }
+    if (ended) throw commandError("only one statement at a time is accepted");
+    if (c === ";") {
+      ended = true;
+      i += 1;
+      continue;
+    }
+    if (c === "'" || c === '"' || c === "`" || c === "[") {
+      const close = c === "[" ? "]" : c;
+      i += 1;
+      while (i < sql.length) {
+        if (sql[i] === close) {
+          if (close !== "]" && sql[i + 1] === close) {
+            i += 2;
+            continue;
+          }
+          break;
+        }
+        i += 1;
+      }
+      i += 1;
+      if (firstWord === null) firstWord = "";
+      continue;
+    }
+    if (firstWord === null) {
+      let end = i;
+      while (end < sql.length && /[A-Za-z_]/.test(sql[end])) end += 1;
+      firstWord = sql.slice(i, end).toLowerCase();
+      i = Math.max(end, i + 1);
+      continue;
+    }
+    i += 1;
+  }
+  if (!firstWord || !ALLOWED_STATEMENTS.has(firstWord)) throw commandError("this kind of statement is not accepted");
+}
+
 function runSqlFile(sqlite, file, label) {
   const sql = fs.readFileSync(file, "utf8");
   sqlite.exec("BEGIN");
@@ -130,8 +192,20 @@ export async function createBackend({ root, runDir, seeds = [], license = "unloc
   const dbPath = path.join(appData, "harness.db");
 
   const sqlite = new DatabaseSync(dbPath);
-  // The same per-connection settings db.rs asks sqlx for.
-  sqlite.exec("PRAGMA foreign_keys = ON; PRAGMA journal_mode = WAL; PRAGMA synchronous = NORMAL;");
+  // The same per-connection settings db.rs asks sqlx for. Without recursive_triggers an
+  // INSERT OR REPLACE would rewrite an append-only row without firing its delete trigger.
+  sqlite.exec(
+    "PRAGMA foreign_keys = ON; PRAGMA recursive_triggers = ON; PRAGMA journal_mode = WAL; PRAGMA synchronous = NORMAL;",
+  );
+
+  // The statement guard is this program's (src-tauri/src/db.rs). The reference app, which the
+  // harness can also serve, has none: it is served as it was.
+  const dbRs = path.join(root, "src-tauri", "src", "db.rs");
+  const guarded = fs.existsSync(dbRs) && fs.readFileSync(dbRs, "utf8").includes("ALLOWED_STATEMENTS");
+
+  // The anchor of the hash chains is kept outside the database and outside app data, as the
+  // real one is (src-tauri/src/anchor.rs). Here: one file beside this run's app data.
+  const anchorFile = path.join(runDir, "chain-anchor.json");
 
   const migrationsDir = path.join(root, "src-tauri", "migrations");
   const migrations = fs.existsSync(migrationsDir)
@@ -186,6 +260,7 @@ export async function createBackend({ root, runDir, seeds = [], license = "unloc
     switch (command) {
       // ── The app's own commands (src-tauri/src/lib.rs) ──────────────────
       case "db_select": {
+        if (guarded) checkStatement(String(args?.sql));
         const params = toSqlParams(command, args?.params ?? []);
         try {
           return sqlite
@@ -197,6 +272,7 @@ export async function createBackend({ root, runDir, seeds = [], license = "unloc
         }
       }
       case "db_execute": {
+        if (guarded) checkStatement(String(args?.sql));
         const params = toSqlParams(command, args?.params ?? []);
         try {
           const result = sqlite.prepare(String(args?.sql)).run(...params);
@@ -216,6 +292,12 @@ export async function createBackend({ root, runDir, seeds = [], license = "unloc
       case "export_upload":
         // Never reached: the save dialog always answers "cancelled" here.
         throw commandError("saving a copy of an upload is not available in the browser harness");
+      case "anchor_read":
+        return fs.existsSync(anchorFile) ? fs.readFileSync(anchorFile, "utf8") : null;
+      case "anchor_write":
+        if (typeof args?.record !== "string") throw commandError("invalid anchor record");
+        fs.writeFileSync(anchorFile, args.record);
+        return null;
       case "license_status":
         return licenseStatus();
       case "license_unlock":
@@ -286,6 +368,10 @@ export async function createBackend({ root, runDir, seeds = [], license = "unloc
   /** Serves `convertFileSrc()` URLs: files inside this run's app data, nothing else. */
   function readAsset(filePath) {
     const resolved = insideAppData(filePath);
+    // The asset protocol's scope denies restricted uploads (tauri.conf.json): they are read
+    // through the program, which checks who asks and writes the log.
+    const restricted = path.join(appData, "uploads", "restricted");
+    if (resolved === restricted || resolved.startsWith(restricted + path.sep)) return null;
     if (!fs.existsSync(resolved) || !fs.statSync(resolved).isFile()) return null;
     return {
       body: fs.readFileSync(resolved),

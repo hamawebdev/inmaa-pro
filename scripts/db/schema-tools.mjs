@@ -1,0 +1,288 @@
+/**
+ * Reads prisma/schema.prisma (a type source parsed as text: Prisma is not
+ * installed) and turns it, with prisma/triggers.sql, into the SQLite DDL of
+ * src-tauri/migrations/0001_init.sql.
+ *
+ * The parsing and the six trigger templates are the data model's own
+ * (docs/data-model/DESIGN.md section 5, written out in BUILD-NOTES section 3).
+ * Used by scripts/generate-db-types.mjs, scripts/verify-db.mjs and
+ * scripts/db/model-proof.mjs, so the three can never disagree about what the
+ * schema says.
+ */
+import { readFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+
+export const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
+export const SCHEMA_FILE = resolve(ROOT, "prisma/schema.prisma");
+export const TRIGGERS_FILE = resolve(ROOT, "prisma/triggers.sql");
+export const MIGRATIONS_DIR = resolve(ROOT, "src-tauri/migrations");
+
+export const SQLTYPE = { String: "TEXT", Int: "INTEGER", Boolean: "INTEGER", DateTime: "TEXT" };
+const DATE_GLOB = "[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]";
+const TIME_GLOB = "[0-2][0-9]:[0-5][0-9]";
+
+/** The eight hash-chained tables, in the order their heads are seeded. */
+export const CHAINED_TABLES = [
+  "AuditLog",
+  "Invoice",
+  "InvoiceLine",
+  "InvoiceVisit",
+  "Payment",
+  "PaymentAllocation",
+  "Receipt",
+  "LegalEvent",
+];
+
+/** The unit or meaning a trailing comment gives a column. At most one applies. */
+function tagOf(comment) {
+  for (const tag of ["date", "time", "money", "min", "qty", "bp", "udeg", "json", "url", "key"]) {
+    if (new RegExp(`@${tag}\\b`).test(comment)) return { tag };
+  }
+  const codes = /@codes\s+(\w+)/.exec(comment);
+  if (codes) return { tag: "codes", list: codes[1] };
+  const code = /@code\s+(\w+)/.exec(comment);
+  if (code) return { tag: "code", list: code[1] };
+  return { tag: null };
+}
+
+export function parseSchema(file = SCHEMA_FILE) {
+  const lines = readFileSync(file, "utf8").split("\n");
+  const models = [];
+  for (let i = 0; i < lines.length; i++) {
+    const header = /^model\s+(\w+)\s*\{/.exec(lines[i]);
+    if (!header) continue;
+    let d = i;
+    while (d > 0 && lines[d - 1].startsWith("///")) d--;
+    const directives = lines
+      .slice(d, i)
+      .map((line) => line.replace(/^\/\/\/\s?/, ""))
+      .filter((line) => line.startsWith("@"));
+    const model = { name: header[1], cols: [], rels: [], uniques: [], indexes: [], directives };
+    for (i++; lines[i] !== "}"; i++) {
+      const raw = lines[i];
+      const comment = (/\/\/(.*)$/.exec(raw) || [, ""])[1];
+      const line = raw.replace(/\/\/.*$/, "").trim();
+      if (!line) continue;
+      if (line.startsWith("@@unique")) {
+        model.uniques.push(
+          /\[([^\]]+)\]/
+            .exec(line)[1]
+            .split(",")
+            .map((s) => s.trim()),
+        );
+        continue;
+      }
+      if (line.startsWith("@@index")) {
+        model.indexes.push(
+          /\[([^\]]+)\]/
+            .exec(line)[1]
+            .split(",")
+            .map((s) => s.trim()),
+        );
+        continue;
+      }
+      const field = /^(\w+)\s+(\w+)(\?)?\s*(.*)$/.exec(line);
+      if (!field) throw new Error(`unparsed ${model.name}: ${line}`);
+      if (SQLTYPE[field[2]]) {
+        const def = /@default\(([^)]*)\)/.exec(field[4]);
+        const { tag, list } = tagOf(comment);
+        model.cols.push({
+          name: field[1],
+          type: field[2],
+          optional: !!field[3],
+          id: /@id\b/.test(field[4]),
+          unique: /@unique\b/.test(field[4]),
+          def: def ? def[1] : null,
+          tag,
+          list: list ?? null,
+          isDate: tag === "date",
+          isTime: tag === "time",
+        });
+      } else {
+        const rel = /fields:\s*\[(\w+)\],\s*references:\s*\[(\w+)\],\s*onDelete:\s*(\w+)/.exec(field[4]);
+        if (!rel) throw new Error(`${model.name}.${field[1]}: a relation line needs fields, references and onDelete`);
+        model.rels.push({
+          col: rel[1],
+          target: field[2],
+          ref: rel[2],
+          onDelete: rel[3] === "Cascade" ? "CASCADE" : "RESTRICT",
+        });
+      }
+    }
+    models.push(model);
+  }
+  return models;
+}
+
+/** Every foreign key of a model: its relation lines, plus User for each `userId` / `...UserId` column. */
+export function foreignKeysOf(model) {
+  const named = new Set(model.rels.map((r) => r.col));
+  return [
+    ...model.rels,
+    ...model.cols
+      .filter((c) => (c.name === "userId" || /UserId$/.test(c.name)) && !named.has(c.name))
+      .map((c) => ({ col: c.name, target: "User", ref: "id", onDelete: "RESTRICT" })),
+  ];
+}
+
+const quoteCols = (expr, cols) =>
+  expr
+    .split(/('(?:[^']|'')*')/)
+    .map((part, i) => (i % 2 ? part : part.replace(/\b[A-Za-z_]\w*\b/g, (w) => (cols.has(w) ? `"${w}"` : w))))
+    .join("");
+
+/** A schema `@default(...)` as the DDL writes it, and as `PRAGMA table_info` reads it back. */
+export function sqlDefault(def) {
+  if (def === "true") return 1;
+  if (def === "false") return 0;
+  return def.replace(/^"(.*)"$/, "'$1'");
+}
+
+export function buildDdl(models = parseSchema()) {
+  const out = [];
+  const templated = [];
+  const namedWanted = [];
+  const indexNames = new Map();
+  const triggerNames = new Map();
+  for (const m of models) {
+    const cols = new Set(m.cols.map((c) => c.name));
+    const defs = m.cols.map((c) => {
+      let s = `  "${c.name}" ${SQLTYPE[c.type]}`;
+      if (c.id) s += " PRIMARY KEY";
+      if (!c.optional) s += " NOT NULL";
+      if (c.unique) s += " UNIQUE";
+      if (c.def !== null) s += ` DEFAULT ${sqlDefault(c.def)}`;
+      if (c.isDate) s += ` CHECK ("${c.name}" IS NULL OR "${c.name}" GLOB '${DATE_GLOB}')`;
+      if (c.isTime) s += ` CHECK ("${c.name}" IS NULL OR "${c.name}" GLOB '${TIME_GLOB}')`;
+      return s;
+    });
+    for (const r of foreignKeysOf(m)) {
+      defs.push(`  FOREIGN KEY ("${r.col}") REFERENCES "${r.target}" ("${r.ref}") ON DELETE ${r.onDelete}`);
+    }
+    for (const u of m.uniques) defs.push(`  UNIQUE (${u.map((c) => `"${c}"`).join(", ")})`);
+    const post = [];
+    const indexes = m.indexes.map((ix) => `${m.name}_${ix.join("_")}_idx`);
+    const triggers = [];
+    for (const d of m.directives) {
+      let x;
+      if ((x = /^@check\s+(.+)$/.exec(d))) defs.push(`  CHECK (${quoteCols(x[1], cols)})`);
+      else if ((x = /^@(uniqueWhere|index)\s+(\w+)\s+\((.+?)\)(?:\s+WHERE\s+(.+))?$/.exec(d))) {
+        indexes.push(x[2]);
+        post.push(
+          `CREATE ${x[1] === "uniqueWhere" ? "UNIQUE " : ""}INDEX "${x[2]}" ON "${m.name}" (${quoteCols(x[3], cols)})${x[4] ? ` WHERE ${quoteCols(x[4], cols)}` : ""};`,
+        );
+      } else if ((x = /^@trigger\s+named\s+(\w+)$/.exec(d))) {
+        namedWanted.push(x[1]);
+        triggers.push(x[1]);
+      } else if ((x = /^@trigger\s+(.+)$/.exec(d))) {
+        const made = template(m, x[1]);
+        templated.push(...made);
+        triggers.push(...made.map((sql) => /CREATE TRIGGER "(\w+)"/.exec(sql)[1]));
+      } else throw new Error(`${m.name}: unknown directive ${d}`);
+    }
+    out.push(`CREATE TABLE "${m.name}" (\n${defs.join(",\n")}\n) STRICT;`);
+    for (const ix of m.indexes) {
+      out.push(`CREATE INDEX "${m.name}_${ix.join("_")}_idx" ON "${m.name}" (${ix.map((c) => `"${c}"`).join(", ")});`);
+    }
+    out.push(...post, "");
+    indexNames.set(m.name, indexes);
+    triggerNames.set(m.name, triggers);
+  }
+  return { models, tables: out.join("\n"), templated: templated.join("\n\n"), namedWanted, indexNames, triggerNames };
+}
+
+function template(m, spec) {
+  const X = m.name;
+  let x;
+  const noUpd = `CREATE TRIGGER "${X}_no_update" BEFORE UPDATE ON "${X}"\nBEGIN SELECT RAISE(ABORT, 'APPEND_ONLY:${X}:update'); END;`;
+  const noDel = (code) =>
+    `CREATE TRIGGER "${X}_no_delete" BEFORE DELETE ON "${X}"\nBEGIN SELECT RAISE(ABORT, '${code}:${X}${code === "APPEND_ONLY" ? ":delete" : ""}'); END;`;
+  if (spec === "appendOnly") return [noUpd, noDel("APPEND_ONLY")];
+  if (spec === "noDelete") return [noDel("NO_DELETE")];
+  if (spec === "chained")
+    return [
+      noUpd,
+      noDel("APPEND_ONLY"),
+      `CREATE TRIGGER "${X}_chain_insert" BEFORE INSERT ON "${X}"\nWHEN NEW."chainSeq" IS NOT (SELECT "lastSeq" + 1 FROM "ChainHead" WHERE "id" = '${X}')\n  OR NEW."prevHash" IS NOT (SELECT "lastHash" FROM "ChainHead" WHERE "id" = '${X}')\n  OR length(NEW."hash") <> 64\nBEGIN SELECT RAISE(ABORT, 'CHAIN:${X}:out_of_sequence'); END;`,
+      `CREATE TRIGGER "${X}_chain_advance" AFTER INSERT ON "${X}"\nBEGIN UPDATE "ChainHead" SET "lastSeq" = NEW."chainSeq", "lastHash" = NEW."hash", "updatedAt" = NEW."createdAt" WHERE "id" = '${X}'; END;`,
+    ];
+  if ((x = /^legalNumber\((\w+)\)$/.exec(spec)))
+    return [
+      `CREATE TRIGGER "${X}_number" BEFORE INSERT ON "${X}"\nWHEN NEW."numberSeq" IS NOT (SELECT "lastValue" + 1 FROM "Sequence" WHERE "key" = '${x[1]}' AND "year" = NEW."numberYear")\nBEGIN SELECT RAISE(ABORT, 'LEGAL_SEQUENCE:${X}:number'); END;`,
+      `CREATE TRIGGER "${X}_date" BEFORE INSERT ON "${X}"\nWHEN substr(NEW."issueDate", 1, 4) IS NOT CAST(NEW."numberYear" AS TEXT)\n  OR NEW."issueDate" < COALESCE((SELECT MAX("lastDate") FROM "Sequence" WHERE "key" = '${x[1]}'), '')\n  OR NEW."issueDate" > date(NEW."createdAt", '+1 day')\nBEGIN SELECT RAISE(ABORT, 'LEGAL_SEQUENCE:${X}:date'); END;`,
+      `CREATE TRIGGER "${X}_number_advance" AFTER INSERT ON "${X}"\nBEGIN UPDATE "Sequence" SET "lastValue" = NEW."numberSeq", "lastDate" = NEW."issueDate", "updatedAt" = NEW."createdAt" WHERE "key" = '${x[1]}' AND "year" = NEW."numberYear"; END;`,
+    ];
+  if ((x = /^headOnly\((\w+),\s*(\w+)\)$/.exec(spec)))
+    return [
+      `CREATE TRIGGER "${X}_head_only" BEFORE INSERT ON "${X}"\nWHEN (SELECT "chainSeq" FROM "${x[1]}" WHERE "id" = NEW."${x[2]}") IS NOT (SELECT "lastSeq" FROM "ChainHead" WHERE "id" = '${x[1]}')\n  OR NEW."createdAt" IS NOT (SELECT "createdAt" FROM "${x[1]}" WHERE "id" = NEW."${x[2]}")\nBEGIN SELECT RAISE(ABORT, 'APPEND_ONLY:${X}:closed_parent'); END;`,
+    ];
+  if ((x = /^frozenWithRun\(([\w>-]+)\)(?:\s+except\s+(.+))?$/.exec(spec))) {
+    const run = (R, cond) =>
+      x[1] === "payRunId"
+        ? `EXISTS (SELECT 1 FROM "PayRun" r WHERE r."id" = ${R}."payRunId" AND r."status" ${cond})`
+        : `EXISTS (SELECT 1 FROM "Payslip" p JOIN "PayRun" r ON r."id" = p."payRunId" WHERE p."id" = ${R}."payslipId" AND r."status" ${cond})`;
+    const except = new Set(
+      (x[2] || "")
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean),
+    );
+    for (const e of except) {
+      if (!m.cols.some((c) => c.name === e)) throw new Error(`${X}: frozenWithRun except names unknown column ${e}`);
+    }
+    const of = except.size
+      ? ` OF ${m.cols
+          .filter((c) => !except.has(c.name))
+          .map((c) => `"${c.name}"`)
+          .join(", ")}`
+      : "";
+    return [
+      `CREATE TRIGGER "${X}_frozen_insert" BEFORE INSERT ON "${X}"\nWHEN NOT ${run("NEW", "= 'DRAFT'")}\nBEGIN SELECT RAISE(ABORT, 'FROZEN:${X}:insert'); END;`,
+      `CREATE TRIGGER "${X}_frozen_update" BEFORE UPDATE${of} ON "${X}"\nWHEN ${run("OLD", "<> 'DRAFT'")}\nBEGIN SELECT RAISE(ABORT, 'FROZEN:${X}:update'); END;`,
+      `CREATE TRIGGER "${X}_frozen_delete" BEFORE DELETE ON "${X}"\nWHEN ${run("OLD", "<> 'DRAFT'")}\nBEGIN SELECT RAISE(ABORT, 'FROZEN:${X}:delete'); END;`,
+    ];
+  }
+  throw new Error(`${X}: unknown trigger template ${spec}`);
+}
+
+/** The whole text of 0001_init.sql. */
+export function initMigrationSql() {
+  const { tables, templated, namedWanted } = buildDdl();
+  const named = readFileSync(TRIGGERS_FILE, "utf8");
+  const inFile = [...named.matchAll(/CREATE TRIGGER "(\w+)"/g)].map((x) => x[1]);
+  const missing = namedWanted.filter((n) => !inFile.includes(n));
+  const extra = inFile.filter((n) => !namedWanted.includes(n));
+  if (missing.length || extra.length) {
+    throw new Error(
+      `named triggers differ. In the schema, not in triggers.sql: ${missing.join(", ") || "none"}. In triggers.sql, not in the schema: ${extra.join(", ") || "none"}`,
+    );
+  }
+  return (
+    `-- مركز إنماء برو: the schema.\n--\n` +
+    `-- GENERATED by scripts/generate-db-types.mjs from prisma/schema.prisma and\n` +
+    `-- prisma/triggers.sql. Do not edit: change the sources and run \`npm run db:types\`.\n` +
+    `-- \`npm run db:verify\` fails when this file and the sources disagree.\n--\n` +
+    `-- The connection must run with foreign_keys = ON and recursive_triggers = ON\n` +
+    `-- (connect options in src-tauri/src/db.rs; the same two in the tests and the harness).\n\n` +
+    `${tables}\n-- ── template triggers ──\n\n${templated}\n\n-- ── named triggers (prisma/triggers.sql) ──\n\n${named}`
+  );
+}
+
+/** The migration files, in the order sqlx applies them. */
+export async function listMigrations() {
+  const { readdirSync } = await import("node:fs");
+  return readdirSync(MIGRATIONS_DIR)
+    .filter((name) => name.endsWith(".sql"))
+    .sort()
+    .map((name) => resolve(MIGRATIONS_DIR, name));
+}
+
+/** Opens a database the way the program does: the two pragmas of the model, then every migration. */
+export async function openMigratedDatabase(file = ":memory:") {
+  const { DatabaseSync } = await import("node:sqlite");
+  const db = new DatabaseSync(file);
+  db.exec("PRAGMA foreign_keys = ON; PRAGMA recursive_triggers = ON;");
+  for (const migration of await listMigrations()) db.exec(readFileSync(migration, "utf8"));
+  return db;
+}

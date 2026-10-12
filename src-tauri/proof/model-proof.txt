@@ -1,0 +1,158 @@
+ok   every table is STRICT
+ok   no column is REAL or untyped
+ok   a float in a centime column -> cannot store REAL value in INTEGER column Expense.amount
+ok   an instant in a date column -> CHECK constraint failed: date
+ok   a time written 8:5 -> CHECK constraint failed: startTime
+ok   the last active manager deactivated -> LAST_MANAGER:User
+ok   a user deleted -> NO_DELETE:User
+ok   the system role deleted -> NO_DELETE:Role
+ok   backup.restore granted to a role -> CHECK constraint failed: key
+ok   the database id rewritten -> FROZEN:Setting:system.databaseId
+ok   a second default branch -> UNIQUE constraint failed: Branch.isDefault
+ok   a counter seeded above 0 -> SEQUENCE:seed
+ok   an ordinary counter may jump forward (a number claimed from paper)
+ok   an ordinary counter moved back -> SEQUENCE:backwards
+ok   AuditLog: update -> APPEND_ONLY:AuditLog:update
+ok   AuditLog: delete -> APPEND_ONLY:AuditLog:delete
+ok   AuditLog: INSERT OR REPLACE over a row -> CHAIN:AuditLog:out_of_sequence
+ok   AuditLog: the head follows the rows
+ok   Invoice: update -> APPEND_ONLY:Invoice:update
+ok   Invoice: delete -> APPEND_ONLY:Invoice:delete
+ok   Invoice: INSERT OR REPLACE over a row -> LEGAL_SEQUENCE:Invoice:number
+ok   Invoice: the head follows the rows
+ok   InvoiceLine: update -> APPEND_ONLY:InvoiceLine:update
+ok   InvoiceLine: delete -> APPEND_ONLY:InvoiceLine:delete
+ok   InvoiceLine: INSERT OR REPLACE over a row -> CHAIN:InvoiceLine:out_of_sequence
+ok   InvoiceLine: the head follows the rows
+ok   InvoiceVisit: update -> APPEND_ONLY:InvoiceVisit:update
+ok   InvoiceVisit: delete -> APPEND_ONLY:InvoiceVisit:delete
+ok   InvoiceVisit: INSERT OR REPLACE over a row -> CHAIN:InvoiceVisit:out_of_sequence
+ok   InvoiceVisit: the head follows the rows
+ok   Payment: update -> APPEND_ONLY:Payment:update
+ok   Payment: delete -> APPEND_ONLY:Payment:delete
+ok   Payment: INSERT OR REPLACE over a row -> CHAIN:Payment:out_of_sequence
+ok   Payment: the head follows the rows
+ok   PaymentAllocation: update -> APPEND_ONLY:PaymentAllocation:update
+ok   PaymentAllocation: delete -> APPEND_ONLY:PaymentAllocation:delete
+ok   PaymentAllocation: INSERT OR REPLACE over a row -> CHAIN:PaymentAllocation:out_of_sequence
+ok   PaymentAllocation: the head follows the rows
+ok   Receipt: update -> APPEND_ONLY:Receipt:update
+ok   Receipt: delete -> APPEND_ONLY:Receipt:delete
+ok   Receipt: INSERT OR REPLACE over a row -> LEGAL_SEQUENCE:Receipt:number
+ok   Receipt: the head follows the rows
+ok   LegalEvent: update -> APPEND_ONLY:LegalEvent:update
+ok   LegalEvent: delete -> APPEND_ONLY:LegalEvent:delete
+ok   LegalEvent: INSERT OR REPLACE over a row -> CHAIN:LegalEvent:out_of_sequence
+ok   LegalEvent: the head follows the rows
+ok   a chained row with a sequence of its own -> CHAIN:AuditLog:out_of_sequence
+ok   a chained row with a wrong previous hash -> CHAIN:AuditLog:out_of_sequence
+ok   a chain head rewound -> CHAIN:ChainHead:step
+ok   a chain head deleted -> NO_DELETE:ChainHead
+ok   the log chain verifies from genesis to head
+ok   invoices take 1 then 2, and the counter and its date follow by themselves
+ok   the legal counter moved by hand with no document -> SEQUENCE:legal_step
+ok   an invoice that skips a number -> LEGAL_SEQUENCE:Invoice:number
+ok   an invoice that reuses a number -> LEGAL_SEQUENCE:Invoice:number
+ok   an invoice dated before the last one -> LEGAL_SEQUENCE:Invoice:date
+ok   an invoice dated after the day it is written -> LEGAL_SEQUENCE:Invoice:date
+ok   an invoice whose year is not its number's year -> LEGAL_SEQUENCE:Invoice:date
+ok   a line slipped into the invoice before the last -> APPEND_ONLY:InvoiceLine:closed_parent
+ok   a line added later to the last invoice -> APPEND_ONLY:InvoiceLine:closed_parent
+ok   a jump of the legal counter with no gap row -> SEQUENCE:legal_step
+ok   the same jump once a gap row covers it (restore of an older backup)
+ok   after the jump, an invoice dated before the lost ones -> LEGAL_SEQUENCE:Invoice:date
+ok   after the jump the next invoice is 10
+ok   a new year starts at 1
+ok   back to the old year afterwards -> LEGAL_SEQUENCE:Invoice:date
+ok   a gap row edited -> APPEND_ONLY:SequenceGap:update
+ok   receipts have the same counter rules
+ok   the receipt counter moved by hand -> SEQUENCE:legal_step
+ok   an invoice voided by one event
+ok   the same invoice voided twice -> UNIQUE constraint failed: LegalEvent.invoiceId
+ok   a void with no reason -> CHECK constraint failed: type
+ok   an event with two subjects -> CHECK constraint failed: ("invoiceId" IS NOT NULL) + ("paymentId" IS N
+ok   a cash payment with no receipt -> CHECK constraint failed: ("method" = 'CASH') = ("receiptId" IS NOT NUL
+ok   a transfer that carries stamp duty -> CHECK constraint failed: method
+ok   a total that is not amount plus stamp -> CHECK constraint failed: amount
+ok   a second payment on a used receipt -> UNIQUE constraint failed: Payment.receiptId
+ok   a receipt in use voided before its payment -> RECEIPT:in_use
+ok   a payment on a receipt reported missing -> RECEIPT:closed
+ok   a receipt ended twice -> UNIQUE constraint failed: LegalEvent.receiptId
+ok   paid on the due follows its allocations
+ok   the receipt of a voided payment is voided after it
+ok   after the reversal the due is open again, with no event in the sum
+ok   an allocation reversed twice -> UNIQUE constraint failed: PaymentAllocation.reversesAllocationId
+ok   paidAmount written by anything but the trigger -> CACHE:PaymentDue:paidAmount
+ok   a whole-row save that carries the right paidAmount
+ok   the overdue list reads the partial index (SEARCH PaymentDue USING INDEX PaymentDue_open (dueDate<?))
+ok   a second live due for the same period (syncDues run twice) -> UNIQUE constraint failed: PaymentDue.fileId, PaymentDue.periodStart
+ok   a cancelled due frees its period
+ok   invoice totals that do not add up -> CHECK constraint failed: totalTTC
+ok   an IFU invoice that shows VAT -> CHECK constraint failed: taxMode
+ok   stamp duty on an invoice not paid in cash -> CHECK constraint failed: paymentMethod
+ok   one closing per collector and day
+ok   a second closing of the same day -> UNIQUE constraint failed: index 'CashReconciliation_day'
+ok   a closing edited -> APPEND_ONLY:CashReconciliation:update
+ok   on hand follows the movements (30.000 - 21.000)
+ok   onHandQty written by anything but the trigger -> CACHE:StockItem:onHandQty
+ok   a movement edited -> APPEND_ONLY:StockMovement:update
+ok   a movement reversed twice -> UNIQUE constraint failed: StockMovement.reversesMovementId
+ok   low stock reads the partial index (SCAN StockItem USING INDEX StockItem_low)
+ok   a job hand-out with no file -> CHECK constraint failed: ("purpose" = 'JOB') = ("fileId" IS NOT NULL)
+ok   a hand-out line edited -> APPEND_ONLY:HandOutLine:update
+ok   a hand-out deleted -> NO_DELETE:HandOut
+ok   a draft payslip is deleted with its lines and seats
+ok   closing a run numbers it in the same update
+ok   a payslip inserted into a closed run -> FROZEN:Payslip:insert
+ok   a closed run's period changed -> FROZEN:PayRun
+ok   a closed run reopened -> FROZEN:PayRun:status
+ok   a closed run deleted -> NO_DELETE:PayRun
+ok   a closed payslip's net rewritten -> FROZEN:Payslip:update
+ok   a closed payslip's payment recorded
+ok   a line added to a closed payslip -> FROZEN:PayslipItem:insert
+ok   a closed payslip deleted -> FROZEN:Payslip:delete
+ok   a second live run for the same kind, period and branch -> UNIQUE constraint failed: PayRun.staffKind, PayRun.periodType, PayRun.
+ok   a seat paid a second time by the next run -> PAID_TWICE:PayslipSeat
+ok   once the first run is voided the seat can be paid again
+ok   after the void the period can be run again
+ok   a pending request consumed -> FROZEN:SanctionDecision:consumed
+ok   the manager's answer changed -> FROZEN:SanctionDecision:status
+ok   the reason of the answer rewritten -> FROZEN:SanctionDecision:answer
+ok   a yes consumed by one registration
+ok   the same yes consumed again -> FROZEN:SanctionDecision:consumed
+ok   a no consumed -> FROZEN:SanctionDecision:consumed
+ok   a decision deleted -> NO_DELETE:SanctionDecision
+ok   a sanction with a client and a staff member -> CHECK constraint failed: ("subjectKind" = 'CLIENT' AND "clientId" IS N
+ok   debt line 1 with its balance
+ok   a debt line with a wrong balance -> LEDGER:StaffDebtEntry
+ok   a debt line that skips a number -> LEDGER:StaffDebtEntry
+ok   a debt line of zero -> LEDGER:StaffDebtEntry
+ok   debt line 2
+ok   a debt line edited -> APPEND_ONLY:StaffDebtEntry:update
+ok   two live workers with one national number -> UNIQUE constraint failed: StaffMember.kind, StaffMember.nationalIdNumb
+ok   two current documents of one type -> UNIQUE constraint failed: StaffDocument.staffId, StaffDocument.type
+ok   a leave absence with no leave type -> CHECK constraint failed: category
+ok   a staff history row edited -> APPEND_ONLY:StaffEvent:update
+ok   a file on another client's site -> MISMATCH:File:site
+ok   a site with files moved to another client -> MISMATCH:Site:files
+ok   a file hard-deleted -> NO_DELETE:File
+ok   a file at CONTRACT_ENDED with no end date -> CHECK constraint failed: stage
+ok   a renewal of the file
+ok   a second renewal of the same file -> UNIQUE constraint failed: File.renewalOfFileId
+ok   a «قديم» copy does not count as a renewal
+ok   two files with one number on the same form -> UNIQUE constraint failed: File.formKind, File.numberSeq
+ok   an accepted quote
+ok   a second accepted quote on the file -> UNIQUE constraint failed: Quote.fileId
+ok   a service row with neither code nor label -> CHECK constraint failed: code
+ok   an option with the detail typed on its dotted line
+ok   two texts on one blank line -> UNIQUE constraint failed: FileService.fileId, FileService.list, FileSe
+ok   two coordinators on one site -> UNIQUE constraint failed: Contact.siteId
+ok   the generator run again after a visit was moved -> UNIQUE constraint failed: Visit.fileId, Visit.fileSlotId, Visit.slotDa
+ok   a visit cancelled because the programme changed frees its slot
+ok   a visit deleted -> NO_DELETE:Visit
+ok   a visit with a status outside the seven -> CHECK constraint failed: status
+ok   an absent seat with no absence row -> CHECK constraint failed: seatStatus
+ok   the resting worker seated again on her rest day -> UNIQUE constraint failed: VisitWorker.visitId, VisitWorker.workerId
+ok   two planned inspections for one file and month -> UNIQUE constraint failed: Inspection.fileId, Inspection.planPeriod
+ok   a supervisor row with a zone and a worker -> CHECK constraint failed: ("zoneId" IS NOT NULL) <> ("workerId" IS NOT 
+157 passed, 0 failed

@@ -48,6 +48,13 @@ pub const ANCHOR_NAME: &str = "MsCfgStore";
 /// Filename used inside each anchor directory.
 pub const ANCHOR_FILE: &str = "state.dat";
 
+/// Where a second record may be kept beside the licence's: the same folders,
+/// outside the app's own data directory and outside every backup, under
+/// another file name. Used by `crate::anchor` for the head of the hash chains.
+pub fn sibling_paths(file: &str) -> Vec<std::path::PathBuf> {
+    os::named_file_targets(file)
+}
+
 /// Reads every anchor and returns the one record the app should run on.
 ///
 /// `db_path` is the centre's `inmaa.db`; `db_existed` says whether that file

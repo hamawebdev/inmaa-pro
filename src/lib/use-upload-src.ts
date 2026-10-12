@@ -5,8 +5,8 @@ import { isInlineImageSrc, resolveUploadSrc } from "@/server/uploads";
 /**
  * Resolves a stored upload URL into something the webview can load.
  *
- * Stored values keep the web app's `/api/uploads/...` shape, which meant nothing
- * to a browser without that route. `resolveUploadSrc` maps them onto the Tauri
+ * Stored values are this program's own addresses (`/uploads/<Table>/<column>/<file>`),
+ * which mean nothing to a browser. `resolveUploadSrc` maps them onto the Tauri
  * asset protocol; that call is async (it resolves the app data dir), hence the
  * hook. A picture that is already in the page (a just-picked file, an inline
  * image) passes straight through with no render delay. Anything else that is

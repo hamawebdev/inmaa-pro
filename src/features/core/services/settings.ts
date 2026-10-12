@@ -1,63 +1,83 @@
-import { revalidatePath } from "@/lib/compat/revalidate";
-import { db, newId, nowIso } from "@/server/db";
-import { getSessionOrThrow } from "@/server/tenant";
+import { requireCapability, requireSection } from "@/lib/access/session";
+import { logSecurity } from "@/lib/log";
+import { query, transact } from "@/lib/service/action";
+import type { Executor, ServiceContext } from "@/lib/service/context";
+import { getSetting, setSetting } from "@/lib/settings";
+
+import { STAND_IN_MANAGER_ID } from "./first-run";
 
 /**
- * Generic key/value app settings.
+ * What the shell's lock reads: the manager's password and recovery code, and
+ * which bar sections ask for it.
  *
- * Backed by the `Setting` table, which already existed for `classroom_count`
- * and carries a `(adminId, key)` unique index — so this needs no migration, and
- * that matters: src/lib/db/schema.ts is generated from prisma/schema.prisma and
- * must never be hand-edited.
+ * The three names are the academy shell's (src/lib/auth.ts, the lock screen,
+ * the route gate still use them); what is behind them is the data model:
  *
- * Everything here is read as one row set and cached under a single query key, so
- * the lock gate — which runs on *every* navigation — costs one query for the
- * whole session rather than one per key it wants to look at.
+ *   manager_password_hash   User.passwordHash of the manager account ("" = none set)
+ *   manager_recovery_hash   User.recoveryHash of the same account
+ *   locked_pages            setting `shell.lockedSections`
+ *
+ * STAND-IN: real sign-in replaces the shared manager password. The typed
+ * settings of the program are in src/lib/settings, not here.
  */
-
-/** Known keys. Free-form strings would work, but a typo in a lock key fails
- *  open, and a fail-open security setting is the one kind that must not be
- *  possible to write by accident. */
-export type SettingKey = "manager_password_hash" | "manager_recovery_hash" | "locked_pages" | "classroom_count";
+export type SettingKey = "manager_password_hash" | "manager_recovery_hash" | "locked_pages";
 
 export type AppSettings = Partial<Record<SettingKey, string>>;
 
-/** The query key every consumer shares. Not a `pathKey`: settings are not a
- *  page, and no `revalidatePath()` in the ported server actions targets them. */
+/** The query key every consumer shares. Not a `pathKey`: the lock is not a page. */
 export const SETTINGS_QUERY_KEY = ["settings"] as const;
 
-export async function getAppSettings(): Promise<AppSettings> {
-  const session = await getSessionOrThrow();
-  const rows = await db.selectFrom("Setting").select(["key", "value"]).where("adminId", "=", session.user.id).execute();
-
-  const out: AppSettings = {};
-  for (const row of rows) out[row.key as SettingKey] = row.value;
-  return out;
+export async function readLockSettings(ex: Executor): Promise<AppSettings> {
+  const manager = await ex
+    .selectFrom("User")
+    .select(["passwordHash", "recoveryHash"])
+    .where("id", "=", STAND_IN_MANAGER_ID)
+    .executeTakeFirst();
+  const locked = await getSetting(ex, "shell.lockedSections");
+  return {
+    manager_password_hash: manager?.passwordHash ?? "",
+    manager_recovery_hash: manager?.recoveryHash ?? "",
+    // Left out when nobody chose: the lock then applies its own default sections.
+    ...(locked === null ? {} : { locked_pages: locked }),
+  };
 }
 
-/**
- * Upserts each key in `patch`.
- *
- * Deliberately **not** wrapped in a transaction, matching the rest of this
- * codebase's settings writes. Callers that have an ordering requirement between
- * two keys — `createPassword` and `clearPassword` in src/lib/auth.ts do — call
- * this twice in the order that fails safe, rather than relying on
- * `Object.entries` insertion order, which survives exactly one refactor.
- */
-export async function saveAppSettings(patch: AppSettings): Promise<void> {
-  const session = await getSessionOrThrow();
-  const now = nowIso();
-
-  for (const [key, value] of Object.entries(patch)) {
-    if (value === undefined) continue;
-    await db
-      .insertInto("Setting")
-      .values({ id: newId(), key, value, adminId: session.user.id, updatedAt: now })
-      .onConflict((oc) => oc.columns(["adminId", "key"]).doUpdateSet({ value, updatedAt: now }))
-      .execute();
+/** Writes the keys present in `patch`; each key is one statement, so a caller that needs an order calls twice. */
+export async function writeLockSettings(ex: Executor, ctx: ServiceContext, patch: AppSettings): Promise<void> {
+  if (patch.locked_pages !== undefined) {
+    requireSection(ctx, "SETTINGS", "WRITE");
+    await setSetting(ex, ctx, "shell.lockedSections", patch.locked_pages);
   }
 
-  // The scheduling page reads `classroom_count` through its own query key, so a
-  // write from the Settings screen has to reach it.
-  if ("classroom_count" in patch) revalidatePath("/dashboard/scheduling");
+  const account: { passwordHash?: string; recoveryHash?: string | null } = {};
+  if (patch.manager_password_hash !== undefined) account.passwordHash = patch.manager_password_hash;
+  if (patch.manager_recovery_hash !== undefined) account.recoveryHash = patch.manager_recovery_hash || null;
+  if (Object.keys(account).length === 0) return;
+
+  requireCapability(ctx, "users.manage");
+  await ex
+    .updateTable("User")
+    .set({ ...account, updatedAt: ctx.now, updatedByUserId: ctx.userId })
+    .where("id", "=", STAND_IN_MANAGER_ID)
+    .execute();
+  // The log says that it changed and who did it. The values never enter it.
+  await logSecurity(ex, ctx, {
+    owner: "FOUNDATION",
+    action: "PASSWORD_CHANGE",
+    entity: "User",
+    entityId: STAND_IN_MANAGER_ID,
+    subject: { kind: "USER", id: STAND_IN_MANAGER_ID },
+    changes: Object.fromEntries(Object.keys(account).map((column) => [column, [null, null] as const])),
+  });
+}
+
+const readLock = query((ex: Executor) => readLockSettings(ex));
+
+export function getAppSettings(): Promise<AppSettings> {
+  return readLock(undefined);
+}
+
+/** Throws on failure: src/lib/auth.ts relies on a failed write stopping what follows it. */
+export function saveAppSettings(patch: AppSettings): Promise<void> {
+  return transact((ex, ctx) => writeLockSettings(ex, ctx, patch));
 }

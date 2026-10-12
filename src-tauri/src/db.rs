@@ -11,6 +11,20 @@
 //! `BEGIN` / `COMMIT` / `ROLLBACK` issued as separate calls behave correctly.
 //! Kysely's driver on the TypeScript side serialises access so two transactions
 //! can never interleave on that shared connection.
+//!
+//! Three more things here are part of the data model, not of taste
+//! (docs/data-model/DESIGN.md section 5):
+//!
+//! - **The one connection is never recycled.** sqlx closes a pooled connection
+//!   after thirty minutes by default. A transaction is several IPC calls, so a
+//!   connection replaced between two of them would roll back the statements
+//!   before the swap and commit those after it one by one.
+//! - **`foreign_keys` and `recursive_triggers` are connect options.** A PRAGMA
+//!   sent once would be lost on a reconnect, and without `recursive_triggers`
+//!   an `INSERT OR REPLACE` rewrites an issued invoice without firing the
+//!   trigger that forbids its deletion.
+//! - **The webview may send one statement at a time, from a short list**
+//!   ([`check_statement`]). Only the migrations change the schema.
 
 use serde::{Deserialize, Serialize};
 use sqlx::{
@@ -88,9 +102,11 @@ pub(crate) async fn open(path: &std::path::Path) -> Result<SqlitePool, CommandEr
     let options = SqliteConnectOptions::from_str(&format!("sqlite:{}", path.to_string_lossy()))
         .map_err(|error| CommandError::new(format!("invalid database path: {error}")))?
         .create_if_missing(true)
-        // Enforced per-connection in SQLite, and off by default. The schema
-        // leans on ON DELETE CASCADE, so this is not optional.
+        // Enforced per-connection in SQLite, and off by default.
         .foreign_keys(true)
+        // So that the REPLACE conflict rule fires delete triggers: the
+        // append-only tables rely on them.
+        .pragma("recursive_triggers", "ON")
         .journal_mode(SqliteJournalMode::Wal)
         .synchronous(SqliteSynchronous::Normal)
         // Wait rather than fail if the file is briefly locked (e.g. by a backup).
@@ -98,6 +114,10 @@ pub(crate) async fn open(path: &std::path::Path) -> Result<SqlitePool, CommandEr
 
     let pool = SqlitePoolOptions::new()
         .max_connections(1)
+        // Opened at start and kept: never closed for being idle or old.
+        .min_connections(1)
+        .max_lifetime(None)
+        .idle_timeout(None)
         .connect_with(options)
         .await?;
 
@@ -106,6 +126,100 @@ pub(crate) async fn open(path: &std::path::Path) -> Result<SqlitePool, CommandEr
     })?;
 
     Ok(pool)
+}
+
+/// The first words a statement from the webview may start with.
+///
+/// Everything else is for the migrations only: DROP, ALTER, CREATE, PRAGMA,
+/// ATTACH, VACUUM, REPLACE. The triggers that keep invoices and the log
+/// append-only are worth nothing if the same channel can drop them.
+const ALLOWED_STATEMENTS: [&str; 8] = [
+    "select", "with", "insert", "update", "delete", "begin", "commit", "rollback",
+];
+
+/// Accepts exactly one statement, of an allowed kind.
+///
+/// This is a guard against mistakes and casual tampering, not a parser: it
+/// reads the first keyword and looks for a second statement after a `;`,
+/// stepping over strings, quoted names and comments so that a semicolon inside
+/// a value is not taken for one.
+pub(crate) fn check_statement(sql: &str) -> Result<(), CommandError> {
+    let bytes = sql.as_bytes();
+    let mut i = 0;
+    let mut first_word: Option<String> = None;
+    let mut ended = false;
+
+    while i < bytes.len() {
+        let c = bytes[i];
+        // Comments.
+        if c == b'-' && bytes.get(i + 1) == Some(&b'-') {
+            while i < bytes.len() && bytes[i] != b'\n' {
+                i += 1;
+            }
+            continue;
+        }
+        if c == b'/' && bytes.get(i + 1) == Some(&b'*') {
+            i += 2;
+            while i + 1 < bytes.len() && !(bytes[i] == b'*' && bytes[i + 1] == b'/') {
+                i += 1;
+            }
+            i = (i + 2).min(bytes.len());
+            continue;
+        }
+        if c.is_ascii_whitespace() {
+            i += 1;
+            continue;
+        }
+        // Anything else after the terminating semicolon is a second statement.
+        if ended {
+            return Err(CommandError::new("only one statement at a time is accepted"));
+        }
+        if c == b';' {
+            ended = true;
+            i += 1;
+            continue;
+        }
+        // Strings and quoted names: skip to the closing quote ('' and "" are escapes).
+        if c == b'\'' || c == b'"' || c == b'`' || c == b'[' {
+            let close = if c == b'[' { b']' } else { c };
+            i += 1;
+            loop {
+                match bytes.get(i) {
+                    None => return Err(CommandError::new("unterminated quote in statement")),
+                    Some(&b) if b == close => {
+                        if close != b']' && bytes.get(i + 1) == Some(&close) {
+                            i += 2;
+                            continue;
+                        }
+                        i += 1;
+                        break;
+                    }
+                    Some(_) => i += 1,
+                }
+            }
+            if first_word.is_none() {
+                first_word = Some(String::new());
+            }
+            continue;
+        }
+        if first_word.is_none() {
+            let start = i;
+            while i < bytes.len() && (bytes[i].is_ascii_alphabetic() || bytes[i] == b'_') {
+                i += 1;
+            }
+            first_word = Some(sql[start..i].to_ascii_lowercase());
+            if i == start {
+                i += 1;
+            }
+            continue;
+        }
+        i += 1;
+    }
+
+    match first_word.as_deref() {
+        Some(word) if ALLOWED_STATEMENTS.contains(&word) => Ok(()),
+        _ => Err(CommandError::new("this kind of statement is not accepted")),
+    }
 }
 
 fn bind_all<'q>(
@@ -180,6 +294,7 @@ pub async fn db_select(
     params: Vec<SqlValue>,
 ) -> Result<Vec<serde_json::Value>, CommandError> {
     crate::license::guard(&app)?;
+    check_statement(&sql)?;
 
     let rows = bind_all(sqlx::query(&sql), &params)
         .fetch_all(&db.0)
@@ -199,6 +314,7 @@ pub async fn db_execute(
     params: Vec<SqlValue>,
 ) -> Result<ExecuteResult, CommandError> {
     crate::license::guard(&app)?;
+    check_statement(&sql)?;
 
     let result = bind_all(sqlx::query(&sql), &params)
         .execute(&db.0)
@@ -236,6 +352,13 @@ pub async fn db_path(app: tauri::AppHandle) -> Result<String, CommandError> {
 mod tests {
     use super::*;
 
+    fn temp_dir(name: &str) -> std::path::PathBuf {
+        let dir = std::env::temp_dir().join(format!("inmaa-{name}-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).expect("temp dir");
+        dir
+    }
+
     /// The migrations, applied by the engine that ships.
     ///
     /// The JavaScript tests and the browser harness run the same SQL files on
@@ -244,29 +367,49 @@ mod tests {
     /// the program at start on the client's PC. This is the test that says no.
     #[test]
     fn migrations_apply_on_the_shipped_engine() {
-        let dir = std::env::temp_dir().join(format!("inmaa-db-test-{}", std::process::id()));
-        let _ = std::fs::remove_dir_all(&dir);
-        std::fs::create_dir_all(&dir).expect("temp dir");
+        let dir = temp_dir("db-test");
         let path = dir.join(DB_FILE);
 
         tauri::async_runtime::block_on(async {
             let pool = open(&path).await.expect("the migrations apply to an empty file");
 
-            let tables: Vec<String> = sqlx::query_scalar(
-                "SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name",
+            let count = |kind: &'static str| {
+                let pool = pool.clone();
+                async move {
+                    sqlx::query_scalar::<_, i64>(
+                        "SELECT COUNT(*) FROM sqlite_master WHERE type = ?1 AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '\\_sqlx%' ESCAPE '\\'",
+                    )
+                    .bind(kind)
+                    .fetch_one(&pool)
+                    .await
+                    .expect("the schema can be read")
+                }
+            };
+            // The data model: 106 tables and 118 triggers.
+            assert_eq!(count("table").await, 106, "tables");
+            assert_eq!(count("trigger").await, 118, "triggers");
+
+            let not_strict: i64 = sqlx::query_scalar(
+                "SELECT COUNT(*) FROM pragma_table_list WHERE schema = 'main' AND type = 'table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '\\_sqlx%' ESCAPE '\\' AND strict = 0",
             )
-            .fetch_all(&pool)
+            .fetch_one(&pool)
             .await
-            .expect("the schema can be read");
-            for expected in ["Setting", "User"] {
-                assert!(tables.iter().any(|t| t == expected), "table {expected} is missing");
+            .expect("table list");
+            assert_eq!(not_strict, 0, "every table is STRICT");
+
+            for (pragma, expected) in [("foreign_keys", 1), ("recursive_triggers", 1)] {
+                let value: i64 = sqlx::query_scalar(&format!("PRAGMA {pragma}"))
+                    .fetch_one(&pool)
+                    .await
+                    .expect("pragma");
+                assert_eq!(value, expected, "{pragma} must be on for the one connection");
             }
 
-            let foreign_keys: i64 = sqlx::query_scalar("PRAGMA foreign_keys")
-                .fetch_one(&pool)
-                .await
-                .expect("pragma");
-            assert_eq!(foreign_keys, 1, "foreign keys must be enforced");
+            // The seed migration: seven roles, the system one among them.
+            let roles: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM \"Role\"").fetch_one(&pool).await.expect("roles");
+            assert_eq!(roles, 7);
+            let violations = sqlx::query("PRAGMA foreign_key_check").fetch_all(&pool).await.expect("fk check");
+            assert!(violations.is_empty(), "the seeded rows satisfy every foreign key");
 
             // What every later launch does: open a file that is already up to
             // date. Nothing is left to apply and no checksum disagrees.
@@ -276,5 +419,139 @@ mod tests {
         });
 
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[derive(serde::Deserialize)]
+    struct Tape {
+        migration: String,
+        steps: Vec<Step>,
+    }
+
+    #[derive(serde::Deserialize)]
+    struct Step {
+        k: String,
+        sql: String,
+        p: Vec<SqlValue>,
+        /// For a refusal: the part of the message both engines word alike.
+        e: Option<String>,
+        /// For a read that succeeded: the row, or null.
+        #[serde(default)]
+        r: Option<serde_json::Value>,
+    }
+
+    /// The data model's proof, replayed on the engine that ships.
+    ///
+    /// `scripts/db/model-proof.mjs` makes 157 attempts to break the database's
+    /// rules (append-only tables, the hash chains, the legal sequences, frozen
+    /// pay runs, the cached totals) and records every statement it ran and how
+    /// Node's SQLite answered. Here the same statements run, in the same
+    /// order, on sqlx's SQLite, and each must be accepted or refused in the
+    /// same way and read back the same row.
+    #[test]
+    fn the_model_proof_holds_on_the_shipped_engine() {
+        let tape: Tape = serde_json::from_str(include_str!("../proof/model-proof.tape.json")).expect("the tape parses");
+        assert_eq!(tape.migration, "0001_init.sql");
+        assert!(tape.steps.len() > 300, "the tape holds the whole proof");
+
+        let dir = temp_dir("proof");
+        let path = dir.join("proof.db");
+
+        tauri::async_runtime::block_on(async {
+            // The program's own connection options, and the schema migration
+            // alone: the proof writes its own rows.
+            let options = SqliteConnectOptions::from_str(&format!("sqlite:{}", path.to_string_lossy()))
+                .expect("path")
+                .create_if_missing(true)
+                .foreign_keys(true)
+                .pragma("recursive_triggers", "ON");
+            let pool = SqlitePoolOptions::new().max_connections(1).connect_with(options).await.expect("connect");
+            sqlx::raw_sql(include_str!("../migrations/0001_init.sql"))
+                .execute(&pool)
+                .await
+                .expect("the schema migration applies");
+
+            let mut refused = 0;
+            for (index, step) in tape.steps.iter().enumerate() {
+                let outcome = if step.k == "get" {
+                    bind_all(sqlx::query(&step.sql), &step.p)
+                        .fetch_optional(&pool)
+                        .await
+                        .map(|row| row.map(|row| row_to_json(&row).expect("a row converts")))
+                } else {
+                    bind_all(sqlx::query(&step.sql), &step.p).execute(&pool).await.map(|_| None)
+                };
+
+                match (&step.e, outcome) {
+                    (None, Ok(row)) => {
+                        if step.k == "get" {
+                            let expected = step.r.clone().unwrap_or(serde_json::Value::Null);
+                            let got = row.unwrap_or(serde_json::Value::Null);
+                            assert_eq!(got, expected, "step {index}: {} read a different row", step.sql);
+                        }
+                    }
+                    (Some(expected), Err(error)) => {
+                        refused += 1;
+                        let message = error.to_string();
+                        assert!(
+                            message.contains(expected.as_str()),
+                            "step {index}: {} was refused with `{message}`, expected `{expected}`",
+                            step.sql
+                        );
+                    }
+                    (None, Err(error)) => panic!("step {index}: {} was refused here: {error}", step.sql),
+                    (Some(expected), Ok(_)) => panic!("step {index}: {} was accepted here; expected `{expected}`", step.sql),
+                }
+            }
+            assert!(refused > 100, "the proof is mostly refusals: {refused}");
+            pool.close().await;
+        });
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn the_webview_may_send_one_allowed_statement() {
+        for accepted in [
+            "select 1",
+            "  SELECT * FROM \"User\" WHERE \"name\" = 'a;b'",
+            "with x as (select 1) insert into t select * from x",
+            "insert into \"Setting\" (\"id\") values (?)",
+            "INSERT OR REPLACE INTO t VALUES (1)",
+            "update t set a = 'x -- not a comment' where id = ?",
+            "delete from t where id = ?;",
+            "BEGIN",
+            "begin immediate",
+            "COMMIT",
+            "ROLLBACK",
+            "-- a note\nselect 1",
+            "/* a note */ select 1 ;  ",
+            "select \"a;b\" from t",
+        ] {
+            assert!(check_statement(accepted).is_ok(), "{accepted} must be accepted");
+        }
+
+        for refused in [
+            "",
+            "   ",
+            "drop trigger \"Invoice_no_update\"",
+            "DROP TABLE \"AuditLog\"",
+            "alter table t add column x",
+            "create table t (a)",
+            "pragma foreign_keys = off",
+            "PRAGMA recursive_triggers = OFF",
+            "attach database 'x' as y",
+            "vacuum",
+            "replace into t values (1)",
+            "savepoint a",
+            "select 1; drop table t",
+            "select 1; select 2",
+            "update t set a = 1; -- then\ndelete from t",
+            "/* select */ drop table t",
+            "-- select\ndrop table t",
+            "'select' 1",
+            "select 'unterminated",
+        ] {
+            assert!(check_statement(refused).is_err(), "{refused} must be refused");
+        }
     }
 }

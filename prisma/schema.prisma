@@ -1,12 +1,83 @@
-// PROVISIONAL type source for مركز إنماء برو.
+// مركز إنماء برو management program: the single data model. REVISION 2.
 //
-// Only the two tables the shell reads. The data model for the whole program
-// replaces this file together with src-tauri/migrations (see CLAUDE.md).
+// This file is a TYPE SOURCE, parsed as text (Prisma is not installed). The
+// SQLite DDL in src-tauri/migrations is GENERATED from it (tables, defaults,
+// foreign keys, checks, indexes, template triggers) and completed by the named
+// triggers of triggers.sql. Companion files: DESIGN.md (conventions, chain,
+// settings, roles), OPTION-CODES.md (every code list), CONTRACTS.md (who
+// writes, who reads, what each owner exports), BUILD-NOTES.md (creation order,
+// triggers, seeds, scenario tests), RULINGS-NEEDED.md, CHANGES.md.
+// tools/build-ddl.mjs turns this file and triggers.sql into DDL and loads it
+// into SQLite; tools/check-schema.mjs checks the naming rules and the four
+// documents against each other.
 //
-// Prisma is NOT a dependency. This file is read as text by
-// scripts/generate-db-types.mjs, which writes src/lib/db/schema.ts, models.ts
-// and column-meta.ts. The SQL in src-tauri/migrations is written by hand to
-// match it.
+// HOW TO READ THIS FILE
+//  1. Storage types: String -> TEXT, Int -> INTEGER, Boolean -> INTEGER 0/1,
+//     DateTime -> TEXT, an ISO-8601 UTC instant ("2026-10-11T22:15:00.000Z").
+//     There is no Float, Decimal, Json or enum anywhere: no REAL column exists.
+//     Every table is created STRICT, so a float can never land in an INTEGER.
+//  2. DateTime is used ONLY for instants. A calendar date is a String tagged
+//     @date ('YYYY-MM-DD'); a clock time is a String tagged @time ('HH:MM').
+//     Naming follows: ...At is an instant, ...Date is a calendar date,
+//     ...Time is a clock time. The DDL carries a GLOB check on every @date and
+//     @time column, so an instant can never be stored in one.
+//  3. Tags in the trailing comment. The generator reads them before it strips
+//     comments, and brands the generated TypeScript types with them:
+//       @date    TEXT 'YYYY-MM-DD', local calendar date
+//       @time    TEXT 'HH:MM', 24 hours, local
+//       @money   INTEGER centimes (1 DA = 100)
+//       @min     INTEGER minutes (every duration and every count of hours)
+//       @qty     INTEGER thousandths of the unit named (stock, m2, days, km)
+//       @bp      INTEGER basis points (1900 = 19%)
+//       @udeg    INTEGER micro-degrees (latitude, longitude)
+//       @code L  one code of list L in OPTION-CODES.md
+//       @codes L a JSON array of codes of list L, in the form's order
+//       @json    JSON text; the shape is described beside it
+//       @url     managed upload path, registered in Upload
+//       @key     derived search key, rewritten on every save
+//       @snap    frozen copy taken when the row is written
+//       sys      set by the service, never typed by a person
+//  4. `@default(x)` is written only where the DDL carries `DEFAULT x`. The
+//     columns id, createdAt and updatedAt have NO default: the application
+//     always supplies them (this removes the reference's Generated<> trap).
+//     No column of a hash-chained table has a default: every hashed value is
+//     supplied by the writer.
+//  5. Every column named `userId` or ending in `UserId` is a foreign key to
+//     User(id) ON DELETE RESTRICT (accounts are deactivated, never deleted).
+//     Those relation lines and all reverse relation lists are left out to keep
+//     the file readable; the generator adds the constraint from the name.
+//  6. Every other foreign key has its relation line with its delete rule.
+//     RESTRICT everywhere, except three children of a parent that may still
+//     be hard-deleted: RoleGrant, PayslipItem, PayslipSeat (CASCADE).
+//  7. What Prisma syntax cannot say is written in `///` lines above the model,
+//     in a form the generator reads. They are part of the model:
+//       /// @check <SQL boolean expression over the row's columns>
+//       /// @uniqueWhere <IndexName> (<columns or expressions>) [WHERE <SQL>]
+//       /// @index <IndexName> (<columns>) WHERE <SQL>
+//       /// @trigger appendOnly            no UPDATE, no DELETE
+//       /// @trigger chained               appendOnly + the two chain triggers
+//       /// @trigger noDelete              no DELETE (rows change, never vanish)
+//       /// @trigger legalNumber(KEY)      the three triggers of a legal sequence
+//       /// @trigger headOnly(Parent, fk)  rows only for the parent just chained
+//       /// @trigger frozenWithRun(path) [except a, b]   frozen once the pay run is not DRAFT
+//       /// @trigger named <TriggerName>   written out in triggers.sql
+//     Column names inside @check, @uniqueWhere and @index are bare; the
+//     generator quotes them.
+//  8. Sources named in comments: F1 worker form; F2 building contract;
+//     F3 organisation request; F4 organisation contract; F5 housing request;
+//     F6 housing contract; #n plan feature n; LAW scope section 5; A1..A10
+//     scope section 9; D1..D9 his older documents (1.md..9.md); ACAD academy
+//     column kept; office = office-only block, never printed on his sheets.
+//  9. Standard columns. Ordinary tables: createdAt, updatedAt, createdByUserId,
+//     updatedByUserId. Soft-deletable tables add deletedAt. Append-only tables
+//     have createdAt and createdByUserId only. The reference's `version` and
+//     `adminId` columns are not carried over.
+// 10. One name per idea. A numbered row has `numberSeq` (the integer),
+//     `numberYear` when its counter restarts yearly, and `number` (the display
+//     text). `sortOrder` is an editable display or print order; `seq` is a
+//     system-assigned line number of a document or ledger. `note` is a free
+//     remark. `status` is a life-cycle; `state` is used once, for the sanction
+//     state of the scope. Minutes end in `Min`.
 
 generator client {
   provider = "prisma-client-js"
@@ -16,41 +87,3284 @@ datasource db {
   provider = "sqlite"
 }
 
-model User {
-  id              String    @id @default(cuid())
-  name            String
-  email           String    @unique
-  password        String
-  role            String    @default("ADMIN")
-  parentAdminId   String?
-  permissions     Json?
-  isActive        Boolean   @default(true)
-  academyName     String?
-  logoUrl         String?
+// ═══════════════════════════════════════════════════════════════════════════
+// OWNER: FOUNDATION (13 models)
+// Branch, Role, RoleGrant, User, Setting, Sequence, SequenceGap, ChainHead,
+// AuditLog, Upload, Commune, Zone, BackupRun
+// ═══════════════════════════════════════════════════════════════════════════
+
+/// One PC, one database; a branch is a label on documents (#47).
+/// Seed: one row, id "branch-main", isDefault 1. The default branch is the row with isDefault 1 (there is no setting for it).
+/// @uniqueWhere Branch_one_default (isDefault) WHERE isDefault = 1
+/// @trigger noDelete
+model Branch {
+  id              String   @id
+  code            String   @unique // short code shown in filters; #47
+  name            String   // #47
+  address         String?
   phone           String?
-  notes           String?
-  accessStartDate DateTime?
-  accessEndDate   DateTime?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-
-  settings Setting[]
-
-  parentAdmin User?  @relation("AdminStaff", fields: [parentAdminId], references: [id], onDelete: Cascade)
-  staffUsers  User[] @relation("AdminStaff")
-
-  @@index([parentAdminId])
+  city            String?  // «حررت: بـ…» on this branch's sheets; empty = setting centre.city
+  isDefault       Boolean  @default(false) // exactly one row; new documents take it
+  isActive        Boolean  @default(true)
+  createdAt       DateTime
+  updatedAt       DateTime
+  createdByUserId String?
+  updatedByUserId String?
 }
 
+/// Roles are rows so that Settings > المستخدمون والصلاحيات can edit them (#23).
+/// The id IS the code (seeds use fixed slugs, as the reference does).
+/// Seed: MANAGER, HR_OFFICER, ADMINISTRATION, SUPERVISOR, RECEPTION_SALES, OPERATIONS, ACCOUNTANT (labels in OPTION-CODES.md, list ROLE).
+/// @trigger named Role_system_no_delete
+model Role {
+  id        String   @id // = code
+  labelAr   String   // F1 «المدير», «مسئول الموارد البشرية», «الإدارة», «المشرف»; #23
+  labelFr   String
+  labelEn   String
+  isSystem  Boolean  @default(false) // MANAGER: holds everything, cannot be edited or removed
+  isActive  Boolean  @default(true)
+  sortOrder Int      @default(0)
+  createdAt DateTime
+  updatedAt DateTime
+}
+
+/// What a role may do, one row per grant: its level on a bar section ("role by section", scope section 3) or a capability (DESIGN.md section 12). No row = no access. MANAGER needs no rows: it holds everything.
+/// backup.restore is never grantable: it belongs to MANAGER alone (LAW).
+/// @check kind IN ('SECTION','CAPABILITY')
+/// @check (kind = 'SECTION' AND access IN ('READ','WRITE')) OR (kind = 'CAPABILITY' AND access = 'GRANTED')
+/// @check key <> 'backup.restore'
+model RoleGrant {
+  id        String   @id
+  roleId    String
+  kind      String   // @code GRANT_KIND (SECTION, CAPABILITY)
+  key       String   // a SECTION code, or a capability key ("quote.approve")
+  access    String   // @code GRANT_ACCESS: READ or WRITE for a section, GRANTED for a capability
+  createdAt DateTime
+  updatedAt DateTime
+
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, kind, key])
+}
+
+/// Sign-in account (#23). The first manager account exists before any employee.
+/// Never deleted: isActive 0 and deactivatedAt. At least one active MANAGER always exists.
+/// passwordHash and recoveryHash never enter the log (DESIGN.md section 9).
+/// @trigger noDelete
+/// @trigger named User_last_manager
+model User {
+  id                 String    @id
+  username           String    @unique // sign-in name, stored lower case
+  displayName        String    // shown in the lock screen's user list and in the log
+  passwordHash       String    // "pbkdf2-sha256$1$600000$<salt>$<hash>", as the reference's src/lib/auth.ts
+  recoveryHash       String?   // manager's recovery code, same format; shown once
+  roleId             String
+  staffMemberId      String?   @unique // People's row of kind EMPLOYEE, when there is one (A2)
+  branchId           String?
+  isActive           Boolean   @default(true)
+  mustChangePassword Boolean   @default(false)
+  failedSignInCount  Int       @default(0)
+  lastSignInAt       DateTime?
+  deactivatedAt      DateTime?
+  createdAt          DateTime
+  updatedAt          DateTime
+  createdByUserId    String?
+  updatedByUserId    String?
+
+  role        Role         @relation(fields: [roleId], references: [id], onDelete: Restrict)
+  staffMember StaffMember? @relation(fields: [staffMemberId], references: [id], onDelete: Restrict)
+  branch      Branch?      @relation(fields: [branchId], references: [id], onDelete: Restrict)
+
+  @@index([roleId])
+}
+
+/// Key and value. The value is always JSON text ("40", "\"ar\"", "[...]").
+/// Keys and defaults: DESIGN.md section 11. system.databaseId is written once: every genesis hash depends on it.
+/// @trigger named Setting_database_id_update
+/// @trigger named Setting_database_id_delete
 model Setting {
-  id        String   @id @default(cuid())
-  adminId   String?
-  key       String
-  value     String
-  updatedAt DateTime @updatedAt
+  id              String   @id
+  key             String   @unique
+  value           String   // @json
+  updatedAt       DateTime
+  updatedByUserId String?
+}
 
-  admin User? @relation(fields: [adminId], references: [id])
+/// Document counters (#24). year 0 = the counter never restarts.
+/// Ordinary keys: nextNumber increments the row in the same transaction as the insert of the document.
+/// The two legal keys (INVOICE, RECEIPT): nobody increments by hand. The insert of the document itself moves the counter (triggers of Invoice and Receipt), so a number without a document cannot exist.
+/// @trigger named Sequence_seed
+/// @trigger named Sequence_monotonic
+/// @trigger named Sequence_legal_step
+/// @trigger noDelete
+model Sequence {
+  id        String   @id
+  key       String   // @code SEQUENCE_KEY
+  year      Int      // 0 or the year of the document's date
+  lastValue Int      @default(0)
+  lastDate  String?  // @date sys; INVOICE and RECEIPT only: issue date of the last one, written by the advance trigger; the floor for the next date (LAW)
+  updatedAt DateTime
 
-  @@unique([adminId, key])
-  @@index([adminId])
+  @@unique([key, year])
+}
+
+/// Numbers of a legal sequence that this database does not hold, with the reason: written when an older backup is restored (RESTORE), or once at first run when the centre already issued numbers on paper that year (OPENING). Append-only.
+/// @trigger appendOnly
+model SequenceGap {
+  id              String   @id
+  key             String   // @code SEQUENCE_KEY (INVOICE, RECEIPT)
+  year            Int
+  kind            String   // @code GAP_KIND (RESTORE, OPENING)
+  fromValue       Int      // first missing number
+  toValue         Int      // last missing number
+  reason          String
+  auditLogId      String?  // the RESTORE entry that explains it
+  createdAt       DateTime
+  createdByUserId String?
+
+  auditLog AuditLog? @relation(fields: [auditLogId], references: [id], onDelete: Restrict)
+
+  @@index([key, year])
+}
+
+/// Head of each hash chain. One row per chained table, id = the table name.
+/// Seeded with lastSeq 0 and the genesis hash (DESIGN.md section 8).
+/// @trigger named ChainHead_step
+/// @trigger named ChainHead_seed
+/// @trigger noDelete
+model ChainHead {
+  id        String   @id // table name: "Invoice", "AuditLog", ...
+  lastSeq   Int      @default(0)
+  lastHash  String   // 64 hex characters
+  updatedAt DateTime
+}
+
+/// The access and change log (#33; Law 18-07 art. 41 bis 3: operation, reason, date, time, user). Append-only, hash-chained, never purged.
+/// @trigger chained
+/// @check operation IN ('COLLECT','CONSULT','CHANGE','DISCLOSE','ERASE','SECURITY')
+model AuditLog {
+  id               String   @id
+  chainSeq         Int      @unique // sys; 1, 2, 3 ... with no gap
+  occurredAt       DateTime // sys; the instant
+  localDate        String   // @date sys; "date" of art. 41 bis 3
+  localTime        String   // @time sys; "time" of art. 41 bis 3
+  operation        String   // @code LOG_OPERATION (COLLECT, CONSULT, CHANGE, DISCLOSE, ERASE, SECURITY)
+  action           String   // @code LOG_ACTION (CREATE, UPDATE, PRINT, EXPORT, ...)
+  userId           String?  // null = the program itself (day-change job, automatic backup)
+  userName         String   // @snap display name, or "system"
+  userRole         String?  // @snap role code
+  approvedByUserId String?  // the manager who answered inside another user's session
+  reason           String   // "reason" of art. 41 bis 3: the standard purpose of the action, or the text the user typed (DESIGN.md section 9)
+  ownerCode        String   // @code OWNER: which part wrote the entry
+  entity           String?  // table name of the record touched
+  entityId         String?
+  entityLabel      String?  // @snap its number or name, so the entry reads without a join
+  subjectKind      String?  // @code DATA_SUBJECT: whose personal data
+  subjectId        String?
+  subjectLabel     String?  // @snap
+  disclosure       String?  // @code DISCLOSURE_KIND, for operation DISCLOSE
+  recipient        String?  // to whom it was disclosed, when known
+  changes          String?  // @json {"field": [old, new]}; restricted fields carry no values
+  context          String?  // @json free details (route, counts, file name, chain heads)
+  hashV            Int      // sys; version of the hashed column list (DESIGN.md section 8)
+  prevHash         String   // sys
+  hash             String   // sys
+  createdAt        DateTime
+
+  @@index([localDate])
+  @@index([entity, entityId])
+  @@index([subjectKind, subjectId])
+  @@index([userId, localDate])
+  @@index([operation, localDate])
+}
+
+/// Registry of every managed file (photo, scan, PDF). A row that shows ONE file holds the same url in an ...Url column.
+/// A SET of files on one row (the photos of a first visit, of a visit, of a supervisor inspection) is the Upload rows with that entity, field "photos" and ownerId: there is no photo table (DESIGN.md section 10).
+/// Never deleted: removedAt takes the file off its row; the bytes stay ten years unless purgedAt.
+/// @trigger noDelete
+model Upload {
+  id                   String    @id
+  url                  String    @unique // "/uploads/<entity>/<field>/<uuid>.<ext>"; a restricted file is under "/uploads/restricted/"
+  entity               String    // table name
+  field                String    // column name, or "photos" for a set
+  ownerId              String?   // id of the row that shows it, set by linkUpload once that row is saved
+  kind                 String?   // @code PHOTO_KIND; sets only
+  caption              String?   // sets only
+  takenByEmployeeId    String?   // sets only: the supervisor who took it (F1 article 8); required for a photo at a client's site
+  sortOrder            Int       @default(0)
+  restrictedCapability String?   // capability needed to open the file ("staff.health.read"); null = ordinary. Opened only through readRestricted
+  originalName         String?
+  mimeType             String
+  sizeBytes            Int
+  sha256               String    // of the stored bytes
+  createdAt            DateTime
+  createdByUserId      String?
+  removedAt            DateTime? // the file was taken off the row
+  removedByUserId      String?
+  purgedAt             DateTime? // the bytes were destroyed; only by the erasure action, if one is ruled (RULINGS-NEEDED)
+
+  takenBy StaffMember? @relation(fields: [takenByEmployeeId], references: [id], onDelete: Restrict)
+
+  @@index([entity, ownerId])
+}
+
+/// Communes the office uses (coordinator's ruling). Seeded with the communes of the wilaya of أم البواقي; a row is added when the office types a new one (ensureCommune). Addresses point at a row; the wilaya comes with it.
+/// The commune is the default zone key (A9): zoneId is the zone that new sites and their visits take.
+/// @trigger noDelete
+model Commune {
+  id              String   @id
+  wilayaCode      String   // @code WILAYA
+  nameAr          String
+  nameFr          String?
+  nameKey         String   // @key normalised Arabic name
+  zoneId          String?  // set by ensureZoneForCommune; changed only through remapCommune (event zone.remapped)
+  isSeeded        Boolean  @default(false)
+  isActive        Boolean  @default(true)
+  createdAt       DateTime
+  updatedAt       DateTime
+  createdByUserId String?
+  updatedByUserId String?
+
+  zone Zone? @relation(fields: [zoneId], references: [id], onDelete: Restrict)
+
+  @@unique([wilayaCode, nameKey])
+  @@index([zoneId])
+}
+
+/// Zones (#36, س3), defined in Settings. A9: the commune is the default zone key, so a zone named after a commune is created the first time a site or a worker there is saved. Retired with isActive 0, never deleted.
+/// @trigger noDelete
+model Zone {
+  id              String   @id
+  name            String   // commune name by default; editable
+  isActive        Boolean  @default(true)
+  note            String?
+  branchId        String?
+  createdAt       DateTime
+  updatedAt       DateTime
+  createdByUserId String?
+  updatedByUserId String?
+
+  branch Branch? @relation(fields: [branchId], references: [id], onDelete: Restrict)
+}
+
+/// One row per backup made or tried (#33: automatic daily backup), and per restore. Lets the home tile say "no backup for N days".
+/// A protected copy (every PRE_RESTORE) is never rotated away by backup.keepCount: it is the only place that still holds what a restore removed.
+model BackupRun {
+  id                String    @id
+  kind              String    // @code BACKUP_KIND (AUTO, MANUAL, PRE_RESTORE, RESTORE)
+  startedAt         DateTime
+  finishedAt        DateTime?
+  targetPath        String    // where the copy went, or the file restored from
+  ok                Boolean   @default(false)
+  error             String?
+  sizeBytes         Int?
+  heads             String?   // @json chain heads and legal counters at that moment
+  lastInvoiceNumber String?   // @snap for the "backup predates the last invoice" warning (LAW)
+  lastInvoiceDate   String?   // @date @snap
+  isProtected       Boolean   @default(false) // true for PRE_RESTORE; rotation skips it
+  preRestorePath    String?   // on a RESTORE row: where the PRE_RESTORE copy of the replaced database is
+  userId            String?   // null for the automatic copy
+
+  @@index([startedAt])
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// OWNER: PEOPLE (25 models)
+// StaffMember, StaffConfidential, StaffEvent, HiringInterview,
+// HiringDecision, StaffDocument, TrainingModule, TrainingSession,
+// TrainingAttendance, Skill, Violation, Sanction, SanctionDecision,
+// PeriodicEvaluation, EmployeeLeave, EmployeeCheckRecord, EmployeeAbsence,
+// HoursAdjustment, StaffPayItem, PayRun, Payslip, PayslipItem, PayslipSeat,
+// StaffPayout, StaffDebtEntry
+//
+// Foreign keys from other owners: `workerId` points at a row of kind WORKER,
+// `...EmployeeId` at a row of kind EMPLOYEE, `staffId` at either. The kind is
+// checked by the service that writes the row.
+// ═══════════════════════════════════════════════════════════════════════════
+
+/// Cleaning workers and centre employees in one table (coordinator's ruling).
+/// A registration creates the row with engagementStatus CANDIDATE; the same row becomes the worker. Never hard-deleted once it has a pay, sanction, decision or violation row.
+/// The scan of the signed pages 1 and 2 is NOT here: it shows the health answers and the score, so it is on StaffConfidential.
+/// @check kind IN ('WORKER','EMPLOYEE')
+/// @uniqueWhere StaffMember_nationalId (kind, nationalIdNumber) WHERE nationalIdNumber IS NOT NULL AND deletedAt IS NULL
+model StaffMember {
+  id                     String    @id
+  kind                   String    // @code STAFF_KIND (WORKER, EMPLOYEE); A2
+  numberSeq              Int       // sys; F1 header «رقم التسجيل»; one counter per kind, never restarted (A6)
+  numberSuffix           String    @default("") // @code REG_SUFFIX: H or F for workers (from sex), "" for employees. Correcting sex rewrites numberSuffix and number
+  number                 String    // sys; display, "12/F" or "7"
+  registrationDate       String    // @date; F1 header «التاريخ»
+  lastName               String    // F1 «اللقب والاسم»
+  firstName              String    // F1 «اللقب والاسم»
+  fullNameLatin          String?   // F1 «باللغة الفرنسية»
+  sex                    String    // @code SEX; F1 suffix H / F (no sex field on the form)
+  birthDate              String?   // @date; F1 «تاريخ الإزدياد»; required for workers
+  birthDatePresumed      Boolean   @default(false) // only the year is known («مفترض»): birthDate holds 1 January of that year
+  birthPlace             String?   // F1 «البلدية / الولاية» beside the birth date: free text, as written (a birth abroad fits)
+  birthWilayaCode        String?   // @code WILAYA; optional
+  address                String?   // F1 «العنوان الشخصي»
+  residenceCommuneId     String?   // F1 «بلدية/ولاية إقامة»: a Commune row; the default of the worker's zone
+  maritalStatus          String?   // @code MARITAL_STATUS; F1 «الحالة الإجتماعية»
+  phone                  String    // F1 «رقم الهاتف»; 9 or 10 digits
+  phone2                 String?   // ACAD; office
+  email                  String?   // ACAD; employees only
+  emergencyName          String?   // F1 «معلومات الطوارئ» «اسم الشخص»
+  emergencyRelation      String?   // F1 «صلة القرابة»
+  emergencyAddress       String?   // F1 «العنوان الشخصي»
+  emergencyPhone         String?   // F1 «رقم الهاتف»
+  educationLevel         String?   // F1 «المستوى الدراسي»
+  certificateName        String?   // F1 «اسم الشهادة»
+  workedInFieldBefore    Boolean?  // F1 «هل عملت في المجال»; null = neither oval ticked
+  previousEmployer       String?   // F1 «اسم المؤسسة»
+  abilities              String?   // @codes ABILITY; F1 «القدرة البدنية / هل لديك قدرة على»; workers
+  availableDays          String?   // @codes WEEKDAY; F1 «الأيام المتاحة»; workers
+  pledgeSignedDate       String?   // @date; F1 «إمضاء المعني(ة)»
+  regulationsAckDate     String?   // @date; F1 regulations «إقرار العامل(ة)», article 18; workers
+  regulationsVersion     String?   // version of the regulations text last signed; each signed copy is a StaffDocument of type REGULATIONS_ACK
+  issuedPlace            String?   // F1 «حررت: بأم البواقي»; default from setting centre.city
+  issuedDate             String?   // @date; F1 «بتاريخ»
+  issuedByEmployeeId     String?   // who signed «الإمضاء والختم» / «إمضاء مركز إنماء برو» for the centre
+  nationalIdNumber       String?   // office (People's proposal): the only exact key of the sanction check
+  nameKey                String    // @key normalised Arabic full name
+  nameLatinKey           String?   // @key normalised Latin name
+  phoneKeys              String    // @key "|0659538183|0555000000|": digits only, bar-separated
+  photoUrl               String?   // @url; office (ID card)
+  engagementStatus       String    // @code ENGAGEMENT_STATUS; office (the form has no status)
+  leftDate               String?   // @date; ACAD leavingDate
+  leftReason             String?
+  branchId               String    // #47
+  note                   String?   // office
+  // workers only, office block
+  zoneId                 String?   // #25 «المنطقة»; A9
+  role                   String?   // @code WORKER_ROLE; D9 section 2 «الصفة»; required for workers
+  isReserve              Boolean   @default(false) // D1 «عاملات احتياط»; س2
+  skillCodes             String?   // @codes SKILL (codes of rows of the Skill table); #25 «الخدمات والآلات التي يتقنها»
+  criminalRecordRequired Boolean   @default(false) // F1 «(إذا كانت مطلوبة)»
+  canCollectCash         Boolean   @default(false) // F1 article 12; #32 (Money reads it)
+  collectAuthFrom        String?   // @date
+  collectAuthNote        String?   // the document that authorises it
+  trainingCompletedDate  String?   // @date; #25 «التدريب الذي أتمّه»
+  // employees only
+  jobPosition            String?   // @code JOB_POSITION; A2; required for employees
+  cvUrl                  String?   // @url; ACAD
+  // both kinds, office block
+  employmentContract     String?   // @code EMPLOYMENT_CONTRACT; #25 «نوع العقد»
+  workTimeKind           String?   // @code WORK_TIME; ACAD contractType; LAW (part time at least half)
+  startDate              String?   // @date; #25 «تاريخ البدء»
+  contractEndDate        String?   // @date
+  weeklyCapacityMin      Int       @default(2400) // @min; #25 «الطاقة الأسبوعية»; LAW 40 h
+  payBasis               String?   // @code PAY_BASIS; #38; س11; required before the first pay run
+  payRate                Int?      // @money per month, day, hour or task, by payBasis
+  payPeriod              String?   // @code PAY_PERIOD
+  cnasDeclared           Boolean   @default(false) // LAW; ACAD socialSecurityDeclared
+  cnasNumber             String?
+  wageMethod             String?   // @code PAYMENT_METHOD; #38
+  ccpNumber              String?   // F1 document «صك بريدي مشطوب»
+  bankRib                String?
+  leaveOpeningDays       Int?      // @qty days; LAW (leave balance carried in)
+  leaveOpeningDate       String?   // @date; the day leaveOpeningDays was counted; accrual at 2.5 days a month starts the day after
+  createdAt              DateTime
+  updatedAt              DateTime
+  createdByUserId        String?
+  updatedByUserId        String?
+  anonymisedAt           DateTime? // set by the erasure action, if one is ruled (RULINGS-NEEDED)
+  deletedAt              DateTime? // only a row with no dependent record may be removed
+
+  branch           Branch       @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  zone             Zone?        @relation(fields: [zoneId], references: [id], onDelete: Restrict)
+  residenceCommune Commune?     @relation(fields: [residenceCommuneId], references: [id], onDelete: Restrict)
+  issuedBy         StaffMember? @relation("StaffIssuer", fields: [issuedByEmployeeId], references: [id], onDelete: Restrict)
+
+  @@unique([kind, numberSeq])
+  @@index([kind, engagementStatus])
+  @@index([nameKey])
+  @@index([nameLatinKey])
+  @@index([nationalIdNumber])
+  @@index([zoneId])
+  @@index([contractEndDate])
+}
+
+/// Restricted (LAW): the health answers and the confidential hiring score of F1, and the scan of the signed pages that show both. One row per person, three column groups, each opened only through readRestricted with its capability; every read is logged (CONSULT). No ordinary query of StaffMember returns any of it, and its values never enter the log.
+model StaffConfidential {
+  id                      String   @id
+  staffId                 String   @unique
+  // group HEALTH: capability staff.health.read
+  conditions              String?  // @codes HEALTH_CONDITION; F1 «هل تعاني من»
+  otherText               String?  // F1 «أخرى: …»
+  // group SCORE: capability staff.hiringScore.read. F1 «تقييم مسئول الموارد البشرية (سري)»; workers only
+  scoreAppearance         Int?     // F1 criterion 1 «المظهر العام»
+  scorePersonalHygiene    Int?     // 2 «النظافة الشخصية»
+  scoreCommunication      Int?     // 3 «أسلوب التواصل»
+  scoreDiscipline         Int?     // 4 «الانضباط»
+  scoreExperience         Int?     // 5 «الخبرة»
+  scoreQuickUnderstanding Int?     // 6 «سرعة الفهم»
+  scorePhysicalFitness    Int?     // 7 «اللياقة البدنية»
+  scoreWorkPressure       Int?     // 8 «تحمل ضغط العمل»
+  scorePunctuality        Int?     // 9 «الالتزام بالمواعيد»
+  scoreTrustHonesty       Int?     // 10 «الثقة والأمانة»
+  total                   Int?     // 0..100; F1 «المجموع: …/100»; may be typed alone
+  evaluatedByUserId       String?
+  evaluatedDate           String?  // @date
+  evaluationNote          String?
+  // group SCAN: either capability
+  signedFormScanUrl       String?  // @url; #25: scan of the signed pages 1 and 2 (registered in Upload with restrictedCapability)
+  createdAt               DateTime
+  updatedAt               DateTime
+  updatedByUserId         String?
+
+  staff StaffMember @relation(fields: [staffId], references: [id], onDelete: Restrict)
+}
+
+/// History of a person's status and pay terms; StaffMember keeps the current copy. Append-only.
+/// In force on a day = the row of that kind with the greatest (date, createdAt) on or before it. A correction is a new row with the same date.
+/// Answers "active on that date" (listSchedulableWorkers, after a readmission) and "pay terms on that date" (getHourlyLabourCost, a past run drafted again).
+/// @trigger appendOnly
+/// @check (kind = 'STATUS' AND toStatus IS NOT NULL) OR (kind = 'PAY_TERMS' AND payBasis IS NOT NULL AND payRate IS NOT NULL)
+model StaffEvent {
+  id                String   @id
+  staffId           String
+  kind              String   // @code STAFF_EVENT_KIND (STATUS, PAY_TERMS)
+  date              String   // @date; in force from this day
+  fromStatus        String?  // @code ENGAGEMENT_STATUS; STATUS
+  toStatus          String?  // @code ENGAGEMENT_STATUS; STATUS
+  payBasis          String?  // @code PAY_BASIS; PAY_TERMS
+  payRate           Int?     // @money; PAY_TERMS
+  payPeriod         String?  // @code PAY_PERIOD; PAY_TERMS
+  weeklyCapacityMin Int?     // @min; PAY_TERMS
+  reason            String?
+  createdAt         DateTime
+  createdByUserId   String?
+
+  staff StaffMember @relation(fields: [staffId], references: [id], onDelete: Restrict)
+
+  @@index([staffId, kind, date])
+}
+
+/// #37 «المقابلات».
+model HiringInterview {
+  id                    String    @id
+  staffId               String
+  scheduledDate         String    // @date
+  scheduledTime         String?   // @time
+  interviewerEmployeeId String?
+  status                String    // @code INTERVIEW_STATUS
+  note                  String?
+  createdAt             DateTime
+  updatedAt             DateTime
+  createdByUserId       String?
+  updatedByUserId       String?
+  deletedAt             DateTime?
+
+  staff       StaffMember  @relation("InterviewCandidate", fields: [staffId], references: [id], onDelete: Restrict)
+  interviewer StaffMember? @relation("InterviewInterviewer", fields: [interviewerEmployeeId], references: [id], onDelete: Restrict)
+
+  @@index([staffId])
+  @@index([scheduledDate])
+}
+
+/// F1 «قرار الإدارة». A history: the last row is current and is what the printed form ticks. Never deleted.
+/// @trigger noDelete
+model HiringDecision {
+  id              String   @id
+  staffId         String
+  decision        String   // @code HIRING_DECISION
+  decisionDate    String   // @date
+  decidedByUserId String
+  trialEndDate    String?  // @date; required for ACCEPTED_ON_TRIAL (default: decisionDate + hiring.trialDays)
+  note            String?
+  createdAt       DateTime
+  updatedAt       DateTime
+
+  staff StaffMember @relation(fields: [staffId], references: [id], onDelete: Restrict)
+
+  @@index([staffId, decisionDate])
+  @@index([trialEndDate])
+}
+
+/// F1 «الوثائق المسلمة» with the expiry dates of #37, and each signed copy of the internal regulations (type REGULATIONS_ACK, with the version signed). Several rows per type; the one with isCurrent 1 counts.
+/// MEDICAL_CERT and CRIMINAL_RECORD are restricted: isRestricted 1, the file is registered in Upload with restrictedCapability and opened through readRestricted.
+/// @uniqueWhere StaffDocument_current (staffId, type) WHERE isCurrent = 1 AND deletedAt IS NULL
+model StaffDocument {
+  id              String    @id
+  staffId         String
+  type            String    // @code STAFF_DOCUMENT_TYPE
+  version         String?   // REGULATIONS_ACK: version of the text that was signed
+  isCurrent       Boolean   @default(true) // the newest of its type; a new row clears the old one's flag in the same transaction
+  isRestricted    Boolean   @default(false) // sys from the type
+  delivered       Boolean   @default(false) // F1 tick
+  deliveredDate   String?   // @date
+  issueDate       String?   // @date; for REGULATIONS_ACK the day it was signed
+  expiryDate      String?   // @date; #37 «تواريخ انتهاء الوثائق»
+  fileUrl         String?   // @url image or PDF; #25
+  note            String?
+  createdAt       DateTime
+  updatedAt       DateTime
+  createdByUserId String?
+  updatedByUserId String?
+  deletedAt       DateTime?
+
+  staff StaffMember @relation(fields: [staffId], references: [id], onDelete: Restrict)
+
+  @@index([staffId, type])
+  @@index([expiryDate])
+}
+
+/// Settings list, seeded from D1 (eight rows, list TRAINING_MODULE).
+model TrainingModule {
+  id         String   @id
+  code       String   @unique
+  sortOrder  Int      @default(0)
+  titleAr    String
+  titleFr    String?
+  titleEn    String?
+  isRequired Boolean  @default(true)
+  isActive   Boolean  @default(true)
+  createdAt  DateTime
+  updatedAt  DateTime
+}
+
+/// #37 «أيام التدريب».
+model TrainingSession {
+  id                String    @id
+  date              String    // @date
+  moduleId          String
+  trainerEmployeeId String?
+  place             String?
+  note              String?
+  createdAt         DateTime
+  updatedAt         DateTime
+  createdByUserId   String?
+  updatedByUserId   String?
+  deletedAt         DateTime?
+
+  module  TrainingModule @relation(fields: [moduleId], references: [id], onDelete: Restrict)
+  trainer StaffMember?   @relation(fields: [trainerEmployeeId], references: [id], onDelete: Restrict)
+
+  @@index([date])
+}
+
+model TrainingAttendance {
+  id        String   @id
+  sessionId String
+  staffId   String
+  status    String   // @code TRAINING_ATTENDANCE
+  note      String?
+  createdAt DateTime
+  updatedAt DateTime
+
+  session TrainingSession @relation(fields: [sessionId], references: [id], onDelete: Restrict)
+  staff   StaffMember     @relation(fields: [staffId], references: [id], onDelete: Restrict)
+
+  @@unique([sessionId, staffId])
+  @@index([staffId])
+}
+
+/// Settings list; starts empty (no list in his documents). #25, س12.
+model Skill {
+  id        String   @id
+  code      String   @unique
+  labelAr   String
+  labelFr   String?
+  labelEn   String?
+  sortOrder Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime
+  updatedAt DateTime
+}
+
+/// F1 article 17 «توثيق المخالفات الجسيمة». Numbered, never deleted: cancelled with a reason.
+/// A row handed over by Operations arrives OPEN with no action; HR or the manager decides it.
+/// The sanction or the debt line it led to point back here (Sanction.violationId, StaffDebtEntry.violationId).
+/// @trigger noDelete
+model Violation {
+  id                   String   @id
+  numberSeq            Int      // sys; key VIOLATION, per year
+  numberYear           Int
+  number               String   // display
+  staffId              String
+  date                 String   // @date
+  article              String?  // @code REGULATION_ARTICLE (ART_1..ART_15)
+  article14Item        String?  // @code ARTICLE_14_ITEM
+  severity             String   // @code VIOLATION_SEVERITY
+  description          String
+  reportedByEmployeeId String?
+  sourceKind           String   // @code VIOLATION_SOURCE
+  complaintId          String?  // Operations' row, when sourceKind = COMPLAINT
+  inspectionId         String?  // when INSPECTION
+  visitId              String?  // when VISIT
+  problemReportId      String?  // when PROBLEM_REPORT
+  staffStatement       String?
+  action               String?  // @code VIOLATION_ACTION; null = not decided yet
+  status               String   // @code VIOLATION_STATUS (OPEN, DECIDED, CANCELLED)
+  actionDate           String?  // @date
+  decidedByUserId      String?
+  cancelReason         String?  // required when CANCELLED
+  attachmentUrl        String?  // @url
+  createdAt            DateTime
+  updatedAt            DateTime
+  createdByUserId      String?
+  updatedByUserId      String?
+
+  staff         StaffMember    @relation("ViolationStaff", fields: [staffId], references: [id], onDelete: Restrict)
+  reportedBy    StaffMember?   @relation("ViolationReporter", fields: [reportedByEmployeeId], references: [id], onDelete: Restrict)
+  complaint     Complaint?     @relation(fields: [complaintId], references: [id], onDelete: Restrict)
+  inspection    Inspection?    @relation(fields: [inspectionId], references: [id], onDelete: Restrict)
+  visit         Visit?         @relation(fields: [visitId], references: [id], onDelete: Restrict)
+  problemReport ProblemReport? @relation(fields: [problemReportId], references: [id], onDelete: Restrict)
+
+  @@unique([numberYear, numberSeq])
+  @@index([staffId, date])
+  @@index([status])
+}
+
+/// «موقف / متوقف / معاقب» for the three kinds of person (scope decision 3; his third alert). The CURRENT state of a person is derived: a row whose startDate has come, whose endDate has not passed and which is not lifted. Never deleted.
+/// @check state IN ('SUSPENDED','PENALISED')
+/// @check (subjectKind = 'CLIENT' AND clientId IS NOT NULL AND staffId IS NULL) OR (subjectKind IN ('WORKER','EMPLOYEE') AND staffId IS NOT NULL AND clientId IS NULL)
+/// @trigger noDelete
+model Sanction {
+  id               String    @id
+  subjectKind      String    // @code SANCTION_SUBJECT (WORKER, EMPLOYEE, CLIENT)
+  staffId          String?   // exactly one of staffId, clientId
+  clientId         String?
+  state            String    // @code SANCTION_STATE (SUSPENDED, PENALISED)
+  reason           String    // no reason field exists on any form (People's proposal)
+  startDate        String    // @date
+  endDate          String?   // @date; empty = until lifted
+  violationId      String?
+  setByUserId      String    // the manager
+  setAt            DateTime
+  liftedAt         DateTime?
+  liftedByUserId   String?
+  liftReason       String?   // required when lifted
+  displayName      String    // @snap for the prompt
+  displayNumber    String?   // @snap registration number or «رقم الملف»
+  nameKey          String?   // @snap @key identity at the time, so the row still matches after the file is edited
+  nameLatinKey     String?   // @snap @key
+  birthDate        String?   // @date @snap
+  phoneKeys        String?   // @snap @key, same format as StaffMember.phoneKeys
+  nationalIdNumber String?   // @snap
+  extraKeys        String?   // @json what Clients passes for a body: {"rc": "", "nis": "", "nif": "", "orgNameKey": ""}
+  createdAt        DateTime
+  updatedAt        DateTime
+
+  staff     StaffMember? @relation(fields: [staffId], references: [id], onDelete: Restrict)
+  client    Client?      @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  violation Violation?   @relation(fields: [violationId], references: [id], onDelete: Restrict)
+
+  @@index([staffId])
+  @@index([clientId])
+  @@index([liftedAt, startDate, endDate])
+  @@index([nameKey])
+  @@index([nationalIdNumber])
+}
+
+/// The one log of the manager's yes-or-no answers: one row per blocked attempt. Never deleted.
+/// status moves PENDING -> ALLOWED | REFUSED | CANCELLED once; the answer cannot be rewritten; a yes is consumed by ONE registration.
+/// @trigger noDelete
+/// @trigger named SanctionDecision_answer_once
+/// @trigger named SanctionDecision_answer_frozen
+/// @trigger named SanctionDecision_consume_once
+model SanctionDecision {
+  id                 String    @id
+  context            String    // @code SANCTION_CONTEXT
+  attemptKind        String    // @code SANCTION_SUBJECT: what the person was being registered as
+  attemptIdentity    String    // @json {name, nameLatin, birthDate, phones, nationalId, ...} as typed
+  attemptStaffId     String?   // the existing record the attempt is about (READMISSION, IDENTITY_CHANGE)
+  attemptClientId    String?   // the existing client picked with «قديم»
+  sanctionId         String    // the sanction that matched
+  matchBasis         String    // @code MATCH_BASIS
+  requestedByUserId  String
+  requestedAt        DateTime
+  status             String    // @code DECISION_STATUS
+  answeredByUserId   String?   // required once answered; holds capability sanction.answer
+  answeredAt         DateTime?
+  answerReason       String?   // «سبب القرار», required once answered
+  draftPayload       String?   // @json what was typed, so nothing is retyped after a later yes. NEVER the health answers or the score
+  resumeRoute        String?
+  consumedAt         DateTime? // set by the one registration a yes allows
+  consumedEntityKind String?   // @code CONSUMED_ENTITY (STAFF_MEMBER, FILE)
+  consumedEntityId   String?
+  createdAt          DateTime
+  updatedAt          DateTime
+
+  sanction      Sanction     @relation(fields: [sanctionId], references: [id], onDelete: Restrict)
+  attemptStaff  StaffMember? @relation(fields: [attemptStaffId], references: [id], onDelete: Restrict)
+  attemptClient Client?      @relation(fields: [attemptClientId], references: [id], onDelete: Restrict)
+
+  @@index([status, requestedAt])
+  @@index([sanctionId])
+}
+
+/// F1 article 16: the seven criteria, per period (People's; Operations
+/// supplies the figures).
+model PeriodicEvaluation {
+  id                   String    @id
+  staffId              String
+  periodStart          String    // @date
+  periodEnd            String    // @date
+  evaluatorEmployeeId  String?
+  scoreDiscipline      Int       // 1..5 (scale from setting evaluation.scaleMax); «الانضباط»
+  scoreAttendance      Int       // «الحضور»
+  scoreCleaningQuality Int       // «جودة التنظيف»
+  scoreClientRespect   Int       // «احترام العميل»
+  scoreEquipmentCare   Int       // «المحافظة على المعدات»
+  scoreSafety          Int       // «السلامة»
+  scoreProgramme       Int       // «الالتزام بالبرنامج»
+  scaleMax             Int       // @snap; setting evaluation.scaleMax when written, so old rows keep their meaning
+  total                Int       // sys; percent 0..100
+  comment              String?
+  recommendation       String?   // @code EVALUATION_RECOMMENDATION; D1
+  figuresSnapshot      String?   // @json @snap Operations' figures shown when it was written
+  createdAt            DateTime
+  updatedAt            DateTime
+  createdByUserId      String?
+  updatedByUserId      String?
+  deletedAt            DateTime?
+
+  staff     StaffMember  @relation("EvaluationStaff", fields: [staffId], references: [id], onDelete: Restrict)
+  evaluator StaffMember? @relation("EvaluationEvaluator", fields: [evaluatorEmployeeId], references: [id], onDelete: Restrict)
+
+  @@index([staffId, periodEnd])
+}
+
+/// Leave of CENTRE EMPLOYEES only (#25, LAW 2.5 days a month). Cleaning workers' booked leave is Operations' WorkerAbsence (coordinator's ruling).
+/// A leave that crosses the end of a month is cut into one row per month by the service (splitGroupId ties the parts), so each payslip reads whole rows.
+/// Approving a leave writes NO EmployeeAbsence row: the payslip reads leave here and absences there.
+model EmployeeLeave {
+  id              String    @id
+  staffId         String    // kind EMPLOYEE
+  type            String    // @code LEAVE_TYPE
+  startDate       String    // @date
+  endDate         String    // @date
+  days            Int       // @qty days
+  splitGroupId    String?   // the same id on the parts of one leave cut at month ends
+  paid            Boolean   @default(true)
+  status          String    // @code LEAVE_STATUS
+  decidedByUserId String?
+  decidedAt       DateTime?
+  reason          String?
+  attachmentUrl   String?   // @url
+  createdAt       DateTime
+  updatedAt       DateTime
+  createdByUserId String?
+  updatedByUserId String?
+  deletedAt       DateTime?
+
+  staff StaffMember @relation(fields: [staffId], references: [id], onDelete: Restrict)
+
+  @@index([staffId, startDate])
+}
+
+/// ACAD EmployeeCheckRecord, employees only. Edit and delete are new, logged.
+model EmployeeCheckRecord {
+  id              String    @id
+  staffId         String    // kind EMPLOYEE
+  type            String    // @code CHECK_TYPE (CHECK_IN, CHECK_OUT)
+  timestamp       DateTime
+  localDate       String    // @date sys; the local day of `timestamp`, for grouping
+  localTime       String    // @time sys; local clock time of `timestamp`: hours per day never convert the instant
+  note            String?
+  createdAt       DateTime
+  updatedAt       DateTime
+  createdByUserId String?
+  updatedByUserId String?
+  deletedAt       DateTime?
+
+  staff StaffMember @relation(fields: [staffId], references: [id], onDelete: Restrict)
+
+  @@index([staffId, localDate])
+}
+
+/// ACAD EmployeeAbsence plus the date the academy never stored. Employees only.
+/// employeeLeaveId is set only when the office turns a recorded absence into leave afterwards; such a row is then not counted as an absence.
+model EmployeeAbsence {
+  id              String    @id
+  staffId         String    // kind EMPLOYEE
+  date            String    // @date (new)
+  type            String    // @code ABSENCE_TYPE (FULL_DAY, HALF_DAY, HOURS)
+  startTime       String?   // @time; required for HOURS
+  endTime         String?   // @time; required for HOURS
+  absenceMin      Int       // @min; 480, 240, or the difference
+  justified       Boolean   @default(false)
+  paid            Boolean   @default(false)
+  reason          String?
+  details         String?
+  employeeLeaveId String?
+  createdAt       DateTime
+  updatedAt       DateTime
+  createdByUserId String?
+  updatedByUserId String?
+  deletedAt       DateTime?
+
+  staff StaffMember    @relation(fields: [staffId], references: [id], onDelete: Restrict)
+  leave EmployeeLeave? @relation(fields: [employeeLeaveId], references: [id], onDelete: Restrict)
+
+  @@index([staffId, date])
+}
+
+/// #21. Hours come from Operations' VisitWorker rows; this is People's own
+/// correction line.
+model HoursAdjustment {
+  id              String    @id
+  staffId         String
+  date            String    // @date
+  adjustMin       Int       // @min signed
+  kind            String    // @code HOURS_ADJUSTMENT_KIND
+  reason          String
+  createdAt       DateTime
+  updatedAt       DateTime
+  createdByUserId String?
+  updatedByUserId String?
+  deletedAt       DateTime?
+
+  staff StaffMember @relation(fields: [staffId], references: [id], onDelete: Restrict)
+
+  @@index([staffId, date])
+}
+
+/// Recurring allowance or deduction (#38).
+model StaffPayItem {
+  id              String    @id
+  staffId         String
+  type            String    // @code PAY_ITEM_TYPE
+  label           String
+  amount          Int       // @money
+  contributable   Boolean   @default(true) // counts in the CNAS base
+  taxable         Boolean   @default(true) // counts in the IRG base
+  fromDate        String    // @date
+  toDate          String?   // @date
+  createdAt       DateTime
+  updatedAt       DateTime
+  createdByUserId String?
+  updatedByUserId String?
+  deletedAt       DateTime?
+
+  staff StaffMember @relation(fields: [staffId], references: [id], onDelete: Restrict)
+
+  @@index([staffId])
+}
+
+/// #38. A closed run is voided, never deleted. Numbered when it closes, so a deleted draft leaves no hole.
+/// Monthly by default (setting pay.runPeriods): a weekly payment is an advance settled on the monthly payslip.
+/// status moves DRAFT -> CLOSED -> VOID only; once closed nothing but the void columns changes; one live run per kind, period and branch.
+/// @trigger named PayRun_no_delete
+/// @trigger named PayRun_status_forward
+/// @trigger named PayRun_frozen
+/// @uniqueWhere PayRun_one_live (staffKind, periodType, periodStart, branchId) WHERE status <> 'VOID'
+model PayRun {
+  id              String    @id
+  numberSeq       Int?      // sys; key PAY_RUN, per year; allocated at close
+  numberYear      Int?
+  number          String?
+  staffKind       String    // @code STAFF_KIND
+  periodType      String    // @code PAY_PERIOD (WEEKLY, MONTHLY)
+  periodStart     String    // @date
+  periodEnd       String    // @date
+  status          String    // @code PAY_RUN_STATUS (DRAFT, CLOSED, VOID)
+  ratesSnapshot   String    // @json @snap the settings used: hours, overtime, CNAS, IRG table, leave
+  closedByUserId  String?
+  closedAt        DateTime?
+  voidedByUserId  String?
+  voidedAt        DateTime?
+  voidReason      String?
+  note            String?
+  branchId        String
+  createdAt       DateTime
+  updatedAt       DateTime
+  createdByUserId String?
+  updatedByUserId String?
+
+  branch Branch @relation(fields: [branchId], references: [id], onDelete: Restrict)
+
+  @@unique([numberYear, numberSeq])
+  @@index([staffKind, periodStart])
+}
+
+/// One line of a run. Frozen when the run closes: only the payment columns change afterwards, and only the payout service writes them.
+/// @trigger frozenWithRun(payRunId) except paidAmount, paidDate, wageMethod, note, updatedAt, updatedByUserId
+model Payslip {
+  id                  String   @id
+  payRunId            String
+  staffId             String
+  numberSeq           Int?     // sys; key PAYSLIP, per year; allocated when the run closes
+  numberYear          Int?
+  number              String?
+  staffName           String   // @snap
+  staffNumber         String   // @snap
+  positionOrRole      String?  // @snap label
+  cnasNumber          String?  // @snap
+  payBasis            String   // @code PAY_BASIS @snap
+  payRate             Int      // @money @snap
+  daysWorked          Int      @default(0) // @qty days
+  visitsDone          Int      @default(0)
+  ordersNotTypedCount Int      @default(0) // sys; seats of the period whose order was not typed in when the run closed
+  normalMin           Int      @default(0) // @min
+  overtimeMin         Int      @default(0) // @min; above 40 h in a Saturday-to-Friday week
+  restDayMin          Int      @default(0) // @min worked on the designated rest day (rest plus the premium)
+  absenceMin          Int      @default(0) // @min
+  lateMin             Int      @default(0) // @min
+  divisionMin         String?  // @json @snap {"HOUSING": 0, "ORGANISATION": 0, "BUILDING": 0, "COMPLEX": 0, "COMMON": 0}: worked minutes per division, for Money's expense lines
+  baseAmount          Int      @default(0) // @money
+  overtimeAmount      Int      @default(0) // @money; rate plus 50% (LAW)
+  allowancesTotal     Int      @default(0) // @money
+  grossAmount         Int      @default(0) // @money
+  contributableBase   Int      @default(0) // @money
+  cnasRate            Int      @default(0) // @bp
+  cnasAmount          Int      @default(0) // @money; editable per payslip (LAW)
+  taxableBase         Int      @default(0) // @money
+  irgAmount           Int      @default(0) // @money; editable per payslip (LAW)
+  advanceRepayment    Int      @default(0) // @money
+  otherDeductions     Int      @default(0) // @money
+  netAmount           Int      @default(0) // @money
+  employerCnasRate    Int      @default(0) // @bp
+  employerCnasAmount  Int      @default(0) // @money
+  leaveAccruedDays    Int      @default(0) // @qty days
+  leaveTakenDays      Int      @default(0) // @qty days
+  leaveBalanceDays    Int      @default(0) // @qty days
+  manualOverrides     String?  // @json which values were typed over the computed ones
+  paidAmount          Int      @default(0) // @money sys; sum of the WAGE payouts linked to this payslip (written by the payout service only)
+  paidDate            String?  // @date sys; date of the payout that completed it
+  wageMethod          String?  // @code PAYMENT_METHOD
+  note                String?
+  createdAt           DateTime
+  updatedAt           DateTime
+  createdByUserId     String?
+  updatedByUserId     String?
+
+  payRun PayRun      @relation(fields: [payRunId], references: [id], onDelete: Restrict)
+  staff  StaffMember @relation(fields: [staffId], references: [id], onDelete: Restrict)
+
+  @@unique([payRunId, staffId])
+  @@unique([numberYear, numberSeq])
+  @@index([staffId])
+  @@index([paidDate])
+}
+
+/// @trigger frozenWithRun(payslipId->payRunId)
+model PayslipItem {
+  id            String   @id
+  payslipId     String
+  sortOrder     Int
+  type          String   // @code PAYSLIP_ITEM_TYPE
+  label         String
+  quantity      Int?     // @qty (hours, days or count, by type)
+  rate          Int?     // @money
+  amount        Int      // @money signed
+  contributable Boolean  @default(false)
+  taxable       Boolean  @default(false)
+  sourceKind    String?  // @code PAYSLIP_ITEM_SOURCE (PAY_ITEM, DEBT_ENTRY, HOURS, MANUAL)
+  sourceId      String?  // id of the StaffPayItem or StaffDebtEntry it came from
+  createdAt     DateTime
+  updatedAt     DateTime
+
+  payslip Payslip @relation(fields: [payslipId], references: [id], onDelete: Cascade)
+
+  @@index([payslipId, sortOrder])
+}
+
+/// Which seats a payslip paid (#21). A seat is paid once: a run takes every seat with workedMin set, visitDate on or before periodEnd, and no row here under a run that is not VOID.
+/// An order typed in after the run closed is therefore paid by the next run (isArrears 1). A later VisitWorker.workedMin that differs from countedMin is listed as a difference, never rewritten.
+/// @trigger frozenWithRun(payslipId->payRunId)
+/// @trigger named PayslipSeat_once
+model PayslipSeat {
+  id            String   @id
+  payslipId     String
+  visitWorkerId String
+  visitDate     String   // @date @snap
+  countedMin    Int      // @min @snap
+  isArrears     Boolean  @default(false) // seat of an earlier, closed period
+  createdAt     DateTime
+
+  payslip     Payslip     @relation(fields: [payslipId], references: [id], onDelete: Cascade)
+  visitWorker VisitWorker @relation(fields: [visitWorkerId], references: [id], onDelete: Restrict)
+
+  @@unique([payslipId, visitWorkerId])
+  @@index([visitWorkerId])
+}
+
+/// Every payment to a person (ACAD EmployeePayout). Numbered; voided, never deleted.
+/// @trigger noDelete
+model StaffPayout {
+  id              String    @id
+  numberSeq       Int       // sys; key PAYOUT, per year
+  numberYear      Int
+  number          String    // display
+  staffId         String
+  date            String    // @date
+  amount          Int       // @money
+  kind            String    // @code PAYOUT_KIND (ADVANCE, WAGE, OTHER)
+  wageMethod      String    // @code PAYMENT_METHOD
+  payslipId       String?
+  note            String?
+  branchId        String
+  voidedAt        DateTime?
+  voidedByUserId  String?
+  voidReason      String?
+  createdAt       DateTime
+  updatedAt       DateTime
+  createdByUserId String?
+  updatedByUserId String?
+
+  staff   StaffMember @relation(fields: [staffId], references: [id], onDelete: Restrict)
+  payslip Payslip?    @relation(fields: [payslipId], references: [id], onDelete: Restrict)
+  branch  Branch      @relation(fields: [branchId], references: [id], onDelete: Restrict)
+
+  @@unique([numberYear, numberSeq])
+  @@index([staffId, date])
+}
+
+/// Advances and deductions ledger (ACAD EmployeeDebtLedger). Append-only: a line is undone by a REVERSAL line.
+/// seq and balanceAfter are written in one transaction and checked by the trigger; the academy's read-then-insert outside a transaction is not copied.
+/// @trigger appendOnly
+/// @trigger named StaffDebtEntry_seq
+/// @check amount > 0
+/// @uniqueWhere StaffDebtEntry_one_reversal (reversesEntryId) WHERE reversesEntryId IS NOT NULL
+model StaffDebtEntry {
+  id              String   @id
+  staffId         String
+  seq             Int      // sys; 1, 2, 3 ... per person
+  date            String   // @date
+  direction       String   // @code DEBT_DIRECTION (INCREASE, DECREASE)
+  reason          String   // @code DEBT_REASON
+  amount          Int      // @money, always positive
+  balanceAfter    Int      // @money sys
+  note            String?
+  payoutId        String?
+  payslipId       String?
+  violationId     String?
+  handOutReturnId String?  // Money's row, for equipment lost or damaged
+  reversesEntryId String?  // reason REVERSAL: the line this one undoes (voided payout, voided run)
+  createdAt       DateTime
+  createdByUserId String?
+
+  staff         StaffMember     @relation(fields: [staffId], references: [id], onDelete: Restrict)
+  payout        StaffPayout?    @relation(fields: [payoutId], references: [id], onDelete: Restrict)
+  payslip       Payslip?        @relation(fields: [payslipId], references: [id], onDelete: Restrict)
+  violation     Violation?      @relation(fields: [violationId], references: [id], onDelete: Restrict)
+  handOutReturn HandOutReturn?  @relation(fields: [handOutReturnId], references: [id], onDelete: Restrict)
+  reverses      StaffDebtEntry? @relation("DebtReversal", fields: [reversesEntryId], references: [id], onDelete: Restrict)
+
+  @@unique([staffId, seq])
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// OWNER: CLIENTS AND CONTRACTS (15 models)
+// Client, Contact, Site, Resident, File, FileDescription, FileService,
+// FileStageEvent, FirstVisit, CostStudy, Quote, QuoteLine, QuoteFollowUp,
+// ClauseTemplate, RepVisit
+//
+// "R@contract" below = must be filled before the file can become «متعاقد»
+// (checked by the service, so the column is nullable).
+// ═══════════════════════════════════════════════════════════════════════════
+
+/// «العميل» (#1). The sanction state («متوقف», «معاقب») is NOT stored here: it is People's Sanction row with clientId.
+model Client {
+  id                    String    @id
+  numberSeq             Int?      @unique // sys; key CLIENT_DOSSIER, never restarted; null when the number was typed from paper
+  number                String    @unique // «رقم الملف», item 1 of every form; kept when «قديم» is used; typed when the client already has one on paper
+  clientType            String    // @code CLIENT_TYPE; from the first file's division
+  name                  String    // F5, F6 «اللقب والاسم»; F3, F4 «اسم المؤسسة»; F2 «اسم المسئول»
+  nameKey               String    // @key normalised name, for «قديم» and the sanction check
+  managerName           String?   // F3, F4 «مدير/ مسير»
+  managerNameKey        String?   // @key; «قديم» searches it
+  capacity              String?   // F2 «الصفة»
+  contractingParty      String?   // @code CONTRACTING_PARTY; F2 «جهة التعاقد»; required for buildings and complexes
+  contractingPartyOther String?   // F2 «أخرى» text
+  sector                String?   // @code SECTOR; F3, F4 «قطاع العمل»
+  hasTradeRegister      Boolean?  // F3, F4 «السجل التجاري» (لا / نعم); null = not ticked
+  phone1                String    // all forms «رقم الهاتف»; printed after «(01):» on F2 and F6
+  phone2                String?   // office
+  phoneKeys             String    // @key "|digits|digits|"
+  email                 String?   // office
+  legalForm             String?   // office; printed on invoices (Money)
+  rcNumber              String?   // office; LAW 05-468: required before an organisation's first invoice when hasTradeRegister
+  nis                   String?   // office; LAW
+  nif                   String?   // office; LAW
+  articleNumber         String?   // office; «رقم المادة», never required
+  billingName           String?   // office; LAW
+  billingAddress        String?   // office; LAW
+  note                  String?   // office
+  branchId              String    // #47
+  createdAt             DateTime
+  updatedAt             DateTime
+  createdByUserId       String?
+  updatedByUserId       String?
+  anonymisedAt          DateTime?
+  deletedAt             DateTime?
+
+  branch Branch @relation(fields: [branchId], references: [id], onDelete: Restrict)
+
+  @@index([nameKey])
+  @@index([clientType])
+  @@index([managerNameKey])
+}
+
+/// «جهات الاتصال», office-only (#1). The payer and the guard his sheet names are on the File, because they are printed there.
+/// "The person on site" on an order: the Site's receiver columns when filled, else the site's coordinator contact, else the client (CONTRACTS.md, getSiteForOrder).
+/// @uniqueWhere Contact_site_coordinator (siteId) WHERE isCoordinator = 1 AND siteId IS NOT NULL AND deletedAt IS NULL
+model Contact {
+  id              String    @id
+  clientId        String
+  siteId          String?
+  name            String
+  role            String?
+  phone           String?
+  phone2          String?
+  signsHandover   Boolean   @default(false)
+  receivesInvoice Boolean   @default(false)
+  isCoordinator   Boolean   @default(false)
+  holdsKey        Boolean   @default(false)
+  followsService  Boolean   @default(false)
+  note            String?
+  createdAt       DateTime
+  updatedAt       DateTime
+  createdByUserId String?
+  updatedByUserId String?
+  anonymisedAt    DateTime?
+  deletedAt       DateTime?
+
+  client Client @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  site   Site?  @relation(fields: [siteId], references: [id], onDelete: Restrict)
+
+  @@index([clientId])
+  @@index([siteId])
+}
+
+/// «الموقع» (#1, #26). Its office-only block also holds, ONCE, what a mission order and the schedule need and his form does not carry (coordinator's ruling: per site, not per file): Clients enters it, Operations reads it.
+/// @check division IN ('HOUSING','ORGANISATION','BUILDING','COMPLEX')
+/// @trigger named Site_file_match_update
+model Site {
+  id                       String    @id
+  clientId                 String
+  division                 String    // @code DIVISION
+  siteNumber               String?   // typed by the office: «رقم الباب» F5, F6; «رقم المؤسسة» F3, F4; «رقم العمارة» F2
+  commonName               String?   // all forms «اسم المتداول»
+  commonNameKey            String?   // @key; «قديم» searches it
+  address                  String    // all forms «العنوان مدقق»
+  communeId                String    // all forms «البلدية / الولاية»: a Commune row; the wilaya comes with it
+  propertyType             String?   // @code PROPERTY_TYPE_HOUSING or PROPERTY_TYPE_ORGANISATION, by division; «نوع العقار» F3..F6
+  propertyTypeOther        String?   // «أخرى» text (housing forms only have the line)
+  ownership                String?   // @code OWNERSHIP; F5, F6 «ملكية العقار»
+  zoneId                   String?   // sys: the commune's zone when the site is saved (A9); follows zone.remapped
+  // office-only: finding the place (#26)
+  district                 String?   // «الحي»
+  landmark                 String?   // «أقرب معلم»
+  directions               String?   // written directions, printed on the order
+  latitude                 Int?      // @udeg; optional QR on the order, off by default
+  longitude                Int?      // @udeg
+  mapLink                  String?   // office: the location link the client shared, kept as text (it cannot be opened offline); payload of the optional QR
+  floorAndDoor             String?   // D3 «الطابق»
+  buildingsCount           Int?      // complexes only (D8)
+  // office-only: keys and allowed hours (P14, #1)
+  keysHeld                 Boolean   @default(false)
+  keyCount                 Int?
+  keyReceivedDate          String?   // @date
+  keyHolderName            String?
+  allowedDays              String?   // @codes WEEKDAY; D6 item 22; shown in the generation preview and on the order
+  allowedFrom              String?   // @time
+  allowedTo                String?   // @time
+  // office-only: what the order and the schedule need (read by Operations)
+  forbiddenCodes           String?   // @codes FORBIDDEN_PLACE; D9 section 9
+  forbiddenAreas           String?   // D2 section 10 «أماكن ممنوع دخولها»; D9 «التفاصيل»
+  doNotTouch               String?   // D2 «أشياء يجب عدم لمسها»
+  valuables                String?   // D2 «أشياء ثمينة/حساسة يجب الانتباه إليها»
+  instructionCodes         String?   // @codes SITE_INSTRUCTION; D9 section 10
+  specialInstructions      String?   // D9 «تعليمات إضافية»; D2 «تعليمات العميل»
+  securityInstructionsText String?   // the text behind the form's «تعليمات أمنية: نعم» (scope F7); D9 section 12 «ملاحظات السلامة»
+  ppeCodes                 String?   // @codes PPE; D9 section 12
+  meetingPoint             String?   // D9 section 4 «مكان الالتقاء»
+  receiverName             String?   // D9 section 4 «الشخص المخول باستلام الخدمة»
+  receiverRole             String?
+  receiverPhone            String?
+  sameWorkerRule           Boolean   @default(false) // D5 section 10, D7 section 11: same workers every visit (P14, س12)
+  womenOnly                Boolean   @default(false) // س12
+  requiredAbilityCodes     String?   // @codes ABILITY (People's list)
+  photoConsent             Boolean   @default(false) // P14; photos only by the supervisor, only when agreed
+  isActive                 Boolean   @default(true)
+  note                     String?
+  createdAt                DateTime
+  updatedAt                DateTime
+  createdByUserId          String?
+  updatedByUserId          String?
+  deletedAt                DateTime?
+
+  client  Client  @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  zone    Zone?   @relation(fields: [zoneId], references: [id], onDelete: Restrict)
+  commune Commune @relation(fields: [communeId], references: [id], onDelete: Restrict)
+
+  @@index([clientId, division])
+  @@index([zoneId])
+  @@index([communeId])
+  @@index([commonNameKey])
+}
+
+/// F2 «قائمة القاطنين بالعمارة» (buildings and complexes). On the site, so a renewal keeps the list.
+/// Third-party personal data: every consultation and print is logged. Page 3 of a file prints the rows not deleted whose leftDate is empty or later than the print day, in `number` order.
+model Resident {
+  id              String    @id
+  siteId          String
+  number          Int       // F2 «الرقم»; automatic order, editable
+  name            String    // F2 «اللقب والاسم»
+  phone           String?   // F2 «رقم الهاتف»
+  registeredDate  String?   // @date; F2 «تاريخ التسجيل»; empty when the paper cell is empty (never invented)
+  apartment       String?   // office
+  building        String?   // office; complexes (D8 «عدد العمارات داخل الإقامة»)
+  leftDate        String?   // @date; office
+  createdAt       DateTime
+  updatedAt       DateTime
+  createdByUserId String?
+  updatedByUserId String?
+  anonymisedAt    DateTime?
+  deletedAt       DateTime?
+
+  site Site @relation(fields: [siteId], references: [id], onDelete: Restrict)
+
+  @@index([siteId, number])
+}
+
+/// «الملف» (#2, #6): one of his sheets, one site. Holds the header, the basic information as it was at registration, and the whole «الدراسة المالية».
+/// Never hard-deleted (its first stage event is written with it). Live = stage CONTRACTED and closedAt empty. endedDate is never empty at CONTRACT_ENDED.
+/// The form kind follows division and service type (validator); buildings and complexes are contract only by scope A1, which is a validator rule, not a constraint.
+/// @check division IN ('HOUSING','ORGANISATION','BUILDING','COMPLEX')
+/// @check serviceType IN ('ON_DEMAND','CONTRACT')
+/// @check stage IN ('NEW','VISIT','QUOTE','CONTRACTED','CONTRACT_ENDED')
+/// @check stage <> 'CONTRACT_ENDED' OR endedDate IS NOT NULL
+/// @uniqueWhere File_one_renewal (renewalOfFileId) WHERE renewalOfFileId IS NOT NULL AND deletedAt IS NULL
+/// @trigger noDelete
+/// @trigger named File_site_match_insert
+/// @trigger named File_site_match_update
+model File {
+  id                     String    @id
+  // header
+  formKind               String    // @code FORM_KIND; sys from division and serviceType
+  numberSeq              Int       // sys; one counter per formKind, never restarted (A6); typed under capability file.setNumber for a sheet already numbered on paper (claimNumber)
+  numberSuffix           String    @default("") // from setting numbering.fileSuffix.<formKind>: "BLC" on F2, "" elsewhere
+  number                 String    // «رقم التسجيل» display, "31/BLC" or "31"
+  registrationDate       String    // @date; header «التاريخ»
+  division               String    // @code DIVISION
+  serviceType            String    // @code SERVICE_TYPE
+  clientId               String
+  siteId                 String
+  branchId               String    // #47
+  isReturning            Boolean   @default(false) // «قديم» (else «جديد» is ticked); set by the button, or ticked by hand with copiedFromFileId empty
+  stage                  String    // @code FILE_STAGE; A5
+  stageChangedAt         DateTime
+  copiedFromFileId       String?   // sys; «قديم»: the file the description was copied from. Says nothing about renewal
+  renewalOfFileId        String?   // sys; set ONLY by renewFile: the contract this file renews. Money's "renewed" reads this column alone
+  sanctionDecisionId     String?   // People's row, when the manager allowed this registration
+  lockedAt               DateTime? // set at «متعاقد»; later edits need capability file.editLocked and are logged
+  partySnapshot          String?   // @json @snap written at lockedAt: every Client and Site value the sheet prints (name, manager, capacity, contracting party, sector, trade register, phone, address, commune, wilaya, property type, ownership, common name, site number). A locked sheet prints from it
+  // office-only (P14)
+  source                 String?   // @code REQUEST_SOURCE; #2
+  sourceRepVisitId       String?
+  sourceVisitId          String?   // office: the visit whose sheet asked for another service (source SERVICE_LEAD)
+  priority               String?   // @code PRIORITY; D5 item 17
+  assignedEmployeeId     String?   // the employee who follows the file
+  officeNotes            String?
+  // basic information kept on the file (state at registration)
+  firstVisitDate         String?   // @date; «تاريخ الزيارة» F2, F5, F6; «الزيارة الأولية» F3, F4
+  cleanliness            String?   // @code CLEANLINESS; all forms «تقييم النظافة»
+  cleanlinessNote        String?   // the dotted place before the options
+  equipmentStorage       Boolean?  // all forms «تخزين معدات» (نعم / لا)
+  storagePlace           String?   // «اسم المكان»
+  wasteDisposal          String?   // @codes WASTE_DISPOSAL; «مكان التخلص من النفايات»
+  wasteDisposalOther     String?   // the blank line
+  // financial study, contract variant (F2, F4, F6)
+  contractKind           String?   // @code CONTRACT_KIND; «نوع العقد»; R@contract
+  contractKindNote       String?
+  contractDuration       String?   // @code CONTRACT_DURATION; «مدة العقد»; R@contract
+  contractDurationNote   String?
+  visitsPerWeek          Int?      // 1..6; «عدد الزيارات»; R@contract
+  paymentFrequency       String?   // @code PAYMENT_FREQUENCY; «دورية السداد»; R@contract
+  // financial study, request variant (F3, F5)
+  requestKinds           String?   // @codes REQUEST_KIND; «نوع الطلب»
+  requestKindNote        String?
+  executionDurationValue Int?      // @qty of the unit beside it (hours or days): the one duration not in minutes, because his form gives no unit; «مدة التنفيذ»
+  executionDurationUnit  String?   // @code DURATION_UNIT
+  // financial study, both variants
+  executionDays          String?   // @codes WEEKDAY (SAT..THU on client forms); «أيام التنفيذ»; R@contract
+  period                 String?   // @code DAY_PERIOD; «تحديد الفترة»
+  periodFrom             String?   // @time; «من»
+  periodTo               String?   // @time; «إلى»
+  startDate              String?   // @date; «تاريخ البداية»; R@contract
+  endDate                String?   // @date; «تاريخ النهاية»; R@contract
+  arrivalTime            String?   // @time; «وقت الوصول»; R@contract
+  departureTime          String?   // @time; «المغادرة»; R@contract
+  workersCount           Int?      // «عدد العمال»; R@contract
+  payerName              String?   // «مسدد أتعاب»
+  payerPhone             String?   // «رقم الهاتف»
+  materialsBearer        String?   // @code BEARER; «مواد التنظيف»
+  materialsAmount        Int?      // @money; «مصاريفها»
+  transportBearer        String?   // @code BEARER; «توفير النقل»
+  transportAmount        Int?      // @money; «مصاريفها»
+  paymentMethods         String?   // @codes PAYMENT_METHOD; «طريقة السداد»; R@contract
+  totalAmount            Int?      // @money; «المبلغ إجمالي»; R@contract
+  firstDueDate           String?   // @date; «تاريخ تسديد» F2, F4, F6; «تاريخ التسديد» F3, F5; R@contract (A7)
+  paymentPlace           String?   // «مكان التسديد»
+  teamAccess             String?   // @codes TEAM_ACCESS; «دخول الفريق»
+  hasGuard               Boolean?  // «يوجد حارس» F2, F4, F6; «يوجد حارس ؟» F3, F5
+  securityInstructions   Boolean?  // «تعليمات أمنية» (نعم / لا); the text is Site.securityInstructionsText
+  guardName              String?   // «اسمه ولقبه»
+  guardPhone             String?   // «رقم الهاتف»
+  issuedDate             String?   // @date; «حررت: بأم البواقي، بتاريخ»; R@contract
+  amountBasis            String?   // @code AMOUNT_BASIS; office (A7); R@contract on contracts
+  expensesIncluded       Boolean   @default(true) // office: the two «مصاريفها» are inside «المبلغ إجمالي» (scope F3)
+  amountIncludesVat      Boolean?  // @snap at «متعاقد»: setting tax.pricesIncludeVat that day, so a later settings change never reprices a signed contract
+  signedScanUrl          String?   // @url; office: the signed paper
+  clauses                String?   // @json [{"title": "", "body": ""}] copied from ClauseTemplate when the file is prepared for signature; editable until locked; printed as an annex, never inside his sheet
+  // contract life (#6)
+  contractedAt           DateTime? // sys; when the stage became CONTRACTED
+  renewalDecision        String?   // @code RENEWAL_DECISION
+  renewalNote            String?
+  endedDate              String?   // @date; the day the contract or the job really ended; Operations and Money cut on it
+  endKind                String?   // @code END_KIND
+  endNote                String?
+  closedAt               DateTime? // sys; a refused quote or a finished one-off job closes the file (A5)
+  closeReason            String?   // @code CLOSE_REASON
+  closeNote              String?
+  createdAt              DateTime
+  updatedAt              DateTime
+  createdByUserId        String?
+  updatedByUserId        String?
+  deletedAt              DateTime? // only before «متعاقد» and with no visit, quote issued, invoice or hand-out
+
+  client           Client            @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  site             Site              @relation(fields: [siteId], references: [id], onDelete: Restrict)
+  branch           Branch            @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  sanctionDecision SanctionDecision? @relation(fields: [sanctionDecisionId], references: [id], onDelete: Restrict)
+  sourceRepVisit   RepVisit?         @relation(fields: [sourceRepVisitId], references: [id], onDelete: Restrict)
+  assignedEmployee StaffMember?      @relation(fields: [assignedEmployeeId], references: [id], onDelete: Restrict)
+  copiedFromFile   File?             @relation("FileCopy", fields: [copiedFromFileId], references: [id], onDelete: Restrict)
+  renewalOfFile    File?             @relation("FileRenewal", fields: [renewalOfFileId], references: [id], onDelete: Restrict)
+  sourceVisit      Visit?            @relation("FileLead", fields: [sourceVisitId], references: [id], onDelete: Restrict)
+
+  @@index([clientId])
+  @@index([siteId])
+  @@index([division, serviceType, stage])
+  @@index([stage, endDate])
+  @@index([registrationDate])
+  @@unique([formKind, numberSeq])
+  @@index([number])
+  @@index([renewalOfFileId])
+}
+
+/// «الوصف الفني للموقع» of the three form families in one row per file (state at registration; copied forward by «قديم»). A column is used by the families named beside it and empty for the others; each form prints its own, in his order (OPTION-CODES.md).
+/// H = housing F5, F6. O = organisation F3, F4. B = buildings and complexes F2 («معلومات السكان», «مواصفات العمارة»).
+model FileDescription {
+  id                   String   @id
+  fileId               String   @unique
+  family               String   // @code DESCRIPTION_FAMILY (HOUSING, ORGANISATION, BUILDING); sys from the division
+  buildArea            Int?     // @qty m2; H, O «مساحة البناء»
+  floors               Int?     // H, B «عدد الطوابق»
+  kitchens             Int?     // H, O «عدد المطابخ»
+  windows              Int?     // H, O «عدد النوافذ»
+  floorType            String?  // H, O «نوع الأرضيات»
+  entrances            Int?     // O, B «عدد المداخل»
+  rooms                Int?     // H «عدد الغرف»
+  majlis               Int?     // H «عدد المجالس»
+  salons               Int?     // H «عدد الصالونات»
+  bathrooms            Int?     // H «عدد الحمامات»
+  balconies            Int?     // H «عدد الشرفات»
+  gardenArea           Int?     // @qty m2; H «مساحة الحديقة»
+  courtyardArea        Int?     // @qty m2; H «مساحة الفناء»
+  buildings            Int?     // O «عدد المباني»
+  offices              Int?     // O «عدد المكاتب»
+  halls                Int?     // O «عدد القاعات»
+  stores               Int?     // O «عدد المخازن»
+  toilets              Int?     // O «عدد دورات المياه»
+  doors                Int?     // O «عدد الأبواب»
+  floorArea            Int?     // @qty m2; O «مساحة الأرضيات»
+  carParks             Int?     // O «عدد مواقف السيارات»
+  exits                Int?     // O «عدد المخارج»
+  extraLabel           String?  // O: the pair with an empty label on paper
+  extraValue           String?  // O
+  occupiedApartments   Int?     // B «عدد الشقق المشغولة»
+  unoccupiedApartments Int?     // B «عدد الغير المشغولة»
+  approxResidents      Int?     // B «عدد السكان التقريبي»
+  totalApartments      Int?     // B «عدد الشقق الإجمالي»
+  residentTurnover     String?  // @code RESIDENT_TURNOVER; B «معدل حركة السكان»
+  stairs               Int?     // B «عدد السلالم»
+  apartments           Int?     // B «عدد الشقق» (asked twice on F2; proposed from totalApartments)
+  corridors            Int?     // B «عدد الممرات»
+  lifts                Int?     // B «عدد المصاعد»
+  hasBasements         Boolean? // B «هل توجد أقبية»
+  hasGreenSpaces       Boolean? // B «مساحات خضراء»
+  hasGarages           Boolean? // B «هل توجد مرائب»
+  hasSharedRoofs       Boolean? // B «أسطح مشتركة»
+  createdAt            DateTime
+  updatedAt            DateTime
+
+  file File @relation(fields: [fileId], references: [id], onDelete: Restrict)
+}
+
+/// The ticks of «الخدمات المقدمة» and of «الخدمات المبرمجة» / «نوع الخدمة المبرمجة». Child rows, because Operations seeds tasks from them and Money groups by them.
+/// A blank line the office filled in is a row with customLabel and its blankSlot. A row may carry both a code and a customLabel: the organisation forms print dots after «تنظيف الأجهزة» and «تنظيف الحدائق», which may be a detail of that option.
+/// Blank lines per form: provided 3 (F5, F6), 4 (F3, F4), 0 (F2); programmed 5 (F2, F3, F4), 0 (F5, F6).
+/// @check code IS NOT NULL OR customLabel IS NOT NULL
+/// @uniqueWhere FileService_code (fileId, list, code) WHERE code IS NOT NULL
+/// @uniqueWhere FileService_slot (fileId, list, blankSlot) WHERE blankSlot IS NOT NULL
+model FileService {
+  id          String   @id
+  fileId      String
+  list        String   // @code SERVICE_LIST (PROVIDED, PROGRAMMED)
+  code        String?  // @code PROVIDED_SERVICE or PROGRAMMED_SERVICE
+  customLabel String?
+  blankSlot   Int?     // which blank line of that list on that form, in print order (1..); null for a printed option
+  sortOrder   Int      // print order on that form
+  createdAt   DateTime
+  updatedAt   DateTime
+
+  file File @relation(fields: [fileId], references: [id], onDelete: Restrict)
+
+  @@index([fileId, list, sortOrder])
+  @@index([list, code])
+}
+
+/// Stage history, shown on the hub. Append-only. The first row (fromStage empty) is written with the file.
+/// @trigger appendOnly
+model FileStageEvent {
+  id              String   @id
+  fileId          String
+  fromStage       String?  // @code FILE_STAGE; null for the first row
+  toStage         String   // @code FILE_STAGE
+  changedAt       DateTime
+  changedByUserId String?  // null = the day-change job (automatic «انتهاء التعاقد»)
+  note            String?
+  createdAt       DateTime
+
+  file File @relation(fields: [fileId], references: [id], onDelete: Restrict)
+
+  @@index([fileId, changedAt])
+}
+
+/// «الزيارة الأولية» (#3, office form): the optional old detail (A4). What his sheet carries is on the File. Named FirstVisit because Operations' supervisor inspection (#17) is Inspection.
+/// Not unique per file (needsSecondVisit). File.firstVisitDate is the EARLIEST doneDate; the estimate Money reads is CostStudy.perVisitMin, else the latest done visit's (getFileEstimate).
+/// Its photos are Upload rows (entity FirstVisit, field photos): supervisor only, and only when the site has photoConsent (F1 article 8).
+model FirstVisit {
+  id                         String    @id
+  fileId                     String
+  plannedDate                String?   // @date
+  plannedTime                String?   // @time
+  doneDate                   String?   // @date; saving it writes File.firstVisitDate
+  startTime                  String?   // @time
+  endTime                    String?   // @time
+  inspectorEmployeeId        String?
+  clientRepresentative       String?
+  firstResult                String?   // @codes FIRST_VISIT_RESULT; D6, D8
+  conditionFactors           String?   // @codes CONDITION_FACTOR; D3..D7
+  spaces                     String?   // @json per-space rows (D4, D6, D8), in order: [{"label": "", "countOrArea": "", "state": "<CLEANLINESS code>", "workRequired": "", "frequency": ""}]
+  estimatedWorkers           Int?
+  perVisitMin                Int?      // @min estimated work per visit; D4 section 7 (Money #30 reads it)
+  daysNeeded                 Int?      // @qty days; D6 item 14
+  weeklyMin                  Int?      // @min
+  monthlyMin                 Int?      // @min
+  distanceKm                 Int?      // @qty km
+  travelMin                  Int?      // @min
+  transportMeans             String?   // @code TRANSPORT_MEANS
+  accessDifficulty           String?
+  materialsAndEquipmentNeeds String?
+  excludedServices           String?
+  recommendation             String?   // @codes FIRST_VISIT_RECOMMENDATION; D4 section 16, D6 item 24, D8 item 26
+  recommendationReason       String?
+  note                       String?
+  needsSecondVisit           Boolean   @default(false)
+  sheetScanUrl               String?   // @url scan of the filled inspection sheet
+  createdAt                  DateTime
+  updatedAt                  DateTime
+  createdByUserId            String?
+  updatedByUserId            String?
+  deletedAt                  DateTime?
+
+  file      File         @relation(fields: [fileId], references: [id], onDelete: Restrict)
+  inspector StaffMember? @relation(fields: [inspectorEmployeeId], references: [id], onDelete: Restrict)
+
+  @@index([fileId])
+  @@index([plannedDate])
+}
+
+/// «الدراسة المالية» page (#4), behind capability cost.read. One per file. "Apply" writes materialsAmount, transportAmount and totalAmount on the File. Its values never enter the log.
+model CostStudy {
+  id                  String    @id
+  fileId              String    @unique
+  workers             Int?
+  perVisitMin         Int?      // @min
+  visitsPerWeek       Int?
+  weeks               Int?      // @qty weeks
+  hourlyRate          Int?      // @money; default from setting costing.hourlyLabourCost
+  lines               String?   // @json the cost lines, in order: [{"code": "<COST_LINE code>", "label": "", "amount": 0, "rateBp": null}]; amount in centimes; rateBp is the typed percentage of RESERVE, ADMIN_SHARE and TAX_INSURANCE
+  totalCost           Int?      // @money sys
+  marginPercent       Int?      // @bp
+  profitValue         Int?      // @money sys
+  priceBeforeDiscount Int?      // @money sys
+  discount            Int?      // @money
+  finalPrice          Int?      // @money
+  pricePerVisit       Int?      // @money sys
+  pricePerWeek        Int?      // @money sys
+  pricePerMonth       Int?      // @money sys
+  preparedByUserId    String?
+  preparedAt          DateTime?
+  createdAt           DateTime
+  updatedAt           DateTime
+  createdByUserId     String?
+  updatedByUserId     String?
+
+  file File @relation(fields: [fileId], references: [id], onDelete: Restrict)
+}
+
+/// «عرض السعر» (#5, #29). A new version keeps the number and retires the one before it (SUPERSEDED). One accepted quote per file.
+/// Acceptance writes on the File: totalAmount (the PERIODIC lines on a contract, the total on a request) and amountBasis. The accepted quote of a file is the row the unique index allows (getAcceptedQuote); the File holds no pointer to it.
+/// @uniqueWhere Quote_one_accepted (fileId) WHERE result = 'ACCEPTED' AND deletedAt IS NULL
+/// @trigger noDelete
+model Quote {
+  id                String    @id
+  fileId            String
+  numberSeq         Int       // sys; key QUOTE, per year (A6)
+  numberYear        Int
+  number            String
+  version           Int       @default(1)
+  date              String    // @date
+  validUntil        String?   // @date; default date + quote.validityDays
+  includedText      String?
+  excludedText      String?
+  materialsIncluded Boolean?
+  equipmentIncluded Boolean?
+  workers           Int?
+  duration          String?
+  visits            String?
+  subtotal          Int       @default(0) // @money
+  discount          Int       @default(0) // @money
+  total             Int       @default(0) // @money
+  amountBasis       String?   // @code AMOUNT_BASIS
+  taxMode           String?   // @code TAX_MODE @snap when issued
+  vatRate           Int?      // @bp @snap
+  pricesIncludeVat  Boolean?  // @snap
+  costTotal         Int?      // @money @snap from the cost study; behind cost.read; what an approval rule (س6) tests
+  marginBp          Int?      // @bp @snap; behind cost.read
+  status            String    // @code QUOTE_STATUS
+  preparedByUserId  String?
+  approvedByUserId  String?   // A9: the manager approves every quote
+  approvedAt        DateTime?
+  approvalNote      String?
+  issuedAt          DateTime?
+  issuedDate        String?   // @date; the local day it was issued: the follow-up alert counts from it
+  result            String    @default("PENDING") // @code QUOTE_RESULT
+  resultDate        String?   // @date
+  resultNote        String?
+  postponedUntil    String?   // @date
+  signedScanUrl     String?   // @url
+  createdAt         DateTime
+  updatedAt         DateTime
+  createdByUserId   String?
+  updatedByUserId   String?
+  deletedAt         DateTime? // drafts only
+
+  file File @relation(fields: [fileId], references: [id], onDelete: Restrict)
+
+  @@unique([numberYear, numberSeq, version])
+  @@index([fileId])
+  @@index([status, result])
+}
+
+/// kind lets one quote hold a first deep clean, then a periodic contract.
+model QuoteLine {
+  id          String   @id
+  quoteId     String
+  sortOrder   Int
+  kind        String   // @code QUOTE_LINE_KIND
+  label       String
+  description String?
+  quantity    Int      // @qty
+  unit        String?
+  unitPrice   Int      // @money
+  amount      Int      // @money
+  createdAt   DateTime
+  updatedAt   DateTime
+
+  quote Quote @relation(fields: [quoteId], references: [id], onDelete: Restrict)
+
+  @@index([quoteId, sortOrder])
+}
+
+/// #29: follow-up of a quote that waits for an answer.
+model QuoteFollowUp {
+  id               String   @id
+  quoteId          String
+  date             String   // @date
+  note             String?
+  nextFollowUpDate String?  // @date
+  createdAt        DateTime
+  createdByUserId  String?
+
+  quote Quote @relation(fields: [quoteId], references: [id], onDelete: Restrict)
+
+  @@index([quoteId, date])
+}
+
+/// Clause text (#6; scope F2: his contract sheets carry none). Empty at start.
+model ClauseTemplate {
+  id              String    @id
+  division        String    // @code DIVISION
+  serviceType     String    // @code SERVICE_TYPE
+  sortOrder       Int
+  title           String
+  body            String
+  isActive        Boolean   @default(true)
+  createdAt       DateTime
+  updatedAt       DateTime
+  createdByUserId String?
+  updatedByUserId String?
+  deletedAt       DateTime?
+
+  @@index([division, serviceType, sortOrder])
+}
+
+/// «زيارات المندوب التجاري» (#40), typed in at the office. A file that came from a visit points here (File.sourceRepVisitId); one visit can lead to several files.
+model RepVisit {
+  id              String    @id
+  date            String    // @date
+  repEmployeeId   String
+  prospectName    String
+  prospectKind    String    // @code DIVISION
+  activity        String?
+  contactName     String?
+  contactRole     String?
+  phone           String?
+  address         String?
+  communeId       String?   // a Commune row
+  leftProfile     Boolean   @default(false)
+  interest        String?   // @code INTEREST
+  outcome         String?
+  callBackDate    String?   // @date
+  callBackDoneAt  DateTime?
+  note            String?
+  clientId        String?   // once converted
+  branchId        String
+  createdAt       DateTime
+  updatedAt       DateTime
+  createdByUserId String?
+  updatedByUserId String?
+  deletedAt       DateTime?
+
+  rep     StaffMember @relation(fields: [repEmployeeId], references: [id], onDelete: Restrict)
+  client  Client?     @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  branch  Branch      @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  commune Commune?    @relation(fields: [communeId], references: [id], onDelete: Restrict)
+
+  @@index([date])
+  @@index([repEmployeeId, date])
+  @@index([callBackDate])
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// OWNER: OPERATIONS (23 models)
+// FileArea, FileTask, FileProgramme, FileSlot, FileAssignment, Visit,
+// VisitWorker, VisitChecklistItem, VisitReport, VisitCall, ProblemReport,
+// WorkerAbsence, RuleOverride, Team, TeamMember, Vehicle,
+// SupervisorAssignment, InspectionCriterion, Inspection, InspectionScore,
+// InspectionWorkerNote, CorrectiveTask, Complaint
+//
+// dayOfWeek is an Int as in the academy: 0 السبت, 1 الأحد, 2 الاثنين,
+// 3 الثلاثاء, 4 الأربعاء, 5 الخميس, 6 الجمعة. The week runs Saturday to Friday.
+// Clock times on one row are read in order: a time smaller than the one
+// before it is on the next calendar day (night work).
+// Foreign keys from anything typed from paper are RESTRICT, never CASCADE.
+// Photos of a visit or an inspection are Upload rows (Foundation's registry).
+// ═══════════════════════════════════════════════════════════════════════════
+
+/// The places of a site in walking order, edited on File > المهام. Generated
+/// once from the form's counts, then edited by hand.
+model FileArea {
+  id              String    @id
+  fileId          String
+  kind            String    // @code AREA_KIND; D9 section 6 «المنطقة»
+  parentAreaId    String?   // a floor under its entrance
+  label           String    // generated («المدخل 01», «الطابق 03») or typed
+  catalogCode     String?   // @code BUILDING_AREA (BLD_A_01..14), when picked from his list (D9 section 5)
+  sortOrder       Int
+  isActive        Boolean   @default(true)
+  createdAt       DateTime
+  updatedAt       DateTime
+  createdByUserId String?
+  updatedByUserId String?
+  deletedAt       DateTime?
+
+  file       File      @relation(fields: [fileId], references: [id], onDelete: Restrict)
+  parentArea FileArea? @relation("AreaTree", fields: [parentAreaId], references: [id], onDelete: Restrict)
+
+  @@index([fileId, sortOrder])
+}
+
+/// The task list of a file (#13). DAILY means every visit, not every day.
+model FileTask {
+  id              String    @id
+  fileId          String
+  areaId          String?   // null = the whole site
+  frequency       String    // @code TASK_FREQUENCY; D6 section 11, D8 section 12
+  catalogCode     String?   // @code TASK_CATALOG (ORG_D_01 ..., seeded lists in Operations' folder)
+  serviceCode     String?   // @code PROVIDED_SERVICE: the tick of «الخدمات المقدمة» it was seeded from, so a tick added later seeds once
+  label           String    // Arabic, as printed on the order; copied from the list or typed
+  dayOfWeek       Int?      // weekly: the day it is done; null = first visit of the week
+  dayOfMonth      Int?      // monthly: first visit on or after this day; null = 1
+  specialDate     String?   // @date; special: its date
+  priority        Int?      // 1..3; D9 section 8 «الأولوية رقم 1 / 2 / 3»
+  sortOrder       Int
+  isActive        Boolean   @default(true)
+  note            String?
+  createdAt       DateTime
+  updatedAt       DateTime
+  createdByUserId String?
+  updatedByUserId String?
+  deletedAt       DateTime?
+
+  file File      @relation(fields: [fileId], references: [id], onDelete: Restrict)
+  area FileArea? @relation(fields: [areaId], references: [id], onDelete: Restrict)
+
+  @@index([fileId, frequency, sortOrder])
+}
+
+/// One row per file, Operations' own: the two scheduling switches (coordinator's ruling: the rest of the work profile is on the Site) and the supervisor-inspection plan of the file (#17). Created with the default plan when the file becomes «متعاقد»; copied by copyFileSetup on a renewal.
+model FileProgramme {
+  id                             String    @id
+  fileId                         String    @unique
+  rotateRestDay                  Boolean   @default(false) // LAW: rotating rest day on six-visit contracts; D8 section 16
+  reminderMode                   String?   // @code REMINDER_MODE; overrides setting reminder.mode
+  formChangedAt                  DateTime? // sys; file.termsChanged: the sheet's days, times, dates, workers or service ticks changed after the programme was built. Shows «تحديث الزيارات القادمة»; cleared when it is run
+  inspectionFrequency            String    @default("NONE") // @code INSPECTION_FREQUENCY; default from setting inspection.defaultFrequency.*
+  inspectionDayOfWeek            Int?      // preferred day, 0 السبت .. 6 الجمعة
+  inspectionSupervisorEmployeeId String?   // else the zone's supervisor
+  inspectionStartDate            String?   // @date; required unless the frequency is NONE
+  inspectionIsActive             Boolean   @default(true) // 0 once the file has ended
+  createdAt                      DateTime
+  updatedAt                      DateTime
+  createdByUserId                String?
+  updatedByUserId                String?
+
+  file                 File         @relation(fields: [fileId], references: [id], onDelete: Restrict)
+  inspectionSupervisor StaffMember? @relation(fields: [inspectionSupervisorEmployeeId], references: [id], onDelete: Restrict)
+}
+
+/// One line of a file's weekly programme (#7): the dated counterpart of the
+/// academy's ClassroomSchedule. Created from «أيام التنفيذ», then editable.
+/// This is the form of «أيام التنفيذ» that SQL can join on.
+model FileSlot {
+  id              String    @id
+  fileId          String
+  dayOfWeek       Int       // one per tick of «أيام التنفيذ» (0..5); 6 (الجمعة) only by hand, with a warning
+  startTime       String    // @time; «وقت الوصول», else «من», else the period's default start
+  durationMin     Int       // @min; to «المغادرة», else «إلى», else the period's default end
+  workersNeeded   Int       // «عدد العمال»
+  validFrom       String?   // @date; when the programme changes during the contract
+  validTo         String?   // @date
+  isActive        Boolean   @default(true)
+  note            String?
+  createdAt       DateTime
+  updatedAt       DateTime
+  createdByUserId String?
+  updatedByUserId String?
+  deletedAt       DateTime?
+
+  file File @relation(fields: [fileId], references: [id], onDelete: Restrict)
+
+  @@index([fileId, dayOfWeek])
+}
+
+/// The file's standing team (D2 section 24 «العاملة المخصصة»).
+/// @check (workerId IS NOT NULL) <> (teamId IS NOT NULL)
+model FileAssignment {
+  id              String    @id
+  fileId          String
+  fileSlotId      String?   // null = every slot
+  workerId        String?   // exactly one of workerId, teamId
+  teamId          String?
+  role            String    // @code ASSIGNMENT_ROLE (LEADER, MEMBER, ALTERNATE)
+  validFrom       String    // @date
+  validTo         String?   // @date
+  sortOrder       Int       // used by the rest-day rotation
+  createdAt       DateTime
+  updatedAt       DateTime
+  createdByUserId String?
+  updatedByUserId String?
+  deletedAt       DateTime?
+
+  file     File         @relation(fields: [fileId], references: [id], onDelete: Restrict)
+  fileSlot FileSlot?    @relation(fields: [fileSlotId], references: [id], onDelete: Restrict)
+  worker   StaffMember? @relation(fields: [workerId], references: [id], onDelete: Restrict)
+  team     Team?        @relation(fields: [teamId], references: [id], onDelete: Restrict)
+
+  @@index([fileId])
+  @@index([workerId])
+  @@index([teamId])
+}
+
+/// A service visit (#7, #10, #11). Never deleted: cancelled with a reason.
+/// slotDate is the programme date the visit was generated for and never changes when the visit is moved, so running the generation again never duplicates. A visit cancelled because the programme changed (PROGRAMME_CHANGED) frees its slot and is left out of every count.
+/// @check status IN ('CONFIRMED','AWAITING_CONFIRMATION','IN_PROGRESS','DONE','POSTPONED','PROBLEM','CANCELLED')
+/// @uniqueWhere Visit_slot_day (fileId, fileSlotId, slotDate) WHERE fileSlotId IS NOT NULL AND origin IN ('CONTRACT','ON_DEMAND') AND statusReason IS NOT 'PROGRAMME_CHANGED'
+/// @uniqueWhere Visit_day (fileId, slotDate) WHERE fileSlotId IS NULL AND origin = 'ON_DEMAND' AND statusReason IS NOT 'PROGRAMME_CHANGED'
+/// @trigger noDelete
+model Visit {
+  id                      String    @id
+  numberSeq               Int       // sys; key VISIT, per year (A6)
+  numberYear              Int
+  number                  String    // prints as «رقم أمر المهمة»
+  fileId                  String
+  fileSlotId              String?   // null for a visit added by hand
+  origin                  String    // @code VISIT_ORIGIN
+  sourceVisitId           String?   // the visit it redoes or makes up
+  slotDate                String?   // @date sys; the programme date it was generated for; never changed when the visit is moved; null for a visit added by hand under another origin
+  visitDate               String    // @date; from «تاريخ البداية / النهاية» and «أيام التنفيذ»
+  plannedStartTime        String    // @time; from the slot
+  plannedDurationMin      Int       // @min; from the slot
+  workersNeeded           Int       // «عدد العمال»
+  zoneId                  String?   // sys; the site's zone when created; re-stamped on future unprinted visits by site.changed and zone.remapped
+  supervisorEmployeeId    String?   // sys from the zone, re-stamped with it; prints as «اسم المشرف»
+  teamId                  String?
+  vehicleId               String?
+  transportMode           String?   // @code TRANSPORT_MEANS; D6 section 16
+  dayOrder                Int?      // rank in its team's day (#46)
+  isManuallyEdited        Boolean   @default(false) // sys; protects the visit from regeneration
+  status                  String    // @code VISIT_STATUS (the seven of A9)
+  statusChangedAt         DateTime  // sys
+  statusChangedByUserId   String?   // sys
+  statusReason            String?   // @code VISIT_STATUS_REASON; required for POSTPONED, PROBLEM, CANCELLED
+  statusNote              String?
+  rescheduledToVisitId    String?
+  billable                Boolean   @default(false) // sys only: 1 when DONE and origin is not REDO or INITIAL, else 0. The office's own decision is Money's VisitBilling, which wins
+  clientAtFault           Boolean?  // late cancellation or closed door (س15)
+  orderPrintedAt          DateTime?
+  orderPrintedByUserId    String?
+  orderPrintCount         Int       @default(0) // sys
+  checklistFrozenAt       DateTime? // sys; when the tick lines were frozen (first print, or first opening for typing); rows created earlier are special or carried tasks
+  planChangedAt           DateTime? // sys; later than orderPrintedAt = «تغيّر بعد الطباعة»
+  orderReleasedAt         DateTime? // the manager let this order print although the client is «متوقف» or «معاقب» and the file's own decision does not cover that sanction (decisionCovers)
+  orderReleasedByUserId   String?
+  arrivalReportedAt       DateTime? // when the office logged the arrival (#27)
+  arrivalReportedVia      String?   // @code ARRIVAL_VIA
+  arrivalReportedByUserId String?
+  clientInformedAt        DateTime? // sys, from VisitCall (#16)
+  actionTaken             String?   // D9 section 19 «الإجراء المتخذ»
+  createdAt               DateTime
+  updatedAt               DateTime
+  createdByUserId         String?
+  updatedByUserId         String?
+
+  file          File         @relation(fields: [fileId], references: [id], onDelete: Restrict)
+  fileSlot      FileSlot?    @relation(fields: [fileSlotId], references: [id], onDelete: Restrict)
+  sourceVisit   Visit?       @relation("VisitSource", fields: [sourceVisitId], references: [id], onDelete: Restrict)
+  rescheduledTo Visit?       @relation("VisitReschedule", fields: [rescheduledToVisitId], references: [id], onDelete: Restrict)
+  zone          Zone?        @relation(fields: [zoneId], references: [id], onDelete: Restrict)
+  supervisor    StaffMember? @relation(fields: [supervisorEmployeeId], references: [id], onDelete: Restrict)
+  team          Team?        @relation(fields: [teamId], references: [id], onDelete: Restrict)
+  vehicle       Vehicle?     @relation(fields: [vehicleId], references: [id], onDelete: Restrict)
+
+  @@unique([numberYear, numberSeq])
+  @@index([visitDate, status])
+  @@index([fileId, visitDate])
+  @@index([status])
+  @@index([zoneId, visitDate])
+  @@index([supervisorEmployeeId, visitDate])
+  @@index([teamId, visitDate])
+}
+
+/// The team on a visit: one row per worker, with his four times (#12). Read by People for hours (#21). Every change to typed times is logged with the old value and a reason (F1 article 14).
+/// Times on the row are read in order (night work); arrivedTime is on the day that puts it nearest to Visit.plannedStartTime.
+/// An ABSENT seat always points at its absence, so People counts it once. RESTING = her rotated rest day on a six-visit contract.
+/// @check seatStatus <> 'ABSENT' OR absenceId IS NOT NULL
+/// @uniqueWhere VisitWorker_active_seat (visitId, workerId) WHERE seatStatus IN ('ASSIGNED','ABSENT','RESTING')
+model VisitWorker {
+  id                    String    @id
+  visitId               String
+  workerId              String
+  role                  String    // @code WORKER_ROLE; D9 section 2 «الصفة»
+  seatStatus            String    // @code SEAT_STATUS
+  dayOrder              Int?      // rank of this visit in her own day, used when Visit.teamId is empty (#46)
+  replacesVisitWorkerId String?   // the seat this worker took over (#9)
+  replacementReason     String?   // @code REPLACEMENT_REASON
+  absenceId             String?   // the absence behind the replacement
+  replacedAt            DateTime?
+  replacedByUserId      String?
+  arrivedTime           String?   // @time; D2 section 19 «وقت الوصول»; required for a present worker before the order is closed
+  workStartTime         String?   // @time; «وقت بدء العمل»
+  workEndTime           String?   // @time; «وقت الانتهاء» / «وقت نهاية العمل»
+  leftTime              String?   // @time; «وقت المغادرة»; required as arrivedTime
+  presenceProof         String?   // @code PRESENCE_PROOF; D9 section 13 «توقيع/تأكيد الحضور»: the site contact's initials beside this worker's two times (#12)
+  lateMin               Int?      // @min sys; arrival minus planned start, floor 0
+  lateReason            String?   // «سبب أي تأخير»
+  workedMin             Int?      // @min sys; end minus start of work, else departure minus arrival
+  attendanceSource      String?   // @code ATTENDANCE_SOURCE
+  enteredAt             DateTime? // sys
+  enteredByUserId       String?   // sys
+  createdAt             DateTime
+  updatedAt             DateTime
+  createdByUserId       String?
+  updatedByUserId       String?
+
+  visit    Visit          @relation(fields: [visitId], references: [id], onDelete: Restrict)
+  worker   StaffMember    @relation(fields: [workerId], references: [id], onDelete: Restrict)
+  replaces VisitWorker?   @relation("SeatReplacement", fields: [replacesVisitWorkerId], references: [id], onDelete: Restrict)
+  absence  WorkerAbsence? @relation(fields: [absenceId], references: [id], onDelete: Restrict)
+
+  @@index([visitId])
+  @@index([workerId, visitId])
+}
+
+/// Every tick line of the order, frozen when the order is first printed (or
+/// when the visit is first opened for typing).
+model VisitChecklistItem {
+  id                String   @id
+  visitId           String
+  kind              String   // @code CHECKLIST_KIND (TASK, AREA, DEPARTURE)
+  fileTaskId        String?
+  areaId            String?
+  groupLabel        String?  // @snap the place
+  label             String   // @snap
+  frequency         String?  // @code TASK_FREQUENCY
+  priority          Int?
+  carriedFromItemId String?  // a weekly or monthly task carried over
+  sortOrder         Int
+  done              Boolean? // null = not typed; 1 = «تم الإنجاز»; 0 = not ticked
+  note              String?  // for an AREA row, «المطلوب اليوم»
+  createdAt         DateTime
+  updatedAt         DateTime
+
+  visit       Visit               @relation(fields: [visitId], references: [id], onDelete: Restrict)
+  fileTask    FileTask?           @relation(fields: [fileTaskId], references: [id], onDelete: Restrict)
+  area        FileArea?           @relation(fields: [areaId], references: [id], onDelete: Restrict)
+  carriedFrom VisitChecklistItem? @relation("CarriedItem", fields: [carriedFromItemId], references: [id], onDelete: Restrict)
+
+  @@index([visitId, sortOrder])
+}
+
+/// The returned-order entry (#12..#15): one row per visit, one Save.
+model VisitReport {
+  id                  String   @id
+  visitId             String   @unique
+  entryState          String   // @code ENTRY_STATE (PARTIAL, COMPLETE); sys
+  returnedDate        String?  // @date; the day the paper came back
+  enteredAt           DateTime // sys
+  enteredByUserId     String?  // sys
+  orderScanUrl        String?  // @url scan of the returned sheet (#15)
+  presenceProof       String?  // @code PRESENCE_PROOF sys; the weakest of the seats' proofs (#12)
+  completion          String?  // @code COMPLETION; D9 section 16
+  completionPercent   Int?     // «نسبة الإنجاز: … %»
+  incompleteReason    String?  // required unless FULL
+  needsExtraVisit     Boolean? // «هل تحتاج إلى زيارة إضافية؟»
+  needsSupervisor     Boolean? // «هل تحتاج إلى تدخل المشرف؟»
+  workerNotes         String?  // D2 section 20 «ملاحظات العاملة»
+  problemOnSite       Boolean? // D9 section 15 «هل توجد مشكلة في الموقع؟ ☐ لا ☐ نعم»; null = neither box
+  supervisorNotes     String?  // «ملاحظات المشرفة»
+  signoffStatus       String?  // @code SIGNOFF_STATUS (#15)
+  signoffAbsentReason String?  // nobody there to sign; replaces signoffStatus
+  signoffName         String?  // «اسم العميل» / «اسم ممثل العمارة»
+  signoffRole         String?  // «الصفة»
+  signoffDate         String?  // @date; «تاريخ الاستلام»
+  signoffNotes        String?  // «ملاحظات العميل» / «الملاحظات»
+  signedOnPaper       Boolean? // «توقيع/تأكيد العميل»; «توقيع المسؤول»
+  workerSigned        Boolean? // D9 section 18 «توقيع العامل»
+  signoffScanUrl      String?  // @url
+  wantsOtherService   Boolean? // «هل يطلب العميل خدمة أخرى؟»
+  otherServiceText    String?
+  ratingQuality       Int?     // 1..5; D2 section 22 «جودة التنظيف»
+  ratingPunctuality   Int?     // «الالتزام بالموعد»
+  ratingBehaviour     Int?     // «سلوك العاملة»
+  ratingMaterials     Int?     // «جودة المواد»
+  ratingOverall       Int?     // «التقييم العام»
+  wouldRecommend      Boolean? // «هل توصي بالمؤسسة؟ نعم / لا»
+  wantsRepeat         Boolean? // D2 section 24 «هل العميل يريد إعادة الخدمة؟»
+  nextServiceDate     String?  // @date; «تاريخ الخدمة القادمة»
+  nextFrequency       String?  // @code NEXT_FREQUENCY
+  preferredWorkerId   String?  // «العاملة المخصصة»
+  createdAt           DateTime
+  updatedAt           DateTime
+  createdByUserId     String?
+  updatedByUserId     String?
+
+  visit           Visit        @relation(fields: [visitId], references: [id], onDelete: Restrict)
+  preferredWorker StaffMember? @relation(fields: [preferredWorkerId], references: [id], onDelete: Restrict)
+
+  @@index([entryState])
+}
+
+/// Every phone call about a visit, reminders included (#9, #16, #27).
+model VisitCall {
+  id             String   @id
+  visitId        String
+  purpose        String   // @code CALL_PURPOSE
+  calledAt       DateTime
+  calledByUserId String?  // sys
+  contactName    String?
+  phone          String?
+  result         String   // @code CALL_RESULT
+  note           String?
+  createdAt      DateTime
+  updatedAt      DateTime
+
+  visit Visit @relation(fields: [visitId], references: [id], onDelete: Restrict)
+
+  @@index([visitId, purpose])
+  @@index([calledAt])
+}
+
+/// #14. One row per kind ticked on the sheet, or per phoned report.
+model ProblemReport {
+  id                   String    @id
+  fileId               String
+  visitId              String?   // a phoned report may have no visit
+  reportedByWorkerId   String?
+  reportedVia          String    // @code PROBLEM_VIA
+  occurredDate         String    // @date; the sheet gives a date only
+  occurredTime         String?   // @time; when it is known (a phoned report)
+  loggedAt             DateTime  // sys
+  loggedByUserId       String?   // sys
+  kind                 String    // @code PROBLEM_KIND; D9 section 15, F1 article 13
+  details              String?   // «التفاصيل»
+  status               String    // @code PROBLEM_STATUS
+  assignedToEmployeeId String?
+  actionTaken          String?
+  closedAt             DateTime?
+  closedByUserId       String?
+  complaintId          String?   // set when a resident's complaint becomes a complaint
+  correctiveTaskId     String?
+  handedTo             String?   // @code HANDED_TO (STOCK, CLIENTS, PEOPLE)
+  createdAt            DateTime
+  updatedAt            DateTime
+  createdByUserId      String?
+  updatedByUserId      String?
+
+  file           File            @relation(fields: [fileId], references: [id], onDelete: Restrict)
+  visit          Visit?          @relation(fields: [visitId], references: [id], onDelete: Restrict)
+  reportedBy     StaffMember?    @relation("ProblemReporter", fields: [reportedByWorkerId], references: [id], onDelete: Restrict)
+  assignedTo     StaffMember?    @relation("ProblemAssignee", fields: [assignedToEmployeeId], references: [id], onDelete: Restrict)
+  complaint      Complaint?      @relation(fields: [complaintId], references: [id], onDelete: Restrict)
+  correctiveTask CorrectiveTask? @relation(fields: [correctiveTaskId], references: [id], onDelete: Restrict)
+
+  @@index([fileId])
+  @@index([visitId])
+  @@index([status])
+}
+
+/// Absences AND booked leave of cleaning workers, one table (#9; coordinator's ruling). Operations is the only writer; People books, decides and sets the pay treatment through Operations' exported functions.
+/// RECORDED and APPROVED rows block a picker and open seats; REQUESTED warns; REFUSED and CANCELLED are ignored.
+/// A leave that crosses the end of a month is cut into one row per month (splitGroupId), so each payslip reads whole rows.
+/// @check category <> 'LEAVE' OR (leaveType IS NOT NULL AND days IS NOT NULL)
+model WorkerAbsence {
+  id              String    @id
+  workerId        String
+  startDate       String    // @date (new: the academy stored no date)
+  endDate         String    // @date
+  type            String    // @code ABSENCE_TYPE (FULL_DAY, HALF_DAY, HOURS)
+  startTime       String?   // @time; required for HALF_DAY and HOURS (HALF_DAY defaults to a period of work.period.*), so the seats hit are known
+  endTime         String?   // @time; required as startTime; after it
+  absenceMin      Int       // @min sys; total over the range: setting work.dayMin a full day, half of it a half day, or the difference
+  category        String    // @code ABSENCE_CATEGORY (LEAVE, SICK, PERSONAL, UNJUSTIFIED, OTHER)
+  leaveType       String?   // @code LEAVE_TYPE; People: only when category = LEAVE
+  days            Int?      // @qty days counted against the leave balance; People
+  splitGroupId    String?   // the same id on the parts of one leave cut at month ends
+  paid            Boolean   @default(false) // People: paid leave or paid absence
+  justified       Boolean   @default(false) // for People's pay
+  plannedAhead    Boolean   @default(false) // sys; recorded before the first day
+  reportedVia     String?   // @code ABSENCE_VIA
+  reason          String?   // ACAD
+  details         String?   // ACAD
+  documentUrl     String?   // @url
+  status          String    @default("RECORDED") // @code ABSENCE_STATUS (RECORDED, REQUESTED, APPROVED, REFUSED, CANCELLED)
+  decidedByUserId String?   // for a leave request
+  decidedAt       DateTime?
+  createdAt       DateTime
+  updatedAt       DateTime
+  createdByUserId String?
+  updatedByUserId String?
+
+  worker StaffMember @relation(fields: [workerId], references: [id], onDelete: Restrict)
+
+  @@index([workerId, startDate])
+  @@index([startDate, endDate])
+  @@index([status])
+}
+
+/// A working-time rule passed with a reason (LAW). Never deleted. valueMin and ruleDate let the override be checked again later.
+/// @trigger noDelete
+model RuleOverride {
+  id               String   @id
+  visitWorkerId    String?
+  workerId         String
+  weekStart        String?  // @date; the Saturday of the week
+  ruleDate         String?  // @date; the day, for a day rule (span, night, rest day)
+  ruleCode         String   // @code RULE_CODE
+  valueMin         Int?     // @min; the load or span that was approved (2970 for 49 h 30)
+  reason           String
+  derogationRef    String?  // the labour inspector's derogation, for NIGHT_WOMAN
+  approvedByUserId String
+  approvedAt       DateTime // sys
+  createdAt        DateTime
+
+  visitWorker VisitWorker? @relation(fields: [visitWorkerId], references: [id], onDelete: Restrict)
+  worker      StaffMember  @relation(fields: [workerId], references: [id], onDelete: Restrict)
+
+  @@index([workerId, weekStart])
+}
+
+/// س8. A worker who works alone has no team.
+model Team {
+  id               String    @id
+  name             String
+  zoneId           String?
+  leaderWorkerId   String?
+  defaultVehicleId String?
+  isActive         Boolean   @default(true)
+  note             String?
+  createdAt        DateTime
+  updatedAt        DateTime
+  createdByUserId  String?
+  updatedByUserId  String?
+  deletedAt        DateTime?
+
+  zone           Zone?        @relation(fields: [zoneId], references: [id], onDelete: Restrict)
+  leader         StaffMember? @relation(fields: [leaderWorkerId], references: [id], onDelete: Restrict)
+  defaultVehicle Vehicle?     @relation(fields: [defaultVehicleId], references: [id], onDelete: Restrict)
+}
+
+model TeamMember {
+  id        String   @id
+  teamId    String
+  workerId  String
+  fromDate  String   // @date
+  toDate    String?  // @date
+  createdAt DateTime
+  updatedAt DateTime
+
+  team   Team        @relation(fields: [teamId], references: [id], onDelete: Restrict)
+  worker StaffMember @relation(fields: [workerId], references: [id], onDelete: Restrict)
+
+  @@index([teamId])
+  @@index([workerId, fromDate])
+}
+
+/// Register of centre vehicles (#46). Their fuel and repairs are ordinary
+/// expenses in Money (Expense.vehicleId).
+model Vehicle {
+  id               String    @id
+  label            String
+  plateNumber      String    @unique
+  kind             String?
+  seats            Int?
+  zoneId           String?
+  status           String    // @code VEHICLE_STATUS
+  insuranceExpiry  String?   // @date (Operations' addition)
+  inspectionExpiry String?   // @date (Operations' addition)
+  note             String?
+  createdAt        DateTime
+  updatedAt        DateTime
+  createdByUserId  String?
+  updatedByUserId  String?
+  deletedAt        DateTime?
+
+  zone Zone? @relation(fields: [zoneId], references: [id], onDelete: Restrict)
+}
+
+/// #36: who supervises which zone, and a worker's own supervisor. A row names a zone or a worker, never both. A worker without a row of her own has the supervisor of her zone.
+/// @check (zoneId IS NOT NULL) <> (workerId IS NOT NULL)
+model SupervisorAssignment {
+  id                   String   @id
+  supervisorEmployeeId String
+  zoneId               String?  // exactly one of zoneId, workerId
+  workerId             String?
+  fromDate             String   // @date
+  toDate               String?  // @date
+  createdAt            DateTime
+  updatedAt            DateTime
+  createdByUserId      String?
+  updatedByUserId      String?
+
+  supervisor StaffMember  @relation("SupervisorOf", fields: [supervisorEmployeeId], references: [id], onDelete: Restrict)
+  zone       Zone?        @relation(fields: [zoneId], references: [id], onDelete: Restrict)
+  worker     StaffMember? @relation("SupervisedWorker", fields: [workerId], references: [id], onDelete: Restrict)
+
+  @@index([zoneId, fromDate])
+  @@index([workerId, fromDate])
+  @@index([supervisorEmployeeId])
+}
+
+/// Seeded, editable by المدير (#17). One set per division: seven for housing and organisations (D1), eight for buildings and complexes (D9 section 17). An inspection takes the rows of its file's division.
+model InspectionCriterion {
+  id        String   @id
+  code      String   // @code INSPECTION_CRITERION
+  division  String   // @code DIVISION
+  labelAr   String
+  labelFr   String?
+  labelEn   String?
+  weight    Int      @default(1)
+  sortOrder Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime
+  updatedAt DateTime
+
+  @@unique([division, code])
+}
+
+/// Supervisor inspection (#17), office form: printed sheet, typed in. Numbered, never deleted.
+/// planPeriod makes the planned ones idempotent: one per file and week or month, whatever plannedDate becomes. An inspection added by hand has none.
+/// Its photos are Upload rows (entity Inspection, field photos).
+/// @uniqueWhere Inspection_plan_period (fileId, planPeriod) WHERE planPeriod IS NOT NULL
+/// @trigger noDelete
+model Inspection {
+  id                   String    @id
+  numberSeq            Int       // sys; key INSPECTION, per year
+  numberYear           Int
+  number               String
+  fileId               String
+  planPeriod           String?   // sys; 'YYYY-MM', or the Saturday of the week 'YYYY-MM-DD'; null for an inspection added by hand
+  visitId              String?   // the visit inspected
+  plannedDate          String    // @date
+  supervisorEmployeeId String?   // from the plan or the zone; may be empty when the zone has no supervisor; required before DONE
+  status               String    // @code INSPECTION_STATUS
+  doneDate             String?   // @date; required when DONE
+  doneAtTime           String?   // @time
+  sheetPrintedAt       DateTime?
+  scoreTotal           Int?      // 0..100 sys (A9)
+  thresholdUsed        Int?      // sys; the setting when typed (80)
+  belowThreshold       Boolean?  // sys
+  correctionNeeded     Boolean?  // the supervisor's own tick «هل يحتاج العمل إلى تصحيح؟ ☐ نعم ☐ لا», apart from the computed belowThreshold; null = neither box (coordinator, F2)
+  overallLevel         String?   // @code QUALITY_LEVEL; D9 section 17 «مستوى جودة العمل»
+  recommendedAction    String?   // @code CORRECTIVE_ACTION; D1
+  supervisorNotes      String?   // «ملاحظات المشرف»
+  clientRemark         String?
+  sheetScanUrl         String?   // @url
+  enteredAt            DateTime? // sys
+  enteredByUserId      String?   // sys
+  createdAt            DateTime
+  updatedAt            DateTime
+  createdByUserId      String?
+  updatedByUserId      String?
+
+  file       File         @relation(fields: [fileId], references: [id], onDelete: Restrict)
+  visit      Visit?       @relation(fields: [visitId], references: [id], onDelete: Restrict)
+  supervisor StaffMember? @relation(fields: [supervisorEmployeeId], references: [id], onDelete: Restrict)
+
+  @@unique([numberYear, numberSeq])
+  @@index([status, plannedDate])
+  @@index([fileId, plannedDate])
+  @@index([supervisorEmployeeId, plannedDate])
+}
+
+model InspectionScore {
+  id            String   @id
+  inspectionId  String
+  criterionCode String   // @code INSPECTION_CRITERION
+  label         String   // @snap
+  weight        Int      // @snap
+  score         Int?     // 0..10
+  notApplicable Boolean  @default(false)
+  note          String?
+  createdAt     DateTime
+  updatedAt     DateTime
+
+  inspection Inspection @relation(fields: [inspectionId], references: [id], onDelete: Restrict)
+
+  @@unique([inspectionId, criterionCode])
+}
+
+/// Gives «تدريب العاملة» and «تغيير العاملة» a subject, and lets People see
+/// results per worker.
+model InspectionWorkerNote {
+  id           String   @id
+  inspectionId String
+  workerId     String
+  present      Boolean  @default(true)
+  remark       String?
+  createdAt    DateTime
+  updatedAt    DateTime
+
+  inspection Inspection  @relation(fields: [inspectionId], references: [id], onDelete: Restrict)
+  worker     StaffMember @relation(fields: [workerId], references: [id], onDelete: Restrict)
+
+  @@unique([inspectionId, workerId])
+  @@index([workerId])
+}
+
+/// #17: created automatically when a DONE inspection scores under the
+/// threshold; also from a complaint, a problem report or a sign-off.
+model CorrectiveTask {
+  id                   String    @id
+  source               String    // @code CORRECTIVE_SOURCE
+  inspectionId         String?
+  complaintId          String?
+  problemReportId      String?
+  visitId              String?
+  fileId               String
+  description          String    // written by the service from the weak criteria, editable
+  action               String    // @code CORRECTIVE_ACTION
+  dueDate              String    // @date; #17 «بموعد»
+  assignedToEmployeeId String?   // #17 «ومسؤول»; may be empty on a task the program created; required before the task leaves OPEN
+  workerId             String?   // for training or change
+  redoVisitId          String?   // the re-service visit
+  status               String    // @code TASK_STATUS
+  doneAt               DateTime?
+  doneByUserId         String?
+  resultNote           String?
+  createdAt            DateTime
+  updatedAt            DateTime
+  createdByUserId      String?
+  updatedByUserId      String?
+
+  inspection    Inspection?    @relation(fields: [inspectionId], references: [id], onDelete: Restrict)
+  complaint     Complaint?     @relation(fields: [complaintId], references: [id], onDelete: Restrict)
+  problemReport ProblemReport? @relation(fields: [problemReportId], references: [id], onDelete: Restrict)
+  visit         Visit?         @relation("CorrectiveVisit", fields: [visitId], references: [id], onDelete: Restrict)
+  file          File           @relation(fields: [fileId], references: [id], onDelete: Restrict)
+  assignedTo    StaffMember?   @relation("CorrectiveAssignee", fields: [assignedToEmployeeId], references: [id], onDelete: Restrict)
+  worker        StaffMember?   @relation("CorrectiveWorker", fields: [workerId], references: [id], onDelete: Restrict)
+  redoVisit     Visit?         @relation("CorrectiveRedo", fields: [redoVisitId], references: [id], onDelete: Restrict)
+
+  @@index([status, dueDate])
+  @@index([fileId])
+  @@index([assignedToEmployeeId, status])
+}
+
+/// #18. Numbered; never deleted.
+/// @trigger noDelete
+model Complaint {
+  id                    String    @id
+  numberSeq             Int       // sys; key COMPLAINT, per year (A6)
+  numberYear            Int
+  number                String
+  receivedAt            DateTime  // starts the counter
+  receivedByUserId      String?   // sys
+  channel               String    // @code COMPLAINT_CHANNEL
+  clientId              String
+  fileId                String?
+  visitId               String?   // #18 «مرتبطة بالمهمة»
+  workerId              String?   // #18 «والعامل»
+  complainantName       String?   // a resident is a third party: optional
+  complainantPhone      String?
+  kind                  String    // @code COMPLAINT_KIND; D1 «نوع المشكلة»
+  description           String
+  targetMin             Int       // @min sys; the setting when received (120)
+  dueAt                 DateTime  // sys; receivedAt plus the target, counted in office hours
+  firstResponseAt       DateTime? // stops the counter
+  firstResponseByUserId String?
+  responseNote          String?
+  status                String    // @code COMPLAINT_STATUS
+  centreAtFault         String?   // @code FAULT (YES, NO, UNDECIDED); D1
+  settlement            String?   // @code SETTLEMENT; D1 «سياسة التعويض»
+  settlementAmount      Int?      // @money; Money turns it into a discount line
+  redoVisitId           String?
+  correctiveTaskId      String?
+  settledAt             DateTime?
+  settledByUserId       String?
+  resolutionNote        String?
+  clientToldAt          DateTime?
+  createdAt             DateTime
+  updatedAt             DateTime
+  createdByUserId       String?
+  updatedByUserId       String?
+
+  client         Client          @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  file           File?           @relation(fields: [fileId], references: [id], onDelete: Restrict)
+  visit          Visit?          @relation("ComplaintVisit", fields: [visitId], references: [id], onDelete: Restrict)
+  worker         StaffMember?    @relation(fields: [workerId], references: [id], onDelete: Restrict)
+  redoVisit      Visit?          @relation("ComplaintRedo", fields: [redoVisitId], references: [id], onDelete: Restrict)
+  correctiveTask CorrectiveTask? @relation(fields: [correctiveTaskId], references: [id], onDelete: Restrict)
+
+  @@unique([numberYear, numberSeq])
+  @@index([status, dueAt])
+  @@index([clientId])
+  @@index([fileId])
+  @@index([workerId])
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// OWNER: MONEY AND STOCK (30 models)
+// PaymentDue, DueFollowUp, InvoiceDraft, Invoice, InvoiceLine, InvoiceVisit,
+// VisitBilling, Payment, PaymentAllocation, Receipt, LegalEvent,
+// ReceiptBatch, CashReconciliation, CashReconciliationLine, Expense,
+// ExportBatch, StockItem, EquipmentUnit, StockMovement, InventoryCount,
+// InventoryCountLine, HandOut, HandOutLine, HandOutReturn, Supplier,
+// PurchaseRequest, PurchaseRequestLine, Purchase, PurchaseLine,
+// MaintenanceRecord
+//
+// CHAINED, APPEND-ONLY (no UPDATE, no DELETE, hashV + chainSeq + prevHash + hash,
+// never soft-deleted): Invoice, InvoiceLine, InvoiceVisit, Payment,
+// PaymentAllocation, Receipt, LegalEvent.
+// APPEND-ONLY WITHOUT A CHAIN: StockMovement, HandOutLine, HandOutReturn,
+// PurchaseLine, CashReconciliation, CashReconciliationLine, ExportBatch.
+// "Voided", "used" and every state shown as a chip are DERIVED from LegalEvent,
+// Payment and PaymentAllocation rows; none is a column. Two totals are cached
+// by triggers on insert-only ledgers: PaymentDue.paidAmount, StockItem.onHandQty.
+// The stock tables start at StockItem.
+// ═══════════════════════════════════════════════════════════════════════════
+
+/// «استحقاق» (#20): one row per amount the client is expected to pay, built from the file's terms (A7). The payment-due alert and the debt list read this table, so they work before any invoice exists.
+/// syncDues is idempotent: it updates untouched dues in place and cancels extras; it never deletes and never duplicates (the unique indexes).
+/// paidAmount is a cache kept by a trigger on the insert-only PaymentAllocation, and guarded: paid = the sum of the allocations, reversals included; remaining = amount - paidAmount. Due state and days late are derived.
+/// @uniqueWhere PaymentDue_visit (visitId) WHERE visitId IS NOT NULL AND cancelledAt IS NULL
+/// @uniqueWhere PaymentDue_period (fileId, periodStart) WHERE kind = 'SCHEDULE' AND cancelledAt IS NULL
+/// @uniqueWhere PaymentDue_single (fileId, kind) WHERE kind IN ('SINGLE','INITIAL_JOB') AND cancelledAt IS NULL
+/// @index PaymentDue_open (dueDate) WHERE cancelledAt IS NULL AND paidAmount < amount
+/// @trigger named PaymentDue_paid_guard
+model PaymentDue {
+  id              String    @id
+  fileId          String
+  seq             Int       // order inside the file
+  kind            String    // @code DUE_KIND
+  periodStart     String?   // @date; required for SCHEDULE
+  periodEnd       String?   // @date
+  visitId         String?   // required for VISIT («بعد كل زيارة») and EXTRA
+  dueDate         String    // @date; «تاريخ تسديد», then «دورية السداد» (A7)
+  plannedVisits   Int?      // count of planned visits in the period
+  expectedAmount  Int       // @money; from «المبلغ إجمالي» and amountBasis
+  invoiceId       String?   // set when invoiced; cleared when that invoice is voided
+  amount          Int       // @money; the receivable: expectedAmount until invoiced, then this due's share of that invoice's totalTTC. Never the stamp duty
+  paidAmount      Int       @default(0) // @money sys; kept by trigger PaymentAllocation_paid
+  draftId         String?   // the InvoiceDraft that holds this due, so two drafts never take one due
+  cancelledAt     DateTime? // contract ended early, terms changed
+  cancelReason    String?
+  note            String?
+  createdAt       DateTime
+  updatedAt       DateTime
+  createdByUserId String?
+  updatedByUserId String?
+
+  file    File          @relation(fields: [fileId], references: [id], onDelete: Restrict)
+  visit   Visit?        @relation(fields: [visitId], references: [id], onDelete: Restrict)
+  invoice Invoice?      @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
+  draft   InvoiceDraft? @relation(fields: [draftId], references: [id], onDelete: Restrict)
+
+  @@unique([fileId, seq])
+  @@index([dueDate, cancelledAt])
+  @@index([invoiceId])
+  @@index([visitId])
+  @@index([draftId])
+}
+
+/// The reminder is "a printed letter or a call" (#20). Nothing is sent.
+model DueFollowUp {
+  id              String   @id
+  dueId           String
+  kind            String   // @code FOLLOWUP_KIND (CALL, LETTER)
+  date            String   // @date
+  note            String?
+  promisedDate    String?  // @date
+  createdAt       DateTime
+  createdByUserId String?
+
+  due PaymentDue @relation(fields: [dueId], references: [id], onDelete: Restrict)
+
+  @@index([dueId, date])
+}
+
+/// A prepared invoice that is not yet a legal record: ordinary, editable, deletable. Issuing writes Invoice + lines + visit rows from payload and deletes the draft, in one transaction. Invoice itself never holds a draft.
+/// The dues a draft would invoice are the PaymentDue rows whose draftId points here.
+model InvoiceDraft {
+  id                String   @id
+  fileId            String
+  periodStart       String?  // @date
+  periodEnd         String?  // @date
+  replacesInvoiceId String?  // reissue after a void
+  payload           String   // @json {header, lines[], visits[]} in the shapes of Invoice, InvoiceLine and InvoiceVisit, without numbers and chain columns
+  note              String?
+  createdAt         DateTime
+  updatedAt         DateTime
+  createdByUserId   String?
+  updatedByUserId   String?
+
+  file     File     @relation(fields: [fileId], references: [id], onDelete: Restrict)
+  replaces Invoice? @relation(fields: [replacesInvoiceId], references: [id], onDelete: Restrict)
+
+  @@index([fileId])
+}
+
+/// «فاتورة» (#19, #31; LAW Decree 05-468). A row exists only once ISSUED; it is never updated. Voided = a VOIDED LegalEvent.
+/// discountAmount is stored positive. An invoice billing several dues shares its totalTTC between them by its lines' dueId; the last due takes the remainder.
+/// @trigger chained
+/// @trigger legalNumber(INVOICE)
+/// @check division IN ('HOUSING','ORGANISATION','BUILDING','COMPLEX')
+/// @check netToPay = totalTTC + stampDuty
+/// @check totalTTC = totalHT + vatAmount
+/// @check taxMode <> 'IFU' OR (vatAmount = 0 AND vatRate = 0 AND ifuMention IS NOT NULL)
+/// @check paymentMethod = 'CASH' OR stampDuty = 0
+/// @check grossAmount - discountAmount = CASE WHEN taxMode = 'VAT' AND pricesIncludeVat = 0 THEN totalHT ELSE totalTTC END
+model Invoice {
+  id                String   @id
+  numberSeq         Int      // sys; legal sequence INVOICE, per year, gap-free
+  numberYear        Int
+  number            String   // display "000123/2026"
+  fileId            String
+  clientId          String   // @snap at issue, so history never moves
+  division          String   // @code DIVISION @snap
+  serviceType       String   // @code SERVICE_TYPE @snap
+  branchId          String   // @snap
+  issueDate         String   // @date; «تاريخ الفاتورة»; never before the last issued one (LAW)
+  issuedAt          DateTime
+  issuedByUserId    String
+  periodStart       String?  // @date; the payment period billed
+  periodEnd         String?  // @date
+  taxMode           String   // @code TAX_MODE @snap (س16)
+  vatRate           Int      // @bp @snap (1900)
+  pricesIncludeVat  Boolean  // @snap
+  grossAmount       Int      // @money; «قيمة الخدمة»
+  discountAmount    Int      // @money; «الخصم»; positive
+  totalHT           Int      // @money; «المجموع خارج الرسم»
+  vatAmount         Int      // @money; «الرسم على القيمة المضافة»; 0 under IFU
+  totalTTC          Int      // @money; «المبلغ المستحق»
+  paymentMethod     String   // @code PAYMENT_METHOD; «طريقة السداد» (one, chosen at issue)
+  stampDuty         Int      // @money; «حق الطابع»; 0 unless cash
+  netToPay          Int      // @money; «الصافي للدفع» = TTC + stamp
+  amountWordsAr     String   // LAW
+  amountWordsFr     String   // LAW
+  dueDate           String   // @date; «تاريخ التسديد» (LAW)
+  paymentPlace      String?  // «مكان التسديد»
+  sellerSnapshot    String   // @json @snap {nameAr, nameLatin, legalForm, address, phone, rc, nis, nif, nin, articleNumber, bankName, bankAccount, ccpNumber, ccpKey}
+  buyerSnapshot     String   // @json @snap {name, legalForm, address, commune, wilayaCode, hasTradeRegister, rc, nis, nif, articleNumber, payerName, payerPhone}
+  ifuMention        String?  // required under IFU
+  note              String?
+  replacesInvoiceId String?  // reissue after a void
+  contentDigest     String   // sys; SHA-256 over its lines and visit rows (DESIGN.md section 8)
+  hashV             Int      // sys
+  chainSeq          Int      @unique // sys
+  prevHash          String   // sys
+  hash              String   // sys
+  createdAt         DateTime
+  createdByUserId   String
+
+  file     File     @relation(fields: [fileId], references: [id], onDelete: Restrict)
+  client   Client   @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  branch   Branch   @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  replaces Invoice? @relation("InvoiceReissue", fields: [replacesInvoiceId], references: [id], onDelete: Restrict)
+
+  @@unique([numberYear, numberSeq])
+  @@index([fileId])
+  @@index([clientId])
+  @@index([issueDate])
+  @@index([division, issueDate])
+}
+
+/// @trigger chained
+/// @trigger headOnly(Invoice, invoiceId)
+model InvoiceLine {
+  id          String   @id
+  invoiceId   String
+  seq         Int      // 1, 2, 3 ... inside the invoice
+  kind        String   // @code INVOICE_LINE_KIND
+  description String   // Arabic, frozen
+  quantity    Int      // @qty
+  unitLabel   String   // «زيارة», «شهر», «أسبوع», «خدمة»
+  unitPrice   Int      // @money
+  amount      Int      // @money; negative for MISSED_VISIT, DISCOUNT, DEPOSIT
+  dueId       String?
+  visitId     String?
+  complaintId String?  // the complaint whose discount this line carries
+  hashV       Int      // sys
+  chainSeq    Int      @unique // sys
+  prevHash    String   // sys
+  hash        String   // sys
+  createdAt   DateTime
+
+  invoice   Invoice     @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
+  due       PaymentDue? @relation(fields: [dueId], references: [id], onDelete: Restrict)
+  visit     Visit?      @relation(fields: [visitId], references: [id], onDelete: Restrict)
+  complaint Complaint?  @relation(fields: [complaintId], references: [id], onDelete: Restrict)
+
+  @@unique([invoiceId, seq])
+  @@index([visitId])
+  @@index([complaintId])
+}
+
+/// «كشف الزيارات المنجزة», frozen with the invoice (#19). All copied from Operations at issue.
+/// @trigger chained
+/// @trigger headOnly(Invoice, invoiceId)
+model InvoiceVisit {
+  id           String   @id
+  invoiceId    String
+  seq          Int
+  visitId      String
+  visitDate    String   // @date @snap
+  dayName      String   // @snap
+  arrival      String?  // @time @snap
+  departure    String?  // @time @snap
+  workersCount Int      // @snap
+  workedMin    Int?     // @min @snap
+  completion   String   // @snap label (مكتملة بالكامل / مكتملة جزئياً / لم تكتمل)
+  signOff      String?  // @snap label
+  signedBy     String?  // @snap
+  billable     Boolean  // @snap
+  remark       String?
+  hashV        Int      // sys
+  chainSeq     Int      @unique // sys
+  prevHash     String   // sys
+  hash         String   // sys
+  createdAt    DateTime
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
+  visit   Visit   @relation(fields: [visitId], references: [id], onDelete: Restrict)
+
+  @@unique([invoiceId, seq])
+  @@index([visitId])
+}
+
+/// The office's decision on one visit, when it differs from Operations' Visit.billable (س15): bill it or not, with the reason; and the price of an EXTRA visit, which has none anywhere else.
+model VisitBilling {
+  id              String   @id
+  visitId         String   @unique
+  billable        Boolean
+  reason          String
+  amount          Int?     // @money; the price of an EXTRA visit (builds a due of kind EXTRA)
+  createdAt       DateTime
+  updatedAt       DateTime
+  createdByUserId String?
+  updatedByUserId String?
+
+  visit Visit @relation(fields: [visitId], references: [id], onDelete: Restrict)
+}
+
+/// «تسديد» (#20). A wrong payment is voided with a reason, never edited: voiding writes one negative PaymentAllocation per live one, then the VOIDED LegalEvent (and the receipt's, for cash).
+/// A cash payment always has its receipt and one receipt serves one payment; the payment row is what the receipt prints.
+/// @trigger chained
+/// @trigger named Payment_receipt_free
+/// @check division IN ('HOUSING','ORGANISATION','BUILDING','COMPLEX')
+/// @check amount >= 0 AND totalReceived = amount + stampDuty
+/// @check (method = 'CASH') = (receiptId IS NOT NULL)
+/// @check method = 'CASH' OR stampDuty = 0
+/// @check receiptId IS NULL OR (amountWordsAr IS NOT NULL AND amountWordsFr IS NOT NULL AND receiptReason IS NOT NULL)
+/// @check (collectorKind = 'OFFICE') = (collectorStaffId IS NULL)
+/// @uniqueWhere Payment_receipt (receiptId) WHERE receiptId IS NOT NULL
+model Payment {
+  id               String   @id
+  fileId           String
+  clientId         String   // @snap
+  division         String   // @code DIVISION @snap: what puts it in a division's income
+  branchId         String   // @snap
+  receivedDate     String   // @date; «تاريخ الدفع»; decides the income period
+  method           String   // @code PAYMENT_METHOD
+  amount           Int      // @money; the part applied to dues (stamp excluded)
+  stampDuty        Int      // @money; 0 unless cash (LAW)
+  totalReceived    Int      // @money; = amount + stampDuty
+  reference        String?  // transfer or postal order number; required for transfers
+  payerName        String   // default «مسدد أتعاب»
+  place            String?  // default «مكان التسديد»
+  collectorKind    String   // @code COLLECTOR_KIND; F1 article 12
+  collectorStaffId String?  // People's row; null for OFFICE
+  receiptId        String?  // required for cash (LAW, #32)
+  amountWordsAr    String?  // cash: the total in words on the receipt (LAW)
+  amountWordsFr    String?  // cash
+  receiptReason    String?  // cash: what the receipt says it is for (invoice number, file, period)
+  proofUrl         String?  // @url scan of the transfer slip
+  note             String?
+  hashV            Int      // sys
+  enteredByUserId  String
+  enteredAt        DateTime
+  chainSeq         Int      @unique // sys
+  prevHash         String   // sys
+  hash             String   // sys
+  createdAt        DateTime
+
+  file      File         @relation(fields: [fileId], references: [id], onDelete: Restrict)
+  client    Client       @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  branch    Branch       @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  collector StaffMember? @relation(fields: [collectorStaffId], references: [id], onDelete: Restrict)
+  receipt   Receipt?     @relation(fields: [receiptId], references: [id], onDelete: Restrict)
+
+  @@index([fileId])
+  @@index([clientId])
+  @@index([division, receivedDate])
+  @@index([receivedDate])
+}
+
+/// How a payment is applied to dues. A reversal is a negative row pointing at the row it undoes, once. Money not allocated stays as the file's credit.
+/// paid(due) = SUM(amount) over its rows, never filtered by events.
+/// @trigger chained
+/// @trigger named PaymentAllocation_paid
+/// @uniqueWhere PaymentAllocation_one_reversal (reversesAllocationId) WHERE reversesAllocationId IS NOT NULL
+model PaymentAllocation {
+  id                   String   @id
+  paymentId            String
+  dueId                String
+  amount               Int      // @money signed
+  reversesAllocationId String?  // the allocation this row reverses
+  hashV                Int      // sys
+  chainSeq             Int      @unique // sys
+  prevHash             String   // sys
+  hash                 String   // sys
+  createdAt            DateTime
+  createdByUserId      String
+
+  payment  Payment            @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+  due      PaymentDue         @relation(fields: [dueId], references: [id], onDelete: Restrict)
+  reversed PaymentAllocation? @relation("AllocationReversal", fields: [reversesAllocationId], references: [id], onDelete: Restrict)
+
+  @@index([dueId])
+  @@index([paymentId])
+}
+
+/// «سند قبض» (#32; LAW). The row is written once, when the receipt is printed and takes its number.
+/// Derived status: VOIDED or MISSING from its LegalEvent; USED when a Payment points at it; else WITH_COLLECTOR.
+/// @trigger chained
+/// @trigger legalNumber(RECEIPT)
+/// @check (collectorKind = 'OFFICE') = (collectorStaffId IS NULL)
+model Receipt {
+  id               String   @id
+  numberSeq        Int      // sys; legal sequence RECEIPT, per year, gap-free
+  numberYear       Int
+  number           String   // display "000045/2026"
+  issueDate        String   // @date
+  batchId          String?  // set when pre-printed for a collector
+  collectorKind    String   // @code COLLECTOR_KIND
+  collectorStaffId String?  // null for OFFICE
+  fileId           String?  // known for office receipts and pre-filled field receipts
+  branchId         String
+  sellerSnapshot   String   // @json @snap
+  hashV            Int      // sys
+  chainSeq         Int      @unique // sys
+  prevHash         String   // sys
+  hash             String   // sys
+  createdAt        DateTime
+  createdByUserId  String
+
+  batch     ReceiptBatch? @relation(fields: [batchId], references: [id], onDelete: Restrict)
+  collector StaffMember?  @relation(fields: [collectorStaffId], references: [id], onDelete: Restrict)
+  file      File?         @relation(fields: [fileId], references: [id], onDelete: Restrict)
+  branch    Branch        @relation(fields: [branchId], references: [id], onDelete: Restrict)
+
+  @@unique([numberYear, numberSeq])
+  @@index([batchId])
+  @@index([collectorStaffId, issueDate])
+}
+
+/// What happens to a legal document after it was written: one append-only, chained table for the three of them (coordinator: a void is an event). Exactly one subject per row.
+/// VOIDED: an invoice, a payment, or a receipt (unused, or with its voided payment). MISSING: a receipt blank that was lost. PRINTED: each print of an invoice or a receipt.
+/// A receipt is USED when a Payment points at it (Payment.receiptId, unique): the payment row is the content of the receipt, so "used" needs no event.
+/// @trigger chained
+/// @trigger named LegalEvent_receipt_in_use
+/// @check (invoiceId IS NOT NULL) + (paymentId IS NOT NULL) + (receiptId IS NOT NULL) = 1
+/// @check type IN ('VOIDED','MISSING','PRINTED')
+/// @check type <> 'MISSING' OR receiptId IS NOT NULL
+/// @check type <> 'PRINTED' OR paymentId IS NULL
+/// @check type = 'PRINTED' OR reason IS NOT NULL
+/// @uniqueWhere LegalEvent_invoice_void (invoiceId) WHERE type = 'VOIDED' AND invoiceId IS NOT NULL
+/// @uniqueWhere LegalEvent_payment_void (paymentId) WHERE type = 'VOIDED' AND paymentId IS NOT NULL
+/// @uniqueWhere LegalEvent_receipt_end (receiptId) WHERE type IN ('VOIDED','MISSING') AND receiptId IS NOT NULL
+model LegalEvent {
+  id              String   @id
+  invoiceId       String?  // exactly one of invoiceId, paymentId, receiptId
+  paymentId       String?
+  receiptId       String?
+  type            String   // @code LEGAL_EVENT_TYPE (VOIDED, MISSING, PRINTED)
+  reason          String?  // required for VOIDED and MISSING ("unused", or the reason typed)
+  hashV           Int      // sys
+  chainSeq        Int      @unique // sys
+  prevHash        String   // sys
+  hash            String   // sys
+  createdAt       DateTime
+  createdByUserId String
+
+  invoice Invoice? @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
+  payment Payment? @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+  receipt Receipt? @relation(fields: [receiptId], references: [id], onDelete: Restrict)
+
+  @@index([invoiceId, type])
+  @@index([paymentId])
+  @@index([receiptId])
+}
+
+/// Numbered receipts handed to a collector (#32).
+/// @check (collectorKind = 'OFFICE') = (collectorStaffId IS NULL)
+model ReceiptBatch {
+  id               String    @id
+  date             String    // @date
+  collectorKind    String    // @code COLLECTOR_KIND
+  collectorStaffId String?
+  numberYear       Int
+  firstNumber      Int       // numberSeq of the first receipt
+  lastNumber       Int
+  issuedByUserId   String
+  returnedAt       DateTime?
+  createdAt        DateTime
+  updatedAt        DateTime
+
+  collector StaffMember? @relation(fields: [collectorStaffId], references: [id], onDelete: Restrict)
+
+  @@index([date])
+  @@index([returnedAt])
+}
+
+/// «المطابقة اليومية». The row is written when the day is closed; closing is final. A later correction is a new row that points at this one, once.
+/// @trigger appendOnly
+/// @check (collectorKind = 'OFFICE') = (collectorStaffId IS NULL)
+/// @uniqueWhere CashReconciliation_day (date, collectorKind, COALESCE(collectorStaffId, ''), branchId) WHERE correctsReconciliationId IS NULL
+/// @uniqueWhere CashReconciliation_one_correction (correctsReconciliationId) WHERE correctsReconciliationId IS NOT NULL
+model CashReconciliation {
+  id                       String   @id
+  date                     String   // @date
+  collectorKind            String   // @code COLLECTOR_KIND
+  collectorStaffId         String?
+  receiptsIssued           Int
+  receiptsUsed             Int
+  receiptsVoided           Int
+  receiptsMissing          Int
+  expectedCash             Int      // @money; sum of totalReceived on the used receipts
+  countedCash              Int      // @money
+  difference               Int      // @money
+  note                     String?  // required when the difference is not 0 or a receipt is missing
+  correctsReconciliationId String?
+  branchId                 String
+  closedByUserId           String
+  closedAt                 DateTime
+  createdAt                DateTime
+
+  collector StaffMember?        @relation(fields: [collectorStaffId], references: [id], onDelete: Restrict)
+  corrects  CashReconciliation? @relation("ReconciliationCorrection", fields: [correctsReconciliationId], references: [id], onDelete: Restrict)
+  branch    Branch              @relation(fields: [branchId], references: [id], onDelete: Restrict)
+
+  @@index([date])
+  @@index([collectorStaffId, date])
+}
+
+/// @trigger appendOnly
+model CashReconciliationLine {
+  id               String   @id
+  reconciliationId String
+  receiptId        String
+  outcome          String   // @code RECONCILIATION_OUTCOME (USED, VOIDED, MISSING)
+  paymentId        String?
+  createdAt        DateTime
+
+  reconciliation CashReconciliation @relation(fields: [reconciliationId], references: [id], onDelete: Restrict)
+  receipt        Receipt            @relation(fields: [receiptId], references: [id], onDelete: Restrict)
+  payment        Payment?           @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+
+  @@unique([reconciliationId, receiptId])
+}
+
+/// «مصروف» (#39). Expenses are money out, on the day it went out. Rows whose source is not MANUAL are written by Money's own service from a purchase, a maintenance record or a payout to staff, and are read-only on screen.
+/// Soft delete with a reason, logged (the academy hard-deletes).
+/// @check (source = 'PURCHASE') = (purchaseId IS NOT NULL)
+/// @check (source = 'MAINTENANCE') = (maintenanceRecordId IS NOT NULL)
+/// @check (source = 'PAYROLL') = (staffPayoutId IS NOT NULL)
+/// @uniqueWhere Expense_payout (staffPayoutId, category, division) WHERE staffPayoutId IS NOT NULL AND deletedAt IS NULL
+model Expense {
+  id                  String    @id
+  date                String    // @date; ACAD
+  division            String    // @code EXPENSE_DIVISION (the four + COMMON); his note, section 4
+  category            String    // @code EXPENSE_CATEGORY; D1
+  amount              Int       // @money; ACAD
+  method              String?   // @code PAYMENT_METHOD; required for MANUAL (validator); a maintenance record has none
+  paidTo              String?   // supplier or beneficiary
+  spentByEmployeeId   String?   // «المكلف بالشراء»; ACAD purchasingAgent
+  spentByName         String?   // when he is not an employee on file
+  fileId              String?   // a cost of one contract (#30)
+  supplierId          String?
+  vehicleId           String?   // Operations' vehicle, for fuel and repairs
+  recurrence          String    @default("NONE") // @code RECURRENCE (NONE, MONTHLY); for the forecast (#41)
+  source              String    @default("MANUAL") // @code EXPENSE_SOURCE
+  purchaseId          String?   // when source = PURCHASE
+  maintenanceRecordId String?   // when source = MAINTENANCE
+  staffPayoutId       String?   // People's row, when source = PAYROLL: the payout this expense is
+  payRunId            String?   // People's run of the payslip that payout paid, when there is one
+  receiptUrl          String?   // @url; ACAD
+  note                String?   // ACAD
+  branchId            String
+  createdAt           DateTime
+  updatedAt           DateTime
+  createdByUserId     String?
+  updatedByUserId     String?
+  deletedAt           DateTime?
+  deleteReason        String?
+
+  spentBy           StaffMember?       @relation(fields: [spentByEmployeeId], references: [id], onDelete: Restrict)
+  file              File?              @relation(fields: [fileId], references: [id], onDelete: Restrict)
+  supplier          Supplier?          @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  vehicle           Vehicle?           @relation(fields: [vehicleId], references: [id], onDelete: Restrict)
+  purchase          Purchase?          @relation(fields: [purchaseId], references: [id], onDelete: Restrict)
+  maintenanceRecord MaintenanceRecord? @relation(fields: [maintenanceRecordId], references: [id], onDelete: Restrict)
+  payRun            PayRun?            @relation(fields: [payRunId], references: [id], onDelete: Restrict)
+  branch            Branch             @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  staffPayout       StaffPayout?       @relation(fields: [staffPayoutId], references: [id], onDelete: Restrict)
+
+  @@index([date])
+  @@index([division, date])
+  @@index([category, date])
+  @@index([fileId])
+  @@index([payRunId])
+}
+
+/// One row per export for the accountant (#48). Each is also a DISCLOSE entry in the log.
+/// @trigger appendOnly
+model ExportBatch {
+  id              String   @id
+  kind            String   // @code EXPORT_KIND
+  periodFrom      String   // @date
+  periodTo        String   // @date
+  format          String   // "CSV" until his accountant's program is named
+  fileName        String
+  rowCount        Int
+  fileHash        String   // SHA-256 of the written file
+  createdAt       DateTime
+  createdByUserId String
+
+  @@index([kind, periodFrom])
+}
+
+/// «صنف» (#34). onHandQty is a cache kept by a trigger on the insert-only StockMovement, and guarded. Derived: out (handed and not returned), low (onHandQty <= minLevel).
+/// avgCost is the moving weighted average, updated at each purchase; after a cancelled purchase it is recomputed by replaying the item's movements in order, reversed pairs left out.
+/// @index StockItem_low (id) WHERE isActive = 1 AND minLevel IS NOT NULL AND onHandQty <= minLevel
+/// @trigger named StockItem_on_hand_guard
+model StockItem {
+  id              String    @id
+  code            String    @unique // "FLOOR_CLEANER", "PPE_GLOVES", or typed
+  nameAr          String
+  nameFr          String?
+  nameEn          String?
+  kind            String    // @code STOCK_KIND; his note, section 5: «المعدات» / «المواد»
+  category        String?   // @code STOCK_CATEGORY; a filter
+  unit            String    // @code UNIT
+  tracking        String    // @code STOCK_TRACKING (QUANTITY, UNIT)
+  minLevel        Int?      // @qty; D1 «الحد الأدنى»
+  onHandQty       Int       @default(0) // @qty sys; kept by trigger StockMovement_on_hand
+  avgCost         Int       @default(0) // @money per unit; weighted average, updated at each purchase
+  isActive        Boolean   @default(true)
+  note            String?
+  createdAt       DateTime
+  updatedAt       DateTime
+  createdByUserId String?
+  updatedByUserId String?
+  deletedAt       DateTime?
+
+  @@index([kind, isActive])
+}
+
+/// «معدة» (#35): a machine or tool followed one by one.
+model EquipmentUnit {
+  id                      String    @id
+  itemId                  String
+  numberSeq               Int       @unique // sys; key EQUIPMENT_UNIT, never restarted
+  number                  String    @unique // display code of the unit
+  serialNumber            String?
+  brand                   String?
+  model                   String?
+  purchaseDate            String?   // @date
+  purchaseCost            Int?      // @money
+  supplierId              String?
+  condition               String    // @code ITEM_CONDITION
+  locationKind            String    // @code EQUIPMENT_LOCATION
+  locationWorkerId        String?
+  locationFileId          String?   // the file whose hand-out left it there
+  locationSiteId          String?   // AT_SITE: the site it is stored at («تخزين معدات»); survives a renewal, which is a new file
+  maintenanceIntervalDays Int?
+  lastMaintenanceDate     String?   // @date
+  nextMaintenanceDate     String?   // @date
+  retiredAt               DateTime?
+  retireReason            String?
+  photoUrl                String?   // @url
+  branchId                String    // #47
+  createdAt               DateTime
+  updatedAt               DateTime
+  createdByUserId         String?
+  updatedByUserId         String?
+
+  item           StockItem    @relation(fields: [itemId], references: [id], onDelete: Restrict)
+  supplier       Supplier?    @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  locationWorker StaffMember? @relation(fields: [locationWorkerId], references: [id], onDelete: Restrict)
+  locationFile   File?        @relation(fields: [locationFileId], references: [id], onDelete: Restrict)
+  locationSite   Site?        @relation(fields: [locationSiteId], references: [id], onDelete: Restrict)
+  branch         Branch       @relation(fields: [branchId], references: [id], onDelete: Restrict)
+
+  @@index([itemId])
+  @@index([nextMaintenanceDate])
+  @@index([condition])
+  @@index([locationKind, locationFileId])
+  @@index([locationKind, locationSiteId])
+}
+
+/// The stock ledger. Append-only: a wrong row is undone by a REVERSAL row that points at it, once.
+/// @trigger appendOnly
+/// @trigger named StockMovement_on_hand
+/// @check (handOutLineId IS NOT NULL) + (handOutReturnId IS NOT NULL) + (purchaseLineId IS NOT NULL) + (countLineId IS NOT NULL) <= 1
+/// @uniqueWhere StockMovement_one_reversal (reversesMovementId) WHERE reversesMovementId IS NOT NULL
+model StockMovement {
+  id                 String   @id
+  itemId             String
+  unitId             String?
+  type               String   // @code MOVEMENT_TYPE
+  qty                Int      // @qty signed
+  unitCost           Int      // @money
+  date               String   // @date
+  handOutLineId      String?
+  handOutReturnId    String?
+  purchaseLineId     String?
+  countLineId        String?
+  reversesMovementId String?  // type REVERSAL: the movement this one undoes (cancelled hand-out or purchase)
+  reason             String?  // required for WRITE_OFF and COUNT_ADJUST
+  branchId           String   // #47
+  createdAt          DateTime
+  createdByUserId    String
+
+  item          StockItem           @relation(fields: [itemId], references: [id], onDelete: Restrict)
+  unit          EquipmentUnit?      @relation(fields: [unitId], references: [id], onDelete: Restrict)
+  handOutLine   HandOutLine?        @relation(fields: [handOutLineId], references: [id], onDelete: Restrict)
+  handOutReturn HandOutReturn?      @relation(fields: [handOutReturnId], references: [id], onDelete: Restrict)
+  purchaseLine  PurchaseLine?       @relation(fields: [purchaseLineId], references: [id], onDelete: Restrict)
+  countLine     InventoryCountLine? @relation(fields: [countLineId], references: [id], onDelete: Restrict)
+  reverses      StockMovement?      @relation("MovementReversal", fields: [reversesMovementId], references: [id], onDelete: Restrict)
+  branch        Branch              @relation(fields: [branchId], references: [id], onDelete: Restrict)
+
+  @@index([itemId, date])
+  @@index([unitId])
+  @@index([handOutLineId])
+}
+
+/// «جرد». Closing writes one COUNT_ADJUST movement per difference.
+model InventoryCount {
+  id              String    @id
+  numberSeq       Int       // sys; key COUNT, per year
+  numberYear      Int
+  number          String
+  date            String    // @date
+  kind            String    // @code STOCK_KIND (he splits equipment and materials)
+  status          String    // @code COUNT_STATUS (OPEN, CLOSED)
+  countedByUserId String
+  closedByUserId  String?
+  closedAt        DateTime?
+  note            String?
+  branchId        String    // #47
+  createdAt       DateTime
+  updatedAt       DateTime
+  createdByUserId String?
+  updatedByUserId String?
+
+  branch Branch @relation(fields: [branchId], references: [id], onDelete: Restrict)
+
+  @@unique([numberYear, numberSeq])
+  @@index([status])
+}
+
+/// @uniqueWhere InventoryCountLine_item (countId, itemId, COALESCE(unitId, ''))
+model InventoryCountLine {
+  id         String   @id
+  countId    String
+  itemId     String
+  unitId     String?
+  systemQty  Int      // @qty @snap; frozen when the count opens
+  countedQty Int?     // @qty; empty until typed
+  difference Int?     // @qty sys
+  condition  String?  // @code ITEM_CONDITION (equipment)
+  note       String?  // required when the difference is not 0
+  createdAt  DateTime
+  updatedAt  DateTime
+
+  count InventoryCount @relation(fields: [countId], references: [id], onDelete: Restrict)
+  item  StockItem      @relation(fields: [itemId], references: [id], onDelete: Restrict)
+  unit  EquipmentUnit? @relation(fields: [unitId], references: [id], onDelete: Restrict)
+
+  @@index([countId])
+}
+
+/// «تسليم» (his note, section 5 (2)): recorded against a job, to a named worker. One hand-out holds lines of both kinds; the screen's switch filters.
+/// Its lines are insert-only like the movements they wrote. A wrong hand-out is cancelled (reason, REVERSAL movements) and typed again. Never deleted.
+/// @check (purpose = 'JOB') = (fileId IS NOT NULL)
+/// @trigger noDelete
+model HandOut {
+  id                String    @id
+  numberSeq         Int       // sys; key HANDOUT, per year
+  numberYear        Int
+  number            String
+  date              String    // @date
+  purpose           String    @default("JOB") // @code HANDOUT_PURPOSE
+  fileId            String?   // required when purpose = JOB
+  visitId           String?   // the visit it is for; the mission order prints it (#11)
+  serviceType       String?   // @code SERVICE_TYPE; from the file, editable on buildings and complexes (A1); empty for a worker kit
+  division          String?   // @code DIVISION; from the file; empty for a worker kit
+  workerId          String    // the named recipient
+  handedByUserId    String
+  note              String?
+  cancelledAt       DateTime?
+  cancelledByUserId String?
+  cancelReason      String?
+  branchId          String
+  createdAt         DateTime
+  updatedAt         DateTime
+  createdByUserId   String?
+  updatedByUserId   String?
+
+  file   File?       @relation(fields: [fileId], references: [id], onDelete: Restrict)
+  visit  Visit?      @relation(fields: [visitId], references: [id], onDelete: Restrict)
+  worker StaffMember @relation(fields: [workerId], references: [id], onDelete: Restrict)
+  branch Branch      @relation(fields: [branchId], references: [id], onDelete: Restrict)
+
+  @@unique([numberYear, numberSeq])
+  @@index([fileId])
+  @@index([visitId])
+  @@index([workerId, date])
+  @@index([division, serviceType, date])
+}
+
+/// @trigger appendOnly
+model HandOutLine {
+  id           String   @id
+  handOutId    String
+  itemId       String
+  unitId       String?  // required when the item is tracked by unit
+  qty          Int      // @qty
+  condition    String?  // @code ITEM_CONDITION; «الحالة عند الاستلام»; required for equipment (D9 item 11)
+  unitCost     Int      // @money @snap; average cost at that moment
+  expectReturn Boolean  // true for equipment, false for materials
+  stayAtSite   Boolean  @default(false) // allowed when the file says «تخزين معدات: نعم»
+  createdAt    DateTime
+
+  handOut HandOut        @relation(fields: [handOutId], references: [id], onDelete: Restrict)
+  item    StockItem      @relation(fields: [itemId], references: [id], onDelete: Restrict)
+  unit    EquipmentUnit? @relation(fields: [unitId], references: [id], onDelete: Restrict)
+
+  @@index([handOutId])
+  @@index([itemId])
+  @@index([unitId])
+}
+
+/// @trigger appendOnly
+model HandOutReturn {
+  id               String   @id
+  handOutLineId    String
+  date             String   // @date
+  qtyReturned      Int      // @qty
+  condition        String?  // @code ITEM_CONDITION; required for equipment
+  qtyLost          Int      @default(0) // @qty
+  qtyDamaged       Int      @default(0) // @qty
+  note             String?  // required when lost or damaged is not 0 (F1 articles 5 and 13)
+  receivedByUserId String
+  createdAt        DateTime
+
+  handOutLine HandOutLine @relation(fields: [handOutLineId], references: [id], onDelete: Restrict)
+
+  @@index([handOutLineId])
+}
+
+/// «مورّد».
+model Supplier {
+  id              String    @id
+  name            String
+  phone           String?
+  address         String?
+  rc              String?
+  nif             String?
+  note            String?
+  isActive        Boolean   @default(true)
+  createdAt       DateTime
+  updatedAt       DateTime
+  createdByUserId String?
+  updatedByUserId String?
+  deletedAt       DateTime?
+}
+
+/// «طلب شراء» (D1). Numbered, never deleted (soft delete while it is only a request).
+/// @trigger noDelete
+model PurchaseRequest {
+  id                String    @id
+  numberSeq         Int       // sys; key PURCHASE_REQUEST, per year
+  numberYear        Int
+  number            String
+  date              String    // @date
+  status            String    // @code PURCHASE_STATUS
+  supplierId        String?
+  requestedByUserId String
+  createdAt         DateTime
+  updatedAt         DateTime
+  createdByUserId   String?
+  updatedByUserId   String?
+  deletedAt         DateTime?
+
+  supplier Supplier? @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+
+  @@unique([numberYear, numberSeq])
+  @@index([status])
+}
+
+model PurchaseRequestLine {
+  id                String   @id
+  purchaseRequestId String
+  itemId            String
+  qty               Int      // @qty
+  note              String?
+  createdAt         DateTime
+  updatedAt         DateTime
+
+  purchaseRequest PurchaseRequest @relation(fields: [purchaseRequestId], references: [id], onDelete: Restrict)
+  item            StockItem       @relation(fields: [itemId], references: [id], onDelete: Restrict)
+
+  @@index([purchaseRequestId])
+}
+
+/// «شراء». Receiving writes PURCHASE_IN movements and one read-only Expense (category MATERIALS or EQUIPMENT).
+/// Its lines are insert-only. A wrong purchase is cancelled (reason, REVERSAL movements, the expense soft-deleted, avgCost replayed) and typed again. Never deleted.
+/// @trigger noDelete
+model Purchase {
+  id                String    @id
+  numberSeq         Int       // sys; key PURCHASE, per year
+  numberYear        Int
+  number            String
+  date              String    // @date
+  supplierId        String
+  supplierInvoiceNo String?
+  purchaseRequestId String?
+  division          String    @default("COMMON") // @code EXPENSE_DIVISION
+  total             Int       // @money
+  method            String    // @code PAYMENT_METHOD
+  paidAmount        Int       @default(0) // @money
+  invoiceUrl        String?   // @url supplier invoice scan
+  receivedByUserId  String
+  cancelledAt       DateTime?
+  cancelledByUserId String?
+  cancelReason      String?
+  branchId          String
+  createdAt         DateTime
+  updatedAt         DateTime
+  createdByUserId   String?
+  updatedByUserId   String?
+
+  supplier        Supplier         @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  purchaseRequest PurchaseRequest? @relation(fields: [purchaseRequestId], references: [id], onDelete: Restrict)
+  branch          Branch           @relation(fields: [branchId], references: [id], onDelete: Restrict)
+
+  @@unique([numberYear, numberSeq])
+  @@index([date])
+  @@index([supplierId])
+}
+
+/// For unit-tracked items one EquipmentUnit is created per piece.
+/// @trigger appendOnly
+model PurchaseLine {
+  id         String   @id
+  purchaseId String
+  seq        Int
+  itemId     String
+  qty        Int      // @qty
+  unitPrice  Int      // @money
+  amount     Int      // @money
+  createdAt  DateTime
+
+  purchase Purchase  @relation(fields: [purchaseId], references: [id], onDelete: Restrict)
+  item     StockItem @relation(fields: [itemId], references: [id], onDelete: Restrict)
+
+  @@unique([purchaseId, seq])
+  @@index([itemId])
+}
+
+/// «صيانة» (#35), equipment units only. A cost above 0 writes one read-only
+/// Expense (category MAINTENANCE, division COMMON).
+model MaintenanceRecord {
+  id              String   @id
+  unitId          String
+  kind            String   // @code MAINTENANCE_KIND
+  date            String   // @date
+  description     String
+  cost            Int      @default(0) // @money
+  provider        String?
+  conditionAfter  String   // @code ITEM_CONDITION
+  nextDueDate     String?  // @date
+  createdAt       DateTime
+  updatedAt       DateTime
+  createdByUserId String?
+  updatedByUserId String?
+
+  unit EquipmentUnit @relation(fields: [unitId], references: [id], onDelete: Restrict)
+
+  @@index([unitId, date])
 }

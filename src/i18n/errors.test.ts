@@ -3,6 +3,8 @@ import ts from "typescript";
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
 
+import { BUILT_IN_SENTENCES } from "@/lib/service/errors";
+
 import { errorMessages, FOLDER_MESSAGES, MESSAGE_FOLDERS } from "./catalogues";
 import { matchErrorMessage, zodErrorMap } from "./errors";
 
@@ -101,13 +103,26 @@ describe("server and validator messages", () => {
   // shared server helpers. A file outside these folders is not checked, which
   // is one reason services and validators live where CLAUDE.md says they do.
   const sources = {
-    ...import.meta.glob("../features/*/services/**/*.ts", { query: "?raw", import: "default", eager: true }),
-    ...import.meta.glob("../features/*/validators/**/*.ts", { query: "?raw", import: "default", eager: true }),
-    ...import.meta.glob(["../server/form-data.ts", "../server/uploads.ts"], {
+    ...import.meta.glob(["../features/*/services/**/*.ts", "!../features/*/services/**/*.test.ts"], {
       query: "?raw",
       import: "default",
       eager: true,
     }),
+    ...import.meta.glob(["../features/*/validators/**/*.ts", "!../features/*/validators/**/*.test.ts"], {
+      query: "?raw",
+      import: "default",
+      eager: true,
+    }),
+    ...import.meta.glob(["../server/*.ts"], { query: "?raw", import: "default", eager: true }),
+    // What every service calls: numbering, the log, settings, access, stored files, the chains.
+    // Test files are not read: a sentence quoted in an assertion is checked where it is born.
+    ...import.meta.glob(
+      [
+        "../lib/{access,attachments,chain,clock,events,log,numbering,restricted,service,settings}/**/*.ts",
+        "!../lib/**/*.test.ts",
+      ],
+      { query: "?raw", import: "default", eager: true },
+    ),
   } as Record<string, string>;
 
   const ERROR_PROPERTIES = /^(error|message|notFound|required_error|invalid_type_error)$/;
@@ -137,7 +152,15 @@ describe("server and validator messages", () => {
     const visit = (node: ts.Node) => {
       if (ts.isPropertyAssignment(node) && ERROR_PROPERTIES.test(node.name.getText(source))) add(node.initializer);
       if (ts.isNewExpression(node) && /Error$/.test(node.expression.getText(source)) && node.arguments?.[0]) {
-        add(node.arguments[0]);
+        // A fault in the code is not a message for the user: the action wrapper shows "Something went
+        // wrong" in its place. It is written as a plain Error whose text starts with a lower-case tag
+        // and a colon ("numbering: count must be at least 1"). Anything else must have its entry.
+        const first = node.arguments[0];
+        const isFault =
+          node.expression.getText(source) === "Error" &&
+          (ts.isStringLiteral(first) || ts.isNoSubstitutionTemplateLiteral(first) || ts.isTemplateExpression(first)) &&
+          /^[a-z][a-z ]*: /.test(ts.isTemplateExpression(first) ? first.head.text : first.text);
+        if (!isFault) add(first);
       }
       if (
         file.includes("/validators/") &&
@@ -164,5 +187,11 @@ describe("server and validator messages", () => {
 
   it("has a catalogue entry for every one of them", () => {
     expect(all.filter(({ message }) => !matchErrorMessage(message))).toEqual([]);
+  });
+
+  it("has a catalogue entry for every refusal of the database", () => {
+    // The sentences that stand for a trigger's or a constraint's refusal, and the one for anything unexpected.
+    expect(BUILT_IN_SENTENCES.length).toBeGreaterThan(15);
+    expect(BUILT_IN_SENTENCES.filter((sentence) => !matchErrorMessage(sentence))).toEqual([]);
   });
 });

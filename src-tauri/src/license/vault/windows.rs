@@ -93,6 +93,21 @@ fn file_targets() -> Vec<PathBuf> {
         .collect()
 }
 
+/// The same three folders, for a second record kept beside the licence's (the
+/// chain anchor: see `crate::anchor`). `file` is that record's file name.
+pub fn named_file_targets(file: &str) -> Vec<PathBuf> {
+    ["ProgramData", "APPDATA", "LOCALAPPDATA"]
+        .iter()
+        .filter_map(std::env::var_os)
+        .map(|root| {
+            PathBuf::from(root)
+                .join("Microsoft")
+                .join(ANCHOR_NAME)
+                .join(file)
+        })
+        .collect()
+}
+
 fn read_registry(hive: &RegKey, path: &str) -> Option<String> {
     // The 64-bit view explicitly, so a 32-bit build and a 64-bit build of this
     // app read and write the same key instead of two reflections of it.

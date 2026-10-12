@@ -50,7 +50,10 @@
       "dangerousDisableAssetCspModification": ["style-src"],
       "assetProtocol": {
         "enable": true,
-        "scope": ["$APPDATA/uploads/**"]
+        "scope": {
+          "allow": ["$APPDATA/uploads/**"],
+          "deny": ["$APPDATA/uploads/restricted/**"]
+        }
       }
     }
   },

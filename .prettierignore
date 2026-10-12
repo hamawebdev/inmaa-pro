@@ -16,11 +16,16 @@ CLAUDE.md
 .harness
 .claude
 
-# Generated: rewritten by `cargo test` and by `npm run db:types`.
+# Generated: rewritten by `cargo test`, `npm run db:types` and the model's proof.
+# `npm run db:verify` compares them byte for byte with what the generator writes.
 src/lib/bindings.ts
 src/lib/db/schema.ts
 src/lib/db/models.ts
 src/lib/db/column-meta.ts
+src/lib/db/column-tags.ts
+src/lib/db/chain-columns.ts
+src/testing/table-shapes.ts
+src-tauri/proof
 
 # The design system, kept comparable with the reference app's copies so that a
 # diff shows only what was changed on purpose: the vendored shadcn/ui primitives

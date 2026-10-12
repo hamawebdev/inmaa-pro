@@ -88,14 +88,37 @@ async restoreFrom(source: string) : Promise<Result<null, CommandError>> {
  * with whatever the PC reads PDFs with. Images are shown in the program
  * itself; this serves them too, for when a copy is wanted.
  * 
- * `segments` are the four parts of the stored address after `/api/uploads/`
- * (owner, entity, field, file). They come from the database, which the user
- * can edit, so each one is checked: a crafted value must not be able to name
- * a file outside the uploads folder.
+ * `segments` are the parts of the stored address after `/uploads/`: entity,
+ * field and file, with `restricted` in front for a restricted file. They come
+ * from the database, which the user can edit, so each one is checked: a
+ * crafted value must not be able to name a file outside the uploads folder.
  */
 async exportUpload(segments: string[], target: string) : Promise<Result<null, CommandError>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("export_upload", { segments, target }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * The anchor as last written, or nothing when this machine holds none.
+ */
+async anchorRead() : Promise<Result<string | null, CommandError>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("anchor_read") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Writes the anchor to every folder it is kept in. Best effort per folder, as
+ * for the licence record; an error only when none could be written.
+ */
+async anchorWrite(record: string) : Promise<Result<null, CommandError>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("anchor_write", { record }) };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };

@@ -1,6 +1,7 @@
 use tauri::{AppHandle, Manager};
 use tauri_specta::{collect_commands, Builder};
 
+mod anchor;
 mod backup;
 mod db;
 pub mod license;
@@ -43,6 +44,8 @@ fn specta_builder() -> Builder {
         backup::backup_to,
         backup::restore_from,
         backup::export_upload,
+        anchor::anchor_read,
+        anchor::anchor_write,
         // The only three commands without a `license::guard`. They are what a
         // locked installation is allowed to ask, and between them they can do
         // nothing but report the licence, accept a code, and restart.

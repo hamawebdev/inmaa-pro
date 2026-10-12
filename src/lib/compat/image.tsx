@@ -6,8 +6,8 @@ import { useUploadSrc } from "@/lib/use-upload-src";
  * Stand-in for next/image.
  *
  * There is no image optimiser here — files are read straight off disk — so this
- * is an <img> that additionally resolves managed-upload URLs
- * (/api/uploads/...) into the asset-protocol URLs the webview can actually
+ * is an <img> that additionally resolves stored-file addresses
+ * (/uploads/...) into the asset-protocol URLs the webview can actually
  * load. Next-only props are accepted and ignored so call sites need no edit.
  */
 export type ImageProps = Omit<React.ComponentProps<"img">, "src" | "width" | "height"> & {

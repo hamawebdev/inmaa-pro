@@ -1,6 +1,15 @@
 const MB = 1024 * 1024;
 
-export const MANAGED_UPLOAD_PREFIX = "/api/uploads/";
+/**
+ * A stored file's address, as the database holds it:
+ *
+ *     /uploads/<Table>/<column>/<uuid>.<ext>
+ *     /uploads/restricted/<Table>/<column>/<uuid>.<ext>      opened only through readRestrictedUpload
+ *
+ * Never a web address: see `pathnameOf` below.
+ */
+export const MANAGED_UPLOAD_PREFIX = "/uploads/";
+export const RESTRICTED_SEGMENT = "restricted";
 
 export type UploadRule = {
   accept: string;
@@ -74,12 +83,15 @@ export function getAllowedExtensionsLabel(rule: UploadRule) {
 
 export type UploadProblem = "type" | "size";
 
+/** What a rule looks at: a `File` has both. */
+export type UploadMeta = { type: string; size: number };
+
 /**
  * What is wrong with a file under `rule`, if anything — as a code, so the screen
  * can word it in the active language. `validateUploadFile` is the same check
  * worded in English, for the server side of an upload.
  */
-export function checkUploadFile(file: File, rule: UploadRule): UploadProblem | undefined {
+export function checkUploadFile(file: UploadMeta, rule: UploadRule): UploadProblem | undefined {
   if (!rule.allowedMimeTypes.includes(file.type)) {
     return "type";
   }
@@ -91,7 +103,7 @@ export function checkUploadFile(file: File, rule: UploadRule): UploadProblem | u
   return undefined;
 }
 
-export function validateUploadFile(file: File, rule: UploadRule, label: string) {
+export function validateUploadFile(file: UploadMeta, rule: UploadRule, label: string) {
   switch (checkUploadFile(file, rule)) {
     case "type":
       return `${label} must be ${getAllowedExtensionsLabel(rule)}.`;
@@ -105,7 +117,7 @@ export function validateUploadFile(file: File, rule: UploadRule, label: string) 
 /**
  * The path part of a stored address: everything before a `?` or a `#`.
  *
- * Stored addresses are always paths of this program's own (`/api/uploads/…`),
+ * Stored addresses are always paths of this program's own (`/uploads/…`),
  * never web addresses, so this is plain text handling. It deliberately does not
  * go through `new URL()`, which would need a made-up web address as its base —
  * and no web address belongs in a program that is offline by rule.
@@ -141,6 +153,11 @@ export function getManagedUploadPathSegments(url?: string | null) {
   } catch {
     return null;
   }
+}
+
+/** Whether an address names a file only some may open. Such a file is never shown by its address. */
+export function isRestrictedUploadUrl(url?: string | null) {
+  return getManagedUploadPathSegments(url)?.[0] === RESTRICTED_SEGMENT;
 }
 
 export function isPdfUrl(url?: string | null) {

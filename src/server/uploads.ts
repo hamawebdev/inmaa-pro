@@ -1,150 +1,62 @@
 import { convertFileSrc, invoke } from "@tauri-apps/api/core";
 import { appDataDir, join } from "@tauri-apps/api/path";
 import { save } from "@tauri-apps/plugin-dialog";
-import { BaseDirectory, exists, mkdir, readFile, remove, writeFile } from "@tauri-apps/plugin-fs";
+import { BaseDirectory, mkdir, readFile, writeFile } from "@tauri-apps/plugin-fs";
 
-import type * as clientsUploads from "@/features/clients/uploads";
-import type * as coreUploads from "@/features/core/uploads";
-import type * as moneyUploads from "@/features/money/uploads";
-import type * as operationsUploads from "@/features/operations/uploads";
-import type * as peopleUploads from "@/features/people/uploads";
-import type * as stockUploads from "@/features/stock/uploads";
+import { currentSession } from "@/lib/access/session";
+import {
+  readRestrictedUpload,
+  saveUpload,
+  storagePathOf,
+  type ByteStore,
+  type SaveUploadInput,
+} from "@/lib/attachments";
+import { db } from "@/lib/db";
+import type { DataSubject, LogOwner } from "@/lib/log";
+import { transact } from "@/lib/service/action";
+import { buildContext } from "@/lib/service/context";
+import { describeError } from "@/lib/service/errors";
+import { programClock } from "@/lib/service/program";
 import {
   getMediaFileName,
   getManagedUploadPathSegments,
   isManagedUploadUrl,
-  MANAGED_UPLOAD_PREFIX,
-  type UploadRule,
-  validateUploadFile,
+  isRestrictedUploadUrl,
 } from "@/lib/uploads";
 
+export { linkUpload, listUploads, removeUpload } from "@/lib/attachments";
+
 /**
- * Managed file storage, backed by the app data directory.
+ * Stored files in the running program: the bytes go under the program's data
+ * folder, `{appDataDir}/uploads/`, and ordinary ones are shown through Tauri's
+ * asset protocol. The rules (the `Upload` row, restricted files, photo consent)
+ * are in src/lib/attachments, which a test drives with a store in memory; this
+ * file only binds them to the data folder, the database and whoever is signed in.
+ */
+const programStore: ByteStore = {
+  async write(path, bytes) {
+    await mkdir(path.slice(0, path.lastIndexOf("/")), { baseDir: BaseDirectory.AppData, recursive: true });
+    await writeFile(path, bytes, { baseDir: BaseDirectory.AppData });
+  },
+  read(path) {
+    return readFile(path, { baseDir: BaseDirectory.AppData });
+  },
+};
+
+/**
+ * Stores a file the user picked and returns its address.
  *
- * The web app wrote these under an uploads root on the server and served them
- * through an /api/uploads route. Here they live in {appDataDir}/uploads/ and are
- * read through Tauri's asset protocol. The stored URL keeps the exact same
- * `/api/uploads/{adminId}/{entity}/{field}/{file}` shape, so existing photoUrl /
- * cvUrl / receiptUrl values and all the helpers in src/lib/uploads.ts still work
- * — only `resolveUploadSrc` is new, to turn one into something <img> can load.
+ * Call it BEFORE the action that saves the record, never inside a service:
+ * writing bytes cannot be rolled back, and inside a transaction this would
+ * wait for the transaction's own connection. The service then calls
+ * `linkUpload(ex, ctx, url, rowId)` and writes the address in its own column.
+ * It throws a `ServiceError` whose sentence has a translation.
  */
-
-const UPLOADS_DIR = "uploads";
-
-type FolderUploads =
-  | typeof coreUploads
-  | typeof peopleUploads
-  | typeof clientsUploads
-  | typeof operationsUploads
-  | typeof moneyUploads
-  | typeof stockUploads;
-
-/**
- * The kinds of record that can have files, and the kinds of file. Each feature
- * folder names its own in `src/features/<folder>/uploads.ts`; nobody edits this
- * file to add one.
- */
-export type UploadEntity = FolderUploads["uploadEntities"][number];
-export type UploadField = FolderUploads["uploadFields"][number];
-
-function getExtensionForMimeType(mimeType: string) {
-  switch (mimeType) {
-    case "image/jpeg":
-      return "jpg";
-    case "image/png":
-      return "png";
-    case "image/webp":
-      return "webp";
-    case "application/pdf":
-      return "pdf";
-    default:
-      return null;
-  }
-}
-
-/**
- * Guards against a crafted URL escaping the uploads directory. The segments come
- * from stored values, but those values are only ever as trustworthy as the
- * database file, which the user can edit.
- */
-function assertSafeSegments(segments: string[]): asserts segments is [string, string, string, string] {
-  if (segments.length !== 4) {
-    throw new Error("Invalid upload path.");
-  }
-  for (const segment of segments) {
-    if (!segment || segment === "." || segment === ".." || segment.includes("/") || segment.includes("\\")) {
-      throw new Error("Invalid upload path.");
-    }
-  }
-}
-
-function relativePath(segments: string[]): string {
-  assertSafeSegments(segments);
-  return [UPLOADS_DIR, ...segments].join("/");
-}
-
-function toManagedUrl(segments: string[]): string {
-  return `${MANAGED_UPLOAD_PREFIX}${segments.map((segment) => encodeURIComponent(segment)).join("/")}`;
-}
-
-export async function saveManagedUpload({
-  adminId,
-  entity,
-  field,
-  file,
-  rule,
-  label,
-}: {
-  adminId: string;
-  entity: UploadEntity;
-  field: UploadField;
-  file: File;
-  rule: UploadRule;
-  label: string;
-}): Promise<string> {
-  const validationError = validateUploadFile(file, rule, label);
-  if (validationError) {
-    throw new Error(validationError);
-  }
-
-  const extension = getExtensionForMimeType(file.type);
-  if (!extension) {
-    throw new Error(`${label} must be a supported file type.`);
-  }
-
-  const segments = [adminId, entity, field, `${crypto.randomUUID()}.${extension}`];
-  const path = relativePath(segments);
-
-  await mkdir([UPLOADS_DIR, adminId, entity, field].join("/"), {
-    baseDir: BaseDirectory.AppData,
-    recursive: true,
-  });
-  await writeFile(path, new Uint8Array(await file.arrayBuffer()), { baseDir: BaseDirectory.AppData });
-
-  return toManagedUrl(segments);
-}
-
-export async function deleteManagedUpload(url?: string | null): Promise<void> {
-  if (!isManagedUploadUrl(url)) return;
-
-  const segments = getManagedUploadPathSegments(url);
-  if (!segments) return;
-
-  const path = relativePath(segments);
-  // Deleting an upload that is already gone is not an error — callers use this
-  // to clean up after a failed write.
-  if (!(await exists(path, { baseDir: BaseDirectory.AppData }))) return;
-  await remove(path, { baseDir: BaseDirectory.AppData });
-}
-
-export async function deleteManagedUploads(urls: Array<string | null | undefined>): Promise<void> {
-  for (const url of urls) {
-    await deleteManagedUpload(url);
-  }
-}
-
-export async function readManagedUpload(segments: string[]): Promise<Uint8Array> {
-  return readFile(relativePath(segments), { baseDir: BaseDirectory.AppData });
+export async function saveManagedUpload(input: Omit<SaveUploadInput, "file"> & { file: File }): Promise<string> {
+  const ctx = buildContext(currentSession(), programClock());
+  const file = { name: input.file.name, type: input.file.type, bytes: new Uint8Array(await input.file.arrayBuffer()) };
+  const { url } = await saveUpload(db, ctx, programStore, { ...input, file });
+  return url;
 }
 
 /** A picture that is already in the page: a file just picked, or an inline image. */
@@ -153,22 +65,44 @@ export function isInlineImageSrc(url: string): boolean {
 }
 
 /**
- * Turn a stored managed-upload URL into one the webview can actually load.
+ * Turn a stored address into one the webview can load.
  *
  * Anything that is not one of this program's own stored uploads resolves to
  * nothing. A web address that found its way into the data (an edited database,
  * an imported row) is not something to go and fetch: the program is offline.
+ * A restricted file resolves to nothing too: it is opened with
+ * `openRestrictedUpload`, which checks who asks and writes the log.
  */
 export async function resolveUploadSrc(url?: string | null): Promise<string | null> {
   if (!url) return null;
   if (isInlineImageSrc(url)) return url;
-  if (!isManagedUploadUrl(url)) return null;
+  if (!isManagedUploadUrl(url) || isRestrictedUploadUrl(url)) return null;
 
-  const segments = getManagedUploadPathSegments(url);
-  if (!segments) return null;
+  try {
+    return convertFileSrc(await join(await appDataDir(), storagePathOf(url)));
+  } catch {
+    return null;
+  }
+}
 
-  assertSafeSegments(segments);
-  return convertFileSrc(await join(await appDataDir(), UPLOADS_DIR, ...segments));
+export interface RestrictedUploadRequest {
+  url: string;
+  /** Which part of the program asks, and whose data it is: both go in the log. */
+  owner: LogOwner;
+  subject?: { kind: DataSubject; id: string; label?: string };
+  reason?: string;
+}
+
+/**
+ * Opens a restricted file for the signed-in user and returns something an
+ * `<img>` can show (a `blob:` address; the caller revokes it when done).
+ * Every call is one line of the log. Throws a `ServiceError`.
+ */
+export async function openRestrictedUpload(
+  request: RestrictedUploadRequest,
+): Promise<{ src: string; mimeType: string }> {
+  const { bytes, mimeType } = await transact((ex, ctx) => readRestrictedUpload(ex, ctx, programStore, request));
+  return { src: URL.createObjectURL(new Blob([bytes as BlobPart], { type: mimeType })), mimeType };
 }
 
 export type SaveCopyResult =
@@ -186,20 +120,29 @@ export type SaveCopyResult =
  *
  * The copying runs in Rust (`export_upload` in src-tauri/src/backup.rs), for the
  * same reason backup does: the destination is wherever the dialog points.
+ *
+ * A restricted file needs `restricted`: who asks is checked and the copy is
+ * logged before anything leaves the data folder.
  */
-export async function saveUploadCopy(url: string | null | undefined, dialogTitle: string): Promise<SaveCopyResult> {
+export async function saveUploadCopy(
+  url: string | null | undefined,
+  dialogTitle: string,
+  restricted?: Omit<RestrictedUploadRequest, "url">,
+): Promise<SaveCopyResult> {
   try {
     const segments = getManagedUploadPathSegments(url);
-    if (!segments) return { success: false, cancelled: false, error: "Invalid upload path." };
-    assertSafeSegments(segments);
+    if (!url || !segments) return { success: false, cancelled: false, error: "Invalid upload path." };
+    storagePathOf(url);
+    if (isRestrictedUploadUrl(url) && !restricted)
+      return { success: false, cancelled: false, error: "You do not have permission to do this." };
 
     const target = await save({ title: dialogTitle, defaultPath: getMediaFileName(url) });
     if (!target) return { success: false, cancelled: true };
 
+    if (restricted) await transact((ex, ctx) => readRestrictedUpload(ex, ctx, programStore, { ...restricted, url }));
     await invoke("export_upload", { segments, target });
     return { success: true, path: target };
   } catch (error) {
-    const message = error instanceof Error ? error.message : (error as { message?: string })?.message;
-    return { success: false, cancelled: false, error: message ?? String(error) };
+    return { success: false, cancelled: false, error: describeError(error) };
   }
 }

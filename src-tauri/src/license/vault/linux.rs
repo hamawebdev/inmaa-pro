@@ -32,6 +32,25 @@ pub fn write_all(encoded: &str) {
     }
 }
 
+/// The same three XDG folders, for a second record kept beside the licence's
+/// (the chain anchor: see `crate::anchor`). `file` is that record's file name.
+pub fn named_file_targets(file: &str) -> Vec<PathBuf> {
+    let home = match std::env::var_os("HOME") {
+        Some(h) => PathBuf::from(h),
+        None => return Vec::new(),
+    };
+    [("XDG_CONFIG_HOME", ".config"), ("XDG_DATA_HOME", ".local/share"), ("XDG_CACHE_HOME", ".cache")]
+        .iter()
+        .map(|(var, fallback)| {
+            std::env::var_os(var)
+                .map(PathBuf::from)
+                .unwrap_or_else(|| home.join(fallback))
+                .join(ANCHOR_NAME)
+                .join(file)
+        })
+        .collect()
+}
+
 /// Four locations that fail independently: the XDG trio, plus a dotfile sitting
 /// directly in `$HOME` where no cache cleaner looks.
 fn file_targets() -> Vec<PathBuf> {

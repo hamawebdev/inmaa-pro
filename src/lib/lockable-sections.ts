@@ -4,7 +4,7 @@ import type { SectionId } from "@/navigation/sections";
  * Which sections the manager password protects.
  *
  * The gate is driven by an owner-editable list stored in
- * `Setting.locked_pages`, so a centre can protect only its money, or
+ * the setting `shell.lockedSections`, so a centre can protect only its money, or
  * everything, or nothing at all.
  *
  * This is the academy shell's mechanism, kept until sign-in and roles replace
@@ -89,7 +89,7 @@ export function parseLockedSections(raw: string | undefined): string[] {
   }
 }
 
-/** Serializes the picker's selection for `Setting.locked_pages`. */
+/** Serializes the picker's selection for the setting `shell.lockedSections`. */
 export function serializeLockedSections(ids: readonly string[]): string {
   // Stored in registry order rather than click order, so the value is stable and
   // two centres with the same choices hold byte-identical rows.

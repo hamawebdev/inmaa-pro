@@ -4,8 +4,9 @@ import { getAppSettings, saveAppSettings, type AppSettings } from "@/features/co
  * The manager password gating the protected sections, and the one-time recovery
  * code that clears it.
  *
- * Both are hashed with PBKDF2 via Web Crypto and stored in the `Setting` table —
- * no extra Rust dependency and no schema migration.
+ * Both are hashed with PBKDF2 via Web Crypto and stored on the manager's account
+ * (`User.passwordHash`, `User.recoveryHash`; src/features/core/services/settings.ts).
+ * STAND-IN: the sign-in screen replaces this shared manager password.
  *
  * **This is accountability, not hard security.** The database is an unencrypted
  * SQLite file on the academy's own machine; anyone with a SQLite browser can
