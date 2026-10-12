@@ -6,7 +6,8 @@ import { SectionScreen } from "@/components/section-screen";
 import { Button } from "@/components/ui/button";
 import { FILES_PATH } from "@/navigation/file-parts";
 
-import { FilesView, useFilesFilter } from "./_components/files-view";
+import { useFilesFilter } from "./_components/files-filter";
+import { FilesView } from "./_components/files-view";
 
 /**
  * Section «طلبات الخدمة», tab «الملفات»: the files of his four divisions.

@@ -126,6 +126,6 @@ export const LIST_NAMESPACES: Readonly<Record<OptionListName, string>> = {
   PAYMENT_METHOD: "Options.PaymentMethod",
   PAYMENT_FREQUENCY: "Options.PaymentFrequency",
   TEAM_ACCESS: "Options.TeamAccess",
-  PROVIDED_SERVICE: "FileOptions.ProvidedService",
-  PROGRAMMED_SERVICE: "FileOptions.ProgrammedService",
+  PROVIDED_SERVICE: "Options.ProvidedService",
+  PROGRAMMED_SERVICE: "Options.ProgrammedService",
 };

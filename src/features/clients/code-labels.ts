@@ -35,8 +35,6 @@ const OURS: ReadonlyArray<[string, OptionListName]> = [
   ["FileOptions.ContractDuration", "CONTRACT_DURATION"],
   ["FileOptions.VisitsPerWeek", "VISITS_PER_WEEK"],
   ["FileOptions.RequestKind", "REQUEST_KIND"],
-  ["FileOptions.ProvidedService", "PROVIDED_SERVICE"],
-  ["FileOptions.ProgrammedService", "PROGRAMMED_SERVICE"],
 ];
 
 export const codeLabelCases: readonly CodeLabelCase[] = [

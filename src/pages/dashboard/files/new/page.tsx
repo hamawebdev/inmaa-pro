@@ -18,6 +18,7 @@ import {
   type ServiceType,
 } from "@/features/clients/validators/option-lists";
 import { useCodeLabel } from "@/i18n/use-code-label";
+import { can, currentSession, hasSession } from "@/lib/access/session";
 import { pathKey } from "@/lib/compat/revalidate";
 import { DIVISIONS, SERVICE_TYPES } from "@/lib/options";
 import { cn } from "@/lib/utils";
@@ -25,7 +26,7 @@ import { FILES_PATH } from "@/navigation/file-parts";
 import { SECTION_ACCENT } from "@/navigation/sections";
 
 import { FileForm } from "../_components/file-form";
-import { filesHref, useFilesFilter } from "../_components/files-view";
+import { filesHref, useFilesFilter } from "../_components/files-filter";
 
 /**
  * «ملف جديد»: the division and the kind of service choose which of his six
@@ -163,7 +164,13 @@ export default function NewFilePage() {
             initial={start}
             statusTicks={["NEW"]}
             dossierNumber={null}
-            residents={kind === "BUILDING_CONTRACT" || kind === "COMPLEX_CONTRACT" ? "ALLOWED" : "NONE"}
+            residents={
+              kind === "BUILDING_CONTRACT" || kind === "COMPLEX_CONTRACT"
+                ? hasSession() && can(currentSession(), "residents.read")
+                  ? "ALLOWED"
+                  : "RESTRICTED"
+                : "NONE"
+            }
             stateRef={carried}
           />
         ) : kind ? (

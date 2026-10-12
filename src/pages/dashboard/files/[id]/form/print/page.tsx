@@ -64,8 +64,8 @@ export default function FileFormPrintPage() {
     >
       <div className="space-y-5">
         {data.residentsRestricted && (
-          <Alert>
-            <AlertDescription>{t("ResidentsRestricted")}</AlertDescription>
+          <Alert className="text-start">
+            <AlertDescription className="text-base">{t("ResidentsRestricted")}</AlertDescription>
           </Alert>
         )}
         <FileFormSheet

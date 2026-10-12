@@ -23,16 +23,15 @@ import { listFilesQuery, type FileListRow } from "@/features/clients/services/fi
 import {
   DIVISIONS_WITH_REQUESTS,
   FILE_STAGES,
-  type Division,
   type FileStage,
   type ServiceType,
 } from "@/features/clients/validators/option-lists";
 import { useCodeLabel } from "@/i18n/use-code-label";
-import { useSearchParams } from "@/lib/compat/navigation";
 import { pathKey } from "@/lib/compat/revalidate";
 import { DIVISIONS, SERVICE_TYPES } from "@/lib/options";
 import { fileHubHref, filePartHref, FILES_PATH } from "@/navigation/file-parts";
 
+import { ALL, filesHref, useFilesFilter } from "./files-filter";
 import { stageTone } from "./stage-tone";
 
 /**
@@ -47,28 +46,6 @@ import { stageTone } from "./stage-tone";
  * live in the address (`?division=BUILDING&service=CONTRACT`), so the way back
  * from a file lands on the same list.
  */
-
-const ALL = "ALL";
-
-/** The list's address for a division and a kind of service. */
-export function filesHref(division: Division, service: ServiceType | typeof ALL = ALL): string {
-  const params = new URLSearchParams({ division });
-  if (service !== ALL && DIVISIONS_WITH_REQUESTS.includes(division)) params.set("service", service);
-  return `${FILES_PATH}?${params.toString()}`;
-}
-
-export function useFilesFilter() {
-  const search = useSearchParams();
-  const division = (DIVISIONS as readonly string[]).includes(search.get("division") ?? "")
-    ? (search.get("division") as Division)
-    : "HOUSING";
-  const requested = search.get("service");
-  const service =
-    DIVISIONS_WITH_REQUESTS.includes(division) && (SERVICE_TYPES as readonly string[]).includes(requested ?? "")
-      ? (requested as ServiceType)
-      : ALL;
-  return { division, service } as const;
-}
 
 export function FilesView() {
   const t = useTranslations("Files");

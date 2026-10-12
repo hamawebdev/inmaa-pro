@@ -1,3 +1,4 @@
+import { formatMoney } from "@/features/money/rules/centimes";
 import { WILAYAS } from "@/lib/geo/wilayas";
 
 import { OPTION_LISTS, OTHER_CODE, type OptionListName } from "../validators/option-lists";
@@ -75,20 +76,6 @@ export function formatSheetDate(iso: string): string {
   return match ? `${match[3]}/${match[2]}/${match[1]}` : iso;
 }
 
-/**
- * An amount in centimes as the program writes money everywhere, on screen and
- * on paper (coordinator's ruling, the academy's format): a dot between the
- * thousands, a comma before the centimes, always two decimals. 1250000 is
- * «12.500,00». Whole numbers only, so no rounding. Money's shared helper takes
- * its place once it is in.
- */
-export function formatSheetMoney(centimes: number): string {
-  const sign = centimes < 0 ? "-" : "";
-  const magnitude = Math.abs(Math.trunc(centimes));
-  const whole = String(Math.floor(magnitude / 100)).replace(/\B(?=(\d{3})+(?!\d))/g, ".");
-  return `${sign}${whole},${String(magnitude % 100).padStart(2, "0")}`;
-}
-
 /** Thousandths of a unit as a number with a decimal comma: 180500 is «180,5». */
 export function formatSheetQty(thousandths: number): string {
   const sign = thousandths < 0 ? "-" : "";
@@ -137,7 +124,7 @@ export function writtenValue(row: FormRow, values: FormValues): WrittenValue | n
 
   switch (row.answer) {
     case "money":
-      return typeof value === "number" ? { text: formatSheetMoney(value), ltr: true } : null;
+      return typeof value === "number" ? { text: formatMoney(value), ltr: true } : null;
     case "area":
       return typeof value === "number" ? { text: formatSheetQty(value), ltr: true } : null;
     case "number":

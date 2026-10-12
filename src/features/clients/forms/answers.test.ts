@@ -1,10 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { dinarsToMoney, money, toQty } from "@/lib/units";
+import { dinarsToMoney, toQty } from "@/lib/units";
 
 import {
   formatSheetDate,
-  formatSheetMoney,
   formatSheetQty,
   freeText,
   isTicked,
@@ -26,11 +25,7 @@ const ticks = (target: FormRow, values: FormValues) =>
   (target.options ?? []).map((_, index) => (isTicked(target, index, values) ? 1 : 0));
 
 describe("what is written on a blank", () => {
-  it("writes amounts in dinars from centimes, as his documents do", () => {
-    expect(formatSheetMoney(dinarsToMoney(12500))).toBe("12.500,00");
-    expect(formatSheetMoney(money(1234567))).toBe("12.345,67");
-    expect(formatSheetMoney(money(5))).toBe("0,05");
-    expect(formatSheetMoney(money(-100000))).toBe("-1.000,00");
+  it("writes amounts in the program's one money format (Money's helper): «45.000,00»", () => {
     expect(writtenValue(row("HOUSING_CONTRACT", "HC-057"), { totalAmount: dinarsToMoney(45000) })).toEqual({
       text: "45.000,00",
       ltr: true,

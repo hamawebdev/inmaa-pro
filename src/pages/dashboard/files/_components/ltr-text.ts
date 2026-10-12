@@ -4,4 +4,4 @@
  * written with the Unicode isolates U+2066 and U+2069. «الملف 1/BLC» would
  * otherwise read «BLC/1» in an Arabic heading.
  */
-export const ltr = (text: string) => `⁦${text}⁩`;
+export const ltr = (text: string) => `\u2066${text}\u2069`;

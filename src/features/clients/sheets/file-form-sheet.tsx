@@ -4,7 +4,6 @@ import {
   PageBreak,
   PrintSheet,
   SHEET_FONT,
-  SHEET_MARGINS_CLEAR_OF_LETTERHEAD,
   SheetCell,
   SheetRow,
   SheetTable,
@@ -43,8 +42,8 @@ import { registrationPlaces } from "../rules/registration-number";
  *    runs of empty paragraphs put them.
  *  - Nothing prints over his letterhead or footer pictures (coordinator's
  *    ruling). His margins would put the first lines of a page under the header
- *    picture and the last ones on the footer picture, so the sheet uses the
- *    kit's margins that stop clear of both: each page's text starts just under
+ *    picture and the last ones on the footer picture, so the sheet is laid in
+ *    the kit's text area (`SHEET_BODY`, its default): each page's text starts just under
  *    the letterhead, and a row that would reach the footer runs on to the next
  *    page. His empty first paragraph, which only made room under the
  *    letterhead, is left out: the margin does its work.
@@ -62,9 +61,11 @@ const FACE = SHEET_FONT;
 /**
  * A line is this many times its type size, whatever the font. Tighter than
  * Word's (the Checker counts 1.57 for Traditional Arabic) so that each page of
- * his holds on a page that stops clear of the letterhead.
+ * his holds on a page that stops clear of the letterhead, with room to spare:
+ * page 1 of the building contract, the fullest, ends 6 mm above the footer, so
+ * an answer that runs onto a second line does not push a table to a new page.
  */
-const LINE = 1.4;
+const LINE = 1.36;
 const type = (pt: number, weight: 400 | 700 = 400): React.CSSProperties => ({
   fontSize: `${pt}pt`,
   lineHeight: `${pt * LINE}pt`,
@@ -77,13 +78,15 @@ const NUMBER_PT = 14;
 const OPTION_PT = 14;
 /** What is written on a blank. */
 const VALUE_PT = 13;
+/** The commune and the wilaya share one narrow cell. */
+const PLACE_PT = 12;
 
 // ── Places on the page, in millimetres ────────────────────────────────────
 
 /** The registration line and the date line. */
 const HEADER_LINES_MM = [8, 10.8] as const;
-/** One of his empty paragraphs between two tables, a little under the Checker's estimate (4.7 mm). */
-const EMPTY_PARAGRAPH_MM = 4;
+/** One of his empty paragraphs between two tables: under the Checker's estimate (4.7 mm), for the same reason. */
+const EMPTY_PARAGRAPH_MM = 3;
 
 // ── Small pieces ──────────────────────────────────────────────────────────
 
@@ -169,12 +172,22 @@ interface Drawing {
   values: FormValues;
 }
 
+/**
+ * A label he stretched to fill its cell («مكــــان التخــــلص مــــن النفايات») is
+ * a little wider in the bundled Naskh than in his face, and would run into the
+ * next cell. One stretching character is taken from each long run: the label
+ * still fills its cell, in his face and in the stand-in.
+ */
+function fitted(raw: string): string {
+  return raw.replace(/\u0640{3,}/g, (run) => run.slice(1));
+}
+
 function Label({ row, part }: { row: FormRow; part: Extract<SheetPart, { t: "label" }> }) {
   return (
     <span style={{ ...type(part.pt ?? LABEL_PT, part.regular ? 400 : 700), whiteSpace: "nowrap" }}>
       {/* No line height of its own: the smaller number must not deepen the line it sits on. */}
       {row.number && <span style={{ fontSize: `${NUMBER_PT}pt`, lineHeight: 0 }}>{row.number}&nbsp;</span>}
-      {row.raw}
+      {fitted(row.raw)}
     </span>
   );
 }
@@ -184,13 +197,14 @@ function ValueBlank({ row, values }: { row: FormRow; values: FormValues }) {
   if (row.answer === "place" && (row.blankParts ?? 1) > 1) {
     // «……………………/…………»: the commune on the long part, the wilaya on the short one after the slash.
     const [commune, wilaya] = placeParts(row, values);
+    // Each part is at least as wide as what is written on it: a name is never cut in two lines.
     return (
       <>
-        <span style={{ flex: "2 1 0", minWidth: "6mm", ...type(VALUE_PT) }}>
+        <span style={{ flex: "2 1 auto", minWidth: "6mm", whiteSpace: "nowrap", ...type(PLACE_PT) }}>
           <DottedBlank fill>{commune}</DottedBlank>
         </span>
-        <span style={type(VALUE_PT)}>/</span>
-        <span style={{ flex: "1 1 0", minWidth: "6mm", ...type(VALUE_PT) }}>
+        <span style={type(PLACE_PT)}>/</span>
+        <span style={{ flex: "1 1 auto", minWidth: "6mm", whiteSpace: "nowrap", ...type(PLACE_PT) }}>
           <DottedBlank fill>{wilaya}</DottedBlank>
         </span>
       </>
@@ -607,11 +621,7 @@ export function FileFormSheet({ definition, values = {} }: { definition: FormDef
     }
   });
 
-  return (
-    <PrintSheet letterhead="client" margins={SHEET_MARGINS_CLEAR_OF_LETTERHEAD.client}>
-      {blocks}
-    </PrintSheet>
-  );
+  return <PrintSheet letterhead="client">{blocks}</PrintSheet>;
 }
 
 /** «قائمة القاطنين بالعمارة» alone, for a building or a complex whose list has changed. */
@@ -624,9 +634,5 @@ export function ResidentsSheet({
 }) {
   const block = definition.sheet.find((candidate) => candidate.t === "residents");
   if (!block) return null;
-  return (
-    <PrintSheet letterhead="client" margins={SHEET_MARGINS_CLEAR_OF_LETTERHEAD.client}>
-      {residentBlocks(block, definition, residents)}
-    </PrintSheet>
-  );
+  return <PrintSheet letterhead="client">{residentBlocks(block, definition, residents)}</PrintSheet>;
 }

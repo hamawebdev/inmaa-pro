@@ -90,10 +90,10 @@ export const SITE_OFFICE_COUNTS = ["buildingsCount", "keyCount"] as const;
 /** Digits as typed on an Arabic keyboard become ASCII; spaces and thousands marks go; a comma is a decimal point. */
 export function normaliseTyped(text: string): string {
   return text
-    .replace(/[٠-٩]/g, (digit) => String(digit.charCodeAt(0) - 0x0660))
-    .replace(/[۰-۹]/g, (digit) => String(digit.charCodeAt(0) - 0x06f0))
-    .replace(/[\s  ٬]/g, "")
-    .replace(/[,٫]/g, ".");
+    .replace(/[\u0660-\u0669]/g, (digit) => String(digit.charCodeAt(0) - 0x0660))
+    .replace(/[\u06f0-\u06f9]/g, (digit) => String(digit.charCodeAt(0) - 0x06f0))
+    .replace(/[\s\u00a0\u202f\u066c]/g, "")
+    .replace(/[,\u066b]/g, ".");
 }
 
 type Parsed = { value: number } | { message: string };

@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { listCommunesQuery, PLACES_PATH } from "@/features/core/services/places";
-import { optionCode, optionLabel, withoutTatweel } from "@/features/clients/forms/answers";
+import { freeSlot, optionCode, optionLabel, withoutTatweel } from "@/features/clients/forms/answers";
 import { labelKeyOf, LIST_NAMESPACES } from "@/features/clients/forms/screen-labels";
 import type { FormOption, FormRow } from "@/features/clients/forms/types";
 import type { FieldKey } from "@/features/clients/forms/values";
@@ -36,19 +36,30 @@ import { cn } from "@/lib/utils";
 type FormControl = Control<FileScreenState>;
 type Path = FieldPath<FileScreenState>;
 
-export const SPAN_BOTH = "sm:col-span-2";
+const SPAN_BOTH = "sm:col-span-2";
 
 /** The answers a file is not saved without. */
-export const REQUIRED_KEYS: ReadonlySet<FieldKey> = new Set(["clientName", "phone", "address", "commune"]);
+const REQUIRED_KEYS: ReadonlySet<FieldKey> = new Set(["clientName", "phone", "address", "commune"]);
 
 const answerPath = (key: string) => `answers.${key}` as Path;
 
+/**
+ * The shared radio button marks its ticked state with a class that matches
+ * nothing (`data-checked:`, where the library sets `data-state="checked"`), so
+ * a ticked option looks like the others. Until the shared one is corrected, the
+ * ticked state is named here.
+ */
+const RADIO_CHECKED = "data-[state=checked]:border-primary data-[state=checked]:bg-primary";
+
 /** An option's words on screen: his in Arabic, the code's label otherwise. */
 function useOptionText(list: OptionListName | undefined) {
+  const t = useTranslations("FileForm");
   const locale = useLocale();
   const codeLabel = useCodeLabel(list ? LIST_NAMESPACES[list] : "FileOptions");
   return (option: FormOption, code: string | null) => {
     const his = withoutTatweel(optionLabel(option)).replace(/:$/, "").trim();
+    // A bare blank line of his, ticked to write something else on it.
+    if (his === "") return t("Fields.Other");
     if (locale === "ar" || code === null) return his;
     return codeLabel(code);
   };
@@ -56,6 +67,8 @@ function useOptionText(list: OptionListName | undefined) {
 
 function useRowLabel(kind: FormKind, row: FormRow): string {
   const t = useTranslations("FileForm");
+  // A list of services has no label of its own on his form: its card's title says it.
+  if (!row.label && row.key !== "registrationDate") return "";
   const label = t(`Labels.${labelKeyOf(kind, row.key!)}`);
   return REQUIRED_KEYS.has(row.key!) ? t("Required", { label }) : label;
 }
@@ -195,7 +208,7 @@ function SingleChoice({
                   type="button"
                   variant="ghost"
                   size="sm"
-                  className="h-8 px-2 text-muted-foreground"
+                  className="h-8 px-2 text-sm font-normal text-muted-foreground"
                   onClick={() => field.onChange("")}
                 >
                   {t("Clear")}
@@ -214,7 +227,7 @@ function SingleChoice({
                 const id = `file-${path.replace(/\./g, "-")}-${code}`;
                 return (
                   <div key={code} className="flex items-center gap-3">
-                    <RadioGroupItem value={code} id={id} />
+                    <RadioGroupItem value={code} id={id} className={RADIO_CHECKED} />
                     <Label htmlFor={id} className="font-normal">
                       {optionText(option, code)}
                     </Label>
@@ -246,7 +259,6 @@ function SeveralChoices({
   const errorMessage = useErrorMessage();
   const optionText = useOptionText(row.list);
   const path = answerPath(row.key!);
-  let slot = -1;
   return (
     <Controller
       control={control}
@@ -259,7 +271,7 @@ function SeveralChoices({
             <div className="grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2 lg:grid-cols-3">
               {(row.options ?? []).map((option, index) => {
                 if (option.free) {
-                  slot += 1;
+                  const slot = freeSlot(row, index);
                   return (
                     <TextInput
                       key={`free-${index}`}

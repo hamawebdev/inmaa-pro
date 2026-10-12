@@ -223,14 +223,14 @@ export function FileForm({
       noValidate
     >
       {closed ? (
-        <Alert>
+        <Alert className="text-start">
           <Lock />
-          <AlertDescription>{t("Closed")}</AlertDescription>
+          <AlertDescription className="text-base">{t("Closed")}</AlertDescription>
         </Alert>
       ) : edit?.locked ? (
-        <Alert>
+        <Alert className="text-start">
           <Lock />
-          <AlertDescription>{t("Locked")}</AlertDescription>
+          <AlertDescription className="text-base">{t("Locked")}</AlertDescription>
         </Alert>
       ) : null}
 

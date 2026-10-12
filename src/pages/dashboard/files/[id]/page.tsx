@@ -23,17 +23,19 @@ import { StatusChip } from "@/components/status-chip";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { formatSheetDate, formatSheetMoney } from "@/features/clients/forms/answers";
+import { formatSheetDate } from "@/features/clients/forms/answers";
 import { FORM_DEFINITIONS } from "@/features/clients/forms/definitions";
 import { labelKeyOf } from "@/features/clients/forms/screen-labels";
 import { fileQueryPath, getFileHubQuery, type FileHub } from "@/features/clients/services/file-reads";
 import { FORM_KIND_OF } from "@/features/clients/validators/option-lists";
+import { formatMoney } from "@/features/money/rules/centimes";
 import { useCodeLabel } from "@/i18n/use-code-label";
 import { pathKey } from "@/lib/compat/revalidate";
 import { WILAYAS } from "@/lib/geo/wilayas";
+import { cn } from "@/lib/utils";
 import { FILE_PARTS, filePartHref, type FilePartId } from "@/navigation/file-parts";
 
-import { filesHref } from "../_components/files-view";
+import { filesHref } from "../_components/files-filter";
 import { ltr } from "../_components/ltr-text";
 import { StageStrip } from "../_components/stage-strip";
 import { stageTone } from "../_components/stage-tone";
@@ -63,11 +65,11 @@ const PART_ICONS: Record<FilePartId, LucideIcon> = {
   payments: Wallet,
 };
 
-function Facts({ items }: { items: ReadonlyArray<{ label: string; value: React.ReactNode }> }) {
+function Facts({ items }: { items: ReadonlyArray<{ label: string; value: React.ReactNode; wide?: boolean }> }) {
   return (
     <dl className="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2">
       {items.map((item) => (
-        <div key={item.label} className="min-w-0">
+        <div key={item.label} className={cn("min-w-0", item.wide && "sm:col-span-2")}>
           <dt className="text-sm text-muted-foreground">{item.label}</dt>
           <dd className="mt-1 min-w-0 text-base font-semibold break-words">{item.value}</dd>
         </div>
@@ -119,7 +121,7 @@ function Summary({ hub }: { hub: FileHub }) {
           <Facts
             items={[
               ...(hub.site.name ? [{ label: label("commonName"), value: hub.site.name }] : []),
-              { label: label("address"), value: hub.site.address },
+              { label: label("address"), value: hub.site.address, wide: !hub.site.name },
               {
                 label: label("commune"),
                 value: [hub.site.communeName, wilaya ? (locale === "ar" ? wilaya.nameAr : wilaya.nameFr) : null]
@@ -157,6 +159,7 @@ function Summary({ hub }: { hub: FileHub }) {
                   },
               {
                 label: t("Dates"),
+                wide: true,
                 value: terms.startDate ? (
                   <Ltr>
                     {formatSheetDate(terms.startDate)}
@@ -191,7 +194,7 @@ function Summary({ hub }: { hub: FileHub }) {
                   terms.totalAmount !== null ? (
                     <span>
                       <Ltr>
-                        {formatSheetMoney(terms.totalAmount)} {tCommon("Currency")}
+                        {formatMoney(terms.totalAmount)} {tCommon("Currency")}
                       </Ltr>
                       {terms.amountBasis && (
                         <span className="block text-sm font-normal text-muted-foreground">
