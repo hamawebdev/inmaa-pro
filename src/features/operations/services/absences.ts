@@ -42,7 +42,7 @@ import {
   type VisitForSeat,
 } from "./assignment";
 import { VISITS_PATH } from "./programme";
-import { readSiteForOrder, readWorkers } from "./upstream";
+import { readSiteForOrder, schedulableWorkers } from "./upstream";
 
 /**
  * Absences and leave of cleaning workers (#9), and the replacement of a worker
@@ -761,7 +761,9 @@ export async function suggestReplacements(
   const visit = await readVisitForSeat(ex, seat.visitId);
   const toFill = await seatToFill(ex, visit);
   const onVisit = await workersOnVisit(ex, visit.id);
-  const workers = (await readWorkers(ex)).filter((worker) => !onVisit.has(worker.id));
+  const workers = (await schedulableWorkers(ex, ctx, { date: visit.visitDate })).filter(
+    (worker) => !onVisit.has(worker.id),
+  );
 
   const settings = await workTimeSettings(ex);
   const weekSeats = await weekSeatsByWorker(ex, visit.visitDate, { exceptVisitId: visit.id });

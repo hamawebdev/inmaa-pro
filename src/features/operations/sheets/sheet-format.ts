@@ -1,6 +1,6 @@
 import type { CSSProperties } from "react";
 
-import { SHEET_FONT_STAND_IN } from "@/components/print/sheet-constants";
+import { SHEET_FONT_STAND_IN } from "@/components/print";
 
 import { weekdayOf, type ClockTime, type IsoDate } from "../rules/calendar";
 

@@ -1,7 +1,6 @@
-import { useEffect } from "react";
-
 import { useQuery } from "@tanstack/react-query";
 import { useParams } from "react-router-dom";
+import { toast } from "sonner";
 import { useTranslations } from "use-intl";
 
 import { DetailScreen } from "@/components/detail-screen";
@@ -13,6 +12,7 @@ import { getCallListQuery, recordDaySheetPrintedAction } from "@/features/operat
 import { VISITS_PATH } from "@/features/operations/services/programme";
 import { CallListSheet } from "@/features/operations/sheets/call-list-sheet";
 import { sampleCallList } from "@/features/operations/sheets/samples";
+import { useErrorMessage } from "@/i18n/errors";
 import { pathKey } from "@/lib/compat/revalidate";
 import { localDate } from "@/lib/units";
 
@@ -28,6 +28,7 @@ export default function CallListPrintPage() {
   const { date = "" } = useParams();
   const t = useTranslations("OperationsSheets");
   const tNav = useTranslations("Nav");
+  const errorMessage = useErrorMessage();
   const blank = !isIsoDate(date);
   const list = useQuery({
     queryKey: [...pathKey(VISITS_PATH), "calls", date],
@@ -35,13 +36,12 @@ export default function CallListPrintPage() {
     enabled: !blank,
   });
 
-  // The list names clients and their phones: its printing is logged.
-  useEffect(() => {
-    if (blank) return;
-    const recordPrint = () => void recordDaySheetPrintedAction({ sheet: "CALL_LIST", date: localDate(date) });
-    window.addEventListener("beforeprint", recordPrint);
-    return () => window.removeEventListener("beforeprint", recordPrint);
-  }, [blank, date]);
+  // The list names clients and their phones: its printing is logged first.
+  const recordPrint = async () => {
+    const result = await recordDaySheetPrintedAction({ sheet: "CALL_LIST", date: localDate(date) });
+    if (!result.success) toast.error(errorMessage(result.error, t("MissionOrder.PrintNotRecorded")));
+    return result.success;
+  };
 
   return (
     <DetailScreen
@@ -49,7 +49,7 @@ export default function CallListPrintPage() {
       title={t("CallList.Title")}
       description={t("CallList.Description")}
       back={{ href: VISITS_PATH, label: tNav("Visits") }}
-      actions={<PrintButton />}
+      actions={<PrintButton onPrint={blank ? undefined : recordPrint} />}
     >
       {blank ? (
         <CallListSheet list={sampleCallList("blank")} />

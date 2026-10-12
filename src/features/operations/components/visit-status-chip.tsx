@@ -18,7 +18,7 @@ import type { VisitStatus } from "../validators/option-codes";
 const STATUS_LOOK: Record<VisitStatus, { tone: StatusTone; icon?: LucideIcon }> = {
   CONFIRMED: { tone: "success", icon: CalendarCheck },
   AWAITING_CONFIRMATION: { tone: "warning" },
-  IN_PROGRESS: { tone: "info", icon: Timer },
+  IN_PROGRESS: { tone: "progress", icon: Timer },
   DONE: { tone: "info", icon: CircleCheckBig },
   POSTPONED: { tone: "pending" },
   PROBLEM: { tone: "danger" },

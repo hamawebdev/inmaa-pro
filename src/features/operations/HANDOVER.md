@@ -51,7 +51,11 @@ Blank sheets: `visits/blank-<division>/print`, `visits/calls/blank/print`, `supe
 - `<Ltr>` for numbers, times, codes; `<bdi>` for typed names and addresses. No «» in Arabic text of mine.
 - Sheets: the print kit only, nothing over his letterhead or footer; check each page PNG with
   `npm run pdf -- --demo --route "/dashboard/visits/{operations.visitReturned}/print" --png`.
-- Printing is recorded from the page on the window's `beforeprint` event (the kit's `PrintButton` has no hook).
+- Printing is recorded through `<PrintButton onPrint>` (the hook runs before the dialog and stops it when the
+  record fails; Ctrl+P goes through it too).
+- Read-only users (`useSectionLevel("REQUESTS") !== "WRITE"`) see no write button: the board's arrival menu,
+  the team card's acts, the returned order's Save (the form is disabled), the order's print, File › الزيارات'
+  generate button. Every write is also refused by its service.
 
 ## Rulings I was given
 
@@ -74,3 +78,16 @@ Blank sheets: `visits/blank-<division>/print`, `visits/calls/blank/print`, `supe
 - Foundation: seventh `StatusChip` tone; `DayBoard` on the home screen; an `onPrint` hook on `PrintButton`;
   `SHEET_FONT_STAND_IN` exported from the kit's index (I import it from `sheet-constants`).
 - In Naskh the mission order runs to three pages for every division: the third is the tear-off slip alone.
+
+## Round 2 (in progress)
+
+Briefed: the reactions to `visit.signedOff` (complaint from «غير راضٍ» with its counter, extra-visit proposal,
+closing an on-demand job through Clients' `closeFile` once it lands); `updateFutureVisits`, `copyFileSetup`, the
+`file.termsChanged`, `file.renewed`, `site.changed` and `staff.unavailable` handlers; screens: seat picker with
+the working-time warnings and the manager's override, replacement suggestions, recording an absence (tab
+«الحضور والغياب» under «عمال النظافة»), File › «المهام», the weekly «برنامج العمل» with drag to move a visit.
+Not in round 2: quality screens, supervisors and zones, alert tiles (round 3).
+Accepted at the end of round 1: the six interpretations listed in the round 1 report (past visits of a late
+contract show as not returned; «مؤكدة» only with every seat filled; future ON_DEMAND visits cancelled too; a
+no-show becomes an absence for People to treat; «لم تكتمل» makes the visit «مشكلة»; a changed plan is listed as
+a replacement notice on the call list).

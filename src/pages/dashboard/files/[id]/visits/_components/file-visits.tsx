@@ -30,6 +30,7 @@ import {
 } from "@/features/operations/services/programme";
 import type { VisitStatus } from "@/features/operations/validators/option-codes";
 import { intlLocaleFor } from "@/i18n/config";
+import { useSectionLevel } from "@/hooks/use-session";
 import { useErrorMessage } from "@/i18n/errors";
 import { useCodeLabel } from "@/i18n/use-code-label";
 import { pathKey } from "@/lib/compat/revalidate";
@@ -47,6 +48,7 @@ export function FileVisits({ fileId }: { fileId: string }) {
   const weekdayLabel = useCodeLabel("Options.Weekday");
   const warningLabel = useCodeLabel("ProgrammeWarnings");
   const [making, setMaking] = React.useState(false);
+  const mayWrite = useSectionLevel("REQUESTS") === "WRITE";
   const [pagination, setPagination] = React.useState<PaginationState>({ pageIndex: 0, pageSize: 25 });
 
   const preview = useQuery({
@@ -182,7 +184,7 @@ export function FileVisits({ fileId }: { fileId: string }) {
         <CardHeader>
           <CardTitle>{t("ProgrammeTitle")}</CardTitle>
           <CardDescription>{t("ProgrammeHint")}</CardDescription>
-          {summary?.canGenerate && summary.missing > 0 && (
+          {mayWrite && summary?.canGenerate && summary.missing > 0 && (
             <CardAction>
               <Button variant="add" onClick={() => void makeVisits()} loading={making}>
                 <CalendarPlus />

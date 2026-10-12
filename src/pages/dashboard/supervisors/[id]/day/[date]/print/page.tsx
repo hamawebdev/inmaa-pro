@@ -1,7 +1,6 @@
-import { useEffect } from "react";
-
 import { useQuery } from "@tanstack/react-query";
 import { useParams } from "react-router-dom";
+import { toast } from "sonner";
 import { useTranslations } from "use-intl";
 
 import { DetailScreen } from "@/components/detail-screen";
@@ -12,6 +11,7 @@ import { isIsoDate } from "@/features/operations/rules/calendar";
 import { getSupervisorDaySheetQuery, recordDaySheetPrintedAction } from "@/features/operations/services/day-sheets";
 import { sampleDaySheet } from "@/features/operations/sheets/samples";
 import { SupervisorDaySheet } from "@/features/operations/sheets/supervisor-day-sheet";
+import { useErrorMessage } from "@/i18n/errors";
 import { pathKey } from "@/lib/compat/revalidate";
 import { localDate } from "@/lib/units";
 
@@ -27,6 +27,7 @@ export default function SupervisorDaySheetPrintPage() {
   const { id = "", date = "" } = useParams();
   const t = useTranslations("OperationsSheets");
   const tNav = useTranslations("Nav");
+  const errorMessage = useErrorMessage();
   const blank = id === "blank" || !isIsoDate(date);
   const sheet = useQuery({
     queryKey: [...pathKey("/dashboard/supervisors"), id, "day", date],
@@ -34,14 +35,16 @@ export default function SupervisorDaySheetPrintPage() {
     enabled: !blank,
   });
 
-  // The sheet names the team and their phones: its printing is logged.
-  useEffect(() => {
-    if (blank) return;
-    const recordPrint = () =>
-      void recordDaySheetPrintedAction({ sheet: "SUPERVISOR_DAY", date: localDate(date), supervisorId: id });
-    window.addEventListener("beforeprint", recordPrint);
-    return () => window.removeEventListener("beforeprint", recordPrint);
-  }, [blank, date, id]);
+  // The sheet names the team and their phones: its printing is logged first.
+  const recordPrint = async () => {
+    const result = await recordDaySheetPrintedAction({
+      sheet: "SUPERVISOR_DAY",
+      date: localDate(date),
+      supervisorId: id,
+    });
+    if (!result.success) toast.error(errorMessage(result.error, t("MissionOrder.PrintNotRecorded")));
+    return result.success;
+  };
 
   return (
     <DetailScreen
@@ -49,7 +52,7 @@ export default function SupervisorDaySheetPrintPage() {
       title={t("DaySheet.Title")}
       description={t("DaySheet.Description")}
       back={{ href: "/dashboard/supervisors", label: tNav("Supervisors") }}
-      actions={<PrintButton />}
+      actions={<PrintButton onPrint={blank ? undefined : recordPrint} />}
     >
       {blank ? (
         <SupervisorDaySheet sheet={sampleDaySheet("blank")} />

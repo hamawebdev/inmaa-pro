@@ -24,7 +24,7 @@ import type {
 } from "../validators/option-codes";
 import { VISITS_PATH } from "./programme";
 import { checklistOf, freezeChecklist, type ChecklistLine } from "./tasks";
-import { readFileForScheduling, readSiteForOrder, readStaffNames } from "./upstream";
+import { readFileForScheduling, readSiteForOrder, staffSummaries } from "./upstream";
 
 /**
  * The mission order of a visit (#11), from what is stored: the visit, its
@@ -169,7 +169,9 @@ async function buildOrder(
   if (!file) throw new Error(`operations: the file of visit ${visit.id} was not found`);
   const site = await readSiteForOrder(ex, { siteId: file.siteId, securityTicked: file.securityInstructions === true });
   const team = await orderTeam(ex, visit.id);
-  const supervisor = (await readStaffNames(ex, [visit.supervisorEmployeeId])).get(visit.supervisorEmployeeId ?? "");
+  const supervisor = (await staffSummaries(ex, ctx, [visit.supervisorEmployeeId])).get(
+    visit.supervisorEmployeeId ?? "",
+  );
 
   const workers: OrderWorker[] = team.map((seat) => ({
     name: `${seat.firstName} ${seat.lastName}`,

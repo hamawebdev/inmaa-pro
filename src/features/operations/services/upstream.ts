@@ -1,4 +1,10 @@
-import type { Executor } from "@/lib/service/context";
+import {
+  getStaffSummary,
+  listSchedulableWorkers,
+  type SchedulableWorker as PeopleSchedulableWorker,
+  type StaffSummary,
+} from "@/features/people/services/staff-exports";
+import type { Executor, ServiceContext } from "@/lib/service/context";
 import type { LocalDate, LocalTime } from "@/lib/units";
 
 /**
@@ -310,6 +316,31 @@ export async function readSiteForOrder(
 }
 
 // ── Workers (People) ────────────────────────────────────────────────────────
+
+/**
+ * The workers who may be given seats on a day, as People lists them
+ * (`listSchedulableWorkers`: her state on that day from her history, her
+ * training days, her sanction; never anything restricted). With `ids`, those
+ * workers whatever their state.
+ */
+export async function schedulableWorkers(
+  ex: Executor,
+  ctx: ServiceContext,
+  input: { date?: string; zoneId?: string | null; ids?: readonly string[] } = {},
+): Promise<PeopleSchedulableWorker[]> {
+  return listSchedulableWorkers(ex, ctx, input);
+}
+
+/** Names and phones of staff (supervisors, workers) for labels, as People gives them (`getStaffSummary`). */
+export async function staffSummaries(
+  ex: Executor,
+  ctx: ServiceContext,
+  ids: readonly (string | null | undefined)[],
+): Promise<Map<string, StaffSummary>> {
+  const wanted = [...new Set(ids.filter((id): id is string => Boolean(id)))];
+  if (wanted.length === 0) return new Map();
+  return new Map(Object.entries(await getStaffSummary(ex, ctx, { ids: wanted })));
+}
 
 /** Engagement states in which a worker may be given seats. */
 export const SCHEDULABLE_ENGAGEMENTS = ["ON_TRIAL", "ACCEPTED"] as const;

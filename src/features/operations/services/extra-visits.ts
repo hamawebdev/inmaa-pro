@@ -1,0 +1,253 @@
+import { requireSection } from "@/lib/access/session";
+import { newId } from "@/lib/db/rows";
+import { logChange } from "@/lib/log";
+import { nextNumber } from "@/lib/numbering";
+import { action, query } from "@/lib/service/action";
+import type { Executor, ServiceContext } from "@/lib/service/context";
+import { ServiceError } from "@/lib/service/errors";
+import { localDate, localTime, minutes, type LocalDate, type LocalTime } from "@/lib/units";
+
+import { isClockTime, isIsoDate } from "../rules/calendar";
+import type { VisitStatus } from "../validators/option-codes";
+import { OPEN_COMPLAINT_STATUSES } from "./complaints";
+import { VISITS_PATH } from "./programme";
+
+/**
+ * What a signed-off visit may still call for (#15, #17).
+ *
+ *  - «هل تحتاج إلى زيارة إضافية؟ نعم» on the returned order: the visit is
+ *    listed as a proposal until the office plans an extra visit from it
+ *    (origin EXTRA, pointing back at it). Nothing is written at sign-off.
+ *  - The last visit of an on-demand job: once nothing of the job is left to do,
+ *    the job ends (`onDemandJobFinished`; Clients' `closeFile` with JOB_DONE).
+ */
+
+/** Origins of the visits an on-demand job is made of. */
+const JOB_ORIGINS = ["ON_DEMAND", "MAKEUP", "REDO", "EXTRA"] as const;
+/** A visit of the job in one of these is still to be done. */
+const STILL_TO_DO: readonly VisitStatus[] = ["CONFIRMED", "AWAITING_CONFIRMATION", "IN_PROGRESS"];
+
+// ── Proposals ───────────────────────────────────────────────────────────────
+
+/** A visit whose order asked for an extra visit that has not been planned. */
+export interface ExtraVisitProposal {
+  visitId: string;
+  visitNumber: string;
+  visitDate: LocalDate;
+  plannedStartTime: LocalTime;
+  plannedDurationMin: number;
+  workersNeeded: number;
+  fileId: string;
+  fileNumber: string;
+  division: string;
+  siteName: string | null;
+  siteAddress: string;
+  clientName: string;
+  /** What the order said: «حالة الإنجاز», the percentage, why it was not finished, the worker's notes. */
+  completion: string | null;
+  completionPercent: number | null;
+  incompleteReason: string | null;
+  workerNotes: string | null;
+}
+
+/** Visits whose returned order says an extra visit is needed and that no extra visit names yet, oldest first. */
+export async function listExtraVisitProposals(
+  ex: Executor,
+  ctx: ServiceContext,
+  input: { fileId?: string | null } = {},
+): Promise<ExtraVisitProposal[]> {
+  requireSection(ctx, "REQUESTS", "READ");
+  let rows = ex
+    .selectFrom("VisitReport")
+    .innerJoin("Visit", "Visit.id", "VisitReport.visitId")
+    .innerJoin("File", "File.id", "Visit.fileId")
+    .innerJoin("Site", "Site.id", "File.siteId")
+    .innerJoin("Client", "Client.id", "File.clientId")
+    .select([
+      "Visit.id as visitId",
+      "Visit.number as visitNumber",
+      "Visit.visitDate",
+      "Visit.plannedStartTime",
+      "Visit.plannedDurationMin",
+      "Visit.workersNeeded",
+      "File.id as fileId",
+      "File.number as fileNumber",
+      "File.division",
+      "Site.commonName as siteName",
+      "Site.address as siteAddress",
+      "Client.name as clientName",
+      "VisitReport.completion",
+      "VisitReport.completionPercent",
+      "VisitReport.incompleteReason",
+      "VisitReport.workerNotes",
+    ])
+    .where("VisitReport.needsExtraVisit", "=", 1)
+    .where("File.deletedAt", "is", null)
+    .where((eb) =>
+      eb.not(
+        eb.exists(
+          eb
+            .selectFrom("Visit as extra")
+            .select("extra.id")
+            .whereRef("extra.sourceVisitId", "=", "Visit.id")
+            .where("extra.origin", "=", "EXTRA"),
+        ),
+      ),
+    );
+  if (input.fileId) rows = rows.where("Visit.fileId", "=", input.fileId);
+  return rows.orderBy("Visit.visitDate").orderBy("Visit.number").execute();
+}
+
+export interface PlanExtraVisitInput {
+  /** The visit whose order asked for it. */
+  sourceVisitId: string;
+  date: string;
+  /** Each defaults to the source visit's. */
+  startTime?: string | null;
+  durationMin?: number | null;
+  workersNeeded?: number | null;
+}
+
+/**
+ * The office plans the extra visit an order asked for: a visit of origin EXTRA
+ * pointing back at its source, outside the weekly programme (no slot, no
+ * programme date), with its own number in the year of its date, the source's
+ * zone and supervisor, and no team yet. It waits for the office to give its
+ * seats and confirm it with the client.
+ */
+export async function planExtraVisit(
+  ex: Executor,
+  ctx: ServiceContext,
+  input: PlanExtraVisitInput,
+): Promise<{ visitId: string; number: string }> {
+  requireSection(ctx, "REQUESTS", "WRITE");
+  const source = await ex
+    .selectFrom("Visit")
+    .select([
+      "id",
+      "number",
+      "fileId",
+      "plannedStartTime",
+      "plannedDurationMin",
+      "workersNeeded",
+      "zoneId",
+      "supervisorEmployeeId",
+    ])
+    .where("id", "=", input.sourceVisitId)
+    .executeTakeFirst();
+  if (!source) throw new ServiceError("This visit does not exist.");
+
+  if (!isIsoDate(input.date)) throw new ServiceError("Enter a valid date.");
+  if (input.date < ctx.today) throw new ServiceError("An extra visit is planned for today or later.");
+  const startTime = input.startTime?.trim() || source.plannedStartTime;
+  if (!isClockTime(startTime)) throw new ServiceError("Enter a time as HH:MM.");
+  const durationMin = input.durationMin ?? source.plannedDurationMin;
+  const workersNeeded = input.workersNeeded ?? source.workersNeeded;
+  for (const value of [durationMin, workersNeeded]) {
+    if (!Number.isSafeInteger(value) || value < 1)
+      throw new ServiceError("A number must be a whole number of at least 1.");
+  }
+  const planned = await ex
+    .selectFrom("Visit")
+    .select("id")
+    .where("sourceVisitId", "=", source.id)
+    .where("origin", "=", "EXTRA")
+    .where("status", "!=", "CANCELLED")
+    .executeTakeFirst();
+  if (planned) throw new ServiceError("An extra visit is already planned for this visit.");
+
+  const date = localDate(input.date);
+  const number = await nextNumber(ex, ctx, "VISIT", { date });
+  const id = newId();
+  const values = {
+    origin: "EXTRA",
+    visitDate: date,
+    plannedStartTime: localTime(startTime),
+    plannedDurationMin: minutes(durationMin),
+    workersNeeded,
+    status: "AWAITING_CONFIRMATION",
+  } as const;
+  await ex
+    .insertInto("Visit")
+    .values({
+      id,
+      numberSeq: number.seq,
+      numberYear: number.year,
+      number: number.display,
+      fileId: source.fileId,
+      fileSlotId: null,
+      sourceVisitId: source.id,
+      slotDate: null,
+      ...values,
+      zoneId: source.zoneId,
+      supervisorEmployeeId: source.supervisorEmployeeId,
+      statusChangedAt: ctx.now,
+      statusChangedByUserId: ctx.userId,
+      createdAt: ctx.now,
+      updatedAt: ctx.now,
+      createdByUserId: ctx.userId,
+      updatedByUserId: ctx.userId,
+    })
+    .execute();
+  await logChange(ex, ctx, {
+    owner: "OPERATIONS",
+    action: "CREATE",
+    entity: "Visit",
+    entityId: id,
+    entityLabel: number.display,
+    changes: Object.fromEntries(Object.entries(values).map(([field, value]) => [field, [null, value] as const])),
+    context: { sourceVisit: source.number, sourceVisitId: source.id },
+  });
+  return { visitId: id, number: number.display };
+}
+
+// ── The end of an on-demand job ─────────────────────────────────────────────
+
+/**
+ * True when a live on-demand job has nothing left to do: no visit of the job
+ * (origin ON_DEMAND, MAKEUP, REDO or EXTRA) still confirmed, awaiting
+ * confirmation, under way or postponed, no redo visit open (a redo that hit a
+ * problem is still open), and no complaint new or being dealt with on the file.
+ *
+ * A postponed visit that has been given its new date (`rescheduledToVisitId`)
+ * no longer counts: the visit it moved to does. The `visit.signedOff` handler
+ * also checks that the visit just signed off is done.
+ */
+export async function onDemandJobFinished(ex: Executor, fileId: string): Promise<boolean> {
+  const file = await ex
+    .selectFrom("File")
+    .select(["serviceType", "stage", "closedAt"])
+    .where("id", "=", fileId)
+    .where("deletedAt", "is", null)
+    .executeTakeFirst();
+  if (!file || file.serviceType !== "ON_DEMAND" || file.stage !== "CONTRACTED" || file.closedAt !== null) return false;
+
+  const open = await ex
+    .selectFrom("Visit")
+    .select("id")
+    .where("fileId", "=", fileId)
+    .where((eb) =>
+      eb.or([
+        eb.and([eb("origin", "in", [...JOB_ORIGINS]), eb("status", "in", [...STILL_TO_DO])]),
+        eb.and([
+          eb("origin", "in", [...JOB_ORIGINS]),
+          eb("status", "=", "POSTPONED"),
+          eb("rescheduledToVisitId", "is", null),
+        ]),
+        eb.and([eb("origin", "=", "REDO"), eb("status", "not in", ["DONE", "CANCELLED"])]),
+      ]),
+    )
+    .executeTakeFirst();
+  if (open) return false;
+
+  const complaint = await ex
+    .selectFrom("Complaint")
+    .select("id")
+    .where("fileId", "=", fileId)
+    .where("status", "in", [...OPEN_COMPLAINT_STATUSES])
+    .executeTakeFirst();
+  return !complaint;
+}
+
+export const listExtraVisitProposalsQuery = query(listExtraVisitProposals);
+export const planExtraVisitAction = action(planExtraVisit, { revalidate: [VISITS_PATH, "/dashboard/files"] });

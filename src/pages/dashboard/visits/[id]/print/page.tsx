@@ -1,5 +1,3 @@
-import { useEffect } from "react";
-
 import { useQuery } from "@tanstack/react-query";
 import { useParams } from "react-router-dom";
 import { toast } from "sonner";
@@ -13,6 +11,7 @@ import { getMissionOrderQuery, recordOrderPrintedAction } from "@/features/opera
 import { VISITS_PATH } from "@/features/operations/services/programme";
 import { MissionOrderSheet } from "@/features/operations/sheets/mission-order-sheet";
 import { sampleMissionOrder } from "@/features/operations/sheets/samples";
+import { useSectionLevel } from "@/hooks/use-session";
 import { useErrorMessage } from "@/i18n/errors";
 import { pathKey } from "@/lib/compat/revalidate";
 
@@ -33,23 +32,19 @@ export default function VisitOrderPrintPage() {
   const t = useTranslations("OperationsSheets");
   const errorMessage = useErrorMessage();
   const blank = id.startsWith("blank-");
+  const mayWrite = useSectionLevel("REQUESTS") === "WRITE";
   const order = useQuery({
     queryKey: [...pathKey(`${VISITS_PATH}/${id}`), "order"],
     queryFn: () => getMissionOrderQuery({ visitId: id }),
     enabled: !blank,
   });
 
-  // The print dialog opening is the order leaving the office.
-  useEffect(() => {
-    if (blank) return;
-    const recordPrint = () => {
-      void recordOrderPrintedAction({ visitId: id }).then((result) => {
-        if (!result.success) toast.error(errorMessage(result.error, t("MissionOrder.PrintNotRecorded")));
-      });
-    };
-    window.addEventListener("beforeprint", recordPrint);
-    return () => window.removeEventListener("beforeprint", recordPrint);
-  }, [blank, id, errorMessage, t]);
+  // The order leaves the office: frozen, counted and logged first; nothing prints if that fails.
+  const recordPrint = async () => {
+    const result = await recordOrderPrintedAction({ visitId: id });
+    if (!result.success) toast.error(errorMessage(result.error, t("MissionOrder.PrintNotRecorded")));
+    return result.success;
+  };
 
   return (
     <DetailScreen
@@ -57,7 +52,7 @@ export default function VisitOrderPrintPage() {
       title={t("MissionOrder.Title")}
       description={t("MissionOrder.Description")}
       back={{ href: blank ? VISITS_PATH : `${VISITS_PATH}/${id}`, label: t("MissionOrder.Back") }}
-      actions={<PrintButton />}
+      actions={blank || mayWrite ? <PrintButton onPrint={blank ? undefined : recordPrint} /> : undefined}
     >
       {blank ? (
         <MissionOrderSheet order={sampleMissionOrder(id)} />

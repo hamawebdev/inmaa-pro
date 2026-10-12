@@ -24,6 +24,7 @@ import {
   SCHEDULABLE_ENGAGEMENTS,
   readSiteForOrder,
   readWorkers,
+  schedulableWorkers,
   type SchedulableWorker,
   type SiteForOrder,
 } from "./upstream";
@@ -558,7 +559,9 @@ export async function listSeatCandidates(
   const site = await readSiteForOrder(ex, { siteId: visit.siteId, securityTicked: false });
   const zoneId = visit.zoneId ?? site?.zoneId ?? null;
   const onVisit = await workersOnVisit(ex, visit.id);
-  const workers = (await readWorkers(ex)).filter((worker) => !onVisit.has(worker.id) && fitsSite(worker, site));
+  const workers = (await schedulableWorkers(ex, ctx, { date: visit.visitDate })).filter(
+    (worker) => !onVisit.has(worker.id) && fitsSite(worker, site),
+  );
   if (workers.length === 0) return [];
 
   const settings = await workTimeSettings(ex);

@@ -12,6 +12,7 @@ import { useCentreClock } from "@/features/operations/components/use-centre-cloc
 import { listDayBoardQuery } from "@/features/operations/services/board";
 import { VISITS_PATH } from "@/features/operations/services/programme";
 import { reportArrivalAction } from "@/features/operations/services/visit-entry";
+import { useSectionLevel } from "@/hooks/use-session";
 import { useErrorMessage } from "@/i18n/errors";
 import { pathKey } from "@/lib/compat/revalidate";
 import { localDate } from "@/lib/units";
@@ -29,6 +30,7 @@ export default function VisitsPage() {
   const t = useTranslations("DayBoard");
   const errorMessage = useErrorMessage();
   const clock = useCentreClock();
+  const mayWrite = useSectionLevel("REQUESTS") === "WRITE";
   const [date, setDate] = useState(clock.today);
   const board = useQuery({
     queryKey: [...pathKey(VISITS_PATH), "board", date],
@@ -52,7 +54,7 @@ export default function VisitsPage() {
           visits={board.data ?? []}
           loading={board.isPending}
           clock={clock}
-          onReportArrival={reportArrival}
+          onReportArrival={mayWrite ? reportArrival : undefined}
         />
       )}
     </SectionScreen>

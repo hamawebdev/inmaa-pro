@@ -9,8 +9,10 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCentreClock } from "@/features/operations/components/use-centre-clock";
 import { VisitEntryForm } from "@/features/operations/components/visit-entry/visit-entry-form";
+import { VisitTeamCard } from "@/features/operations/components/visit-team/visit-team-card";
 import { VISITS_PATH } from "@/features/operations/services/programme";
 import { getVisitEntryQuery } from "@/features/operations/services/visit-entry";
+import { useSectionLevel } from "@/hooks/use-session";
 import { pathKey } from "@/lib/compat/revalidate";
 
 /**
@@ -26,6 +28,7 @@ export default function VisitPage() {
   const t = useTranslations("VisitEntry");
   const tNav = useTranslations("Nav");
   const clock = useCentreClock();
+  const mayWrite = useSectionLevel("REQUESTS") === "WRITE";
   const entry = useQuery({
     queryKey: pathKey(`${VISITS_PATH}/${id}`),
     queryFn: () => getVisitEntryQuery({ visitId: id }),
@@ -49,8 +52,16 @@ export default function VisitPage() {
       {entry.isError ? (
         <ErrorState onRetry={() => void entry.refetch()} />
       ) : entry.data ? (
-        // A new visit is a new form: its defaults are read once, when it mounts.
-        <VisitEntryForm key={entry.data.visit.id} data={entry.data} clock={clock} />
+        <div className="space-y-6">
+          <VisitTeamCard data={entry.data} mayWrite={mayWrite} />
+          {/* A new visit, or a changed team, is a new form: its defaults are read once, when it mounts. */}
+          <VisitEntryForm
+            key={`${entry.data.visit.id}:${entry.data.workers.map((worker) => `${worker.seat.id}-${worker.seat.seatStatus}`).join(",")}`}
+            data={entry.data}
+            clock={clock}
+            readOnly={!mayWrite}
+          />
+        </div>
       ) : (
         <Skeleton className="h-96 w-full" />
       )}

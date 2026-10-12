@@ -1,5 +1,7 @@
 import type { CodeLabelCase } from "@/i18n/code-labels";
 
+import { REPLACEMENT_REASONS } from "./services/absences";
+
 import {
   COMPLAINT_COUNTER_STATES,
   COMPLETIONS,
@@ -39,4 +41,5 @@ export const codeLabelCases: readonly CodeLabelCase[] = [
   // Homes are worded as his homes file, the other divisions as his buildings card.
   ["SignoffStatuses.Housing", SIGNOFF_STATUSES],
   ["SignoffStatuses.Other", SIGNOFF_STATUSES],
+  ["ReplacementReasons", REPLACEMENT_REASONS],
 ];

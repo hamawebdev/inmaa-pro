@@ -58,7 +58,16 @@ import { entryNotes, hoursAndMinutes, workedSeat, type EntryNotes, type WorkerNo
 type Values = ReturnedOrderValues;
 type Clock = { today: string; nowTime: string };
 
-export function VisitEntryForm({ data, clock }: { data: VisitEntryData; clock: Clock }) {
+export function VisitEntryForm({
+  data,
+  clock,
+  readOnly = false,
+}: {
+  data: VisitEntryData;
+  clock: Clock;
+  /** Somebody who only reads the section: the sheet is shown, nothing can be typed or saved. */
+  readOnly?: boolean;
+}) {
   const t = useTranslations("VisitEntry");
   const navigate = useNavigate();
   const form = useForm<Values>({
@@ -102,46 +111,50 @@ export function VisitEntryForm({ data, clock }: { data: VisitEntryData; clock: C
 
   return (
     <form onSubmit={onSubmit} noValidate className="space-y-6">
-      <OrderCard data={data} control={form.control} notes={notes} />
-      <AttendanceCard data={data} control={form.control} values={values} notes={notes.workers} />
-      <ChecklistCard data={data} control={form.control} setValue={form.setValue} />
-      <WorkerNotesCard control={form.control} />
-      <CompletionCard control={form.control} notes={notes} />
-      <SignoffCard data={data} control={form.control} notes={notes} />
-      {correcting && (
-        <Card>
-          <CardHeader>
-            <CardTitle>{t("Cards.Correction")}</CardTitle>
-            <CardDescription>{t("Cards.CorrectionHint")}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Field>
-              <FieldLabel htmlFor="correctionReason">{t("CorrectionReason")}</FieldLabel>
-              <Textarea
-                id="correctionReason"
-                value={correctionReason}
-                onChange={(event) => setCorrectionReason(event.target.value)}
-                rows={2}
-              />
-            </Field>
-          </CardContent>
-        </Card>
-      )}
+      <fieldset disabled={readOnly} className="min-w-0 space-y-6">
+        <OrderCard data={data} control={form.control} notes={notes} />
+        <AttendanceCard data={data} control={form.control} values={values} notes={notes.workers} />
+        <ChecklistCard data={data} control={form.control} setValue={form.setValue} />
+        <WorkerNotesCard control={form.control} />
+        <CompletionCard control={form.control} notes={notes} />
+        <SignoffCard data={data} control={form.control} notes={notes} />
+        {correcting && (
+          <Card>
+            <CardHeader>
+              <CardTitle>{t("Cards.Correction")}</CardTitle>
+              <CardDescription>{t("Cards.CorrectionHint")}</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Field>
+                <FieldLabel htmlFor="correctionReason">{t("CorrectionReason")}</FieldLabel>
+                <Textarea
+                  id="correctionReason"
+                  value={correctionReason}
+                  onChange={(event) => setCorrectionReason(event.target.value)}
+                  rows={2}
+                />
+              </Field>
+            </CardContent>
+          </Card>
+        )}
+      </fieldset>
 
       <PageActions note={<EntryState data={data} missing={missing} />}>
         <Button type="button" variant="outline" size="lg" onClick={() => navigate(-1)}>
           {t("Cancel")}
         </Button>
-        <Button
-          type="submit"
-          variant="success"
-          size="lg"
-          loading={form.formState.isSubmitting}
-          disabled={correcting && correctionReason.trim() === ""}
-        >
-          <Save />
-          {t("Save")}
-        </Button>
+        {!readOnly && (
+          <Button
+            type="submit"
+            variant="success"
+            size="lg"
+            loading={form.formState.isSubmitting}
+            disabled={correcting && correctionReason.trim() === ""}
+          >
+            <Save />
+            {t("Save")}
+          </Button>
+        )}
       </PageActions>
     </form>
   );

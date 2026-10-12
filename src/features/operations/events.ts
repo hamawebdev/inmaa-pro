@@ -1,6 +1,10 @@
 import type { OnEvent } from "@/lib/events";
 
+import { openComplaintFromSignoff } from "./services/complaints";
+import { onDemandJobFinished } from "./services/extra-visits";
 import { cancelFutureVisits, generateFileVisits } from "./services/programme";
+import { copyFileSetup, markFormChanged } from "./services/programme-changes";
+import { applySiteChange, applyStaffUnavailable } from "./services/staff-changes";
 
 /**
  * What Operations does when another owner's record changes
@@ -25,5 +29,50 @@ export function registerEvents(on: OnEvent) {
       .where("fileId", "=", fileId)
       .where("inspectionIsActive", "=", 1)
       .execute();
+  });
+
+  // The days, times, dates, workers or service ticks of a contracted file were
+  // saved: the programme is only marked. The office runs «تحديث الزيارات
+  // القادمة» itself (updateFutureVisits), after its preview.
+  on("file.termsChanged", async (ex, ctx, { fileId }) => {
+    await markFormChanged(ex, ctx, { fileId });
+  });
+
+  // A renewal starts with the old file's areas, tasks, slots, team and
+  // inspection plan; its own «متعاقد» then makes its visits from them.
+  on("file.renewed", async (ex, ctx, { fromFileId, toFileId }) => {
+    await copyFileSetup(ex, ctx, { fromFileId, toFileId });
+  });
+
+  // A site's zone or office block changed: its visits still to come follow,
+  // and an order already printed is marked «تغيّر بعد الطباعة».
+  on("site.changed", async (ex, ctx, payload) => {
+    await applySiteChange(ex, ctx, payload);
+  });
+
+  // A worker left or was sanctioned: her seats in that range are taken back and
+  // the visits wait for the office again; one who left also leaves her teams.
+  on("staff.unavailable", async (ex, ctx, payload) => {
+    await applyStaffUnavailable(ex, ctx, payload);
+  });
+
+  // A returned order was typed in complete (Money has followed it first).
+  on("visit.signedOff", async (ex, ctx, { visitId }) => {
+    // «غير راضٍ» / «تحتاج إلى تصحيح»: the client complained on the order itself.
+    await openComplaintFromSignoff(ex, ctx, { visitId });
+    // «هل تحتاج إلى زيارة إضافية؟ نعم» writes nothing: listExtraVisitProposals
+    // lists the visit until an extra visit names it.
+    const visit = await ex
+      .selectFrom("Visit")
+      .select(["fileId", "status", "visitDate"])
+      .where("id", "=", visitId)
+      .executeTakeFirst();
+    if (visit?.status === "DONE" && (await onDemandJobFinished(ex, visit.fileId))) {
+      // ── WAITING FOR CLIENTS: closeFile ───────────────────────────────────
+      // The last visit of an on-demand job is done and nothing is left open:
+      // the job ends here, in this transaction (RULINGS-NEEDED 15), once
+      // Clients' closeFile is exported:
+      //   await closeFile(ex, ctx, { fileId: visit.fileId, reason: "JOB_DONE", endedDate: visit.visitDate });
+    }
   });
 }
