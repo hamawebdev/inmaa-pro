@@ -34,29 +34,53 @@ On the eleven routes of the second pass (every screen above but the suspended an
 
 Intended differences, not listed below: the lists follow the academy's newer table and chips where its own employees list is of the older generation (rule 2); native date fields and file buttons are left as the academy has them (CLAUDE.md), so «Choose File» and `mm/dd/yyyy` show in an Arabic window there too.
 
+## Rulings
+
+The coordinator's, of 2026-10-12, after checking the reference for each. Part 2 audits against them.
+
+- **R1, Save** (S-04, S-09, S-12). `variant="success"`, default size, at the form's foot inside `PageActions`, with Cancel `outline` beside it; never `lg`. The academy's `button.tsx` gives `success` to "Commit: save, confirm, finish" and its settings and attendance family use it; its older forms use `default`, and rule 2 says the newer generation.
+- **R2, headings** (S-13). A tab page is headed with its own view's name, the tab's label, as in the academy. The first tab of a section keeps the section heading of his notes.
+- **R3, actions** (S-05, S-08). The heading row's `actions` slot is the academy's own (`ScreenHeader`: "buttons that belong to the screen as a whole"; its student overview uses it on a `DetailScreen`), so a record's print action stays there, `info`. A form's Cancel goes to the foot beside Save.
+- **R4.** S-14 stays a defect; People, Operations and Foundation are each looking at where the line comes from.
+
 ## Differences
 
-Kind: **defect** (differs from the academy, to fix), **question** (needs a ruling). Seen: time, language and size of the shot that shows it best.
+Kind: **defect** (differs from the academy or from a ruling, to fix), **question** (needs a ruling), **intended** (a ruling covers it; kept for the record). Seen: time, language and size of the shot that shows it best.
 
 | ID | Screen | What differs | Kind | Owner | Seen |
 |---|---|---|---|---|---|
 | S-01 | Day board `/dashboard/visits` | Rows are 182 px high (academy: 81). «الخدمة» and «العمال» are so narrow that their text wraps onto four or five lines, while «الحالة» keeps a wide empty column. In French the rows reach 273 px. | defect | Operations | 22:04, ar and fr, 1440×900 |
 | S-02 | Day board `/dashboard/visits` | The table is wider than its box and scrolls sideways: by 57 px in Arabic and 183 px in French at 1024×640, by 76 px in French at 1440×900; the row buttons are cut off. The academy's attendance table fits at both sizes. | defect | Operations | 22:05, ar and fr, 1024×640 |
 | S-03 | Day board `/dashboard/visits` | At 1024×640 four rows stand above the table (day switch, counts, search, scroll arrows) and less than one visit is in view; the academy's attendance overview shows four rows at that size. | defect | Operations | 22:05, ar, 1024×640 |
-| S-04 | Visit page `/dashboard/visits/:id` | The form's foot buttons are size `lg`, `outline` and `success`; the academy's form foot is the default size, `outline` and `default`. | question (see S-12) | Operations | 22:05, all modes |
-| S-05 | Visit page, mission order page | The record's print action stands in the heading row, `info`, default size. On the academy's record pages the record's action («طباعة بطاقة QR») is on the strip under the heading, `outline`, small. | question | Operations | 22:05 |
+| S-04 | Visit page `/dashboard/visits/:id` | The form's foot buttons, in `PageActions`, are size `lg`. By R1 they are the default size; `outline` for Cancel and `success` for Save are right (`visit-entry-form.tsx`). | defect (R1) | Operations | 22:05, all modes |
+| S-05 | Visit page, mission order page | The record's print action stands in the heading row, `info`, default size. On the academy's record pages the record's action («طباعة بطاقة QR») is on the strip under the heading, `outline`, small. | intended (R3) | Operations | 22:05 |
 | S-06 | A file's visits `/dashboard/files/:id/visits` | In French at 1024×640 the table is 44 px wider than its box. | defect, minor | Operations | 22:09, fr, 1024×640 |
 | S-07 | Workers list `/dashboard/workers` | In French the rows wrap (92 to 103 px at 1440×900) and at 1024×640 the table is 104 px wider than its box. Arabic fits. | defect, minor | People | 21:56, fr |
-| S-08 | Worker's file, employee's file | The record's actions («طباعة الاستمارة», `info`) and the form's way out («غادر») stand in the heading row. The academy's employee file has its action on the strip under the heading and «إلغاء» at the foot beside Save. | question | People | 21:57 |
-| S-09 | Worker's file, employee's file | Save is `success`; People's own new pages and the academy's employee file use `default`. | question (see S-12) | People | 21:57 |
+| S-08 | Worker's file, employee's file | The record's actions stand in the heading row: «طباعة الاستمارة» (`info`) and «غادر», which records that the person has left (the Checker first took it for the form's way out). By R3 they stay there. What remains: the file's form has no Cancel at its foot; Save stands alone (`worker-form.tsx`, `employee-form.tsx` show Cancel on the new page only). | defect (R1, R3), minor | People | 21:57 |
+| S-09 | Registration, new employee, and both files | Save is `default` on the two new pages and `success` on the two files, and the foot is a plain row, not `PageActions`. By R1: `success` on all four, in `PageActions`. | defect (R1) | People | 21:57 |
 | S-10 | Registration `/dashboard/workers/new` | The first card (number, sex, date) has no title; every card of the academy's form has one. | defect, minor | People | 21:59 |
 | S-11 | Suspended and penalised `/dashboard/workers/sanctions` | A woman (8/F) is written «عامل(ة) نظافة»; the workers list writes «عاملة نظافة» (`workerRoleAr(role, sex)`). The page is cards where the academy screen it names is a table: content, not counted. | defect, wording | People | 20:52, ar |
-| S-12 | Every form | Three treatments of Save: `default` (People's new pages, as the academy's forms), `success` (People's files), `success` and `lg` (Operations' visit page). The academy's button notes give `success` to "save, confirm, finish" and its own forms use `default`. One rule is needed. | question | Foundation | 21:55 to 22:06 |
-| S-13 | Every tab page | The heading is the section's name on all its tabs («طلبات الخدمة» on «الزيارات», «عمال وعاملات النظافة» on «العمال»); the academy heads each tab page with the view's own name («حضور الموظفين»). The lit tab is what tells the views apart here. | question | Foundation | 20:49 |
-| S-14 | Tab pages and detail pages | The line under the heading: the academy has one on its tab pages and none on its record pages; here the tab pages (workers, employees, visits, a file's visits) have none and the record pages have one. It is hidden on both window sizes shot and shows only on a taller window. | defect, minor | People, Operations | 21:55 |
+| S-12 | Every form | Three treatments of Save: `default` (People's new pages, as the academy's forms), `success` (People's files), `success` and `lg` (Operations' visit page). The academy's button notes give `success` to "save, confirm, finish" and its own forms use `default`. Ruled: R1. What is left to change is in S-04 and S-09. | ruled (R1) | Foundation | 21:55 to 22:06 |
+| S-13 | Every tab page | The heading is the section's name on all its tabs («طلبات الخدمة» on «الزيارات», «عمال وعاملات النظافة» on «العمال»); the academy heads each tab page with the view's own name («حضور الموظفين»). By R2 a tab that is not its section's first is headed with its own label: of the screens audited, the day board («الزيارات», second tab of «طلبات الخدمة») must change; the workers and employees lists are first tabs and keep their headings. Every other tab page is checked against R2 in part 2. | defect (R2) | Operations for the day board; each page's owner, with Foundation's `Nav` labels | 20:49 |
+| S-14 | Tab pages and detail pages | The line under the heading: the academy has one on its tab pages and none on its record pages; here the tab pages (workers, employees, visits, a file's visits) have none and the record pages have one. It is hidden on both window sizes shot and shows only on a taller window. | defect, minor (R4) | People, Operations, Foundation | 21:55 |
+| S-15 | Home `/dashboard/home` | «اليوم» lays its eight tiles four to a row; the academy's home lays its stat tiles three to a row, as the alert tiles below do here. | question, minor | Foundation (the page), Operations (the slot) | 22:17, ar, 1440×900 |
+| S-16 | Home `/dashboard/home` | The day board on the home is the one of `/dashboard/visits`: S-01 to S-03 apply to it. It changed during the shots: rows 182 px at 22:17; from 22:18 rows 88 px, with the table 129 px wider than its box at 1440×900 and 3 px at 1024×640. To be shot again once Operations has closed S-01 and S-02. | defect, open under S-01 and S-02 | Operations | 22:17 to 22:18 |
+| S-17 | Sign-in window | With the demo's seven accounts the list is longer than the window: the page is 1047 px in a 900 px window and 837 px in a 640 px one, where about three names show, and nothing says it goes on. The academy's lock window fits (653 px at 640). | question, minor | Foundation | 22:19, ar and fr, both sizes |
 
 `docs/checker-table.md` carries one more: W-010 on the registration screen (the residence is one list of the 29 communes of أم البواقي, where his form has two blanks, commune and wilaya).
 
+## Foundation's screens (third pass, 22:17 to 22:23)
+
+Shot as the manager in Arabic light, Arabic dark and French light at 1440×900, and in Arabic and French at 1024×640; the home also as the accountant, reception and the supervisor, and Settings as the accountant.
+
+| Screen | Route | Academy screen | Result |
+|---|---|---|---|
+| Home | `/dashboard/home` | its home, `/dashboard/academy` | Same heading, plate, line under the heading, section headings and stat tiles (number at 45.36 px, plate in the hue of the tile's section). Rows S-15 and S-16. By role: the accountant's bar has six items (no «الموظفون», no «الإعدادات») and his alerts leave out the backup tile |
+| Sign-in window | the program signed out (`--signed-out`), on the demo data and on a new database | its lock window, `lock.html` with an expired licence | Same box (645 px wide, same padding), lock mark, heading 37.8 px, field 56 px high at 25.2 px, label 20.16 px bold, and the full-width `default` button of size `lg`: the academy's lock window has `lg` there, so R1 does not reach it. Row S-17 |
+| Settings › عام | `/dashboard/settings` | its settings, `/dashboard/settings` | Same 1068 px column of cards, each with its own `success` Save at the default size (R1), the same segmented choices for language and theme; the tab strip is this program's. As the accountant the section answers «هذا القسم غير متاح لحسابك». No row |
+
+R2 holds on the three: the home has one view, and «عام» is the first tab of its section.
+
 ## Not compared yet
 
-`/dashboard/home` (the day board there is Operations' part on Foundation's page), hiring, hours and pay, the two attendance screens, the work programme, quality, supervisors, and everything of Clients and of Money and stock: their rounds are not finished.
+The other three Settings tabs, hiring, hours and pay, the two attendance screens, the work programme, quality, supervisors, and everything of Clients and of Money and stock: their rounds are not finished.
