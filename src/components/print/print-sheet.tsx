@@ -9,7 +9,14 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 import "./print-sheet.css";
-import { SHEET_FONT, type SheetFont, type SheetMargins } from "./sheet-constants";
+import {
+  clearOfLetterhead,
+  SHEET_BODY,
+  SHEET_FONT,
+  SHEET_MARGINS_PLAIN,
+  type SheetFont,
+  type SheetMargins,
+} from "./sheet-constants";
 import { PageBreak } from "./sheet-elements";
 
 /**
@@ -17,17 +24,23 @@ import { PageBreak } from "./sheet-elements";
  * slip in this program is drawn on.
  *
  *     <DetailScreen section="workers" title={…} back={…} actions={<PrintButton />}>
- *       <PrintSheet letterhead="worker" margins={SHEET_MARGINS.worker}>
+ *       <PrintSheet letterhead="worker">
  *         …the sheet, built from the elements in ./sheet-elements.tsx…
  *       </PrintSheet>
  *     </DetailScreen>
  *
  * ## What it guarantees
  *
- *  - **A4, with the margins the sheet asks for**, on every page: text that
- *    runs onto a second page starts where his top margin says.
+ *  - **A4, with the text in the same box on every page**: text that runs onto
+ *    a second page starts where it started on the first.
  *  - **His letterhead**, when asked for: header and footer on every page, at
- *    the size and place his Word files give them for that family of forms.
+ *    the size and place his Word files give them for that family of forms,
+ *    and **nothing printed over them**. With a letterhead the text goes in
+ *    `SHEET_BODY` (below the header, above the footer, his side margins) unless
+ *    the sheet asks for more room; margins that would reach a picture are
+ *    pushed clear of it. That holds for his own forms too: his Word margins
+ *    (`SHEET_MARGINS`) let text run under the footer, and the ruling is that
+ *    nothing prints over his pictures.
  *  - **Only the sheet prints.** Not the screen heading, the back link, the
  *    bottom bar or anything else on the screen.
  *  - **White paper, black ink**, whatever the theme; shading and borders reach
@@ -98,6 +111,13 @@ function Picture({
   );
 }
 
+const warned = new Set<string>();
+function warnOnce(message: string) {
+  if (warned.has(message)) return;
+  warned.add(message);
+  console.warn(message);
+}
+
 export function PrintSheet({
   letterhead = null,
   margins,
@@ -107,7 +127,11 @@ export function PrintSheet({
 }: {
   /** Whose letterhead placement to use, or none for a sheet without it. */
   letterhead?: FormFamily | null;
-  margins: SheetMargins;
+  /**
+   * Where the text goes. With a letterhead: `SHEET_BODY[letterhead]` by default,
+   * and never closer to the pictures than that. Without: `SHEET_MARGINS_PLAIN`.
+   */
+  margins?: SheetMargins;
   /** The face of the running text. Single runs can differ: see `SHEET_FONT`. */
   font?: SheetFont;
   landscape?: boolean;
@@ -128,12 +152,21 @@ export function PrintSheet({
 
   const paper = landscape ? PAPER_MM.landscape : PAPER_MM.portrait;
   const pictures = letterhead ? LETTERHEAD[letterhead] : null;
+  const box = letterhead
+    ? clearOfLetterhead(letterhead, margins ?? SHEET_BODY[letterhead])
+    : (margins ?? SHEET_MARGINS_PLAIN);
+  if (import.meta.env.DEV && margins && (box.top !== margins.top || box.bottom !== margins.bottom)) {
+    warnOnce(
+      `PrintSheet: margins ${margins.top}/${margins.bottom} mm would print over the ${letterhead} letterhead; ` +
+        `the text goes in ${box.top}/${box.bottom} mm (SHEET_BODY).`,
+    );
+  }
   const style = {
     "--sheet-font": SHEET_FONT[font],
-    "--sheet-margin-top": `${margins.top}mm`,
-    "--sheet-margin-right": `${margins.right}mm`,
-    "--sheet-margin-bottom": `${margins.bottom}mm`,
-    "--sheet-margin-left": `${margins.left}mm`,
+    "--sheet-margin-top": `${box.top}mm`,
+    "--sheet-margin-right": `${box.right}mm`,
+    "--sheet-margin-bottom": `${box.bottom}mm`,
+    "--sheet-margin-left": `${box.left}mm`,
   } as React.CSSProperties;
 
   // The sheet's blocks, cut at each <PageBreak />. Each run starts on a new

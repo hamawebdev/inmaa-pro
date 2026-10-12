@@ -48,6 +48,7 @@ node scripts/harness/csp-check.mjs --route /dashboard/home --route /dashboard/se
 | `--theme light\|dark`                       | theme; left out, the app's own default applies (shown as light)            |
 | `--size 1440x900`, `--both-sizes`           | window size; `--both-sizes` is 1440x900 and 1024x640 from one load         |
 | `--seed <file.sql>`                         | SQL run after the migrations; repeatable                                   |
+| `--demo`                                    | start from the demo data (`npm run demo`); see below                       |
 | `--now <datetime>`                          | a fixed clock that still ticks, in the centre's time zone (Africa/Algiers) |
 | `--user <id>`                               | reserved: the account to be signed in as, once sign-in exists              |
 | `--scroll bottom`, `--scroll-to <selector>` | scroll the main area before shooting                                       |
@@ -55,6 +56,24 @@ node scripts/harness/csp-check.mjs --route /dashboard/home --route /dashboard/se
 | `--eval <js>`                               | print the value of an expression evaluated in the page                     |
 | `--page lock.html --license expired`        | the lock window                                                            |
 | `--keep`                                    | keep the run's database and browser profile, for looking inside            |
+
+## Demo data
+
+`npm run demo` builds one database from every folder's `src/features/<folder>/demo.ts` (see "Demo data" in
+CLAUDE.md) into `.harness/demo/inmaa-demo.db`, with its anchor and a manifest (`inmaa-demo.json`: the folders, what
+each named, the rows per table). `--demo` starts a run from a copy of it instead of an empty database, after building
+it again when it is missing or older than the migrations or than a `demo.ts`. After you change a service your demo
+data uses, run `npm run demo` yourself.
+
+With `--demo` the clock is the demo's (Monday 12 October 2026, 09:00) unless `--now` says otherwise, and a route may
+name a record the demo data named:
+
+```sh
+npm run demo
+npm run pdf -- --demo --route "/dashboard/files/{clients.housingFile}/print" --png
+```
+
+`--keep` leaves the run's folder under `.harness/run/` for a day; other people's runs do not sweep it before then.
 
 ## Where things go
 

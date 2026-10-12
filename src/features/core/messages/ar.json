@@ -167,7 +167,11 @@
     "CommuneNameRequired": "اسم البلدية إلزامي.",
     "ChooseWilaya": "اختر ولاية من القائمة.",
     "CommuneNotFound": "هذه البلدية غير موجودة.",
-    "ZoneNotActive": "هذه المنطقة غير موجودة أو غير مفعّلة."
+    "ZoneNotActive": "هذه المنطقة غير موجودة أو غير مفعّلة.",
+    "SignInNameRequired": "اسم الدخول إلزامي.",
+    "NameRequired": "الاسم إلزامي.",
+    "RoleNotFound": "هذا الدور غير موجود.",
+    "SignInNameTaken": "اسم الدخول هذا مستعمل من قبل."
   },
   "Table": {
     "ScrollLeft": "مرّر لليسار",
@@ -300,6 +304,222 @@
   },
   "PrintSample": {
     "Title": "ورقة تجريبية",
-    "Description": "اطبعها مرة على الحاسوب الجديد للتأكد من الورق والهوامش والترويسة."
+    "Description": "اطبعها مرة على الحاسوب الجديد للتأكد من الورق والهوامش والترويسة.",
+    "Calibration": {
+      "Title": "خطوطه على هذا الحاسوب",
+      "Description": "عند غياب أحد خطوطه الثلاثة، يحل محله الخط المرفق بالبرنامج بحجم يأخذ المساحة نفسها. على حاسوب تتوفر فيه خطوطه، تقيس هذه الخانة الحجم المناسب. العرض للنص العادي / الغامق.",
+      "Face": "الخط",
+      "OnThisPc": "على هذا الحاسوب",
+      "Measured": "القياس",
+      "InUse": "المستعمل",
+      "Present": "مثبت",
+      "Missing": "غير مثبت: يحل محله الخط المرفق"
+    }
+  },
+  "Options": {
+    "Division": {
+      "HOUSING": "المنازل",
+      "ORGANISATION": "المؤسسات",
+      "BUILDING": "العمارات",
+      "COMPLEX": "التجمعات السكنية"
+    },
+    "ServiceType": {
+      "ON_DEMAND": "عند الطلب",
+      "CONTRACT": "عقد"
+    },
+    "PaymentMethod": {
+      "CASH": "نقدًا",
+      "BANK_TRANSFER": "تحويل بنكي",
+      "POSTAL_TRANSFER": "تحويل بريدي"
+    },
+    "PaymentFrequency": {
+      "PER_VISIT": "بعد كل زيارة",
+      "WEEKLY": "أسبوعيا",
+      "BIWEEKLY": "كل أسبوعين",
+      "MONTHLY": "كل شهر"
+    },
+    "AmountBasis": {
+      "PER_PAYMENT_PERIOD": "لكل فترة سداد",
+      "WHOLE_CONTRACT": "لكامل العقد"
+    },
+    "Weekday": {
+      "SAT": "السبت",
+      "SUN": "الأحد",
+      "MON": "الإثنين",
+      "TUE": "الثلاثاء",
+      "WED": "الأربعاء",
+      "THU": "الخميس",
+      "FRI": "الجمعة"
+    },
+    "YesNo": {
+      "YES": "نعم",
+      "NO": "لا"
+    },
+    "Cleanliness": {
+      "EXCELLENT": "ممتاز",
+      "GOOD": "جيد",
+      "AVERAGE": "متوسط",
+      "POOR": "ضعيف",
+      "NEEDS_DEEP": "يحتاج إلى تنظيف عميق"
+    },
+    "DayPeriod": {
+      "MORNING": "الصباحية",
+      "EVENING": "المسائية",
+      "BOTH": "معا"
+    },
+    "Bearer": {
+      "CENTRE": "على عاتق المركز",
+      "OWNER": "على عاتق صاحبها"
+    },
+    "DurationUnit": {
+      "HOURS": "ساعة",
+      "DAYS": "يوم"
+    },
+    "TeamAccess": {
+      "VIA_GUARD": "عن طريق الحارس",
+      "OWN_KEY": "مفتاح خاص",
+      "BUILDING_MANAGER": "مسؤول العمارة",
+      "OPEN_DOOR": "باب مفتوح خلال ساعات العمل"
+    },
+    "FileStage": {
+      "NEW": "جديد",
+      "VISIT": "الزيارة",
+      "QUOTE": "عرض سعر",
+      "CONTRACTED": "متعاقد",
+      "CONTRACT_ENDED": "انتهاء التعاقد"
+    },
+    "Sex": {
+      "MALE": "ذكر",
+      "FEMALE": "أنثى"
+    },
+    "WorkerRole": {
+      "CLEANER": "عامل نظافة",
+      "SENIOR_WORKER": "عامل رئيسي",
+      "TEAM_LEADER": "قائد فريق"
+    },
+    "WorkerRoleFeminine": {
+      "CLEANER": "عاملة نظافة",
+      "SENIOR_WORKER": "عاملة رئيسية",
+      "TEAM_LEADER": "قائدة فريق"
+    },
+    "Ability": {
+      "CARRY_EQUIPMENT": "حمل المعدات",
+      "STAND_LONG_HOURS": "الوقوف لساعات طويلة",
+      "CLIMB_STAIRS": "صعود السلالم",
+      "UPPER_FLOORS": "العمل في الطوابق العليا",
+      "WORK_UNDER_PRESSURE": "العمل تحت الضغط",
+      "MOVE_BETWEEN_SITES": "التنقل بين المؤسسات"
+    },
+    "TransportMeans": {
+      "CENTRE_VEHICLE": "سيارة المؤسسة",
+      "PUBLIC": "نقل عمومي",
+      "WORKER_OWN": "وسيلة العامل",
+      "OTHER": "أخرى"
+    },
+    "AbsenceType": {
+      "FULL_DAY": "يوم كامل",
+      "HALF_DAY": "نصف يوم",
+      "HOURS": "ساعات"
+    },
+    "LeaveType": {
+      "ANNUAL": "عطلة سنوية",
+      "SICK": "عطلة مرضية",
+      "UNPAID": "عطلة بدون أجر",
+      "MATERNITY": "عطلة أمومة",
+      "FAMILY_EVENT": "عطلة استثنائية",
+      "COMP_REST": "راحة تعويضية",
+      "OTHER": "أخرى"
+    },
+    "Ppe": {
+      "GLOVES": "قفازات",
+      "SHOES": "أحذية مناسبة",
+      "WORKWEAR": "لباس العمل",
+      "BADGE": "سترة/شارة تعريف",
+      "MASK": "كمامة عند الحاجة",
+      "EXTRA": "معدات حماية إضافية حسب طبيعة المهمة"
+    },
+    "CorrectiveAction": {
+      "REDO_SERVICE": "إعادة الخدمة",
+      "FIX_ITEMS": "تصحيح النقائص",
+      "TRAIN_WORKER": "تدريب العاملة",
+      "CHANGE_WORKER": "تغيير العاملة",
+      "OTHER": "أخرى"
+    },
+    "EvaluationRecommendation": {
+      "TRAIN_WORKER": "تدريب العاملة",
+      "CHANGE_WORKER": "تغيير العاملة",
+      "NONE": "لا شيء"
+    },
+    "ForbiddenPlace": {
+      "RESIDENT_FLATS": "شقق السكان",
+      "TECH_ROOMS": "غرف تقنية",
+      "ELECTRIC_ROOMS": "غرف كهرباء",
+      "EQUIPMENT_ROOMS": "غرف معدات",
+      "STORES": "مستودعات",
+      "OTHER": "مناطق أخرى"
+    },
+    "SiteInstruction": {
+      "NO_MOVE_PROPERTY": "عدم تحريك ممتلكات السكان",
+      "NO_TOUCH_DOCS": "عدم لمس الوثائق أو الأغراض الشخصية",
+      "NO_UNAPPROVED_PRODUCTS": "عدم استعمال مواد غير معتمدة",
+      "NO_MIXING": "عدم خلط مواد التنظيف",
+      "PROTECT_COMMON": "المحافظة على الممتلكات المشتركة",
+      "KEEP_QUIET": "المحافظة على الهدوء وعدم إزعاج السكان",
+      "KEEP_PASSAGES_SAFE": "إبقاء الممرات آمنة أثناء التنظيف",
+      "WET_FLOOR_SIGNS": "وضع إشارات تحذيرية عند وجود أرضية مبللة",
+      "REPORT_DAMAGE": "إبلاغ المشرف فوراً عن أي ضرر أو خطر"
+    },
+    "ProvidedService": {
+      "FLOORS": "تنظيف الأرضيات",
+      "KITCHEN": "تنظيف المطبخ",
+      "CURTAINS": "تنظيف الستائر",
+      "WINDOWS": "تنظيف النوافذ",
+      "CEILINGS": "تنظيف الأسقف",
+      "FRIDGE": "تنظيف الثلاجة",
+      "BATHROOMS": "تنظيف الحمامات",
+      "GLASS": "تنظيف الزجاج",
+      "OVEN": "تنظيف الفرن",
+      "CARPETS": "تنظيف السجاد",
+      "CUPBOARDS": "تنظيف الخزائن",
+      "CHILDREN_ROOMS": "تنظيف غرف الأطفال",
+      "GARAGE": "تنظيف المرآب",
+      "FURNITURE": "تنظيف الأثاث",
+      "SIGNS_ADS": "اللوحات والإعلانات",
+      "TOILETS": "تنظيف دورات المياه",
+      "WASTE_SORTING": "جمع وفرز النفايات",
+      "SHELVES": "تنظيف الرفوف",
+      "OFFICES": "تنظيف المكاتب",
+      "CAR_PARKS": "تنظيف مواقف السيارات",
+      "APPLIANCES": "تنظيف الأجهزة",
+      "RECEPTION_HALL": "تنظيف قاعة الاستقبال",
+      "MEETING_ROOMS": "تنظيف قاعات الاجتماعات",
+      "STORES": "تنظيف المخازن",
+      "GARDENS": "تنظيف الحدائق",
+      "COURTYARDS": "الساحات",
+      "SWEEP_DUST": "كنس وإزالة الغبار",
+      "STAINS": "تنظيف البقع",
+      "DOORS": "تنظيف الأبواب",
+      "CORRIDORS": "تنظيف الممرات",
+      "WALLS": "تنظيف الجدران",
+      "CORNERS": "تنظيف الزوايا",
+      "MAILBOXES": "تنظيف صناديق البريد",
+      "ENTRANCES": "المداخل",
+      "PAVEMENTS": "الأرصفة"
+    },
+    "ProgrammedService": {
+      "PERIODIC": "تنظيف دوري",
+      "AFTER_CONSTRUCTION": "تنظيف بعد البناء",
+      "AFTER_RENOVATION": "تنظيف بعد الترميم",
+      "AFTER_BANQUETS": "تنظيف بعد الولائم",
+      "COMPREHENSIVE_DEEP": "تنظيف شامل وعميق",
+      "COMPREHENSIVE": "تنظيف شامل",
+      "GUESTS": "تنظيف غ..الضيوف",
+      "AFTER_TRAVEL": "تنظيف بعد السفر",
+      "RAMADAN": "تنظيف رمضان",
+      "DEBRIS_REMOVAL": "إزالة المخلفات",
+      "BEFORE_EVENTS": "تنظيف قبل المناسبات",
+      "AFTER_EVENTS": "تنظيف بعد المناسبات",
+      "DEEP": "تنظيف عميق"
+    }
   }
 }

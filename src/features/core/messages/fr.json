@@ -167,7 +167,11 @@
     "CommuneNameRequired": "Le nom de la commune est obligatoire.",
     "ChooseWilaya": "Choisissez une wilaya dans la liste.",
     "CommuneNotFound": "Cette commune n'existe pas.",
-    "ZoneNotActive": "Cette zone n'existe pas ou n'est pas active."
+    "ZoneNotActive": "Cette zone n'existe pas ou n'est pas active.",
+    "SignInNameRequired": "L'identifiant est obligatoire.",
+    "NameRequired": "Le nom est obligatoire.",
+    "RoleNotFound": "Ce rôle n'existe pas.",
+    "SignInNameTaken": "Cet identifiant est déjà utilisé."
   },
   "Table": {
     "ScrollLeft": "Défiler à gauche",
@@ -300,6 +304,222 @@
   },
   "PrintSample": {
     "Title": "Feuille d'essai",
-    "Description": "Imprimez-la une fois sur un nouveau PC pour vérifier le papier, les marges et l'en-tête."
+    "Description": "Imprimez-la une fois sur un nouveau PC pour vérifier le papier, les marges et l'en-tête.",
+    "Calibration": {
+      "Title": "Ses polices sur ce PC",
+      "Description": "Quand l'une de ses trois polices manque, la police fournie avec le programme la remplace, à une taille qui occupe la même place. Sur un PC qui a ses polices, ceci mesure la taille qui convient. Largeurs pour le texte normal / gras.",
+      "Face": "Police",
+      "OnThisPc": "Sur ce PC",
+      "Measured": "Mesuré",
+      "InUse": "Utilisé",
+      "Present": "Installée",
+      "Missing": "Absente : la police fournie la remplace"
+    }
+  },
+  "Options": {
+    "Division": {
+      "HOUSING": "Logements",
+      "ORGANISATION": "Établissements",
+      "BUILDING": "Immeubles",
+      "COMPLEX": "Ensembles résidentiels"
+    },
+    "ServiceType": {
+      "ON_DEMAND": "À la demande",
+      "CONTRACT": "Contrat"
+    },
+    "PaymentMethod": {
+      "CASH": "Espèces",
+      "BANK_TRANSFER": "Virement bancaire",
+      "POSTAL_TRANSFER": "Virement postal"
+    },
+    "PaymentFrequency": {
+      "PER_VISIT": "Après chaque visite",
+      "WEEKLY": "Chaque semaine",
+      "BIWEEKLY": "Toutes les deux semaines",
+      "MONTHLY": "Chaque mois"
+    },
+    "AmountBasis": {
+      "PER_PAYMENT_PERIOD": "Par période de paiement",
+      "WHOLE_CONTRACT": "Pour tout le contrat"
+    },
+    "Weekday": {
+      "SAT": "Samedi",
+      "SUN": "Dimanche",
+      "MON": "Lundi",
+      "TUE": "Mardi",
+      "WED": "Mercredi",
+      "THU": "Jeudi",
+      "FRI": "Vendredi"
+    },
+    "YesNo": {
+      "YES": "Oui",
+      "NO": "Non"
+    },
+    "Cleanliness": {
+      "EXCELLENT": "Excellent",
+      "GOOD": "Bon",
+      "AVERAGE": "Moyen",
+      "POOR": "Faible",
+      "NEEDS_DEEP": "Nécessite un nettoyage en profondeur"
+    },
+    "DayPeriod": {
+      "MORNING": "Matin",
+      "EVENING": "Soir",
+      "BOTH": "Les deux"
+    },
+    "Bearer": {
+      "CENTRE": "À la charge du centre",
+      "OWNER": "À la charge du client"
+    },
+    "DurationUnit": {
+      "HOURS": "Heures",
+      "DAYS": "Jours"
+    },
+    "TeamAccess": {
+      "VIA_GUARD": "Par le gardien",
+      "OWN_KEY": "Clé propre",
+      "BUILDING_MANAGER": "Responsable de l'immeuble",
+      "OPEN_DOOR": "Porte ouverte pendant les heures de travail"
+    },
+    "FileStage": {
+      "NEW": "Nouveau",
+      "VISIT": "Visite",
+      "QUOTE": "Devis",
+      "CONTRACTED": "Sous contrat",
+      "CONTRACT_ENDED": "Fin du contrat"
+    },
+    "Sex": {
+      "MALE": "Homme",
+      "FEMALE": "Femme"
+    },
+    "WorkerRole": {
+      "CLEANER": "Agent d'entretien",
+      "SENIOR_WORKER": "Agent principal",
+      "TEAM_LEADER": "Chef d'équipe"
+    },
+    "WorkerRoleFeminine": {
+      "CLEANER": "Agente d'entretien",
+      "SENIOR_WORKER": "Agente principale",
+      "TEAM_LEADER": "Cheffe d'équipe"
+    },
+    "Ability": {
+      "CARRY_EQUIPMENT": "Porter le matériel",
+      "STAND_LONG_HOURS": "Rester debout de longues heures",
+      "CLIMB_STAIRS": "Monter les escaliers",
+      "UPPER_FLOORS": "Travailler dans les étages supérieurs",
+      "WORK_UNDER_PRESSURE": "Travailler sous pression",
+      "MOVE_BETWEEN_SITES": "Se déplacer entre les établissements"
+    },
+    "TransportMeans": {
+      "CENTRE_VEHICLE": "Véhicule du centre",
+      "PUBLIC": "Transport public",
+      "WORKER_OWN": "Moyen de l'agent",
+      "OTHER": "Autre"
+    },
+    "AbsenceType": {
+      "FULL_DAY": "Journée entière",
+      "HALF_DAY": "Demi-journée",
+      "HOURS": "Heures"
+    },
+    "LeaveType": {
+      "ANNUAL": "Congé annuel",
+      "SICK": "Congé de maladie",
+      "UNPAID": "Congé sans solde",
+      "MATERNITY": "Congé de maternité",
+      "FAMILY_EVENT": "Congé exceptionnel",
+      "COMP_REST": "Repos compensateur",
+      "OTHER": "Autre"
+    },
+    "Ppe": {
+      "GLOVES": "Gants",
+      "SHOES": "Chaussures adaptées",
+      "WORKWEAR": "Tenue de travail",
+      "BADGE": "Gilet ou badge d'identification",
+      "MASK": "Masque si nécessaire",
+      "EXTRA": "Protection supplémentaire selon la tâche"
+    },
+    "CorrectiveAction": {
+      "REDO_SERVICE": "Refaire la prestation",
+      "FIX_ITEMS": "Corriger les manques",
+      "TRAIN_WORKER": "Former l'agente",
+      "CHANGE_WORKER": "Changer l'agente",
+      "OTHER": "Autre"
+    },
+    "EvaluationRecommendation": {
+      "TRAIN_WORKER": "Former l'agente",
+      "CHANGE_WORKER": "Changer l'agente",
+      "NONE": "Aucune"
+    },
+    "ForbiddenPlace": {
+      "RESIDENT_FLATS": "Appartements des résidents",
+      "TECH_ROOMS": "Locaux techniques",
+      "ELECTRIC_ROOMS": "Locaux électriques",
+      "EQUIPMENT_ROOMS": "Locaux de matériel",
+      "STORES": "Entrepôts",
+      "OTHER": "Autres zones"
+    },
+    "SiteInstruction": {
+      "NO_MOVE_PROPERTY": "Ne pas déplacer les biens des résidents",
+      "NO_TOUCH_DOCS": "Ne pas toucher aux documents ni aux effets personnels",
+      "NO_UNAPPROVED_PRODUCTS": "N'utiliser aucun produit non agréé",
+      "NO_MIXING": "Ne pas mélanger les produits d'entretien",
+      "PROTECT_COMMON": "Préserver les biens communs",
+      "KEEP_QUIET": "Rester discret et ne pas déranger les résidents",
+      "KEEP_PASSAGES_SAFE": "Garder les passages sûrs pendant le nettoyage",
+      "WET_FLOOR_SIGNS": "Signaler les sols mouillés par des panneaux",
+      "REPORT_DAMAGE": "Signaler aussitôt au superviseur tout dégât ou danger"
+    },
+    "ProvidedService": {
+      "FLOORS": "Sols",
+      "KITCHEN": "Cuisine",
+      "CURTAINS": "Rideaux",
+      "WINDOWS": "Fenêtres",
+      "CEILINGS": "Plafonds",
+      "FRIDGE": "Réfrigérateur",
+      "BATHROOMS": "Salles de bain",
+      "GLASS": "Vitres",
+      "OVEN": "Four",
+      "CARPETS": "Tapis",
+      "CUPBOARDS": "Placards",
+      "CHILDREN_ROOMS": "Chambres d'enfants",
+      "GARAGE": "Garage",
+      "FURNITURE": "Meubles",
+      "SIGNS_ADS": "Enseignes et publicités",
+      "TOILETS": "Toilettes",
+      "WASTE_SORTING": "Collecte et tri des déchets",
+      "SHELVES": "Étagères",
+      "OFFICES": "Bureaux",
+      "CAR_PARKS": "Parkings",
+      "APPLIANCES": "Appareils",
+      "RECEPTION_HALL": "Hall d'accueil",
+      "MEETING_ROOMS": "Salles de réunion",
+      "STORES": "Magasins",
+      "GARDENS": "Jardins",
+      "COURTYARDS": "Cours",
+      "SWEEP_DUST": "Balayage et dépoussiérage",
+      "STAINS": "Taches",
+      "DOORS": "Portes",
+      "CORRIDORS": "Couloirs",
+      "WALLS": "Murs",
+      "CORNERS": "Coins",
+      "MAILBOXES": "Boîtes aux lettres",
+      "ENTRANCES": "Entrées",
+      "PAVEMENTS": "Trottoirs"
+    },
+    "ProgrammedService": {
+      "PERIODIC": "Nettoyage périodique",
+      "AFTER_CONSTRUCTION": "Après construction",
+      "AFTER_RENOVATION": "Après rénovation",
+      "AFTER_BANQUETS": "Après un banquet",
+      "COMPREHENSIVE_DEEP": "Nettoyage complet en profondeur",
+      "COMPREHENSIVE": "Nettoyage complet",
+      "GUESTS": "Chambres d'amis",
+      "AFTER_TRAVEL": "Après un voyage",
+      "RAMADAN": "Nettoyage du Ramadan",
+      "DEBRIS_REMOVAL": "Évacuation des gravats",
+      "BEFORE_EVENTS": "Avant un événement",
+      "AFTER_EVENTS": "Après un événement",
+      "DEEP": "Nettoyage en profondeur"
+    }
   }
 }

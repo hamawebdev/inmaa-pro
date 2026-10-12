@@ -14,9 +14,13 @@ describe("places", () => {
     expect(isWilayaCode("70")).toBe(false);
   });
 
-  it("seeds the communes of the home wilaya, each name once", () => {
+  it("seeds the 29 communes of the home wilaya, each once, in the order of their official codes", () => {
     const names = COMMUNES_OUM_EL_BOUAGHI.map((commune) => commune.nameAr);
     expect(names).toHaveLength(29);
     expect(new Set(names).size).toBe(names.length);
+    expect(COMMUNES_OUM_EL_BOUAGHI.map((commune) => commune.code)).toEqual(
+      Array.from({ length: 29 }, (_, index) => `04${String(index + 1).padStart(2, "0")}`),
+    );
+    expect(COMMUNES_OUM_EL_BOUAGHI.find((commune) => commune.code === "0426")?.nameAr).toBe("الراحية");
   });
 });

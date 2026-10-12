@@ -16,6 +16,10 @@ export default defineConfig({
   test: {
     environment: "node",
     include: ["src/**/*.test.ts"],
+    // Most tests build a real database from the migrations, and a scenario may build the demo data: under the
+    // whole suite's parallel load that can pass vitest's default 5 seconds without anything being wrong.
+    testTimeout: 30_000,
+    hookTimeout: 30_000,
     // The scratch copy of the reference app has tests of its own. They are not ours.
     exclude: ["node_modules", "dist", ".reference-scratch", ".harness", "src-tauri"],
   },

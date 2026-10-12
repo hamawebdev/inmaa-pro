@@ -10,6 +10,69 @@
  * See src/components/print/print-sheet.tsx for how the pieces fit.
  */
 
+/* ── His faces, and the font that stands in for them ───────────────────── */
+
+/* Noto Naskh Arabic (public/fonts/noto-naskh-arabic, SIL Open Font License),
+   bundled with the program. Unscaled, for the calibration of the print sample;
+   then once for each of his faces, at the size that makes a line take about
+   the room his face takes (SHEET_FONT_SCALE in sheet-constants.ts holds the
+   same numbers and says where they come from). One file each weight: the
+   browser loads it once whatever the number of rules naming it. */
+@font-face {
+  font-family: "Sheet Naskh";
+  src: url("/fonts/noto-naskh-arabic/NotoNaskhArabic-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-display: block;
+}
+@font-face {
+  font-family: "Sheet Naskh";
+  src: url("/fonts/noto-naskh-arabic/NotoNaskhArabic-Bold.ttf") format("truetype");
+  font-weight: 700;
+  font-display: block;
+}
+@font-face {
+  font-family: "Sheet Traditional Arabic";
+  src: url("/fonts/noto-naskh-arabic/NotoNaskhArabic-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-display: block;
+  size-adjust: 79%;
+}
+@font-face {
+  font-family: "Sheet Traditional Arabic";
+  src: url("/fonts/noto-naskh-arabic/NotoNaskhArabic-Bold.ttf") format("truetype");
+  font-weight: 700;
+  font-display: block;
+  size-adjust: 75%;
+}
+@font-face {
+  font-family: "Sheet Sakkal Majalla";
+  src: url("/fonts/noto-naskh-arabic/NotoNaskhArabic-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-display: block;
+  size-adjust: 78%;
+}
+@font-face {
+  font-family: "Sheet Sakkal Majalla";
+  src: url("/fonts/noto-naskh-arabic/NotoNaskhArabic-Bold.ttf") format("truetype");
+  font-weight: 700;
+  font-display: block;
+  size-adjust: 78%;
+}
+@font-face {
+  font-family: "Sheet Arabic Typesetting";
+  src: url("/fonts/noto-naskh-arabic/NotoNaskhArabic-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-display: block;
+  size-adjust: 62%;
+}
+@font-face {
+  font-family: "Sheet Arabic Typesetting";
+  src: url("/fonts/noto-naskh-arabic/NotoNaskhArabic-Bold.ttf") format("truetype");
+  font-weight: 700;
+  font-display: block;
+  size-adjust: 62%;
+}
+
 /* ── Only the sheet prints ─────────────────────────────────────────────── */
 
 /* The copy that goes to paper lives here, outside the app. Not shown on screen. */
@@ -40,11 +103,12 @@
 
 .sheet {
   /* His fonts first: they are on a Windows PC with Arabic support, and then the
-     sheet is set in the faces his Word files name. The font bundled with the
-     program stands in where they are missing. */
-  --sheet-font-traditional: "Traditional Arabic", "IBM Plex Sans Arabic", "Geist Variable", serif;
-  --sheet-font-sakkal: "Sakkal Majalla", "IBM Plex Sans Arabic", "Geist Variable", sans-serif;
-  --sheet-font-typesetting: "Arabic Typesetting", "IBM Plex Sans Arabic", "Geist Variable", serif;
+     sheet is set in the faces his Word files name. Where one is missing, the
+     Naskh bundled with the program stands in for it, scaled to take about the
+     same room (the @font-face rules below). */
+  --sheet-font-traditional: "Traditional Arabic", "Sheet Traditional Arabic", serif;
+  --sheet-font-sakkal: "Sakkal Majalla", "Sheet Sakkal Majalla", serif;
+  --sheet-font-typesetting: "Arabic Typesetting", "Sheet Arabic Typesetting", serif;
 
   box-sizing: border-box;
   background: #fff;
@@ -278,4 +342,10 @@
 .sheet-table tr {
   break-inside: avoid;
   page-break-inside: avoid;
+}
+
+/* The head rows of a table (`head` of <SheetTable>) are drawn again at the top
+   of every page the table runs onto. */
+.sheet-table > thead {
+  display: table-header-group;
 }

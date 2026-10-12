@@ -90,6 +90,7 @@ Run from the project root. `node_modules` is a copy of the reference's: **never 
 | Format your paths | `npx prettier --write src/features/people src/pages/dashboard/workers`; width 120; `npm run format:check` is a gate |
 | See a screen | `npm run shot -- --route /dashboard/workers --locale ar --theme dark --both-sizes` |
 | Print a sheet to PDF | `npm run pdf -- --route /dashboard/files/1/form --png` |
+| Build the demo data | `npm run demo`; then `--demo` on `shot` and `pdf` opens it (see "Demo data" below) |
 | Everything about the two above | `scripts/harness/README.md` |
 
 Left to Foundation and the Checker, because they write shared output or take minutes: `npm run build` (writes `dist/`), `npm run csp:check` (the built app under the content security policy), `npm run db:types`, `npm run db:verify` (also checks `docs/data-model` against the schema and the code: `npm run db:docs`), and in `src-tauri/`: `cargo check --offline`, `cargo test --lib --offline` (this one rewrites `src/lib/bindings.ts`).
@@ -104,7 +105,8 @@ Nobody but the coordinator runs `npm run tauri dev` or a built binary: it opens 
 | Routes | `src/features/<owner>/routes.tsx` (core, people, clients, operations, money; stock's screens are in money's list) |
 | Services (reads and writes) | `src/features/<folder>/services/*.ts`, each with its `*.test.ts` beside it |
 | Handlers of other owners' events | `src/features/<folder>/events.ts` |
-| Validators and code lists | `src/features/<folder>/validators/*.ts` |
+| Demo data | `src/features/<folder>/demo.ts` |
+| Validators and code lists | `src/features/<folder>/validators/*.ts`; a list more than one owner uses is in `src/lib/options` (Foundation) |
 | Messages | `src/features/<folder>/messages/{en,ar,fr}.json` (core, people, clients, operations, money, stock) |
 | Stored codes that need labels | `src/features/<folder>/code-labels.ts` |
 | Ctrl+K "new …" entries | `src/features/<folder>/quick-actions.ts` |
@@ -215,10 +217,31 @@ it("renames a site and logs the change", async () => {
 - `test.snapshot()` copies the database; `openTestDatabase(copy, { anchor: test.anchor, clock: test.clock })` opens it as a restored backup. `fileAnchorStore(file)` (`src/testing/anchor-file.ts`) keeps the anchor in a file, for a test that closes the program and opens it again.
 - A whole path through the tables, from registration to a paid invoice: `src/testing/scenarios/contract-to-paid-invoice.test.ts`.
 
+### Demo data
+
+One database every screen can be looked at on, and that scenario tests can start from. Each owner writes its part with its own services, in `src/features/<folder>/demo.ts`:
+
+```ts
+import type { Executor, ServiceContext } from "@/lib/service/context";
+import type { DemoNames, DemoTools } from "@/testing/demo";
+
+export async function seedDemo(ex: Executor, ctx: ServiceContext, tools: DemoTools): Promise<DemoNames> {
+  const { id } = await registerFile(ex, ctx, { communeId: "commune-0402", … }); // your services, this ex
+  return { housingFile: id };
+}
+```
+
+- The runner calls the folders in owner order (core, people, clients, operations, money, stock), each in one transaction, as the manager, after first run, on a clock standing at Monday 12 October 2026, 09:00. A folder that fails stops the build and is named.
+- `tools.names` holds what the folders before yours named (`tools.names.core.zoneAinBeida`); `tools.sessionOf("ACCOUNTANT")` is the session of the demo account of a role; `tools.at("2026-09-01T08:00:00.000Z", session?)` is a context at another instant, for history.
+- Foundation's own demo data runs first: an account for each role (usernames `hr`, `admin`, `supervisor`, `reception`, `operations`, `accountant`), the centre's identity (his name, city, phone and e-mail; demo registration numbers, address and bank, so an invoice can issue), tax mode IFU, and the zones of أم البواقي, عين البيضاء and عين مليلة.
+- Ids made while a folder runs are the same on every build (`demo-clients-0007`), and what a folder returns names its records: `npm run pdf -- --demo --route "/dashboard/files/{clients.housingFile}/print"`.
+- `npm run demo` writes `.harness/demo/inmaa-demo.db` and prints what each folder named. `--demo` on the harness opens it, and builds it again first if the migrations or a `demo.ts` changed; after you change a service your demo data uses, run `npm run demo`. `createTestDatabase({ demo: true })` builds the same data in a test (`demo: ["clients"]` for core's and yours only), and `test.demo.clients.housingFile` is your record.
+
 ### A validator
 
 - A validator is a zod schema in `src/features/<folder>/validators/`, with its codes as `as const` arrays and its messages as English sentences under `Errors`.
 - The database stores codes (`"FULL_DAY"`), never labels. Label them in your messages, show them with `useCodeLabel("Namespace")`, and list the pair in your `code-labels.ts` so the test can check all three languages.
+- A list more than one owner uses is written once, in `src/lib/options`: division, service type, payment method and frequency, amount basis, weekday (and the client forms' Saturday to Thursday), yes/no, cleanliness, day period, bearer, duration unit, team access, file stage, sex, worker role (with a woman's words, `workerRoleAr(role, sex)`), ability, transport, absence and leave type, protective kit, corrective action and evaluation recommendation, forbidden places, site instructions, and the two service catalogues of his forms («الخدمات المقدمة» with each division's subset in print order, `PROVIDED_SERVICES_OF`; «الخدمات المبرمجة», `PROGRAMMED_SERVICES_OF`). For each: the codes (`DIVISIONS`), his words for paper (`DIVISION_AR`), and the screen labels `useCodeLabel("Options.Division")` in three languages. Your copy becomes a re-export: `export { DIVISIONS, type Division } from "@/lib/options";`. A change to a shared list is asked of Foundation.
 
 ### What every service calls
 
@@ -263,8 +286,9 @@ Everything that goes to paper is drawn on the A4 sheet in `src/components/print/
 
 - The sheet is a component in `src/features/<folder>/sheets/`, built from the kit: `PrintSheet`, `TickBox` (ticked or empty, box before or after the label), `DottedBlank`, `SheetTable` with `SheetRow` and `SheetCell` (column widths in millimetres), `PageBreak`, `KeepTogether`. `src/features/core/sheets/sample-sheet.tsx` uses every one of them; copy from it.
 - It is shown by a page below the record it prints, on a path that ends in `/print` (or `/print-<name>` when a record has several sheets). That page is a `DetailScreen` with `<PrintButton />` in its `actions` and the sheet as its content. The preview on screen and the printing are the sheet's own work. The sample is at `/dashboard/settings/print-sample`.
-- `<PrintSheet letterhead="worker" | "client" margins={…}>`. His two letterhead placements and his two margin sets are constants (`SHEET_MARGINS`, from the Checker's layout files); `SHEET_MARGINS_CLEAR_OF_LETTERHEAD` is for a sheet of our own that can run onto further pages by itself. The facts to print his six forms from are the Checker's: `docs/checker/forms/` and `docs/checker/data/*.json`.
-- Inside a sheet, sizes are millimetres and points in `style`. No Tailwind classes and no rem units: the app's type scale follows the window, and paper must not. His three faces are `SHEET_FONT.traditional`, `.sakkal` and `.typesetting`; each falls back to the bundled Arabic font where his is not installed, which is the case on this machine.
+- `<PrintSheet letterhead="worker" | "client">`. **Nothing prints over his letterhead or footer pictures** (the coordinator's ruling, for his own forms as for ours): the text goes in `SHEET_BODY[family]`, below the header picture and above the footer picture, with his side margins (worker 30.9 / 18.8 mm, client 27.6 / 16.7 mm, top / bottom). That is the default; a sheet may ask for more room with `margins`, never less: margins that reach a picture are pushed clear of it, with a warning in development. His Word margins (`SHEET_MARGINS`) are for reference only: they let text run under his footer. The facts to print his six forms from are the Checker's: `docs/checker/forms/` and `docs/checker/data/*.json`.
+- `<SheetTable columns={…} head={<SheetRow>…</SheetRow>}>`: the `head` rows are printed again at the top of every page the table runs onto (a visit statement of two pages).
+- Inside a sheet, sizes are millimetres and points in `style`. No Tailwind classes and no rem units: the app's type scale follows the window, and paper must not. His three faces are `SHEET_FONT.traditional`, `.sakkal` and `.typesetting`, at his sizes. Where his face is not installed (this machine), Noto Naskh Arabic, bundled with the program, stands in, scaled so that a line takes about the room his face takes (`SHEET_FONT_SCALE`, found from his own labels in his own cell widths; the print sample shows them, and on a PC that has his fonts its calibration panel measures the true scale).
 - A sheet is always Arabic and right to left, white paper and black ink, whatever the interface language and theme. Its text is written in the sheet, in his words, not in the message files. Digits read left to right go inside `<Ltr>`.
 - A sheet is rendered twice (the preview, and the copy that prints), so it must be a pure picture of its data: no state, no effects.
 - `<PageBreak />` must be a direct child of `<PrintSheet>`.
@@ -281,7 +305,7 @@ Rule 1 is checked by tools, not left to care:
 
 ### The database
 
-- The sources are `prisma/schema.prisma` and `prisma/triggers.sql`. `npm run db:types` writes the two migrations (`0001_init.sql`: 106 tables, 205 indexes, 118 triggers; `0002_seed.sql`: the seven roles and their default grants, the main branch, the communes of أم البواقي, names still to be checked) and the types. `npm run db:verify` fails when anything generated, or the database the migrations make, differs from the sources; it also runs the model's proof (157 attempts to break its rules) and the document check.
+- The sources are `prisma/schema.prisma` and `prisma/triggers.sql`. `npm run db:types` writes the two migrations (`0001_init.sql`: 106 tables, 205 indexes, 118 triggers; `0002_seed.sql`: the seven roles and their default grants, the main branch, the 29 communes of أم البواقي, checked on 2026-10-12, each id carrying its official code: `commune-0401` … `commune-0429`) and the types. `npm run db:verify` fails when anything generated, or the database the migrations make, differs from the sources; it also runs the model's proof (157 attempts to break its rules) and the document check.
 - First run (`src/features/core/services/first-run.ts`) writes what only the machine knows: the database's id, the start of the eight chains, the first log entries, the manager account. Settings have their defaults in code; a counter row appears at 0 the first time a number is taken.
 - One SQLite connection that is never recycled, with `foreign_keys` and `recursive_triggers` on (`src-tauri/src/db.rs`). The window may send one statement at a time, starting with select, with, insert, update, delete, begin, commit or rollback; the schema changes through migrations only. Tests and the harness open their database the same way.
 - **Until the first installer leaves the developer's machine, migrations may be rewritten and every development database is disposable.** sqlx remembers a checksum of each migration it applied, so after a migration is edited an old development database stops the program at start; delete the file (`~/.local/share/com.hamawebdev.inmaa-pro/inmaa.db` on Linux) and start again. After the first installer is delivered, migrations are forward-only: a new numbered file, never an edit, and a new column on a chained table adds a hash version.
@@ -291,6 +315,5 @@ Rule 1 is checked by tools, not left to care:
 ### Still provisional
 
 - Sign-in: the program signs in the manager account at start, without a password, and the academy's manager password and section lock (now kept on that account and in the setting `shell.lockedSections`) are what protect a section. Sign-in, roles by section, the four Settings tabs, the log screen, the daily backup and the guarded restore come in F3.
-- Demo data: the harness's `--seed` takes SQL files only. A runner for each owner's demo data, written in its own folder, comes with F2b.
 - The home screen and three of the four Settings tabs are placeholders.
 - Licence: a 7-day trial that counts real time, on this machine too. In a debug build, `INMAA_LICENSE_RESET=1` starts it again. The developer makes an unlock code with `cargo run --quiet --bin unlock-code -- <DEVICE-ID>` in `src-tauri/`.

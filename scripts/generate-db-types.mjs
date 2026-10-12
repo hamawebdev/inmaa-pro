@@ -291,8 +291,8 @@ function seedSql() {
     }
   }
 
-  const communes = COMMUNES_OUM_EL_BOUAGHI.map((commune, index) => [
-    `commune-04-${String(index + 1).padStart(2, "0")}`,
+  const communes = COMMUNES_OUM_EL_BOUAGHI.map((commune) => [
+    `commune-${commune.code}`,
     "04",
     commune.nameAr,
     commune.nameFr,
@@ -329,9 +329,12 @@ ${insert(
   [["branch-main", "MAIN", "المركز الرئيسي", 1, 1, SEED_AT, SEED_AT]],
 )}
 
--- The communes of the wilaya of أم البواقي (src/lib/geo/communes-oum-el-bouaghi.ts).
--- UNVERIFIED: these names were written from memory and must be checked against
--- an official list before the first installer. The office can add or correct one.
+-- The communes of the wilaya of أم البواقي (src/lib/geo/communes-oum-el-bouaghi.ts),
+-- checked on 2026-10-12 against the 2008 census list with its official codes
+-- (citypopulation.de) and the French and Arabic Wikipedia pages of the wilaya.
+-- A seeded commune's id is "commune-" and its official code:
+${COMMUNES_OUM_EL_BOUAGHI.map((commune) => `--   ${commune.code} ${commune.nameAr} (${commune.nameFr})`).join("\n")}
+-- The office can add a commune from any address field, or correct one.
 ${insert(
   "Commune",
   ["id", "wilayaCode", "nameAr", "nameFr", "nameKey", "zoneId", "isSeeded", "isActive", "createdAt", "updatedAt"],

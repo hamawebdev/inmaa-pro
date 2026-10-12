@@ -181,6 +181,12 @@ Three kinds. **Migration seeds** are rows every installation needs and that hold
 
 ### The communes of the wilaya of أم البواقي (seed of `Commune`)
 
+Checked on 2026-10-12 against the 2008 census list with its official codes (citypopulation.de), and the French and Arabic Wikipedia pages of the wilaya: one name corrected («الراحية»), the others kept in the spelling in common use where the census has an older one. `Commune` has no column for the official code: a seeded commune's id is `commune-<code>`. The list is `src/lib/geo/communes-oum-el-bouaghi.ts`. The office can add a missing one from any address field.
+
+0401 أم البواقي Oum El Bouaghi · 0402 عين البيضاء Aïn Beïda · 0403 عين مليلة Aïn M'lila · 0404 بحير الشرقي Behir Chergui · 0405 العامرية El Amiria · 0406 سيقوس Sigus · 0407 البلالة El Belala · 0408 عين ببوش Aïn Babouche · 0409 بريش Berriche · 0410 أولاد حملة Ouled Hamla · 0411 الضلعة Dhalaa · 0412 عين كرشة Aïn Kercha · 0413 هنشير تومغني Hanchir Toumghani · 0414 الجازية El Djazia · 0415 عين الديس Aïn Diss · 0416 فكيرينة Fkirina · 0417 سوق نعمان Souk Naamane · 0418 الزرق Zorg · 0419 الفجوج بوغرارة سعودي El Fedjoudj Boughrara Saoudi · 0420 أولاد زواي Ouled Zouaï · 0421 بئر الشهداء Bir Chouhada · 0422 قصر الصباحي Ksar Sbahi · 0423 وادي نيني Oued Nini · 0424 مسكيانة Meskiana · 0425 عين فكرون Aïn Fakroun · 0426 الراحية Rahia · 0427 عين الزيتون Aïn Zitoun · 0428 أولاد قاسم Ouled Gacem · 0429 الحرملية El Harmilia.
+
+### The communes of the wilaya of أم البواقي (seed of `Commune`)
+
 Written from memory, 29 names: **check them against an official list before the first installer** (`RULINGS-NEEDED.md` item 43). The office can add a missing one from any address field, so an error here costs a correction, not a blocked screen.
 
 أم البواقي Oum El Bouaghi · عين البيضاء Aïn Beïda · عين مليلة Aïn M'lila · عين فكرون Aïn Fakroun · مسكيانة Meskiana · عين كرشة Aïn Kercha · عين ببوش Aïn Babouche · سيقوس Sigus · سوق نعمان Souk Naamane · قصر الصباحي Ksar Sbahi · فكيرينة Fkirina · بريش Berriche · الضلعة Dhalaa · الجازية El Djazia · بحير الشرقي Behir Chergui · العامرية El Amiria · البلالة El Belala · أولاد حملة Ouled Hamla · هنشير تومغني Hanchir Toumghani · عين الديس Aïn Diss · الزرق Zorg · الفجوج بوغرارة سعودي El Fedjoudj Boughrara Saoudi · أولاد زواي Ouled Zouaï · بئر الشهداء Bir Chouhada · وادي نيني Oued Nini · الرحية Rahia · عين الزيتون Aïn Zitoun · أولاد قاسم Ouled Gacem · الحرملية El Harmilia.

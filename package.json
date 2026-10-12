@@ -16,6 +16,7 @@
     "db:types": "node scripts/generate-db-types.mjs",
     "db:verify": "node scripts/verify-db.mjs",
     "db:docs": "node scripts/db/check-docs.mjs",
+    "demo": "node scripts/demo.mjs",
     "shot": "node scripts/harness/shot.mjs",
     "pdf": "node scripts/harness/pdf.mjs",
     "csp:check": "node scripts/harness/csp-check.mjs"

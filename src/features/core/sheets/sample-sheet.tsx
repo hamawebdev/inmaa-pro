@@ -5,7 +5,6 @@ import {
   PageBreak,
   PrintSheet,
   SHEET_FONT,
-  SHEET_MARGINS_CLEAR_OF_LETTERHEAD,
   SheetCell,
   SheetRow,
   SheetTable,
@@ -34,10 +33,10 @@ const head = { fontFamily: SHEET_FONT.sakkal, fontSize: "14pt", fontWeight: 700 
 
 export function SampleSheet() {
   return (
-    // This sheet runs onto further pages by itself, so its margins keep the
-    // text clear of the letterhead on every page. One of his own forms would
-    // use SHEET_MARGINS and begin with his empty paragraph instead.
-    <PrintSheet letterhead="client" margins={SHEET_MARGINS_CLEAR_OF_LETTERHEAD.client}>
+    // No margins given: the text goes below the header picture and above the
+    // footer picture on every page (SHEET_BODY), as on every sheet with his
+    // letterhead, his own forms included.
+    <PrintSheet letterhead="client">
       <h1 style={{ textAlign: "center", fontSize: "20pt", fontWeight: 700 }}>ورقة تجريبية</h1>
       <p style={{ textAlign: "center", fontFamily: SHEET_FONT.sakkal, fontSize: "11pt", marginBottom: "5mm" }}>
         للتأكد من الورق والهوامش والترويسة قبل طباعة الاستمارات
@@ -98,9 +97,27 @@ export function SampleSheet() {
       <p style={{ fontFamily: SHEET_FONT.sakkal, fontSize: "14pt" }}>
         Sakkal Majalla 14 — مركز إنماء برو للتدريب والتنظيف والإحصاء
       </p>
-      <p style={{ fontFamily: SHEET_FONT.typesetting, fontSize: "18pt" }}>
-        Arabic Typesetting 18 — مركز إنماء برو للتدريب والتنظيف والإحصاء
+      <p style={{ fontFamily: SHEET_FONT.typesetting, fontSize: "18pt", fontWeight: 700 }}>
+        Arabic Typesetting 18 — رقـــم التســجــيـــل: مركز إنماء برو
       </p>
+
+      {/* The calibration: his own tightest labels, in his face and size, in a cell as wide as his.
+          On his forms each sits on one line; so must it here, in his face or in the font standing in for it. */}
+      <p style={{ margin: "4mm 0 2mm", fontWeight: 700 }}>
+        عناوين من استماراته في خلايا بعرض خلاياه: يجب أن يبقى كل عنوان على سطر واحد
+      </p>
+      {/* His cell widths: the room the label had, plus Word's 1.9 mm cell margin on each side, as SheetCell pads. */}
+      <SheetTable columns={[33.06, 26.12, 32.47]}>
+        <SheetRow heightMm={9}>
+          <SheetCell style={{ fontFamily: SHEET_FONT.traditional, fontSize: "14pt" }}>عدد مواقف السيارات</SheetCell>
+          <SheetCell style={{ fontFamily: SHEET_FONT.traditional, fontSize: "16pt", fontWeight: 700 }}>
+            يوجد حارس ؟
+          </SheetCell>
+          <SheetCell style={{ fontFamily: SHEET_FONT.sakkal, fontSize: "14pt", fontWeight: 700 }}>
+            هل عملت في المجال
+          </SheetCell>
+        </SheetRow>
+      </SheetTable>
 
       <p style={{ margin: "5mm 0 2mm" }}>
         مبلغ الخدمة:{" "}
@@ -112,15 +129,21 @@ export function SampleSheet() {
 
       <PageBreak />
 
-      <p style={{ marginBottom: "3mm", fontWeight: 700 }}>جدول يمتد على أكثر من صفحة دون أن ينقسم أي سطر:</p>
-      <SheetTable columns={[16, 30, 71.3, 30, 40]}>
-        <SheetRow heightMm={8}>
-          {["الرقم", "رقم الملف", "البيان", "التاريخ", "المبلغ (دج)"].map((label) => (
-            <SheetCell key={label} shaded align="center" style={{ fontWeight: 700 }}>
-              {label}
-            </SheetCell>
-          ))}
-        </SheetRow>
+      <p style={{ marginBottom: "3mm", fontWeight: 700 }}>
+        جدول يمتد على أكثر من صفحة دون أن ينقسم أي سطر، وعناوين أعمدته في أعلى كل صفحة:
+      </p>
+      <SheetTable
+        columns={[16, 30, 71.3, 30, 40]}
+        head={
+          <SheetRow heightMm={8}>
+            {["الرقم", "رقم الملف", "البيان", "التاريخ", "المبلغ (دج)"].map((label) => (
+              <SheetCell key={label} shaded align="center" style={{ fontWeight: 700 }}>
+                {label}
+              </SheetCell>
+            ))}
+          </SheetRow>
+        }
+      >
         {Array.from({ length: 34 }, (_, index) => {
           const row = ROWS[index % ROWS.length];
           return (

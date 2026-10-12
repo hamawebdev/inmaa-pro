@@ -114,14 +114,20 @@ export function DottedBlank({
  *
  * Columns are listed in reading order, so the first is the rightmost on paper,
  * as in the Checker's layout files. Rows are never split between two pages.
+ *
+ * `head` rows (its column titles) are printed again at the top of every page
+ * the table runs onto: a visit statement of two pages has its titles on both.
  */
 export function SheetTable({
   columns,
+  head,
   children,
   style,
 }: {
   /** The width of each column in millimetres, first column first. */
   columns: readonly number[];
+  /** `<SheetRow>` elements repeated at the top of every page the table runs onto. */
+  head?: React.ReactNode;
   /** `<SheetRow>` elements. */
   children: React.ReactNode;
   style?: React.CSSProperties;
@@ -134,6 +140,7 @@ export function SheetTable({
           <col key={index} style={{ width: `${width}mm` }} />
         ))}
       </colgroup>
+      {head ? <thead>{head}</thead> : null}
       <tbody>{children}</tbody>
     </table>
   );

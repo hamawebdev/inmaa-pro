@@ -75,7 +75,25 @@ export function dehydrate(table: TableName, values: Record<string, unknown>): Re
  * WebView2/WKWebView runtimes both provide randomUUID over the tauri:// origin.
  */
 export function newId(): string {
-  return crypto.randomUUID();
+  return stableIds ? stableIds() : crypto.randomUUID();
+}
+
+let stableIds: (() => string) | null = null;
+
+/**
+ * Runs `work` with ids that are the same on every run: `demo-clients-0001`,
+ * `demo-clients-0002`… For the demo data only (src/testing/demo.ts), so that a
+ * screenshot can name a record in its address and two builds can be compared.
+ */
+export async function withStableIds<T>(prefix: string, work: () => Promise<T>): Promise<T> {
+  const previous = stableIds;
+  let counter = 0;
+  stableIds = () => `${prefix}-${String(++counter).padStart(4, "0")}`;
+  try {
+    return await work();
+  } finally {
+    stableIds = previous;
+  }
 }
 
 /** `new Date()` as the string the database stores. */

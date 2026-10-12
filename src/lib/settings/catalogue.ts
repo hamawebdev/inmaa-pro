@@ -12,15 +12,26 @@
  * Add a key here before reading it: `getSetting` takes nothing else.
  */
 
-type Period = { from: string; to: string };
-type StampBand = { upTo: number | null; per100: number };
-type IrgTable = {
-  brackets: Array<{ upTo: number; rateBp: number }>;
+/** A span of the year, as two 'MM-DD' days. */
+export type Period = { from: string; to: string };
+/** One band of stamp duty: up to an amount (null for the last band), so much per 100 DA. */
+export type StampBand = { upTo: number | null; per100: number };
+
+/**
+ * The income tax scale on wages (setting `pay.irgTable`): the accountant types
+ * it; until then the IRG of a payslip is typed by hand. Amounts in centimes,
+ * rates in basis points. People's pay rules read it in this shape.
+ */
+export interface IrgTable {
+  /** Brackets in order; the income above the last one is taxed at the last rate. */
+  brackets: ReadonlyArray<{ upTo: number; rateBp: number }>;
+  /** The abatement on the tax, its rate and its floor and ceiling. */
   abatementBp: number;
   abatementMin: number;
   abatementMax: number;
+  /** A taxable income up to this owes nothing. */
   exemptUpTo: number;
-};
+}
 
 export const SETTING_DEFAULTS = {
   // ── Centre and system (عام) ──────────────────────────────────────────────

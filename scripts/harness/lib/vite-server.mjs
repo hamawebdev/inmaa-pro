@@ -12,7 +12,7 @@ import { pathToFileURL } from "node:url";
 
 import { handleHarnessRequest, STUB_URL } from "./endpoints.mjs";
 
-async function loadVite(root) {
+export async function loadVite(root) {
   const packageDir = path.join(root, "node_modules", "vite");
   const manifestPath = path.join(packageDir, "package.json");
   if (!fs.existsSync(manifestPath)) {

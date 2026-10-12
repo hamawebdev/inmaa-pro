@@ -151,7 +151,7 @@ About forty code lists have codes and no Arabic (marked "—" in `OPTION-CODES.m
 
 **42. Friday and closed days.** Default: client forms offer six days; a Friday slot only by hand; public holidays are an optional list that only marks the preview.
 
-**43. The communes seeded.** The 29 communes of the wilaya of أم البواقي in `BUILD-NOTES.md` section 5 were written from memory and must be checked against an official list before the first installer.
+**43. The communes seeded.** The 29 communes of the wilaya of أم البواقي in `BUILD-NOTES.md` section 5 were written from memory and must be checked against an official list before the first installer. **Settled 2026-10-12: checked by the coordinator; «الرحية» corrected to «الراحية»; official codes carried in the ids.**
 
 **44. When «على عاتق صاحبها» is ticked, is the amount beside it kept?** Default: stored as information; Money ignores it.
 

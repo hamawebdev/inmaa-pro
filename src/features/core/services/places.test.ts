@@ -23,11 +23,11 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-/** The seeded communes, in the order of src/lib/geo/communes-oum-el-bouaghi.ts. */
-const OUM_EL_BOUAGHI = "commune-04-01";
-const AIN_BEIDA = "commune-04-02";
-const AIN_MLILA = "commune-04-03";
-const AIN_FAKROUN = "commune-04-04";
+/** Seeded communes: each id carries the commune's official code. */
+const OUM_EL_BOUAGHI = "commune-0401";
+const AIN_BEIDA = "commune-0402";
+const AIN_MLILA = "commune-0403";
+const AIN_FAKROUN = "commune-0425";
 
 async function count(table: "AuditLog" | "Commune" | "Zone"): Promise<number> {
   const row = await test.db

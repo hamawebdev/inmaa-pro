@@ -330,6 +330,50 @@ for (const f of ["DESIGN.md", "CONTRACTS.md", "OPTION-CODES.md", "BUILD-NOTES.md
   differ("log actions (OPTION-CODES LOG_ACTION / src/lib/log)", optionList("LOG_ACTION"), logActions);
   const sequenceKeys = quoted(between(code("src/lib/numbering/index.ts"), "export const SEQUENCE_KEYS = [", "]"));
   differ("sequence keys (OPTION-CODES SEQUENCE_KEY / src/lib/numbering)", optionList("SEQUENCE_KEY"), sequenceKeys);
+  // The shared option lists (src/lib/options) against OPTION-CODES: a table row of their name, or else the
+  // section headed by it (its first column of codes, or its first line pairing codes with his words).
+  const sharedListCodes = (name) => {
+    const fromRow = optionList(name);
+    if (fromRow.size) return fromRow;
+    const section = codes.split(new RegExp(`^### ${name}\\b.*$`, "m"))[1]?.split(/^### /m)[0] ?? "";
+    const firstColumn = [...section.matchAll(/^\| `([A-Z][A-Z0-9_]*)` \|/gm)].map((x) => x[1]);
+    if (firstColumn.length) return new Set(firstColumn);
+    const line = section.split("\n").find((text) => /`[A-Z][A-Z0-9_]*` «/.test(text)) ?? "";
+    return new Set([...line.matchAll(/`([A-Z][A-Z0-9_]*)` «/g)].map((x) => x[1]));
+  };
+  const { SHARED_OPTION_LISTS } = await import(resolve(ROOT, "src/lib/options/index.ts"));
+  // Not in OPTION-CODES as a list of their own: yes/no is a nullable Boolean there; a woman's role words are
+  // the same codes; the corrective actions and recommendations share one table with columns per use.
+  const NOT_LISTED = new Set(["YesNo", "WorkerRoleFeminine", "CorrectiveAction", "EvaluationRecommendation"]);
+  let sharedChecked = 0;
+  for (const [name, listCodes] of Object.entries(SHARED_OPTION_LISTS)) {
+    if (NOT_LISTED.has(name)) continue;
+    const listName = name.replace(/([a-z])([A-Z])/g, "$1_$2").toUpperCase();
+    const documented = sharedListCodes(listName);
+    if (!documented.size) say(`src/lib/options: ${listName} is not a list of OPTION-CODES.md`);
+    else differ(`shared list ${listName} (OPTION-CODES / src/lib/options)`, documented, new Set(listCodes));
+    sharedChecked += 1;
+  }
+  // Each division's subset of the two service catalogues, in print order, against the table's "col, row" cells.
+  const { PROVIDED_SERVICES_OF, PROGRAMMED_SERVICES_OF } = await import(resolve(ROOT, "src/lib/options/index.ts"));
+  const subsets = (name, column) => {
+    const section = codes.split(new RegExp(`^### ${name}\\b.*$`, "m"))[1]?.split(/^### /m)[0] ?? "";
+    return [...section.matchAll(/^\| `([A-Z][A-Z0-9_]*)` \|.*$/gm)]
+      .map((row) => ({ code: row[1], cell: row[0].split("|")[column]?.trim() ?? "" }))
+      .map(({ code, cell }) => ({ code, at: /col (\d+), (\d+)/.exec(cell) }))
+      .filter(({ at }) => at)
+      .sort((a, b) => Number(a.at[1]) - Number(b.at[1]) || Number(a.at[2]) - Number(b.at[2]))
+      .map(({ code }) => code);
+  };
+  const inOrder = (label, documented, built) => {
+    if (documented.join() !== [...built].join())
+      say(`${label}: OPTION-CODES ${documented.join(" ")}; src/lib/options ${[...built].join(" ")}`);
+  };
+  inOrder("PROVIDED_SERVICE of HOUSING", subsets("PROVIDED_SERVICE", 3), PROVIDED_SERVICES_OF.HOUSING);
+  inOrder("PROVIDED_SERVICE of ORGANISATION", subsets("PROVIDED_SERVICE", 4), PROVIDED_SERVICES_OF.ORGANISATION);
+  inOrder("PROVIDED_SERVICE of BUILDING", subsets("PROVIDED_SERVICE", 5), PROVIDED_SERVICES_OF.BUILDING);
+  inOrder("PROGRAMMED_SERVICE of ORGANISATION", subsets("PROGRAMMED_SERVICE", 3), PROGRAMMED_SERVICES_OF.ORGANISATION);
+  inOrder("PROGRAMMED_SERVICE of HOUSING", subsets("PROGRAMMED_SERVICE", 4), PROGRAMMED_SERVICES_OF.HOUSING);
   const wilayas = (await import(resolve(ROOT, "src/lib/geo/wilayas.ts"))).WILAYAS;
   if (wilayas.length !== 69) say(`src/lib/geo/wilayas.ts holds ${wilayas.length} wilayas; ruling 6 says 69`);
   const sizes = [
@@ -343,7 +387,8 @@ for (const f of ["DESIGN.md", "CONTRACTS.md", "OPTION-CODES.md", "BUILD-NOTES.md
   if (sizes.some((size) => size === 0)) say(`a catalogue of the code was read as empty: ${sizes.join(", ")}`);
   console.log(
     `  in the code: ${SETTING_KEYS.length} settings, ${CAPABILITY_KEYS.length} capabilities, ${ROLE_CODES.length} roles, ` +
-      `${eventNames.size} events, ${logActions.size} log actions, ${sequenceKeys.size} sequence keys, ${wilayas.length} wilayas`,
+      `${eventNames.size} events, ${logActions.size} log actions, ${sequenceKeys.size} sequence keys, ${wilayas.length} wilayas, ` +
+      `${sharedChecked} shared option lists`,
   );
 }
 

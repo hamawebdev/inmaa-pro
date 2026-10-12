@@ -254,13 +254,13 @@ check(
   branches.length === 1 && branches[0].id === "branch-main" && branches[0].isDefault === 1,
 );
 const communes = sqlite
-  .prepare(`SELECT "nameAr" FROM "Commune" WHERE "wilayaCode" = '04' AND "isSeeded" = 1 ORDER BY "id"`)
+  .prepare(`SELECT "id", "nameAr" FROM "Commune" WHERE "wilayaCode" = '04' AND "isSeeded" = 1 ORDER BY "id"`)
   .all();
 check(
-  `the ${COMMUNES_OUM_EL_BOUAGHI.length} communes of wilaya 04 (names still to be verified)`,
+  `the ${COMMUNES_OUM_EL_BOUAGHI.length} communes of wilaya 04, each id carrying its official code`,
   same(
-    communes.map((commune) => commune.nameAr),
-    COMMUNES_OUM_EL_BOUAGHI.map((commune) => commune.nameAr),
+    communes.map((commune) => [commune.id, commune.nameAr]),
+    COMMUNES_OUM_EL_BOUAGHI.map((commune) => [`commune-${commune.code}`, commune.nameAr]),
   ),
 );
 const empty = ["User", "Setting", "Sequence", "ChainHead", "AuditLog"].filter(

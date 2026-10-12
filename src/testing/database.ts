@@ -16,6 +16,7 @@ import { loadFeatureEvents } from "@/lib/events";
 import { buildContext, SYSTEM_SESSION, type Executor, type ServiceContext, type Session } from "@/lib/service/context";
 import { createRunner, type Runner } from "@/lib/service/runner";
 
+import { runDemo, type DemoNames } from "./demo";
 import { NodeSqliteDialect } from "./node-sqlite-dialect";
 import { createRows, type Rows } from "./rows";
 
@@ -60,6 +61,14 @@ export interface TestDatabaseOptions {
   clock?: FixedClock;
   /** Register the handlers of every feature folder's events.ts, as the program does. Default true. */
   events?: boolean;
+  /**
+   * Write the demo data after first run, as `npm run demo` does: every folder's
+   * `demo.ts` (true), or these folders' only (core's always comes first).
+   * `test.demo` then holds what each folder named.
+   */
+  demo?: boolean | readonly string[];
+  /** Build the database in this file instead of in memory; the file is emptied first. For `npm run demo`. */
+  file?: string;
 }
 
 export interface TestDatabase {
@@ -87,6 +96,8 @@ export interface TestDatabase {
   snapshot(): string;
   /** Paths that `revalidate` was called with, in order. */
   revalidated: string[];
+  /** With `demo`: what each folder's demo data named, `test.demo.clients.housingFile`. Empty otherwise. */
+  demo: Record<string, DemoNames>;
   close(): void;
 }
 
@@ -114,6 +125,12 @@ async function wrap(sqlite: DatabaseSync, options: TestDatabaseOptions, didFirst
 
   const hasManager = options.firstRun !== false || didFirstRun;
   const manager = hasManager ? await loadSession(db, STAND_IN_MANAGER_ID) : SYSTEM_SESSION;
+
+  let demo: Record<string, DemoNames> = {};
+  if (options.demo && hasManager) {
+    demo = await runDemo(db, { clock, folders: options.demo === true ? undefined : options.demo });
+    await writeAnchor(db, anchor, clock.now().toISOString());
+  }
   let current = manager;
   let accounts = 0;
 
@@ -125,6 +142,7 @@ async function wrap(sqlite: DatabaseSync, options: TestDatabaseOptions, didFirst
     files: memoryByteStore(),
     manager,
     revalidated,
+    demo,
     ctx: (session = manager) => buildContext(session, clock),
     async transact(work, session = manager) {
       const ctx = buildContext(session, clock);
@@ -178,7 +196,12 @@ async function wrap(sqlite: DatabaseSync, options: TestDatabaseOptions, didFirst
 }
 
 export async function createTestDatabase(options: TestDatabaseOptions = {}): Promise<TestDatabase> {
-  const sqlite = openSqlite(":memory:");
+  if (options.file) {
+    for (const leftover of [options.file, `${options.file}-journal`, `${options.file}-wal`, `${options.file}-shm`]) {
+      rmSync(leftover, { force: true });
+    }
+  }
+  const sqlite = openSqlite(options.file ?? ":memory:");
   for (const migration of migrationFiles()) {
     sqlite.exec("BEGIN");
     try {

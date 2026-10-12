@@ -8,6 +8,7 @@
  *   node scripts/harness/csp-check.mjs --route /dashboard/home --route /dashboard/settings
  */
 import { parseArgs } from "./lib/args.mjs";
+import { ensureDemoDatabase, resolveDemoRoute } from "./lib/demo.mjs";
 import { parsePolicy, readPolicyFromTauriConfig, serializePolicy } from "./lib/dist-server.mjs";
 import { openHarness, printReport, PROJECT_ROOT, REFERENCE_ROOT } from "./lib/session.mjs";
 
@@ -27,7 +28,7 @@ Exit code 0 only when every screen settled and nothing was refused.
 `;
 
 async function main() {
-  const args = parseArgs(process.argv.slice(2), { lists: ["route", "seed"], flags: ["reference", "help"] });
+  const args = parseArgs(process.argv.slice(2), { lists: ["route", "seed"], flags: ["reference", "demo", "help"] });
   if (args.help) {
     process.stdout.write(USAGE);
     return 0;
@@ -41,14 +42,20 @@ async function main() {
     );
   }
 
-  const common = { locale: args.locale ?? "ar", theme: args.theme ?? "light", now: args.now };
+  const demo = args.demo && !args.reference ? ensureDemoDatabase() : null;
+  if (demo) args.route = args.route.map((route) => resolveDemoRoute(route, demo.manifest.names));
+  const common = {
+    locale: args.locale ?? "ar",
+    theme: args.theme ?? "light",
+    now: args.now ?? demo?.manifest.demoLocal,
+  };
   const views = [
     ...(args.route.length ? args.route : [undefined]).map((route) => ({ ...common, route })),
     { ...common, page: "lock.html" },
   ];
 
   console.log(`policy as written:\n  ${serializePolicy(policy)}`);
-  const harness = await openHarness({ root, seeds: args.seed, builtWithPolicy: policy });
+  const harness = await openHarness({ root, seeds: args.seed, builtWithPolicy: policy, demo: demo ?? undefined });
   let clean = true;
   try {
     for (const view of views) {

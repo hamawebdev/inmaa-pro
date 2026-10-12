@@ -50,15 +50,27 @@ function isAlive(pid) {
   }
 }
 
+/** Left in a run's folder by `--keep`: the sweep spares it for a day, so it can be looked at. */
+const KEPT_MARKER = "KEPT";
+const KEPT_FOR_MS = 24 * 60 * 60 * 1000;
+
 /**
  * Cleans up after runs whose process is gone (a crash, a kill -9): stops the
- * Chrome they left, if it is still theirs, and removes their folder.
+ * Chrome they left, if it is still theirs, and removes their folder. A folder
+ * kept on purpose (`--keep`) is removed only once it is a day old: several
+ * people run the harness at once, and one's run must not delete another's.
  */
 function sweepDeadRuns(runsDir) {
   if (!fs.existsSync(runsDir)) return;
   for (const name of fs.readdirSync(runsDir)) {
     const owner = Number(name.split("-").pop());
     if (!Number.isInteger(owner) || owner === process.pid || isAlive(owner)) continue;
+    try {
+      const kept = fs.statSync(path.join(runsDir, name, KEPT_MARKER));
+      if (Date.now() - kept.mtimeMs < KEPT_FOR_MS) continue;
+    } catch {
+      // Not kept: a run that ended without its teardown.
+    }
 
     const runDir = path.join(runsDir, name);
     try {
@@ -110,6 +122,7 @@ function buildUrl(origin, view) {
  *   content security policy instead of the source through Vite
  * @param {string} [options.timezone]
  * @param {boolean} [options.keep]     leave the run's folder behind for inspection
+ * @param {{ db: string, anchor: string }} [options.demo] start from the demo database (lib/demo.mjs)
  */
 export async function openHarness({
   root = PROJECT_ROOT,
@@ -119,6 +132,7 @@ export async function openHarness({
   builtWithPolicy,
   timezone = DEFAULT_TIMEZONE,
   keep = false,
+  demo,
 } = {}) {
   root = path.resolve(root);
   if (!fs.existsSync(path.join(root, "index.html"))) {
@@ -145,7 +159,13 @@ export async function openHarness({
     if (chrome) await chrome.close().catch(() => {});
     if (server) await server.close().catch(() => {});
     if (backend) backend.close();
-    if (!keep) {
+    if (keep) {
+      try {
+        fs.writeFileSync(path.join(runDir, KEPT_MARKER), "kept with --keep\n");
+      } catch {
+        // The folder is gone already: nothing to keep.
+      }
+    } else {
       // Chrome can still be releasing its profile for a moment after it exits.
       for (let attempt = 0; attempt < 5 && !removed; attempt += 1) {
         try {
@@ -184,7 +204,14 @@ export async function openHarness({
   process.on("exit", onExit);
 
   try {
-    backend = await createBackend({ root, runDir, seeds: seeds.map((seed) => path.resolve(seed)), license });
+    backend = await createBackend({
+      root,
+      runDir,
+      seeds: seeds.map((seed) => path.resolve(seed)),
+      license,
+      database: demo?.db,
+      anchor: demo?.anchor,
+    });
     server = builtWithPolicy
       ? await startDistServer({ root, backend, policy: builtWithPolicy })
       : await startViteServer({ root, backend, plugins });

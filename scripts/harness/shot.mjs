@@ -8,6 +8,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 import { parseArgs, routeSlug } from "./lib/args.mjs";
+import { ensureDemoDatabase, resolveDemoRoute } from "./lib/demo.mjs";
 import {
   DEFAULT_SIZE,
   HARNESS_DIR,
@@ -32,6 +33,8 @@ const USAGE = `Usage: node scripts/harness/shot.mjs --route <path> [options]
   --out-dir <dir>     folder to save into (default .harness/shots)
   --seed <file.sql>   SQL applied after the migrations; repeat for several
   --now <datetime>    fixed clock in the centre's time, e.g. 2026-10-11T10:30:00
+  --demo              start from the demo data (npm run demo); the clock defaults to the demo's,
+                      and a route may name a record: /dashboard/files/{clients.housingFile}
   --user <id>         account to be signed in as (reserved until sign-in exists)
   --license <state>   unlocked | trial | expired (default unlocked)
   --page <file>       index.html (default) or lock.html
@@ -46,7 +49,7 @@ const USAGE = `Usage: node scripts/harness/shot.mjs --route <path> [options]
 async function main() {
   const args = parseArgs(process.argv.slice(2), {
     lists: ["size", "seed"],
-    flags: ["reference", "both-sizes", "keep", "help"],
+    flags: ["reference", "both-sizes", "keep", "demo", "help"],
   });
   if (args.help || (!args.route && !args.page)) {
     process.stdout.write(USAGE);
@@ -54,6 +57,8 @@ async function main() {
   }
 
   const root = args.reference ? REFERENCE_ROOT : args.root ? path.resolve(args.root) : PROJECT_ROOT;
+  if (args.demo && root !== PROJECT_ROOT) throw new Error("--demo is this program's demo data");
+  const demo = args.demo ? ensureDemoDatabase(root) : null;
   const sizes = args["both-sizes"]
     ? [parseSize("1440x900"), parseSize("1024x640")]
     : args.size.length
@@ -62,12 +67,12 @@ async function main() {
   if (args.out && sizes.length > 1) throw new Error("--out names one file; use --out-dir with several sizes");
 
   const view = {
-    route: args.route,
+    route: demo ? resolveDemoRoute(args.route, demo.manifest.names) : args.route,
     page: args.page,
     locale: args.locale,
     theme: args.theme,
     user: args.user,
-    now: args.now,
+    now: args.now ?? demo?.manifest.demoLocal,
     wait: args.wait,
     clip: args.clip,
     evaluate: args.eval,
@@ -75,7 +80,13 @@ async function main() {
     scrollTo: args["scroll-to"],
   };
 
-  const harness = await openHarness({ root, seeds: args.seed, license: args.license, keep: Boolean(args.keep) });
+  const harness = await openHarness({
+    root,
+    seeds: args.seed,
+    license: args.license,
+    keep: Boolean(args.keep),
+    demo: demo ?? undefined,
+  });
   let clean = false;
   try {
     const result = await harness.shoot(view, sizes);

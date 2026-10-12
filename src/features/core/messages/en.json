@@ -167,7 +167,11 @@
     "CommuneNameRequired": "The commune name cannot be empty.",
     "ChooseWilaya": "Choose a wilaya from the list.",
     "CommuneNotFound": "This commune does not exist.",
-    "ZoneNotActive": "This zone does not exist or is not active."
+    "ZoneNotActive": "This zone does not exist or is not active.",
+    "SignInNameRequired": "A sign-in name is required.",
+    "NameRequired": "A name is required.",
+    "RoleNotFound": "This role does not exist.",
+    "SignInNameTaken": "This sign-in name is already taken."
   },
   "Table": {
     "ScrollLeft": "Scroll left",
@@ -300,6 +304,222 @@
   },
   "PrintSample": {
     "Title": "Sample sheet",
-    "Description": "Print it once on a new PC to check the paper, the margins and the letterhead."
+    "Description": "Print it once on a new PC to check the paper, the margins and the letterhead.",
+    "Calibration": {
+      "Title": "His fonts on this PC",
+      "Description": "Where one of his three faces is missing, the font bundled with the program stands in, scaled to take the same room. On a PC that has his faces, this measures how large it should be set. Widths for regular / bold text.",
+      "Face": "Face",
+      "OnThisPc": "On this PC",
+      "Measured": "Measured",
+      "InUse": "In use",
+      "Present": "Installed",
+      "Missing": "Missing: the bundled font stands in"
+    }
+  },
+  "Options": {
+    "Division": {
+      "HOUSING": "Homes",
+      "ORGANISATION": "Organisations",
+      "BUILDING": "Buildings",
+      "COMPLEX": "Residential complexes"
+    },
+    "ServiceType": {
+      "ON_DEMAND": "On demand",
+      "CONTRACT": "Contract"
+    },
+    "PaymentMethod": {
+      "CASH": "Cash",
+      "BANK_TRANSFER": "Bank transfer",
+      "POSTAL_TRANSFER": "Postal transfer"
+    },
+    "PaymentFrequency": {
+      "PER_VISIT": "After each visit",
+      "WEEKLY": "Weekly",
+      "BIWEEKLY": "Every two weeks",
+      "MONTHLY": "Monthly"
+    },
+    "AmountBasis": {
+      "PER_PAYMENT_PERIOD": "Per payment period",
+      "WHOLE_CONTRACT": "For the whole contract"
+    },
+    "Weekday": {
+      "SAT": "Saturday",
+      "SUN": "Sunday",
+      "MON": "Monday",
+      "TUE": "Tuesday",
+      "WED": "Wednesday",
+      "THU": "Thursday",
+      "FRI": "Friday"
+    },
+    "YesNo": {
+      "YES": "Yes",
+      "NO": "No"
+    },
+    "Cleanliness": {
+      "EXCELLENT": "Excellent",
+      "GOOD": "Good",
+      "AVERAGE": "Average",
+      "POOR": "Poor",
+      "NEEDS_DEEP": "Needs deep cleaning"
+    },
+    "DayPeriod": {
+      "MORNING": "Morning",
+      "EVENING": "Evening",
+      "BOTH": "Both"
+    },
+    "Bearer": {
+      "CENTRE": "Borne by the centre",
+      "OWNER": "Borne by the client"
+    },
+    "DurationUnit": {
+      "HOURS": "Hours",
+      "DAYS": "Days"
+    },
+    "TeamAccess": {
+      "VIA_GUARD": "Through the guard",
+      "OWN_KEY": "Own key",
+      "BUILDING_MANAGER": "Building manager",
+      "OPEN_DOOR": "Door open during working hours"
+    },
+    "FileStage": {
+      "NEW": "New",
+      "VISIT": "Visit",
+      "QUOTE": "Quote",
+      "CONTRACTED": "Contracted",
+      "CONTRACT_ENDED": "Contract ended"
+    },
+    "Sex": {
+      "MALE": "Male",
+      "FEMALE": "Female"
+    },
+    "WorkerRole": {
+      "CLEANER": "Cleaner",
+      "SENIOR_WORKER": "Senior worker",
+      "TEAM_LEADER": "Team leader"
+    },
+    "WorkerRoleFeminine": {
+      "CLEANER": "Cleaner",
+      "SENIOR_WORKER": "Senior worker",
+      "TEAM_LEADER": "Team leader"
+    },
+    "Ability": {
+      "CARRY_EQUIPMENT": "Carrying equipment",
+      "STAND_LONG_HOURS": "Standing for long hours",
+      "CLIMB_STAIRS": "Climbing stairs",
+      "UPPER_FLOORS": "Working on upper floors",
+      "WORK_UNDER_PRESSURE": "Working under pressure",
+      "MOVE_BETWEEN_SITES": "Moving between establishments"
+    },
+    "TransportMeans": {
+      "CENTRE_VEHICLE": "Centre vehicle",
+      "PUBLIC": "Public transport",
+      "WORKER_OWN": "Worker's own",
+      "OTHER": "Other"
+    },
+    "AbsenceType": {
+      "FULL_DAY": "Full day",
+      "HALF_DAY": "Half day",
+      "HOURS": "Hours"
+    },
+    "LeaveType": {
+      "ANNUAL": "Annual leave",
+      "SICK": "Sick leave",
+      "UNPAID": "Unpaid leave",
+      "MATERNITY": "Maternity leave",
+      "FAMILY_EVENT": "Special leave",
+      "COMP_REST": "Compensatory rest",
+      "OTHER": "Other"
+    },
+    "Ppe": {
+      "GLOVES": "Gloves",
+      "SHOES": "Suitable shoes",
+      "WORKWEAR": "Work clothes",
+      "BADGE": "Identification vest or badge",
+      "MASK": "Mask when needed",
+      "EXTRA": "Extra protection as the task requires"
+    },
+    "CorrectiveAction": {
+      "REDO_SERVICE": "Redo the service",
+      "FIX_ITEMS": "Fix the shortcomings",
+      "TRAIN_WORKER": "Train the worker",
+      "CHANGE_WORKER": "Change the worker",
+      "OTHER": "Other"
+    },
+    "EvaluationRecommendation": {
+      "TRAIN_WORKER": "Train the worker",
+      "CHANGE_WORKER": "Change the worker",
+      "NONE": "None"
+    },
+    "ForbiddenPlace": {
+      "RESIDENT_FLATS": "Residents' flats",
+      "TECH_ROOMS": "Technical rooms",
+      "ELECTRIC_ROOMS": "Electrical rooms",
+      "EQUIPMENT_ROOMS": "Equipment rooms",
+      "STORES": "Stores",
+      "OTHER": "Other areas"
+    },
+    "SiteInstruction": {
+      "NO_MOVE_PROPERTY": "Do not move residents' belongings",
+      "NO_TOUCH_DOCS": "Do not touch documents or personal items",
+      "NO_UNAPPROVED_PRODUCTS": "Use no unapproved products",
+      "NO_MIXING": "Do not mix cleaning products",
+      "PROTECT_COMMON": "Take care of shared property",
+      "KEEP_QUIET": "Keep quiet and do not disturb residents",
+      "KEEP_PASSAGES_SAFE": "Keep passages safe while cleaning",
+      "WET_FLOOR_SIGNS": "Put up warning signs on wet floors",
+      "REPORT_DAMAGE": "Report any damage or hazard to the supervisor at once"
+    },
+    "ProvidedService": {
+      "FLOORS": "Floors",
+      "KITCHEN": "Kitchen",
+      "CURTAINS": "Curtains",
+      "WINDOWS": "Windows",
+      "CEILINGS": "Ceilings",
+      "FRIDGE": "Fridge",
+      "BATHROOMS": "Bathrooms",
+      "GLASS": "Glass",
+      "OVEN": "Oven",
+      "CARPETS": "Carpets",
+      "CUPBOARDS": "Cupboards",
+      "CHILDREN_ROOMS": "Children's rooms",
+      "GARAGE": "Garage",
+      "FURNITURE": "Furniture",
+      "SIGNS_ADS": "Signs and advertising",
+      "TOILETS": "Toilets",
+      "WASTE_SORTING": "Waste collection and sorting",
+      "SHELVES": "Shelves",
+      "OFFICES": "Offices",
+      "CAR_PARKS": "Car parks",
+      "APPLIANCES": "Appliances",
+      "RECEPTION_HALL": "Reception hall",
+      "MEETING_ROOMS": "Meeting rooms",
+      "STORES": "Storerooms",
+      "GARDENS": "Gardens",
+      "COURTYARDS": "Courtyards",
+      "SWEEP_DUST": "Sweeping and dusting",
+      "STAINS": "Stains",
+      "DOORS": "Doors",
+      "CORRIDORS": "Corridors",
+      "WALLS": "Walls",
+      "CORNERS": "Corners",
+      "MAILBOXES": "Mailboxes",
+      "ENTRANCES": "Entrances",
+      "PAVEMENTS": "Pavements"
+    },
+    "ProgrammedService": {
+      "PERIODIC": "Periodic cleaning",
+      "AFTER_CONSTRUCTION": "After construction",
+      "AFTER_RENOVATION": "After renovation",
+      "AFTER_BANQUETS": "After banquets",
+      "COMPREHENSIVE_DEEP": "Full deep cleaning",
+      "COMPREHENSIVE": "Full cleaning",
+      "GUESTS": "Guest rooms",
+      "AFTER_TRAVEL": "After travel",
+      "RAMADAN": "Ramadan cleaning",
+      "DEBRIS_REMOVAL": "Debris removal",
+      "BEFORE_EVENTS": "Before events",
+      "AFTER_EVENTS": "After events",
+      "DEEP": "Deep cleaning"
+    }
   }
 }

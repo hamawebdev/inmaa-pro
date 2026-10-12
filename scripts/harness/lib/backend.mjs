@@ -184,12 +184,16 @@ function runSqlFile(sqlite, file, label) {
  * @param {string} options.runDir    this run's throwaway directory
  * @param {string[]} [options.seeds] SQL files applied after the migrations
  * @param {"unlocked"|"trial"|"expired"} [options.license]
+ * @param {string} [options.database] a database to start from instead of an empty one (the demo data):
+ *   it is copied into this run, and already holds the migrations
+ * @param {string} [options.anchor]   the anchor record to start from, copied beside it
  */
-export async function createBackend({ root, runDir, seeds = [], license = "unlocked" }) {
+export async function createBackend({ root, runDir, seeds = [], license = "unlocked", database, anchor }) {
   const { DatabaseSync } = await loadSqlite();
   const appData = path.join(runDir, "appdata");
   fs.mkdirSync(appData, { recursive: true });
   const dbPath = path.join(appData, "harness.db");
+  if (database) fs.copyFileSync(database, dbPath);
 
   const sqlite = new DatabaseSync(dbPath);
   // The same per-connection settings db.rs asks sqlx for. Without recursive_triggers an
@@ -206,14 +210,17 @@ export async function createBackend({ root, runDir, seeds = [], license = "unloc
   // The anchor of the hash chains is kept outside the database and outside app data, as the
   // real one is (src-tauri/src/anchor.rs). Here: one file beside this run's app data.
   const anchorFile = path.join(runDir, "chain-anchor.json");
+  if (anchor && fs.existsSync(anchor)) fs.copyFileSync(anchor, anchorFile);
 
   const migrationsDir = path.join(root, "src-tauri", "migrations");
-  const migrations = fs.existsSync(migrationsDir)
-    ? fs
-        .readdirSync(migrationsDir)
-        .filter((name) => name.endsWith(".sql"))
-        .sort()
-    : [];
+  // A copied database already holds them.
+  const migrations =
+    !database && fs.existsSync(migrationsDir)
+      ? fs
+          .readdirSync(migrationsDir)
+          .filter((name) => name.endsWith(".sql"))
+          .sort()
+      : [];
   // One transaction per file, as sqlx does.
   for (const name of migrations) runSqlFile(sqlite, path.join(migrationsDir, name), "migration");
   for (const seed of seeds) runSqlFile(sqlite, seed, "seed");

@@ -5,7 +5,15 @@ import type { Executor, ServiceContext } from "@/lib/service/context";
 
 import { isSystemSetting, SETTING_DEFAULTS, type SettingKey, type SettingValue } from "./catalogue";
 
-export { SETTING_DEFAULTS, SETTING_KEYS, type SettingKey, type SettingValue } from "./catalogue";
+export {
+  SETTING_DEFAULTS,
+  SETTING_KEYS,
+  type IrgTable,
+  type Period,
+  type SettingKey,
+  type SettingValue,
+  type StampBand,
+} from "./catalogue";
 
 /**
  * Settings: one value per key, typed, with its default when nobody changed it.
