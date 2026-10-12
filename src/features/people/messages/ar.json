@@ -42,31 +42,6 @@
       "hiringDecision": "قرار الإدارة",
       "issuedDate": "حررت: بأم البواقي، بتاريخ:"
     },
-    "YesNo": {
-      "YES": "نعم",
-      "NO": "لا"
-    },
-    "Sexes": {
-      "MALE": "ذكر",
-      "FEMALE": "أنثى"
-    },
-    "Abilities": {
-      "CARRY_EQUIPMENT": "حمل المعدات",
-      "STAND_LONG_HOURS": "الوقوف لساعات طويلة",
-      "CLIMB_STAIRS": "صعود السلالم",
-      "UPPER_FLOORS": "العمل في الطوابق العليا",
-      "WORK_UNDER_PRESSURE": "العمل تحت الضغط",
-      "MOVE_BETWEEN_SITES": "التنقل بين المؤسسات"
-    },
-    "Weekdays": {
-      "SAT": "السبت",
-      "SUN": "الأحد",
-      "MON": "الإثنين",
-      "TUE": "الثلاثاء",
-      "WED": "الأربعاء",
-      "THU": "الخميس",
-      "FRI": "الجمعة"
-    },
     "HealthConditions": {
       "ASTHMA": "الربو",
       "BACK": "مشاكل الظهر",
@@ -131,17 +106,10 @@
       "Badge": "مقيّد",
       "HEALTH": "إجابات صحية: لا يطّلع عليها إلا المدير ومسئول الموارد البشرية، ويُسجَّل كل اطلاع.",
       "SCORE": "تقييم سري: لا يطّلع عليه إلا المدير ومسئول الموارد البشرية، ويُسجَّل كل اطلاع.",
-      "Locked": "لا يملأ هذا الجزء إلا من له صلاحية الاطلاع عليه."
-    },
-    "Roles": {
-      "CLEANER": "عامل نظافة",
-      "SENIOR_WORKER": "عامل رئيسي",
-      "TEAM_LEADER": "قائد فريق"
-    },
-    "RolesFeminine": {
-      "CLEANER": "عاملة نظافة",
-      "SENIOR_WORKER": "عاملة رئيسية",
-      "TEAM_LEADER": "قائدة فريق"
+      "Locked": "لا يملأ هذا الجزء إلا من له صلاحية الاطلاع عليه.",
+      "OpenFailed": "تعذّر إظهار هذا الجزء.",
+      "Closed": "مغلق. يُسجَّل فتحه في السجل، ولا يُحفظ إلا الجزء المفتوح.",
+      "Open": "إظهار"
     },
     "PayBases": {
       "MONTHLY": "راتب شهري",
@@ -166,19 +134,6 @@
       "SaveFailed": "تعذّر حفظ العامل.",
       "Saved": "تم حفظ العامل.",
       "Registered": "سُجّل العامل تحت رقم {number}."
-    },
-    "Sanction": {
-      "NameMatchTitle": "يوجد شخص بهذا الاسم موقف أو معاقب",
-      "NameMatchDescription": "{name}: {state} منذ {since}. هل يتعلق الأمر بشخص آخر؟",
-      "NotTheSamePerson": "شخص آخر",
-      "States": {
-        "SUSPENDED": "موقف",
-        "PENALISED": "معاقب"
-      },
-      "ClientStates": {
-        "SUSPENDED": "متوقف",
-        "PENALISED": "معاقب"
-      }
     }
   },
   "WorkerPrint": {
@@ -186,23 +141,295 @@
     "BlankDescription": "الصفحات الأربع كما يطبعها من Word، دون أي بيانات، لتسليمها للمترشح.",
     "RecordTitle": "استمارة تسجيل {name}",
     "RecordDescription": "الاستمارة مملوءة من ملف العامل، جاهزة للإمضاء والختم.",
-    "SampleNote": "بيانات تجريبية: ملفات العمال غير موصولة بعد، وهذه الورقة تعرض عاملاً مختلَقاً.",
     "PartsLabel": "الصفحات المطلوب طباعتها",
     "Parts": {
       "all": "الاستمارة والنظام الداخلي",
       "registration": "الاستمارة، الصفحتان 1 و2",
       "regulations": "النظام الداخلي، الصفحتان 3 و4"
-    }
+    },
+    "RecordTitlePending": "استمارة التسجيل مملوءة",
+    "BackToFile": "ملف العامل",
+    "ReasonTitle": "لماذا تُطبع الاستمارة مملوءة؟",
+    "ReasonDescription": "تُظهر الاستمارة المملوءة الإجابات الصحية والتقييم السري. يُحفظ السبب في السجل مع اسمك.",
+    "ReasonLabel": "السبب",
+    "ReasonRequired": "اكتب السبب.",
+    "ShowForm": "عرض الاستمارة",
+    "LoadFailed": "تعذّرت قراءة استمارة العامل."
   },
   "Workers": {
     "NewDescription": "تسجيل عامل نظافة: الاستمارة كما هي، ثم ما يخص الإدارة.",
-    "EditDescription": "استمارة تسجيل العامل.",
-    "SampleNote": "بيانات تجريبية: ملفات العمال غير موصولة بعد، وهذه الصفحة تعرض عاملاً مختلَقاً.",
     "NewWorker": "عامل جديد",
     "BlankForm": "استمارة فارغة",
     "PrintForm": "طباعة الاستمارة",
     "QuickNew": "تسجيل عامل نظافة",
-    "EditNotWired": "تعديلات العامل المسجل لا تحفظ بعد: تأتي مع ملفات العمال."
+    "Sanctions": "الموقوفون والمعاقبون",
+    "SanctionsWaiting": "في انتظار قرار المدير: {count}",
+    "Statuses": {
+      "CANDIDATE": "مترشح",
+      "ON_TRIAL": "تحت التجربة",
+      "ACCEPTED": "مقبول",
+      "REFUSED": "مرفوض",
+      "LEFT": "غادر"
+    },
+    "Table": {
+      "Number": "رقم التسجيل",
+      "Name": "اللقب والاسم",
+      "Role": "الصفة",
+      "Zone": "المنطقة",
+      "Phone": "رقم الهاتف",
+      "Status": "الحالة",
+      "Documents": "الوثائق",
+      "DocumentsToRenew": "للتجديد: {count}",
+      "OpenFile": "الملف",
+      "SearchPlaceholder": "بحث بالاسم أو الرقم أو الهاتف",
+      "AllStatuses": "كل الحالات",
+      "AllZones": "كل المناطق",
+      "AllRoles": "كل الصفات",
+      "Count": "{shown} من {total} عاملاً",
+      "Empty": "لا يوجد أي عامل."
+    },
+    "File": {
+      "Title": "ملف العامل",
+      "Description": "ملف العامل: الحالة، الوثائق، القرارات، واستمارة التسجيل للتعديل.",
+      "Leave": "غادر",
+      "LeaveTitle": "{name}: مغادرة المركز",
+      "LeaveDescription": "ابتداءً من ذلك اليوم لا يُبرمج العامل.",
+      "LeaveDate": "تاريخ المغادرة",
+      "LeaveReason": "السبب",
+      "LeaveDone": "سُجّلت المغادرة.",
+      "Readmit": "إعادة التسجيل",
+      "ReadmitDone": "أُعيد تسجيله كمترشح.",
+      "ActionFailed": "تعذّر الحفظ.",
+      "LeftOn": "غادر يوم",
+      "AttachmentsTitle": "الصورة والاستمارة الممضاة",
+      "Photo": "الصورة",
+      "SavePhoto": "حفظ الصورة",
+      "PhotoSaved": "حُفظت الصورة.",
+      "FileFailed": "تعذّر حفظ الملف.",
+      "Scan": "نسخة ممسوحة من الصفحتين 1 و2 الممضاتين",
+      "ScanHint": "مقيّد: يُظهر الإجابات الصحية والتقييم. صورة أو PDF، يُحفظ فور اختياره.",
+      "ScanStored": "الاستمارة الممضاة",
+      "ScanCopy": "حفظ نسخة",
+      "ScanCopyTitle": "حفظ نسخة من الاستمارة الممضاة",
+      "ScanCopied": "حُفظت النسخة: {path}",
+      "ScanRemove": "حذف",
+      "ScanRemoved": "حُذفت النسخة من الملف.",
+      "ScanSaved": "حُفظت النسخة الممسوحة.",
+      "ScanWrongType": "اختر صورة أو ملف PDF.",
+      "ScanTooLarge": "هذا الملف كبير جداً.",
+      "DocumentsHint": "ما سُلّم، وما تنتهي صلاحيته. تُعدَّل التأشيرات والتواريخ في الاستمارة أسفله.",
+      "DocumentStates": {
+        "VALID": "صالحة",
+        "NO_EXPIRY": "مسلّمة",
+        "EXPIRING": "تنتهي قريباً",
+        "EXPIRED": "منتهية",
+        "MISSING": "غير مسلّمة"
+      },
+      "HistoryTitle": "القرارات والحالة",
+      "NoDecision": "لا قرار بعد.",
+      "TrialUntil": "التجربة إلى غاية",
+      "StatusHistory": "تطور الحالة"
+    },
+    "Resume": {
+      "PENDING": "لم يجب المدير بعد بخصوص {name}.",
+      "ALLOWED": "سمح المدير بهذا التسجيل (تطابق مع {name}). راجع الاستمارة، أعد ملء الأجزاء المقيّدة، ثم احفظ.",
+      "REFUSED": "لم يسمح المدير بهذا التسجيل (تطابق مع {name}).",
+      "CANCELLED": "سُحب هذا السؤال (تطابق مع {name}).",
+      "USED": "تم هذا التسجيل من قبل (تطابق مع {name})."
+    }
+  },
+  "PeopleDialogs": {
+    "Choose": "اختر",
+    "Required": "هذا الحقل مطلوب.",
+    "ReasonRequired": "اكتب السبب: يُحفظ في السجل.",
+    "Cancel": "إلغاء"
+  },
+  "Sanctions": {
+    "States": {
+      "SUSPENDED": "موقف",
+      "PENALISED": "معاقب"
+    },
+    "ClientStates": {
+      "SUSPENDED": "متوقف",
+      "PENALISED": "معاقب"
+    },
+    "Subjects": {
+      "WORKER": "عامل(ة) نظافة",
+      "EMPLOYEE": "موظف(ة) بالمركز",
+      "CLIENT": "عميل"
+    },
+    "Bases": {
+      "SAME_RECORD": "الملف نفسه",
+      "NATIONAL_ID": "رقم بطاقة التعريف",
+      "PHONE": "رقم الهاتف",
+      "NAME_AND_BIRTHDATE": "الاسم وتاريخ الإزدياد",
+      "NAME_CONFIRMED": "الاسم، بتأكيد من الموظف",
+      "TAX_NUMBER": "الرقم الجبائي أو رقم السجل",
+      "NAME_ONLY": "الاسم فقط"
+    },
+    "DecisionStatuses": {
+      "PENDING": "في انتظار قرار المدير",
+      "ALLOWED": "سمح المدير",
+      "REFUSED": "لم يسمح المدير",
+      "CANCELLED": "طلب مسحوب"
+    },
+    "Contexts": {
+      "WORKER_REGISTRATION": "تسجيل عامل نظافة",
+      "EMPLOYEE_REGISTRATION": "تسجيل موظف",
+      "CLIENT_FILE": "ملف عميل",
+      "READMISSION": "إعادة تسجيل",
+      "IDENTITY_CHANGE": "تعديل الهوية"
+    },
+    "Facts": {
+      "Since": "منذ",
+      "Until": "إلى غاية",
+      "Reason": "السبب",
+      "FoundBy": "وُجد بواسطة"
+    },
+    "Gate": {
+      "NameTitle": "يوجد شخص بهذا الاسم موقف أو معاقب",
+      "NameDescription": "الاسم وحده مطابق. هل يتعلق الأمر بالشخص نفسه؟",
+      "SamePerson": "الشخص نفسه",
+      "AnotherPerson": "شخص آخر",
+      "Cancel": "إلغاء",
+      "AnswerTitle": "هل نسمح له أم لا؟",
+      "AnswerDescription": "هذا الشخص موقف أو معاقب. يُحفظ جواب المدير وسببه في السجل.",
+      "AnswerReason": "سبب القرار",
+      "ReasonRequired": "اكتب سبب القرار.",
+      "Allow": "نسمح له",
+      "Refuse": "لا نسمح له",
+      "RefusedToast": "لم يُسمح له: لم يُسجَّل شيء.",
+      "RequestTitle": "يجب أن يجيب المدير أولاً",
+      "RequestDescription": "هذا الشخص موقف أو معاقب. أرسل السؤال إلى المدير: يُحفظ ما كتبته وتعود إليه بعد جوابه.",
+      "SendRequest": "إرسال إلى المدير",
+      "RequestSent": "أُرسل السؤال إلى المدير. تجده في «الموقوفون والمعاقبون»."
+    },
+    "Card": {
+      "Title": "موقف أو معاقب",
+      "None": "لا عقوبة",
+      "Upcoming": "{state}، ابتداءً من يوم لاحق",
+      "Set": "توقيف أو معاقبة",
+      "Lift": "رفع",
+      "SetTitle": "توقيف أو معاقبة",
+      "SetDescription": "ابتداءً من اليوم الأول، يمنع البرنامج تسجيل هذا الشخص من جديد دون جواب المدير.",
+      "State": "الحالة",
+      "From": "ابتداءً من",
+      "Until": "إلى غاية (فارغ: إلى أن تُرفع)",
+      "Reason": "السبب",
+      "SetDone": "سُجّلت العقوبة.",
+      "Failed": "تعذّر حفظ العقوبة.",
+      "LiftTitle": "رفع العقوبة",
+      "LiftDescription": "تنتهي اليوم مهما كان تاريخ نهايتها.",
+      "LiftReason": "سبب الرفع",
+      "LiftDone": "رُفعت العقوبة.",
+      "Period": "منذ {since}",
+      "PeriodUntil": "إلى غاية {until}",
+      "LiftedOn": "رُفعت يوم {date}",
+      "SetBy": "من طرف {name}"
+    },
+    "Page": {
+      "Title": "الموقوفون والمعاقبون",
+      "Description": "الأسئلة الموجهة إلى المدير، والعقوبات السارية على العمال والموظفين والعملاء.",
+      "DecisionsTitle": "هل نسمح له أم لا؟",
+      "DecisionsForManager": "كل سؤال طُرح عند تسجيل شخص موقف أو معاقب. الجواب لك.",
+      "DecisionsForClerk": "الأسئلة التي أرسلتها إلى المدير، وأجوبته.",
+      "NoDecisions": "لا يوجد أي سؤال.",
+      "Used": "سُمح له واستُعمل القرار",
+      "Answer": "الجواب",
+      "AnswerDescription": "يجري تسجيل {name}. يُحفظ الجواب وسببه في السجل.",
+      "Allowed": "سُمح له. يمكن متابعة التسجيل.",
+      "Refused": "لم يُسمح له.",
+      "WithdrawTitle": "سحب السؤال",
+      "WithdrawReason": "سبب السحب",
+      "Withdraw": "سحب",
+      "Withdrawn": "سُحب السؤال.",
+      "Resume": "متابعة التسجيل",
+      "InForceTitle": "العقوبات السارية",
+      "InForceDescription": "كل من هو موقف أو معاقب اليوم، أو ابتداءً من يوم لاحق.",
+      "NoSanctions": "لا أحد موقف أو معاقب.",
+      "Failed": "تعذّر الحفظ."
+    }
+  },
+  "Employees": {
+    "NewEmployee": "موظف جديد",
+    "QuickNew": "تسجيل موظف بالمركز",
+    "NewTitle": "موظف جديد بالمركز",
+    "NewDescription": "معلومات الموظف الشخصية، وظيفته وأجره.",
+    "Positions": {
+      "MANAGER": "المدير",
+      "ADMINISTRATION": "الإدارة",
+      "SUPERVISOR": "المشرف",
+      "HR_OFFICER": "مسئول الموارد البشرية",
+      "OPERATIONS": "مسؤول العمليات",
+      "RECEPTION_SALES": "مسؤول تجاري / استقبال",
+      "SALES_REP": "المندوب التجاري",
+      "ACCOUNTANT": "المحاسب",
+      "STOREKEEPER": "أمين المخزن",
+      "OTHER": "أخرى"
+    },
+    "Contracts": {
+      "NONE": "بدون عقد",
+      "CDD": "عقد محدد المدة",
+      "CDI": "عقد غير محدد المدة"
+    },
+    "WorkTimes": {
+      "FULL_TIME": "دوام كامل",
+      "PART_TIME": "دوام جزئي"
+    },
+    "Statuses": {
+      "IN_POST": "في المنصب",
+      "LEFT": "غادر"
+    },
+    "Table": {
+      "Number": "رقم التسجيل",
+      "Name": "اللقب والاسم",
+      "Position": "الوظيفة",
+      "Phone": "رقم الهاتف",
+      "Account": "الحساب",
+      "Status": "الحالة",
+      "OpenFile": "الملف",
+      "SearchPlaceholder": "بحث بالاسم أو الرقم أو الهاتف",
+      "AllPositions": "كل الوظائف",
+      "AllStatuses": "كل الحالات",
+      "Count": "{shown} من {total} موظفاً",
+      "Empty": "لا يوجد أي موظف."
+    },
+    "Form": {
+      "SaveFailed": "تعذّر حفظ الموظف.",
+      "Saved": "تم حفظ الموظف.",
+      "Registered": "سُجّل الموظف تحت رقم {number}.",
+      "Create": "تسجيل الموظف",
+      "Phone2": "هاتف ثانٍ",
+      "Email": "البريد الإلكتروني",
+      "PostTitle": "الوظيفة",
+      "JobPosition": "الوظيفة",
+      "StartDate": "تاريخ البدء",
+      "EmploymentContract": "نوع العقد",
+      "ContractEndDate": "نهاية العقد",
+      "WorkTime": "الدوام",
+      "CnasDeclared": "مصرّح به لدى الضمان الاجتماعي",
+      "CnasNumber": "رقم الضمان الاجتماعي",
+      "PayTitle": "الأجر",
+      "PayDescription": "مطلوب قبل أول كشف أجور."
+    },
+    "File": {
+      "Title": "ملف الموظف",
+      "Description": "ملف الموظف: الحالة، حساب الدخول، والمعلومات للتعديل.",
+      "Leave": "غادر",
+      "LeaveTitle": "{name}: مغادرة المركز",
+      "LeaveDate": "تاريخ المغادرة",
+      "LeaveReason": "السبب",
+      "LeaveDone": "سُجّلت المغادرة.",
+      "Readmit": "إعادة التسجيل",
+      "ReadmitDone": "عاد إلى منصبه.",
+      "ActionFailed": "تعذّر الحفظ.",
+      "AccountTitle": "حساب الدخول",
+      "AccountActive": "مفعّل",
+      "AccountInactive": "معطّل",
+      "NoAccount": "لا حساب",
+      "AccountDescription": "الحساب الذي يدخل به هذا الموظف. تُنشأ الحسابات وتُربط في الإعدادات.",
+      "AccountUser": "اسم المستخدم:"
+    }
   },
   "Errors": {
     "WorkerSexRequired": "حدد هل العامل رجل أم امرأة.",
@@ -220,7 +447,6 @@
     "TotalDisagrees": "المجموع لا يوافق النقاط.",
     "BirthBeforeRegistration": "يجب أن يسبق تاريخ الإزدياد تاريخ التسجيل.",
     "PayBasisForRate": "اختر طريقة احتساب هذا الأجر.",
-    "WorkerChangeNotWired": "لا يمكن تعديل عامل مسجل بعد.",
     "HealthNotAllowed": "ليست لديك صلاحية تسجيل المعلومات الصحية.",
     "ScoreNotAllowed": "ليست لديك صلاحية تسجيل التقييم السري.",
     "DecisionNotAllowed": "ليست لديك صلاحية تسجيل قرار الإدارة.",
@@ -229,6 +455,31 @@
     "SanctionNameMatch": "يوجد شخص بهذا الاسم موقف أو معاقب. أكّد أن الأمر يتعلق بشخص آخر قبل الحفظ.",
     "DecisionNotFound": "قرار المدير هذا غير موجود.",
     "DecisionNotAYes": "لا يسمح بالتسجيل إلا قبول المدير.",
-    "DecisionUsed": "استُعمل قرار المدير هذا من قبل."
+    "DecisionUsed": "استُعمل قرار المدير هذا من قبل.",
+    "SanctionChoose": "اختر العقوبة.",
+    "SanctionReasonRequired": "اكتب سبب العقوبة.",
+    "SanctionEndBeforeStart": "يجب ألا يسبق تاريخ النهاية تاريخ البداية.",
+    "SanctionClientNotFound": "عميل هذه العقوبة غير موجود.",
+    "PersonNotFound": "هذا الشخص غير موجود.",
+    "SanctionOverlap": "لهذا الشخص عقوبة في هذه الأيام. ارفعها أولاً.",
+    "SanctionLiftReasonRequired": "اكتب سبب رفع العقوبة.",
+    "SanctionNotFound": "هذه العقوبة غير موجودة.",
+    "SanctionAlreadyLifted": "رُفعت هذه العقوبة من قبل.",
+    "DecisionNoMatch": "هذا الشخص لا يطابق هذه العقوبة.",
+    "DecisionSayFirst": "حدّد أولاً هل يتعلق الأمر بالشخص نفسه.",
+    "DecisionReasonRequired": "اكتب سبب القرار.",
+    "DecisionAlreadyAnswered": "أُجيب عن هذا الطلب من قبل.",
+    "DecisionWithdrawReasonRequired": "اكتب سبب سحب الطلب.",
+    "WorkerIdNumberTaken": "يوجد عامل مسجل بهذا الرقم. افتح ملف ذلك العامل.",
+    "EmployeeIdNumberTaken": "يوجد موظف مسجل بهذا الرقم. افتح ملف ذلك الموظف.",
+    "EmployeeNotFound": "هذا الموظف غير موجود.",
+    "LeavingReasonRequired": "اكتب سبب المغادرة.",
+    "AlreadyLeft": "غادر هذا الشخص من قبل.",
+    "LeavingBeforeRegistration": "لا يمكن أن يسبق تاريخ المغادرة تاريخ التسجيل.",
+    "ReadmitOnlyLeft": "لا يُعاد تسجيل إلا من غادر أو رُفض.",
+    "PrintReasonRequired": "اكتب سبب طباعة الاستمارة مملوءة.",
+    "EmployeeSexRequired": "حدد هل الموظف رجل أم امرأة.",
+    "JobPositionRequired": "اختر الوظيفة.",
+    "ContractEndBeforeStart": "لا يمكن أن تسبق نهاية العقد بدايته."
   }
 }

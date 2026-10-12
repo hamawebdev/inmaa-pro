@@ -11,4 +11,5 @@ import type { QuickAction } from "@/navigation/quick-actions";
  */
 export const quickActions: readonly QuickAction[] = [
   { labelKey: "Workers.QuickNew", href: "/dashboard/workers/new", icon: UserPlus },
+  { labelKey: "Employees.QuickNew", href: "/dashboard/employees/new", icon: UserPlus },
 ];

@@ -34,7 +34,13 @@ describe("listWorkers", () => {
     const samira = await register(SAMPLE_WORKER_VALUES);
     const kamel = await register(MINIMAL);
     await test.transact((ex, ctx) =>
-      setSanction(ex, ctx, { subjectKind: "WORKER", subjectId: kamel.id, state: "PENALISED", reason: "تأخر", startDate: "2026-10-12" }),
+      setSanction(ex, ctx, {
+        subjectKind: "WORKER",
+        subjectId: kamel.id,
+        state: "PENALISED",
+        reason: "تأخر",
+        startDate: "2026-10-12",
+      }),
     );
     // Her medical certificate expires within the month: one to renew.
     await test.transact((ex, ctx) =>
@@ -157,7 +163,12 @@ describe("workerFormForPrint", () => {
       documentsDelivered: [...SAMPLE_WORKER_FORM.documentsDelivered],
     });
     const [disclosed] = await logOf("PRINT");
-    expect(disclosed).toMatchObject({ operation: "DISCLOSE", disclosure: "PRINT", reason: "ملف التوظيف", entityId: id });
+    expect(disclosed).toMatchObject({
+      operation: "DISCLOSE",
+      disclosure: "PRINT",
+      reason: "ملف التوظيف",
+      entityId: id,
+    });
     // Printing reads her restricted answers: both reads are in the log, with the same reason.
     const reads = await logOf("VIEW_RESTRICTED");
     expect(reads.map((entry) => entry.reason)).toEqual(["ملف التوظيف", "ملف التوظيف"]);

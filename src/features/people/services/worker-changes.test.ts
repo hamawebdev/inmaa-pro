@@ -74,10 +74,24 @@ describe("updateWorker", () => {
     });
 
     // Saving the same values again changes nothing and logs nothing.
-    const entries = Number((await test.db.selectFrom("AuditLog").select((eb) => eb.fn.countAll().as("n")).executeTakeFirstOrThrow()).n);
+    const entries = Number(
+      (
+        await test.db
+          .selectFrom("AuditLog")
+          .select((eb) => eb.fn.countAll().as("n"))
+          .executeTakeFirstOrThrow()
+      ).n,
+    );
     await update({ id, values: { ...MINIMAL, lastName: "سعدية", firstName: "كاملة", sex: "FEMALE" } });
     expect(
-      Number((await test.db.selectFrom("AuditLog").select((eb) => eb.fn.countAll().as("n")).executeTakeFirstOrThrow()).n),
+      Number(
+        (
+          await test.db
+            .selectFrom("AuditLog")
+            .select((eb) => eb.fn.countAll().as("n"))
+            .executeTakeFirstOrThrow()
+        ).n,
+      ),
     ).toBe(entries);
   });
 
@@ -160,20 +174,38 @@ describe("updateWorker", () => {
 
   it("touches her health answers and score only when they were opened, and logs neither value", async () => {
     const { id } = await register(SAMPLE_WORKER_VALUES);
-    const closed = { ...SAMPLE_WORKER_VALUES, healthConditions: [], healthOtherText: "", hiringScores: emptyWorkerValues("2026-10-12").hiringScores, hiringTotal: "" };
+    const closed = {
+      ...SAMPLE_WORKER_VALUES,
+      healthConditions: [],
+      healthOtherText: "",
+      hiringScores: emptyWorkerValues("2026-10-12").hiringScores,
+      hiringTotal: "",
+    };
     await update({ id, values: closed });
-    const kept = await test.db.selectFrom("StaffConfidential").selectAll().where("staffId", "=", id).executeTakeFirstOrThrow();
+    const kept = await test.db
+      .selectFrom("StaffConfidential")
+      .selectAll()
+      .where("staffId", "=", id)
+      .executeTakeFirstOrThrow();
     expect(kept).toMatchObject({ conditions: '["OTHER"]', otherText: "حساسية من الغبار", total: 78 });
 
     await update({ id, values: { ...closed, healthConditions: ["ASTHMA"] }, opened: { health: true } });
-    const changed = await test.db.selectFrom("StaffConfidential").selectAll().where("staffId", "=", id).executeTakeFirstOrThrow();
+    const changed = await test.db
+      .selectFrom("StaffConfidential")
+      .selectAll()
+      .where("staffId", "=", id)
+      .executeTakeFirstOrThrow();
     expect(changed).toMatchObject({ conditions: '["ASTHMA"]', otherText: null, total: 78 });
     const entry = await lastChange("StaffConfidential");
     expect(JSON.parse(entry?.changes ?? "{}")).toEqual({ conditions: ["§", "§"], otherText: ["§", "§"] });
     const everything = JSON.stringify(await test.db.selectFrom("AuditLog").selectAll().execute());
     expect(everything).not.toContain("ASTHMA");
     // The save read the old answers to compare: that read is in the log too.
-    const reads = await test.db.selectFrom("AuditLog").select("action").where("action", "=", "VIEW_RESTRICTED").execute();
+    const reads = await test.db
+      .selectFrom("AuditLog")
+      .select("action")
+      .where("action", "=", "VIEW_RESTRICTED")
+      .execute();
     expect(reads.length).toBe(1);
 
     const operations = await test.sessionFor("OPERATIONS");
@@ -185,14 +217,23 @@ describe("updateWorker", () => {
   it("stops an identity edited into someone under sanction, but not her own file", async () => {
     const samira = await register({ ...SAMPLE_WORKER_VALUES, nationalIdNumber: "109940317000123" });
     await test.transact((ex, ctx) =>
-      setSanction(ex, ctx, { subjectKind: "WORKER", subjectId: samira.id, state: "SUSPENDED", reason: "غياب", startDate: "2026-10-01" }),
+      setSanction(ex, ctx, {
+        subjectKind: "WORKER",
+        subjectId: samira.id,
+        state: "SUSPENDED",
+        reason: "غياب",
+        startDate: "2026-10-01",
+      }),
     );
     const other = await register(MINIMAL);
     await expect(update({ id: other.id, values: { ...MINIMAL, phone: "0661203142" } })).rejects.toThrow(
       "This person is suspended or penalised. The manager must allow the registration first.",
     );
     // Her own phone changes without asking anyone.
-    await update({ id: samira.id, values: { ...SAMPLE_WORKER_VALUES, nationalIdNumber: "109940317000123", phone: "0661 00 00 01" } });
+    await update({
+      id: samira.id,
+      values: { ...SAMPLE_WORKER_VALUES, nationalIdNumber: "109940317000123", phone: "0661 00 00 01" },
+    });
     expect((await worker(samira.id)).phone).toBe("0661000001");
     // And one identity number stays one person.
     await expect(update({ id: other.id, values: { ...MINIMAL, nationalIdNumber: "109940317000123" } })).rejects.toThrow(
@@ -208,25 +249,44 @@ describe("updateWorker", () => {
 describe("leaving and coming back", () => {
   it("records her leaving with its day and reason, and tells Operations from that day", async () => {
     const { id } = await register({ ...MINIMAL, hiringDecision: "ACCEPTED" });
-    await test.transact((ex, ctx) => recordWorkerLeaving(ex, ctx, { id, leftDate: "2026-10-20", reason: "انتقل إلى ولاية أخرى" }));
-    expect(await worker(id)).toMatchObject({ engagementStatus: "LEFT", leftDate: "2026-10-20", leftReason: "انتقل إلى ولاية أخرى" });
+    await test.transact((ex, ctx) =>
+      recordWorkerLeaving(ex, ctx, { id, leftDate: "2026-10-20", reason: "انتقل إلى ولاية أخرى" }),
+    );
+    expect(await worker(id)).toMatchObject({
+      engagementStatus: "LEFT",
+      leftDate: "2026-10-20",
+      leftReason: "انتقل إلى ولاية أخرى",
+    });
     expect(unavailable).toEqual([{ workerId: id, fromDate: "2026-10-20", toDate: null, cause: "LEFT" }]);
     await expect(
       test.transact((ex, ctx) => recordWorkerLeaving(ex, ctx, { id, leftDate: "2026-10-21", reason: "x" })),
-    ).rejects.toThrow("This worker has already left.");
+    ).rejects.toThrow("This person has already left.");
 
     await test.transact((ex, ctx) => readmitWorker(ex, ctx, { id }));
     expect(await worker(id)).toMatchObject({ engagementStatus: "CANDIDATE", leftDate: null, leftReason: null });
-    const statuses = await test.db.selectFrom("StaffEvent").select(["date", "toStatus"]).where("kind", "=", "STATUS").orderBy("createdAt").execute();
+    const statuses = await test.db
+      .selectFrom("StaffEvent")
+      .select(["date", "toStatus"])
+      .where("kind", "=", "STATUS")
+      .orderBy("createdAt")
+      .execute();
     expect(statuses.map((s) => s.toStatus)).toEqual(["ACCEPTED", "LEFT", "CANDIDATE"]);
   });
 
   it("asks the manager before readmitting a worker under sanction, and spends his yes (BUILD-NOTES 6.1)", async () => {
     const samira = await register({ ...SAMPLE_WORKER_VALUES, nationalIdNumber: "109940317000123" });
     await test.transact((ex, ctx) =>
-      setSanction(ex, ctx, { subjectKind: "WORKER", subjectId: samira.id, state: "SUSPENDED", reason: "غياب", startDate: "2026-10-01" }),
+      setSanction(ex, ctx, {
+        subjectKind: "WORKER",
+        subjectId: samira.id,
+        state: "SUSPENDED",
+        reason: "غياب",
+        startDate: "2026-10-01",
+      }),
     );
-    await test.transact((ex, ctx) => recordWorkerLeaving(ex, ctx, { id: samira.id, leftDate: "2026-10-12", reason: "توقفت" }));
+    await test.transact((ex, ctx) =>
+      recordWorkerLeaving(ex, ctx, { id: samira.id, leftDate: "2026-10-12", reason: "توقفت" }),
+    );
 
     // Registering her again under her identity number is refused: she comes back on her own file.
     await expect(register({ ...SAMPLE_WORKER_VALUES, nationalIdNumber: "109940317000123" })).rejects.toThrow(
@@ -248,19 +308,27 @@ describe("leaving and coming back", () => {
         reason: "انتهت المدة عمليا",
       }),
     );
-    const decision = await test.db.selectFrom("SanctionDecision").selectAll().where("id", "=", decisionId).executeTakeFirstOrThrow();
+    const decision = await test.db
+      .selectFrom("SanctionDecision")
+      .selectAll()
+      .where("id", "=", decisionId)
+      .executeTakeFirstOrThrow();
     expect(decision).toMatchObject({ matchBasis: "SAME_RECORD", attemptStaffId: samira.id });
 
     await test.transact((ex, ctx) => readmitWorker(ex, ctx, { id: samira.id, decisionId }), hr);
     expect((await worker(samira.id)).engagementStatus).toBe("CANDIDATE");
-    const spent = await test.db.selectFrom("SanctionDecision").selectAll().where("id", "=", decisionId).executeTakeFirstOrThrow();
+    const spent = await test.db
+      .selectFrom("SanctionDecision")
+      .selectAll()
+      .where("id", "=", decisionId)
+      .executeTakeFirstOrThrow();
     expect(spent).toMatchObject({ consumedEntityKind: "STAFF_MEMBER", consumedEntityId: samira.id });
   });
 
   it("readmits only a worker who left or was refused", async () => {
     const { id } = await register(MINIMAL);
     await expect(test.transact((ex, ctx) => readmitWorker(ex, ctx, { id }))).rejects.toThrow(
-      "Only a worker who left or was refused can be readmitted.",
+      "Only someone who left or was refused can be readmitted.",
     );
   });
 });

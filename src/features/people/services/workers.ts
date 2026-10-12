@@ -1,5 +1,5 @@
 import { ensureZoneForCommune, PLACES_PATH } from "@/features/core/services/places";
-import { addDays, isDate } from "@/features/people/rules/dates";
+import { addDays } from "@/features/people/rules/dates";
 import type { PersonIdentity } from "@/features/people/rules/sanction-match";
 import { hiringTotal } from "@/features/people/rules/scores";
 import {
@@ -8,7 +8,6 @@ import {
   STAFF_DOCUMENT_TYPES,
   type EngagementStatus,
   type HiringDecision,
-  type SanctionContext,
 } from "@/features/people/validators/staff-codes";
 import {
   phoneDigits,
@@ -18,8 +17,7 @@ import {
 } from "@/features/people/validators/worker";
 import { can, requireCapability, requireSection } from "@/lib/access/session";
 import { newId } from "@/lib/db/rows";
-import { emit } from "@/lib/events";
-import { logChange, logCollect, logConsult, WITHHELD } from "@/lib/log";
+import { logChange, logCollect, WITHHELD } from "@/lib/log";
 import { formatNumber, nextNumber } from "@/lib/numbering";
 import { readRestricted } from "@/lib/restricted";
 import { action } from "@/lib/service/action";
@@ -30,7 +28,24 @@ import { getSettings } from "@/lib/settings";
 import { normaliseName, phoneKeys } from "@/lib/text/normalise";
 import { dinarsToMoney, hoursToMinutes, localDate, type LocalDate } from "@/lib/units";
 
-import { checkSanction, consumeDecision, type CheckSanctionResult } from "./sanctions";
+import {
+  dateOrNull,
+  decimal,
+  DERIVED_KEYS,
+  idNumber,
+  insertPayTerms,
+  insertStatus,
+  orNull,
+  passSanctionCheck,
+  readmit,
+  recordLeaving,
+  refuseSecondRecord,
+  settleSanctionCheck,
+  staffOf,
+  type SanctionPassage,
+} from "./staff-shared";
+
+export type { SanctionPassage } from "./staff-shared";
 
 /**
  * A cleaning worker's record, from his worker form (features 25 and 37):
@@ -50,13 +65,6 @@ export const WORKERS_PATH = "/dashboard/workers";
 /** What a registration refreshes: the workers, and the zone pickers when her commune got its zone. */
 export const REGISTRATION_REFRESHES = [WORKERS_PATH, PLACES_PATH] as const;
 
-export interface SanctionPassage {
-  /** The clerk said that the person under sanction who has this name is somebody else. */
-  notTheSamePerson?: boolean;
-  /** The manager's yes to this attempt (`<SanctionGate>`). */
-  decisionId?: string | null;
-}
-
 export interface RegisterWorkerInput extends WorkerFormValues, SanctionPassage {}
 
 export interface RegisterWorkerResult {
@@ -74,14 +82,6 @@ export const STATUS_OF_DECISION: Readonly<Record<HiringDecision, EngagementStatu
 
 /** Documents only the holders of the restricted capabilities open (DESIGN section 9). */
 export const RESTRICTED_DOCUMENTS: ReadonlySet<string> = new Set(["MEDICAL_CERT", "CRIMINAL_RECORD"]);
-
-/** Columns the program derives from what was typed. */
-const DERIVED_KEYS: ReadonlySet<string> = new Set(["nameKey", "nameLatinKey", "phoneKeys"]);
-
-const orNull = (text: string) => (text.trim() === "" ? null : text.trim());
-const dateOrNull = (text: string) => (text.trim() === "" ? null : localDate(text.trim()));
-const decimal = (text: string) => Number(text.trim().replace(",", "."));
-const idNumber = (text: string) => text.replace(/\s/g, "");
 
 /** The identity the sanction check compares, from the screen's values. The emergency phone is somebody else's. */
 export function workerIdentity(values: WorkerFormValues): PersonIdentity {
@@ -173,85 +173,6 @@ async function zoneFor(ex: Executor, ctx: ServiceContext, values: WorkerFormValu
   return (await ensureZoneForCommune(ex, ctx, { communeId: values.residenceCommuneId })).zoneId;
 }
 
-/** One record per person and kind (the database says so too): somebody coming back is readmitted on her file. */
-async function refuseSecondRecord(ex: Executor, nationalId: string | null, exceptId?: string): Promise<void> {
-  if (!nationalId) return;
-  const holder = await ex
-    .selectFrom("StaffMember")
-    .select("id")
-    .where("kind", "=", "WORKER")
-    .where("nationalIdNumber", "=", nationalId)
-    .where("deletedAt", "is", null)
-    .$if(exceptId !== undefined, (qb) => qb.where("id", "<>", exceptId as string))
-    .executeTakeFirst();
-  if (holder) {
-    throw new ServiceError("A worker with this identity number is already registered. Open that worker's file.");
-  }
-}
-
-/** The check, and what the screen's gate brought: the clerk's word, or the manager's yes. */
-async function passSanctionCheck(
-  ex: Executor,
-  ctx: ServiceContext,
-  input: { context: SanctionContext; subjectId?: string; identity: PersonIdentity; passage: SanctionPassage },
-): Promise<CheckSanctionResult> {
-  const check = await checkSanction(ex, ctx, {
-    context: input.context,
-    subjectKind: "WORKER",
-    subjectId: input.subjectId,
-    identity: input.identity,
-    decisionId: input.passage.decisionId ?? null,
-    ignoreOwnRecord: input.context === "IDENTITY_CHANGE",
-  });
-  if (check.outcome === "BLOCKED") {
-    throw new ServiceError("This person is suspended or penalised. The manager must allow the registration first.");
-  }
-  if (check.outcome === "REFUSED") {
-    throw new ServiceError("The manager did not allow this person to be registered.");
-  }
-  if (check.outcome === "POSSIBLE" && input.passage.notTheSamePerson !== true) {
-    throw new ServiceError(
-      "Someone with this name is suspended or penalised. Confirm that this is another person before saving.",
-    );
-  }
-  return check;
-}
-
-/** After the save: the manager's yes is spent, the clerk's word is logged. */
-async function settleSanctionCheck(
-  ex: Executor,
-  ctx: ServiceContext,
-  check: CheckSanctionResult,
-  input: { context: SanctionContext; passage: SanctionPassage; staffId: string; number: string },
-): Promise<void> {
-  if (check.outcome === "ALLOWED" && input.passage.decisionId) {
-    await consumeDecision(ex, ctx, {
-      decisionId: input.passage.decisionId,
-      entityKind: "STAFF_MEMBER",
-      entityId: input.staffId,
-    });
-  }
-  if (check.outcome !== "POSSIBLE") return;
-  for (const match of check.matches) {
-    await logConsult(ex, ctx, {
-      owner: "PEOPLE",
-      action: "SANCTION_CHECK",
-      entity: "Sanction",
-      entityId: match.sanctionId,
-      entityLabel: match.displayName,
-      // Whose data was looked at: the person under sanction.
-      subject: { kind: match.subjectKind, id: match.subjectId, label: match.displayName },
-      context: {
-        context: input.context,
-        foundBy: match.foundBy,
-        answer: "NOT_THE_SAME_PERSON",
-        registered: input.staffId,
-        registeredNumber: input.number,
-      },
-    });
-  }
-}
-
 function requireWhatIsRecorded(
   ctx: ServiceContext,
   recorded: { health: boolean; score: boolean; decision: boolean },
@@ -291,10 +212,11 @@ export async function registerWorker(
   });
 
   const columns = memberColumns(values);
-  await refuseSecondRecord(ex, columns.nationalIdNumber);
+  await refuseSecondRecord(ex, "WORKER", columns.nationalIdNumber);
   const passage: SanctionPassage = { notTheSamePerson: input.notTheSamePerson, decisionId: input.decisionId };
   const check = await passSanctionCheck(ex, ctx, {
     context: "WORKER_REGISTRATION",
+    subjectKind: "WORKER",
     identity: workerIdentity(values),
     passage,
   });
@@ -363,7 +285,12 @@ export async function registerWorker(
   // «قرار الإدارة», dated by «حررت: بأم البواقي، بتاريخ» when the paper gives that date.
   const decisionDate = decision ? (columns.issuedDate ?? ctx.today) : null;
   if (decision && decisionDate) {
-    await insertDecision(ex, ctx, { staffId: id, decision, date: decisionDate, trialDays: settings["hiring.trialDays"] });
+    await insertDecision(ex, ctx, {
+      staffId: id,
+      decision,
+      date: decisionDate,
+      trialDays: settings["hiring.trialDays"],
+    });
   }
 
   // Her status from the registration date, and from the decision's when that is a later day: the history
@@ -378,7 +305,7 @@ export async function registerWorker(
   if (decidedLater && decisionDate) {
     await insertStatus(ex, ctx, { staffId: id, date: decisionDate, from: "CANDIDATE", to: status });
   }
-  await insertPayTerms(ex, ctx, { staffId: id, date: columns.registrationDate, columns });
+  await insertPayTerms(ex, ctx, { staffId: id, date: columns.registrationDate, terms: columns });
 
   await settleSanctionCheck(ex, ctx, check, {
     context: "WORKER_REGISTRATION",
@@ -432,55 +359,9 @@ async function insertDecision(
       decision: input.decision,
       decisionDate: input.date,
       decidedByUserId: ctx.userId,
-      trialEndDate:
-        input.decision === "ACCEPTED_ON_TRIAL" ? localDate(addDays(input.date, input.trialDays)) : null,
+      trialEndDate: input.decision === "ACCEPTED_ON_TRIAL" ? localDate(addDays(input.date, input.trialDays)) : null,
       createdAt: ctx.now,
       updatedAt: ctx.now,
-    })
-    .execute();
-}
-
-async function insertStatus(
-  ex: Executor,
-  ctx: ServiceContext,
-  input: { staffId: string; date: LocalDate; from: string | null; to: string; reason?: string | null },
-): Promise<void> {
-  await ex
-    .insertInto("StaffEvent")
-    .values({
-      id: newId(),
-      staffId: input.staffId,
-      kind: "STATUS",
-      date: input.date,
-      fromStatus: input.from,
-      toStatus: input.to,
-      reason: input.reason ?? null,
-      createdAt: ctx.now,
-      createdByUserId: ctx.userId,
-    })
-    .execute();
-}
-
-async function insertPayTerms(
-  ex: Executor,
-  ctx: ServiceContext,
-  input: { staffId: string; date: LocalDate; columns: ReturnType<typeof memberColumns> },
-): Promise<void> {
-  const { payBasis, payRate, payPeriod, weeklyCapacityMin } = input.columns;
-  if (payBasis === null || payRate === null) return;
-  await ex
-    .insertInto("StaffEvent")
-    .values({
-      id: newId(),
-      staffId: input.staffId,
-      kind: "PAY_TERMS",
-      date: input.date,
-      payBasis,
-      payRate,
-      payPeriod,
-      weeklyCapacityMin,
-      createdAt: ctx.now,
-      createdByUserId: ctx.userId,
     })
     .execute();
 }
@@ -527,14 +408,7 @@ export async function updateWorker(
   requireSection(ctx, "WORKERS", "WRITE");
   requireCapability(ctx, "staff.write");
   const values = parseValues(input.values);
-  const before = await ex
-    .selectFrom("StaffMember")
-    .selectAll()
-    .where("id", "=", input.id)
-    .where("kind", "=", "WORKER")
-    .where("deletedAt", "is", null)
-    .executeTakeFirst();
-  if (!before) throw new ServiceError("This worker does not exist.");
+  const before = await staffOf(ex, "WORKER", input.id);
 
   const lastDecision = await lastDecisionOf(ex, before.id);
   const newDecision =
@@ -545,7 +419,7 @@ export async function updateWorker(
   requireWhatIsRecorded(ctx, { ...opened, decision: newDecision !== undefined });
 
   const columns = memberColumns(values);
-  await refuseSecondRecord(ex, columns.nationalIdNumber, before.id);
+  await refuseSecondRecord(ex, "WORKER", columns.nationalIdNumber, before.id);
 
   // An identity edited into someone under sanction is stopped like a registration (her own sanction aside).
   const identityChanged =
@@ -558,6 +432,7 @@ export async function updateWorker(
   const check = identityChanged
     ? await passSanctionCheck(ex, ctx, {
         context: "IDENTITY_CHANGE",
+        subjectKind: "WORKER",
         subjectId: before.id,
         identity: workerIdentity(values),
         passage,
@@ -600,7 +475,7 @@ export async function updateWorker(
     await insertStatus(ex, ctx, { staffId: before.id, date: ctx.today, from: before.engagementStatus, to: status });
   }
   const payChanged = ["payBasis", "payRate", "payPeriod", "weeklyCapacityMin"].some((key) => changes && key in changes);
-  if (payChanged) await insertPayTerms(ex, ctx, { staffId: before.id, date: ctx.today, columns });
+  if (payChanged) await insertPayTerms(ex, ctx, { staffId: before.id, date: ctx.today, terms: columns });
 
   const documentChanges = await saveDocuments(ex, ctx, before.id, values, columns.registrationDate);
   const confidentialChanges = await saveConfidential(ex, ctx, before.id, values, opened);
@@ -704,8 +579,15 @@ async function saveConfidential(
   const changed: string[] = [];
   let set: Record<string, unknown> = {};
   if (opened.health) {
-    const before = await readRestricted(ex, ctx, { capability: "staff.health.read", entity: "StaffConfidential", id: staffId });
-    const diff = changedColumns({ conditions: before?.conditions ?? null, otherText: before?.otherText ?? null }, next.health);
+    const before = await readRestricted(ex, ctx, {
+      capability: "staff.health.read",
+      entity: "StaffConfidential",
+      id: staffId,
+    });
+    const diff = changedColumns(
+      { conditions: before?.conditions ?? null, otherText: before?.otherText ?? null },
+      next.health,
+    );
     if (diff.changes) {
       set = { ...set, ...diff.set };
       changed.push(...Object.keys(diff.changes));
@@ -738,108 +620,18 @@ async function saveConfidential(
 // ── Leaving, and coming back ────────────────────────────────────────────────
 
 /** «غادر»: the worker leaves the centre on a day. Operations gives up her seats from then on. */
-export async function recordWorkerLeaving(
+export const recordWorkerLeaving = (
   ex: Executor,
   ctx: ServiceContext,
   input: { id: string; leftDate: string; reason: string },
-): Promise<void> {
-  requireSection(ctx, "WORKERS", "WRITE");
-  requireCapability(ctx, "staff.write");
-  const reason = input.reason.trim();
-  if (reason === "") throw new ServiceError("Write why the worker leaves.");
-  if (!isDate(input.leftDate)) throw new ServiceError("Enter a valid date.");
-  const leftDate = localDate(input.leftDate);
-  const before = await ex
-    .selectFrom("StaffMember")
-    .select(["id", "number", "lastName", "firstName", "engagementStatus", "registrationDate", "leftDate", "leftReason"])
-    .where("id", "=", input.id)
-    .where("kind", "=", "WORKER")
-    .where("deletedAt", "is", null)
-    .executeTakeFirst();
-  if (!before) throw new ServiceError("This worker does not exist.");
-  if (before.engagementStatus === "LEFT") throw new ServiceError("This worker has already left.");
-  if (leftDate < before.registrationDate) {
-    throw new ServiceError("The leaving date cannot be before the registration date.");
-  }
-
-  const { set, changes } = changedColumns(before, { engagementStatus: "LEFT", leftDate, leftReason: reason });
-  await ex
-    .updateTable("StaffMember")
-    .set({ ...set, updatedAt: ctx.now, updatedByUserId: ctx.userId })
-    .where("id", "=", before.id)
-    .execute();
-  await insertStatus(ex, ctx, { staffId: before.id, date: leftDate, from: before.engagementStatus, to: "LEFT", reason });
-  const subject = workerSubject(before.id, before.number, before);
-  await logChange(ex, ctx, {
-    owner: "PEOPLE",
-    action: "STATUS_CHANGE",
-    entity: "StaffMember",
-    entityId: before.id,
-    entityLabel: subject.label,
-    subject,
-    changes: changes ?? undefined,
-  });
-  await emit(ex, ctx, "staff.unavailable", { workerId: before.id, fromDate: leftDate, toDate: null, cause: "LEFT" });
-}
+) => recordLeaving(ex, ctx, "WORKER", input);
 
 /**
  * A worker who left, or was refused, comes back: a candidate again on her own
- * file and number. Her own sanction counts here: coming back is an attempt
- * to register her, and the manager answers it.
+ * file and number. Her own sanction counts here, and the manager answers it.
  */
-export async function readmitWorker(
-  ex: Executor,
-  ctx: ServiceContext,
-  input: { id: string } & SanctionPassage,
-): Promise<void> {
-  requireSection(ctx, "WORKERS", "WRITE");
-  requireCapability(ctx, "staff.write");
-  const before = await ex
-    .selectFrom("StaffMember")
-    .selectAll()
-    .where("id", "=", input.id)
-    .where("kind", "=", "WORKER")
-    .where("deletedAt", "is", null)
-    .executeTakeFirst();
-  if (!before) throw new ServiceError("This worker does not exist.");
-  if (before.engagementStatus !== "LEFT" && before.engagementStatus !== "REFUSED") {
-    throw new ServiceError("Only a worker who left or was refused can be readmitted.");
-  }
-  const passage: SanctionPassage = { notTheSamePerson: input.notTheSamePerson, decisionId: input.decisionId };
-  const check = await passSanctionCheck(ex, ctx, {
-    context: "READMISSION",
-    subjectId: before.id,
-    identity: {
-      lastName: before.lastName,
-      firstName: before.firstName,
-      nameLatin: before.fullNameLatin,
-      birthDate: before.birthDate,
-      phones: [before.phone],
-      nationalId: before.nationalIdNumber,
-    },
-    passage,
-  });
-
-  const { set, changes } = changedColumns(before, { engagementStatus: "CANDIDATE", leftDate: null, leftReason: null });
-  await ex
-    .updateTable("StaffMember")
-    .set({ ...set, updatedAt: ctx.now, updatedByUserId: ctx.userId })
-    .where("id", "=", before.id)
-    .execute();
-  await insertStatus(ex, ctx, { staffId: before.id, date: ctx.today, from: before.engagementStatus, to: "CANDIDATE" });
-  await settleSanctionCheck(ex, ctx, check, { context: "READMISSION", passage, staffId: before.id, number: before.number });
-  const subject = workerSubject(before.id, before.number, before);
-  await logChange(ex, ctx, {
-    owner: "PEOPLE",
-    action: "STATUS_CHANGE",
-    entity: "StaffMember",
-    entityId: before.id,
-    entityLabel: subject.label,
-    subject,
-    changes: changes ?? undefined,
-    context: { readmission: true, sanctionDecisionId: check.outcome === "ALLOWED" ? (input.decisionId ?? null) : null },
-  });
-}
+export const readmitWorker = (ex: Executor, ctx: ServiceContext, input: { id: string } & SanctionPassage) =>
+  readmit(ex, ctx, "WORKER", input);
 
 // What the screens import.
 export const registerWorkerAction = action(registerWorker, { revalidate: REGISTRATION_REFRESHES });

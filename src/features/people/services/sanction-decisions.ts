@@ -133,6 +133,15 @@ function identityRecord(identity: PersonIdentity): Record<string, unknown> {
   );
 }
 
+function parseDraft(text: string | null): unknown {
+  if (!text) return null;
+  try {
+    return JSON.parse(text) as unknown;
+  } catch {
+    return null;
+  }
+}
+
 function attemptNameOf(text: string): string {
   try {
     const identity = JSON.parse(text) as Record<string, unknown>;
@@ -419,13 +428,7 @@ export async function getDecision(
   if (row.requestedByUserId !== ctx.userId && !can(ctx, "sanction.answer")) {
     throw new ServiceError("You do not have permission to do this.");
   }
-  let draftPayload: unknown = null;
-  try {
-    draftPayload = row.draftPayload ? JSON.parse(row.draftPayload) : null;
-  } catch {
-    draftPayload = null;
-  }
-  return { ...decisionRow(ctx, row), draftPayload };
+  return { ...decisionRow(ctx, row), draftPayload: parseDraft(row.draftPayload) };
 }
 
 // What the screens import.

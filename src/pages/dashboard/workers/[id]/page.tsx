@@ -1,57 +1,169 @@
-import { Printer } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { LogOut, Printer, RotateCcw } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
+import { toast } from "sonner";
 import { useTranslations } from "use-intl";
 
 import { DetailScreen } from "@/components/detail-screen";
+import { ErrorState } from "@/components/error-state";
 import { Ltr } from "@/components/ltr";
 import { StatusChip } from "@/components/status-chip";
 import { Button } from "@/components/ui/button";
-import { SAMPLE_WORKER_VALUES } from "@/features/people/forms/worker-values";
+import { may, todayAtTheCentre } from "@/features/people/components/may";
+import { useReasonDialog } from "@/features/people/components/reason-dialog";
+import { SanctionCard } from "@/features/people/components/sanction-card";
+import { SanctionChip } from "@/features/people/components/sanction-chip";
+import { STATUS_TONE } from "@/features/people/components/status-tones";
+import { useSanctionGate } from "@/features/people/components/sanction-gate";
+import { openWorkerFileAction } from "@/features/people/services/worker-reads";
+import { readmitWorkerAction, recordWorkerLeavingAction, workerIdentity } from "@/features/people/services/workers";
+import { useErrorMessage } from "@/i18n/errors";
+import { pathKey } from "@/lib/compat/revalidate";
 
+import { WorkerAttachmentsCard, WorkerDocumentsCard, WorkerHistoryCard } from "../_components/worker-file-cards";
 import { WorkerForm } from "../_components/worker-form";
 
 /**
- * One cleaning worker's registration form, to read and change. Section «عمال
- * النظافة», below the tab «العمال». Owner: People.
+ * One cleaning worker's file. Section «عمال النظافة», below the tab «العمال».
+ * Owner: People.
  *
- * Closest academy screen: the employee file (employees/[id]): a strip of
- * badges and a print button above the same form as the new page.
+ * Closest academy screen: the employee file (employees/[id]) and the teacher
+ * file (teachers/[id]): a strip of badges and the record's actions above the
+ * same form as the new page. Here the strip says her number, where she stands
+ * and whether she is «موقف» or «معاقب»; the cards under it are her sanction and
+ * its history, her photo and signed scan, her documents and the decisions; then
+ * his form, to change.
  *
- * Until worker files exist this page shows an invented worker whatever the id
- * in the address, and says so. The service that reads a record replaces
- * `SAMPLE_WORKER_VALUES` and the number here, and the note goes.
+ * Opening the file is a consultation of her personal data: the read is an
+ * action, and it is logged.
  */
 export default function WorkerPage() {
   const { id = "" } = useParams<{ id: string }>();
   const t = useTranslations("Workers");
   const tForm = useTranslations("WorkerForm");
   const tNav = useTranslations("Nav");
-  const values = SAMPLE_WORKER_VALUES;
-  const number = "17/F";
+  const errorMessage = useErrorMessage();
+  const [askReason, reasonDialog] = useReasonDialog();
+  const [passGate, gateDialogs] = useSanctionGate();
+
+  const {
+    data: file,
+    error,
+    refetch,
+  } = useQuery({
+    queryKey: pathKey(`/dashboard/workers/${id}`),
+    queryFn: async () => {
+      const result = await openWorkerFileAction({ id });
+      if (!result.success) throw new Error(result.error);
+      return result.data;
+    },
+    retry: false,
+  });
+  const back = { href: "/dashboard/workers", label: tNav("WorkersList") };
+
+  if (!file) {
+    return (
+      <DetailScreen section="workers" title={t("File.Title")} back={back}>
+        {error && <ErrorState description={errorMessage(error.message)} onRetry={() => refetch()} />}
+      </DetailScreen>
+    );
+  }
+
+  const name = `${file.values.lastName} ${file.values.firstName}`;
+  const decision = file.decisions[0];
+
+  const leave = async () => {
+    const answer = await askReason({
+      title: t("File.LeaveTitle", { name }),
+      description: t("File.LeaveDescription"),
+      fields: [
+        {
+          kind: "date",
+          name: "leftDate",
+          label: t("File.LeaveDate"),
+          required: true,
+          defaultValue: todayAtTheCentre(),
+        },
+      ],
+      reasonLabel: t("File.LeaveReason"),
+      confirmLabel: t("File.Leave"),
+      confirmTone: "destructive",
+    });
+    if (!answer) return;
+    const result = await recordWorkerLeavingAction({ id, leftDate: answer.values.leftDate, reason: answer.reason });
+    if (result.success) toast.success(t("File.LeaveDone"));
+    else toast.error(errorMessage(result.error, t("File.ActionFailed")));
+  };
+
+  const readmit = async () => {
+    // Coming back is an attempt to register her: her own sanction counts, and the manager answers it.
+    const passage = await passGate({
+      context: "READMISSION",
+      subjectKind: "WORKER",
+      subjectId: id,
+      identity: workerIdentity(file.values),
+    });
+    if (!passage) return;
+    const result = await readmitWorkerAction({ id, ...passage });
+    if (result.success) toast.success(t("File.ReadmitDone"));
+    else toast.error(errorMessage(result.error, t("File.ActionFailed")));
+  };
 
   return (
     <DetailScreen
       section="workers"
-      title={`${values.lastName} ${values.firstName}`}
-      description={t("EditDescription")}
-      back={{ href: "/dashboard/workers", label: tNav("WorkersList") }}
+      title={name}
+      description={t("File.Description")}
+      back={back}
       actions={
-        <Button asChild variant="outline">
-          <Link to={`/dashboard/workers/${id}/print`}>
-            <Printer />
-            {t("PrintForm")}
-          </Link>
-        </Button>
+        <div className="flex flex-wrap gap-3">
+          {may("staff.write") &&
+            (file.status === "LEFT" || file.status === "REFUSED" ? (
+              <Button type="button" variant="outline" onClick={readmit}>
+                <RotateCcw />
+                {t("File.Readmit")}
+              </Button>
+            ) : (
+              <Button type="button" variant="outline" onClick={leave}>
+                <LogOut />
+                {t("File.Leave")}
+              </Button>
+            ))}
+          {may("staff.printFilledForm") && (
+            <Button asChild variant="info">
+              <Link to={`/dashboard/workers/${id}/print`}>
+                <Printer />
+                {t("PrintForm")}
+              </Link>
+            </Button>
+          )}
+        </div>
       }
     >
       <div className="mb-6 flex flex-wrap items-center gap-3">
         <span className="text-base font-bold">
-          {tForm("Labels.regNumber")} <Ltr>{number}</Ltr>
+          {tForm("Labels.regNumber")} <Ltr>{file.number}</Ltr>
         </span>
-        {values.hiringDecision && <StatusChip tone="info" label={tForm(`Decisions.${values.hiringDecision}`)} />}
-        <p className="text-base font-semibold text-warning-ink">{t("SampleNote")}</p>
+        <StatusChip tone={STATUS_TONE[file.status]} label={t(`Statuses.${file.status}`)} />
+        {decision && <StatusChip tone="info" label={tForm(`Decisions.${decision.decision}`)} />}
+        <SanctionChip kind="WORKER" state={file.sanction?.state} />
+        {file.status === "LEFT" && file.leftDate && (
+          <span className="text-base text-muted-foreground">
+            {t("File.LeftOn")} <Ltr>{file.leftDate}</Ltr>
+            {file.leftReason ? ` · ${file.leftReason}` : ""}
+          </span>
+        )}
       </div>
-      <WorkerForm mode={{ kind: "edit", id, number }} defaultValues={values} />
+
+      <div className="space-y-6">
+        <SanctionCard subjectKind="WORKER" subjectId={id} />
+        <WorkerAttachmentsCard file={file} />
+        <WorkerDocumentsCard file={file} />
+        <WorkerHistoryCard file={file} />
+        <WorkerForm key={file.id} mode={{ kind: "edit", id, number: file.number }} defaultValues={file.values} />
+      </div>
+      {reasonDialog}
+      {gateDialogs}
     </DetailScreen>
   );
 }

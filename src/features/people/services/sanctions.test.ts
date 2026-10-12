@@ -315,8 +315,16 @@ describe("setSanction and liftSanction", () => {
         payload: { workerId: id, fromDate: "2026-10-12", toDate: "2026-10-26", cause: "SANCTION_SET" },
       },
     ]);
-    expect(await test.transact((ex, ctx) => getSanctionStates(ex, ctx, { kind: "WORKER", ids: [id, "nobody"] }))).toEqual({
-      [id]: { sanctionId, state: "SUSPENDED", reason: "غياب ثلاثة أيام دون مبرر", since: "2026-10-12", until: "2026-10-26" },
+    expect(
+      await test.transact((ex, ctx) => getSanctionStates(ex, ctx, { kind: "WORKER", ids: [id, "nobody"] })),
+    ).toEqual({
+      [id]: {
+        sanctionId,
+        state: "SUSPENDED",
+        reason: "غياب ثلاثة أيام دون مبرر",
+        since: "2026-10-12",
+        until: "2026-10-26",
+      },
       nobody: null,
     });
   });
@@ -324,14 +332,22 @@ describe("setSanction and liftSanction", () => {
   it("finds her again when she comes back under another phone, by her identity number", async () => {
     const id = await worker();
     await set({ subjectKind: "WORKER", subjectId: id, state: "PENALISED", reason: "سرقة", startDate: "2026-10-12" });
-    const again = await check(attempt({ lastName: "س", firstName: "ك", phones: ["0770000000"], nationalId: "109940317000123" }));
+    const again = await check(
+      attempt({ lastName: "س", firstName: "ك", phones: ["0770000000"], nationalId: "109940317000123" }),
+    );
     expect(again.outcome).toBe("BLOCKED");
     expect(again.matches.map((m) => [m.foundBy, m.displayNumber])).toEqual([["NATIONAL_ID", "1/F"]]);
   });
 
   it("lifts a sanction once, with the reason, and puts her back in the pickers", async () => {
     const id = await worker();
-    const { sanctionId } = await set({ subjectKind: "WORKER", subjectId: id, state: "SUSPENDED", reason: "تأخر", startDate: "2026-10-12" });
+    const { sanctionId } = await set({
+      subjectKind: "WORKER",
+      subjectId: id,
+      state: "SUSPENDED",
+      reason: "تأخر",
+      startDate: "2026-10-12",
+    });
     told.length = 0;
     await test.transact((ex, ctx) => liftSanction(ex, ctx, { sanctionId, reason: "قدمت مبررا" }));
     const row = await test.db.selectFrom("Sanction").selectAll().where("id", "=", sanctionId).executeTakeFirstOrThrow();
@@ -339,17 +355,32 @@ describe("setSanction and liftSanction", () => {
     expect(row.liftedAt).not.toBeNull();
     expect(told.map((t) => t.event)).toEqual(["sanction.changed", "staff.unavailable"]);
     expect(told[1].payload).toMatchObject({ workerId: id, cause: "SANCTION_LIFTED", fromDate: "2026-10-12" });
-    expect((await test.transact((ex, ctx) => getSanctionStates(ex, ctx, { kind: "WORKER", ids: [id] })))[id]).toBeNull();
-    await expect(
-      test.transact((ex, ctx) => liftSanction(ex, ctx, { sanctionId, reason: "مرة أخرى" })),
-    ).rejects.toThrow("This sanction has already been lifted.");
+    expect(
+      (await test.transact((ex, ctx) => getSanctionStates(ex, ctx, { kind: "WORKER", ids: [id] })))[id],
+    ).toBeNull();
+    await expect(test.transact((ex, ctx) => liftSanction(ex, ctx, { sanctionId, reason: "مرة أخرى" }))).rejects.toThrow(
+      "This sanction has already been lifted.",
+    );
     const [history] = await test.transact((ex, ctx) => listSanctions(ex, ctx, { subjectId: id }));
-    expect(history).toMatchObject({ id: sanctionId, inForce: false, upcoming: false, liftReason: "قدمت مبررا", setBy: "المدير" });
+    expect(history).toMatchObject({
+      id: sanctionId,
+      inForce: false,
+      upcoming: false,
+      liftReason: "قدمت مبررا",
+      setBy: "المدير",
+    });
   });
 
   it("keeps one sanction at a time, and checks its dates and reason", async () => {
     const id = await worker();
-    await set({ subjectKind: "WORKER", subjectId: id, state: "SUSPENDED", reason: "تأخر", startDate: "2026-10-12", endDate: "2026-10-20" });
+    await set({
+      subjectKind: "WORKER",
+      subjectId: id,
+      state: "SUSPENDED",
+      reason: "تأخر",
+      startDate: "2026-10-12",
+      endDate: "2026-10-20",
+    });
     await expect(
       set({ subjectKind: "WORKER", subjectId: id, state: "PENALISED", reason: "سرقة", startDate: "2026-10-18" }),
     ).rejects.toThrow("This person already has a sanction for these days. Lift it first.");
@@ -359,7 +390,14 @@ describe("setSanction and liftSanction", () => {
       set({ subjectKind: "WORKER", subjectId: id, state: "PENALISED", reason: " ", startDate: "2026-11-01" }),
     ).rejects.toThrow("Write the reason for the sanction.");
     await expect(
-      set({ subjectKind: "WORKER", subjectId: id, state: "PENALISED", reason: "x", startDate: "2026-12-01", endDate: "2026-11-01" }),
+      set({
+        subjectKind: "WORKER",
+        subjectId: id,
+        state: "PENALISED",
+        reason: "x",
+        startDate: "2026-12-01",
+        endDate: "2026-11-01",
+      }),
     ).rejects.toThrow("The end date must not be before the start date.");
     await expect(
       set({ subjectKind: "EMPLOYEE", subjectId: id, state: "PENALISED", reason: "x", startDate: "2026-12-01" }),
@@ -372,10 +410,16 @@ describe("setSanction and liftSanction", () => {
     await expect(
       set({ subjectKind: "WORKER", subjectId: id, state: "SUSPENDED", reason: "تأخر", startDate: "2026-10-12" }, hr),
     ).rejects.toThrow("You do not have permission to do this.");
-    const { sanctionId } = await set({ subjectKind: "WORKER", subjectId: id, state: "SUSPENDED", reason: "تأخر", startDate: "2026-10-12" });
-    await expect(
-      test.transact((ex, ctx) => liftSanction(ex, ctx, { sanctionId, reason: "x" }), hr),
-    ).rejects.toThrow("You do not have permission to do this.");
+    const { sanctionId } = await set({
+      subjectKind: "WORKER",
+      subjectId: id,
+      state: "SUSPENDED",
+      reason: "تأخر",
+      startDate: "2026-10-12",
+    });
+    await expect(test.transact((ex, ctx) => liftSanction(ex, ctx, { sanctionId, reason: "x" }), hr)).rejects.toThrow(
+      "You do not have permission to do this.",
+    );
   });
 
   it("puts a client under sanction for Clients, with the client's own keys, and tells nobody that a worker left", async () => {
@@ -394,13 +438,23 @@ describe("setSanction and liftSanction", () => {
       startDate: "2026-10-12",
     });
     const row = await test.db.selectFrom("Sanction").selectAll().where("id", "=", sanctionId).executeTakeFirstOrThrow();
-    expect(row).toMatchObject({ clientId: client.id, staffId: null, displayName: "شركة النور", phoneKeys: "|032415000|" });
+    expect(row).toMatchObject({
+      clientId: client.id,
+      staffId: null,
+      displayName: "شركة النور",
+      phoneKeys: "|032415000|",
+    });
     expect(JSON.parse(row.extraKeys ?? "{}")).toEqual({ nif: "000425012345678" });
     expect(told.map((t) => t.event)).toEqual(["sanction.changed"]);
     const states = await test.transact((ex, ctx) => getSanctionStates(ex, ctx, { kind: "CLIENT", ids: [client.id] }));
     expect(states[client.id]).toMatchObject({ state: "SUSPENDED", since: "2026-10-12", until: null });
     // A body is found again by its tax number.
-    const byNif = await check(attempt({ name: "مؤسسة أخرى", taxNumbers: ["000 425 012 345 678"] }, { subjectKind: "CLIENT", context: "CLIENT_FILE" }));
+    const byNif = await check(
+      attempt(
+        { name: "مؤسسة أخرى", taxNumbers: ["000 425 012 345 678"] },
+        { subjectKind: "CLIENT", context: "CLIENT_FILE" },
+      ),
+    );
     expect(byNif.matches.map((m) => m.foundBy)).toEqual(["TAX_NUMBER"]);
   });
 
@@ -409,7 +463,9 @@ describe("setSanction and liftSanction", () => {
     await set({ subjectKind: "WORKER", subjectId: id, state: "SUSPENDED", reason: "تأخر", startDate: "2026-10-20" });
     const [row] = await test.transact((ex, ctx) => listSanctions(ex, ctx, { subjectId: id }));
     expect(row).toMatchObject({ inForce: false, upcoming: true });
-    expect((await test.transact((ex, ctx) => getSanctionStates(ex, ctx, { kind: "WORKER", ids: [id] })))[id]).toBeNull();
+    expect(
+      (await test.transact((ex, ctx) => getSanctionStates(ex, ctx, { kind: "WORKER", ids: [id] })))[id],
+    ).toBeNull();
     const inForce = await test.transact((ex, ctx) => listSanctions(ex, ctx, { inForceOnly: true }));
     expect(inForce.map((s) => s.subjectId)).toEqual([id]);
   });

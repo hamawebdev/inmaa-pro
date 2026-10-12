@@ -284,16 +284,24 @@ export function RegistrationFront({ data }: { data: WorkerFormData }) {
   );
 }
 
-/** «……/……»: the commune on the long part, the wilaya on the short one. */
+/**
+ * «……/……»: the commune on the long part, the wilaya on the short one.
+ *
+ * Empty, the two parts are as long as his rows of dots (87 to 25). Filled,
+ * each part is first as wide as what is written on it, on one line, and the
+ * room left is shared in his proportion: «أم البواقي» does not fit his short
+ * part, and a second line would make the row, and the page, taller than his.
+ */
 function SplitBlank({ first, second }: { first: string | null; second: string | null }) {
+  const oneLine: CSSProperties = { whiteSpace: "nowrap" };
   return (
     <span style={{ display: "flex", alignItems: "flex-end", paddingBottom: "1mm", ...typedValue() }}>
-      <span style={{ flex: "87 1 0", minWidth: 0 }}>
-        <DottedBlank fill>{first}</DottedBlank>
+      <span style={{ flex: "87 1 auto", minWidth: 0 }}>
+        <DottedBlank fill>{first && <span style={oneLine}>{first}</span>}</DottedBlank>
       </span>
       <span style={{ flex: "none", padding: "0 0.6mm" }}>/</span>
-      <span style={{ flex: "25 1 0", minWidth: 0 }}>
-        <DottedBlank fill>{second}</DottedBlank>
+      <span style={{ flex: "25 1 auto", minWidth: 0 }}>
+        <DottedBlank fill>{second && <span style={oneLine}>{second}</span>}</DottedBlank>
       </span>
     </span>
   );

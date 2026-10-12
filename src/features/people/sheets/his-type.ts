@@ -1,9 +1,10 @@
 import type { CSSProperties } from "react";
 
 import {
+  SHEET_BODY,
   SHEET_FONT,
+  SHEET_FONT_NAME,
   SHEET_MARGINS,
-  SHEET_MARGINS_CLEAR_OF_LETTERHEAD,
   type SheetFont,
   type SheetMargins,
 } from "@/components/print";
@@ -18,36 +19,20 @@ import {
  *    whatever font it found. So every line height here is written out in
  *    millimetres, from the same factors the Checker's layout files use, and a
  *    row or a page is as high with the bundled font as with his.
- *  - **How wide the words are when his font is missing.** His three faces are
- *    small and narrow for their point size; the font bundled with the program
- *    is not. Set at his sizes it would need about a third more lines, and the
- *    form would no longer hold on four pages. So when his face is not on the
- *    PC, the stand-in is set smaller, by a factor per face, and only then.
+ *  - **How wide the words are when his font is missing.** That is the print
+ *    kit's: his three faces are set at his own sizes, and where one is not on
+ *    the PC the kit's stand-in (Noto Naskh, scaled per face, `SHEET_FONT_SCALE`)
+ *    takes about the room his face takes. Nothing is scaled here.
  *
- * Whether a face is installed is asked of the browser once and remembered. It
- * is the same answer for the preview and for the copy that prints.
+ * Whether a face is installed is still asked of the browser, once, for the one
+ * thing the stand-in cannot imitate: the width of his stretching character
+ * (marks.tsx, `StretchedLabel`).
  */
 
 const MM_PER_PT = 25.4 / 72;
 
-/** The family names in his Word files. */
-const FACE_NAME: Record<SheetFont, string> = {
-  traditional: "Traditional Arabic",
-  sakkal: "Sakkal Majalla",
-  typesetting: "Arabic Typesetting",
-};
-
 /** The height of one line as a multiple of the type size (docs/checker/forms/README.md). */
 const LINE_FACTOR: Record<SheetFont, number> = { traditional: 1.57, sakkal: 1.41, typesetting: 1.2 };
-
-/**
- * How much smaller the bundled font is set where his face is missing, so that
- * a line holds about as many words as it does in his. Measured for the bundled
- * font against the letter widths the Checker's page estimate assumes for his
- * faces; none of his three is on the development machine, so these are
- * estimates until the sheet is seen beside a print from Word.
- */
-const STAND_IN_SCALE: Record<SheetFont, number> = { traditional: 0.8, sakkal: 0.7, typesetting: 0.62 };
 
 const installed = new Map<SheetFont, boolean>();
 
@@ -71,7 +56,9 @@ export function faceInstalled(face: SheetFont): boolean {
       context.font = `72px ${family}`;
       return context.measureText(sample).width;
     };
-    found = ["monospace", "serif"].some((generic) => width(`"${FACE_NAME[face]}", ${generic}`) !== width(generic));
+    found = ["monospace", "serif"].some(
+      (generic) => width(`"${SHEET_FONT_NAME[face]}", ${generic}`) !== width(generic),
+    );
   }
   installed.set(face, found);
   return found;
@@ -98,10 +85,9 @@ export function hisType(
   pt: number,
   { bold = false, spacing = 1 }: HisTypeOptions = {},
 ): CSSProperties {
-  const size = faceInstalled(face) ? pt : pt * STAND_IN_SCALE[face];
   return {
     fontFamily: SHEET_FONT[face],
-    fontSize: `${round(size)}pt`,
+    fontSize: `${round(pt)}pt`,
     fontWeight: bold ? 700 : 400,
     lineHeight: `${round(lineMm(face, pt, spacing))}mm`,
   };
@@ -126,10 +112,10 @@ export const ABOVE_THE_LETTERHEAD: CSSProperties = { position: "relative", zInde
  * coordinator's ruling, for every sheet). His own margins would: his top
  * margin, 22.5 mm, is above the bottom of his letterhead, 28.3 mm, and the text
  * of a full page runs down past the top of his footer, 280.7 mm. So the body
- * of every page stays inside the print kit's clear margins, 31 mm from the top
- * and 18 mm from the bottom, and his side margins are kept.
+ * of every page is the print kit's `SHEET_BODY.worker`: 30.9 mm from the top
+ * and 18.8 mm from the bottom, with his side margins.
  */
-export const WORKER_FORM_MARGINS: SheetMargins = SHEET_MARGINS_CLEAR_OF_LETTERHEAD.worker;
+export const WORKER_FORM_MARGINS: SheetMargins = SHEET_BODY.worker;
 
 /**
  * Where something that his Word file places `mm` below his own top margin lands

@@ -265,7 +265,7 @@ async function snapshotOf(ex: Executor, kind: SanctionSubject, id: string): Prom
       .select(["id", "number", "name", "nameKey", "managerNameKey", "phoneKeys", "rcNumber", "nis", "nif", "deletedAt"])
       .where("id", "=", id)
       .executeTakeFirst();
-    if (!client || client.deletedAt) throw new ServiceError("This client does not exist.");
+    if (!client || client.deletedAt) throw new ServiceError("The client of this sanction does not exist.");
     const extra = { rc: client.rcNumber, nis: client.nis, nif: client.nif, managerNameKey: client.managerNameKey };
     return {
       displayName: client.name,

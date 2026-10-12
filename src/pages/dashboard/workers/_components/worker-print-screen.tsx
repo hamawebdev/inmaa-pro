@@ -31,15 +31,22 @@ export function WorkerPrintScreen({
   title,
   description,
   note,
+  back,
+  children,
 }: {
   /** The record's own path, or the workers list for the blank form. */
   base: string;
   part: WorkerSheetPart;
-  data: WorkerFormData;
+  /** What the sheet prints; null while it is not there to print yet. */
+  data: WorkerFormData | null;
   title: string;
   description: string;
   /** A line above the sheet, for something the reader must know before printing. */
   note?: string;
+  /** Where "back" goes; the workers list when left out. */
+  back?: { href: string; label: string };
+  /** Shown in place of the sheet while there is no data: the question to answer first. */
+  children?: React.ReactNode;
 }) {
   const t = useTranslations("WorkerPrint");
   const tNav = useTranslations("Nav");
@@ -49,8 +56,8 @@ export function WorkerPrintScreen({
       section="workers"
       title={title}
       description={description}
-      back={{ href: "/dashboard/workers", label: tNav("WorkersList") }}
-      actions={<PrintButton />}
+      back={back ?? { href: "/dashboard/workers", label: tNav("WorkersList") }}
+      actions={data ? <PrintButton /> : undefined}
     >
       <div className="space-y-5">
         <ScreenTabs
@@ -60,7 +67,7 @@ export function WorkerPrintScreen({
           ariaLabel={t("PartsLabel")}
         />
         {note && <p className="text-base font-semibold text-warning-ink">{note}</p>}
-        <WorkerSheet part={part} data={data} />
+        {data ? <WorkerSheet part={part} data={data} /> : children}
       </div>
     </DetailScreen>
   );

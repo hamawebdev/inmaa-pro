@@ -77,7 +77,11 @@ describe("the manager's yes or no", () => {
     );
     const { decisionId, status } = await ask(question(sanctionId), hr);
     expect(status).toBe("PENDING");
-    const asked = await test.db.selectFrom("SanctionDecision").selectAll().where("id", "=", decisionId).executeTakeFirstOrThrow();
+    const asked = await test.db
+      .selectFrom("SanctionDecision")
+      .selectAll()
+      .where("id", "=", decisionId)
+      .executeTakeFirstOrThrow();
     expect(asked).toMatchObject({
       context: "WORKER_REGISTRATION",
       attemptKind: "WORKER",
@@ -109,7 +113,11 @@ describe("the manager's yes or no", () => {
     await test.transact((ex, ctx) =>
       answerDecision(ex, ctx, { decisionId, allow: true, reason: "انتهت مدة التوقيف عمليا وقدمت تعهدا" }),
     );
-    const answered = await test.db.selectFrom("SanctionDecision").selectAll().where("id", "=", decisionId).executeTakeFirstOrThrow();
+    const answered = await test.db
+      .selectFrom("SanctionDecision")
+      .selectAll()
+      .where("id", "=", decisionId)
+      .executeTakeFirstOrThrow();
     expect(answered).toMatchObject({
       status: "ALLOWED",
       answeredByUserId: test.manager.userId,
@@ -118,7 +126,11 @@ describe("the manager's yes or no", () => {
 
     // His yes lets that one registration through, and is spent by it.
     const registered = await register({ ...withoutDecision, decisionId }, hr);
-    const spent = await test.db.selectFrom("SanctionDecision").selectAll().where("id", "=", decisionId).executeTakeFirstOrThrow();
+    const spent = await test.db
+      .selectFrom("SanctionDecision")
+      .selectAll()
+      .where("id", "=", decisionId)
+      .executeTakeFirstOrThrow();
     expect(spent).toMatchObject({ consumedEntityKind: "STAFF_MEMBER", consumedEntityId: registered.id });
     await expect(register({ ...withoutDecision, decisionId }, hr)).rejects.toThrow(
       "This person is suspended or penalised. The manager must allow the registration first.",
@@ -132,7 +144,13 @@ describe("the manager's yes or no", () => {
       .orderBy("chainSeq")
       .execute();
     expect(log.slice(-3)).toEqual([
-      { operation: "COLLECT", action: "CREATE", entity: "SanctionDecision", reason: "STANDARD:CREATE", subjectId: expect.any(String) },
+      {
+        operation: "COLLECT",
+        action: "CREATE",
+        entity: "SanctionDecision",
+        reason: "STANDARD:CREATE",
+        subjectId: expect.any(String),
+      },
       {
         operation: "CHANGE",
         action: "APPROVE",
@@ -140,7 +158,13 @@ describe("the manager's yes or no", () => {
         reason: "انتهت مدة التوقيف عمليا وقدمت تعهدا",
         subjectId: expect.any(String),
       },
-      { operation: "COLLECT", action: "CREATE", entity: "StaffMember", reason: "STANDARD:CREATE", subjectId: registered.id },
+      {
+        operation: "COLLECT",
+        action: "CREATE",
+        entity: "StaffMember",
+        reason: "STANDARD:CREATE",
+        subjectId: registered.id,
+      },
     ]);
   });
 
@@ -171,10 +195,7 @@ describe("the manager's yes or no", () => {
     // Nobody else answers on the spot.
     const hr = await test.sessionFor("HR_OFFICER");
     await expect(
-      test.transact(
-        (ex, ctx) => decideOnTheSpot(ex, ctx, { ...question(sanctionId), allow: true, reason: "x" }),
-        hr,
-      ),
+      test.transact((ex, ctx) => decideOnTheSpot(ex, ctx, { ...question(sanctionId), allow: true, reason: "x" }), hr),
     ).rejects.toThrow("You do not have permission to do this.");
     await expect(
       test.transact((ex, ctx) => decideOnTheSpot(ex, ctx, { ...question(sanctionId), allow: true, reason: " " })),
@@ -183,17 +204,28 @@ describe("the manager's yes or no", () => {
 
   it("asks the clerk first about a name alone, and files the question as a name she confirmed", async () => {
     const { sanctionId } = await suspendedSamira();
-    const namesake = { ...emptyWorkerValues("2026-10-12"), sex: "FEMALE" as const, lastName: "بوزيد", firstName: "سميرة", birthDate: "1994-03-17", phone: "0550 99 88 77" };
-    await expect(ask(question(sanctionId, { identity: workerIdentity({ ...namesake, birthDate: "" }) }))).rejects.toThrow(
-      "Say first whether this is the same person.",
-    );
+    const namesake = {
+      ...emptyWorkerValues("2026-10-12"),
+      sex: "FEMALE" as const,
+      lastName: "بوزيد",
+      firstName: "سميرة",
+      birthDate: "1994-03-17",
+      phone: "0550 99 88 77",
+    };
+    await expect(
+      ask(question(sanctionId, { identity: workerIdentity({ ...namesake, birthDate: "" }) })),
+    ).rejects.toThrow("Say first whether this is the same person.");
     const { decisionId } = await ask(
       question(sanctionId, {
         identity: { lastName: "بوزيد", firstName: "سميرة", phones: ["0550998877"] },
         nameConfirmed: true,
       }),
     );
-    const row = await test.db.selectFrom("SanctionDecision").selectAll().where("id", "=", decisionId).executeTakeFirstOrThrow();
+    const row = await test.db
+      .selectFrom("SanctionDecision")
+      .selectAll()
+      .where("id", "=", decisionId)
+      .executeTakeFirstOrThrow();
     expect(row.matchBasis).toBe("NAME_CONFIRMED");
   });
 

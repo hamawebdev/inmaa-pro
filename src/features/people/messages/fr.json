@@ -42,31 +42,6 @@
       "hiringDecision": "Décision de la direction",
       "issuedDate": "Établi à Oum El Bouaghi, le :"
     },
-    "YesNo": {
-      "YES": "Oui",
-      "NO": "Non"
-    },
-    "Sexes": {
-      "MALE": "Homme",
-      "FEMALE": "Femme"
-    },
-    "Abilities": {
-      "CARRY_EQUIPMENT": "Porter le matériel",
-      "STAND_LONG_HOURS": "Rester debout de longues heures",
-      "CLIMB_STAIRS": "Monter les escaliers",
-      "UPPER_FLOORS": "Travailler dans les étages supérieurs",
-      "WORK_UNDER_PRESSURE": "Travailler sous pression",
-      "MOVE_BETWEEN_SITES": "Se déplacer entre les établissements"
-    },
-    "Weekdays": {
-      "SAT": "Samedi",
-      "SUN": "Dimanche",
-      "MON": "Lundi",
-      "TUE": "Mardi",
-      "WED": "Mercredi",
-      "THU": "Jeudi",
-      "FRI": "Vendredi"
-    },
     "HealthConditions": {
       "ASTHMA": "Asthme",
       "BACK": "Problèmes de dos",
@@ -131,17 +106,10 @@
       "Badge": "Restreint",
       "HEALTH": "Réponses de santé : seuls le directeur et le responsable des ressources humaines les voient, et chaque consultation est enregistrée.",
       "SCORE": "Évaluation confidentielle : seuls le directeur et le responsable des ressources humaines la voient, et chaque consultation est enregistrée.",
-      "Locked": "Seules les personnes autorisées à voir cette partie peuvent la remplir."
-    },
-    "Roles": {
-      "CLEANER": "Agent d'entretien",
-      "SENIOR_WORKER": "Agent principal",
-      "TEAM_LEADER": "Chef d'équipe"
-    },
-    "RolesFeminine": {
-      "CLEANER": "Agente d'entretien",
-      "SENIOR_WORKER": "Agente principale",
-      "TEAM_LEADER": "Cheffe d'équipe"
+      "Locked": "Seules les personnes autorisées à voir cette partie peuvent la remplir.",
+      "OpenFailed": "Impossible d'afficher cette partie.",
+      "Closed": "Fermé. Son ouverture est inscrite au journal, et seule une partie ouverte est enregistrée.",
+      "Open": "Afficher"
     },
     "PayBases": {
       "MONTHLY": "Salaire mensuel",
@@ -166,19 +134,6 @@
       "SaveFailed": "Impossible d'enregistrer l'agent.",
       "Saved": "L'agent est enregistré.",
       "Registered": "Agent inscrit sous le numéro {number}."
-    },
-    "Sanction": {
-      "NameMatchTitle": "Une personne portant ce nom est suspendue ou sanctionnée",
-      "NameMatchDescription": "{name} : {state} depuis le {since}. S'agit-il d'une autre personne ?",
-      "NotTheSamePerson": "Une autre personne",
-      "States": {
-        "SUSPENDED": "suspendu(e)",
-        "PENALISED": "sanctionné(e)"
-      },
-      "ClientStates": {
-        "SUSPENDED": "suspendu",
-        "PENALISED": "sanctionné"
-      }
     }
   },
   "WorkerPrint": {
@@ -186,23 +141,295 @@
     "BlankDescription": "Les quatre pages telles qu'il les imprime depuis Word, sans aucune donnée, à remettre au candidat.",
     "RecordTitle": "Fiche d'inscription de {name}",
     "RecordDescription": "La fiche remplie à partir du dossier de l'agent, prête à signer et à tamponner.",
-    "SampleNote": "Données d'exemple : les dossiers des agents ne sont pas encore reliés, cette feuille montre un agent inventé.",
     "PartsLabel": "Pages à imprimer",
     "Parts": {
       "all": "Fiche et règlement",
       "registration": "Fiche, pages 1 et 2",
       "regulations": "Règlement intérieur, pages 3 et 4"
-    }
+    },
+    "RecordTitlePending": "La fiche d'inscription remplie",
+    "BackToFile": "Dossier de l'agent",
+    "ReasonTitle": "Pourquoi imprimer la fiche remplie ?",
+    "ReasonDescription": "La fiche remplie montre les réponses de santé et l'évaluation confidentielle. Le motif est conservé dans le journal avec votre nom.",
+    "ReasonLabel": "Motif",
+    "ReasonRequired": "Écrivez le motif.",
+    "ShowForm": "Afficher la fiche",
+    "LoadFailed": "Impossible de lire la fiche de l'agent."
   },
   "Workers": {
     "NewDescription": "Inscription d'un agent d'entretien : la fiche, puis ce que seul le bureau conserve.",
-    "EditDescription": "La fiche d'inscription de l'agent.",
-    "SampleNote": "Données d'exemple : les dossiers des agents ne sont pas encore reliés, cette page montre un agent inventé.",
     "NewWorker": "Nouvel agent",
     "BlankForm": "Fiche vierge",
     "PrintForm": "Imprimer la fiche",
     "QuickNew": "Inscrire un agent d'entretien",
-    "EditNotWired": "Les modifications d'un agent inscrit ne sont pas encore enregistrées : elles arrivent avec les dossiers des agents."
+    "Sanctions": "Suspendus et sanctionnés",
+    "SanctionsWaiting": "En attente du directeur : {count}",
+    "Statuses": {
+      "CANDIDATE": "Candidat(e)",
+      "ON_TRIAL": "À l'essai",
+      "ACCEPTED": "Accepté(e)",
+      "REFUSED": "Refusé(e)",
+      "LEFT": "Parti(e)"
+    },
+    "Table": {
+      "Number": "Numéro",
+      "Name": "Nom et prénom",
+      "Role": "Fonction",
+      "Zone": "Zone",
+      "Phone": "Téléphone",
+      "Status": "État",
+      "Documents": "Documents",
+      "DocumentsToRenew": "À renouveler : {count}",
+      "OpenFile": "Dossier",
+      "SearchPlaceholder": "Rechercher par nom, numéro ou téléphone",
+      "AllStatuses": "Tous les états",
+      "AllZones": "Toutes les zones",
+      "AllRoles": "Toutes les fonctions",
+      "Count": "{shown} sur {total} agents",
+      "Empty": "Aucun agent trouvé."
+    },
+    "File": {
+      "Title": "Dossier de l'agent",
+      "Description": "Le dossier de l'agent : état, documents, décisions, et la fiche d'inscription à modifier.",
+      "Leave": "Départ",
+      "LeaveTitle": "{name} quitte le centre",
+      "LeaveDescription": "À partir de ce jour, l'agent n'est plus programmé.",
+      "LeaveDate": "Jour du départ",
+      "LeaveReason": "Motif",
+      "LeaveDone": "Le départ est enregistré.",
+      "Readmit": "Réadmettre",
+      "ReadmitDone": "Réadmis(e), comme candidat(e).",
+      "ActionFailed": "Enregistrement impossible.",
+      "LeftOn": "Parti(e) le",
+      "AttachmentsTitle": "Photo et fiche signée",
+      "Photo": "Photo",
+      "SavePhoto": "Enregistrer la photo",
+      "PhotoSaved": "La photo est enregistrée.",
+      "FileFailed": "Impossible d'enregistrer le fichier.",
+      "Scan": "Numérisation des pages 1 et 2 signées",
+      "ScanHint": "Restreint : il montre les réponses de santé et l'évaluation. Une image ou un PDF, enregistré dès qu'il est choisi.",
+      "ScanStored": "Fiche signée",
+      "ScanCopy": "Enregistrer une copie",
+      "ScanCopyTitle": "Enregistrer une copie de la fiche signée",
+      "ScanCopied": "Copie enregistrée : {path}",
+      "ScanRemove": "Retirer",
+      "ScanRemoved": "La numérisation est retirée du dossier.",
+      "ScanSaved": "La numérisation est enregistrée.",
+      "ScanWrongType": "Choisissez une image ou un PDF.",
+      "ScanTooLarge": "Ce fichier est trop volumineux.",
+      "DocumentsHint": "Ce qui a été remis, et ce qui expire. Les coches et les dates se modifient dans la fiche ci-dessous.",
+      "DocumentStates": {
+        "VALID": "Valide",
+        "NO_EXPIRY": "Remis",
+        "EXPIRING": "Expire bientôt",
+        "EXPIRED": "Expiré",
+        "MISSING": "Non remis"
+      },
+      "HistoryTitle": "Décisions et état",
+      "NoDecision": "Pas encore de décision.",
+      "TrialUntil": "Essai jusqu'au",
+      "StatusHistory": "Évolution de l'état"
+    },
+    "Resume": {
+      "PENDING": "Le directeur n'a pas encore répondu au sujet de {name}.",
+      "ALLOWED": "Le directeur a autorisé cette inscription (correspondance avec {name}). Vérifiez la fiche, remplissez à nouveau les parties restreintes, puis enregistrez.",
+      "REFUSED": "Le directeur n'a pas autorisé cette inscription (correspondance avec {name}).",
+      "CANCELLED": "Cette question a été retirée (correspondance avec {name}).",
+      "USED": "Cette inscription est déjà faite (correspondance avec {name})."
+    }
+  },
+  "PeopleDialogs": {
+    "Choose": "Choisir",
+    "Required": "Ce champ est obligatoire.",
+    "ReasonRequired": "Écrivez le motif : il est conservé dans le journal.",
+    "Cancel": "Annuler"
+  },
+  "Sanctions": {
+    "States": {
+      "SUSPENDED": "Suspendu(e)",
+      "PENALISED": "Sanctionné(e)"
+    },
+    "ClientStates": {
+      "SUSPENDED": "Suspendu",
+      "PENALISED": "Sanctionné"
+    },
+    "Subjects": {
+      "WORKER": "Agent d'entretien",
+      "EMPLOYEE": "Employé(e) du centre",
+      "CLIENT": "Client"
+    },
+    "Bases": {
+      "SAME_RECORD": "Le même dossier",
+      "NATIONAL_ID": "Numéro de la carte d'identité",
+      "PHONE": "Numéro de téléphone",
+      "NAME_AND_BIRTHDATE": "Nom et date de naissance",
+      "NAME_CONFIRMED": "Nom, confirmé par l'agent de saisie",
+      "TAX_NUMBER": "Numéro fiscal ou de registre",
+      "NAME_ONLY": "Nom seulement"
+    },
+    "DecisionStatuses": {
+      "PENDING": "En attente de la décision du directeur",
+      "ALLOWED": "Autorisé par le directeur",
+      "REFUSED": "Refusé par le directeur",
+      "CANCELLED": "Demande retirée"
+    },
+    "Contexts": {
+      "WORKER_REGISTRATION": "Inscription d'un agent d'entretien",
+      "EMPLOYEE_REGISTRATION": "Inscription d'un employé",
+      "CLIENT_FILE": "Dossier d'un client",
+      "READMISSION": "Réadmission",
+      "IDENTITY_CHANGE": "Modification de l'identité"
+    },
+    "Facts": {
+      "Since": "Depuis le",
+      "Until": "jusqu'au",
+      "Reason": "Motif",
+      "FoundBy": "Trouvé par"
+    },
+    "Gate": {
+      "NameTitle": "Une personne portant ce nom est suspendue ou sanctionnée",
+      "NameDescription": "Seul le nom correspond. S'agit-il de la même personne ?",
+      "SamePerson": "La même personne",
+      "AnotherPerson": "Une autre personne",
+      "Cancel": "Annuler",
+      "AnswerTitle": "L'autorisons-nous ou non ?",
+      "AnswerDescription": "Cette personne est suspendue ou sanctionnée. La réponse du directeur et son motif sont conservés dans le journal.",
+      "AnswerReason": "Motif de la décision",
+      "ReasonRequired": "Écrivez le motif de la décision.",
+      "Allow": "Nous l'autorisons",
+      "Refuse": "Nous ne l'autorisons pas",
+      "RefusedToast": "Non autorisé : rien n'a été enregistré.",
+      "RequestTitle": "Le directeur doit d'abord répondre",
+      "RequestDescription": "Cette personne est suspendue ou sanctionnée. Envoyez la question au directeur : votre saisie est conservée et vous y revenez après sa réponse.",
+      "SendRequest": "Envoyer au directeur",
+      "RequestSent": "La question a été envoyée au directeur. Retrouvez-la dans « Suspendus et sanctionnés »."
+    },
+    "Card": {
+      "Title": "Suspension ou sanction",
+      "None": "Aucune sanction",
+      "Upcoming": "{state}, à partir d'un jour à venir",
+      "Set": "Suspendre ou sanctionner",
+      "Lift": "Lever",
+      "SetTitle": "Suspendre ou sanctionner",
+      "SetDescription": "Dès le premier jour, le programme empêche de réinscrire cette personne sans la réponse du directeur.",
+      "State": "État",
+      "From": "À partir du",
+      "Until": "Jusqu'au (vide : jusqu'à la levée)",
+      "Reason": "Motif",
+      "SetDone": "La sanction est enregistrée.",
+      "Failed": "Impossible d'enregistrer la sanction.",
+      "LiftTitle": "Lever la sanction",
+      "LiftDescription": "Elle prend fin aujourd'hui, quelle que soit sa date de fin.",
+      "LiftReason": "Motif de la levée",
+      "LiftDone": "La sanction est levée.",
+      "Period": "Depuis le {since}",
+      "PeriodUntil": "jusqu'au {until}",
+      "LiftedOn": "Levée le {date}",
+      "SetBy": "Par {name}"
+    },
+    "Page": {
+      "Title": "Suspendus et sanctionnés",
+      "Description": "Les questions pour le directeur, et les sanctions en vigueur sur les agents, les employés et les clients.",
+      "DecisionsTitle": "Les autorisons-nous ou non ?",
+      "DecisionsForManager": "Chaque question posée lors de l'inscription d'une personne suspendue ou sanctionnée. À vous de répondre.",
+      "DecisionsForClerk": "Les questions que vous avez envoyées au directeur, et ses réponses.",
+      "NoDecisions": "Aucune question.",
+      "Used": "Autorisation utilisée",
+      "Answer": "Répondre",
+      "AnswerDescription": "{name} est en cours d'inscription. La réponse et son motif sont conservés dans le journal.",
+      "Allowed": "Autorisé. L'inscription peut continuer.",
+      "Refused": "Non autorisé.",
+      "WithdrawTitle": "Retirer la question",
+      "WithdrawReason": "Motif du retrait",
+      "Withdraw": "Retirer",
+      "Withdrawn": "La question est retirée.",
+      "Resume": "Poursuivre l'inscription",
+      "InForceTitle": "Sanctions en vigueur",
+      "InForceDescription": "Toute personne suspendue ou sanctionnée aujourd'hui, ou à partir d'un jour à venir.",
+      "NoSanctions": "Personne n'est suspendu ni sanctionné.",
+      "Failed": "Enregistrement impossible."
+    }
+  },
+  "Employees": {
+    "NewEmployee": "Nouvel employé",
+    "QuickNew": "Inscrire un employé du centre",
+    "NewTitle": "Nouvel employé du centre",
+    "NewDescription": "Les informations personnelles de l'employé, son poste et sa paie.",
+    "Positions": {
+      "MANAGER": "Directeur",
+      "ADMINISTRATION": "Administration",
+      "SUPERVISOR": "Superviseur",
+      "HR_OFFICER": "Responsable des ressources humaines",
+      "OPERATIONS": "Responsable des opérations",
+      "RECEPTION_SALES": "Commercial / accueil",
+      "SALES_REP": "Délégué commercial",
+      "ACCOUNTANT": "Comptable",
+      "STOREKEEPER": "Magasinier",
+      "OTHER": "Autre"
+    },
+    "Contracts": {
+      "NONE": "Sans contrat",
+      "CDD": "Contrat à durée déterminée",
+      "CDI": "Contrat à durée indéterminée"
+    },
+    "WorkTimes": {
+      "FULL_TIME": "Temps plein",
+      "PART_TIME": "Temps partiel"
+    },
+    "Statuses": {
+      "IN_POST": "En poste",
+      "LEFT": "Parti(e)"
+    },
+    "Table": {
+      "Number": "Numéro",
+      "Name": "Nom et prénom",
+      "Position": "Poste",
+      "Phone": "Téléphone",
+      "Account": "Compte",
+      "Status": "État",
+      "OpenFile": "Dossier",
+      "SearchPlaceholder": "Rechercher par nom, numéro ou téléphone",
+      "AllPositions": "Tous les postes",
+      "AllStatuses": "Tous les états",
+      "Count": "{shown} sur {total} employés",
+      "Empty": "Aucun employé trouvé."
+    },
+    "Form": {
+      "SaveFailed": "Impossible d'enregistrer l'employé.",
+      "Saved": "L'employé est enregistré.",
+      "Registered": "Employé inscrit sous le numéro {number}.",
+      "Create": "Inscrire l'employé",
+      "Phone2": "Deuxième téléphone",
+      "Email": "E-mail",
+      "PostTitle": "Poste",
+      "JobPosition": "Poste occupé",
+      "StartDate": "Date de début",
+      "EmploymentContract": "Type de contrat",
+      "ContractEndDate": "Fin du contrat",
+      "WorkTime": "Temps de travail",
+      "CnasDeclared": "Déclaré à la CNAS",
+      "CnasNumber": "Numéro de sécurité sociale",
+      "PayTitle": "Paie",
+      "PayDescription": "Nécessaire avant la première paie."
+    },
+    "File": {
+      "Title": "Dossier de l'employé",
+      "Description": "Le dossier de l'employé : état, compte de connexion, et les informations à modifier.",
+      "Leave": "Départ",
+      "LeaveTitle": "{name} quitte le centre",
+      "LeaveDate": "Jour du départ",
+      "LeaveReason": "Motif",
+      "LeaveDone": "Le départ est enregistré.",
+      "Readmit": "Réadmettre",
+      "ReadmitDone": "De retour en poste.",
+      "ActionFailed": "Enregistrement impossible.",
+      "AccountTitle": "Compte de connexion",
+      "AccountActive": "Actif",
+      "AccountInactive": "Désactivé",
+      "NoAccount": "Aucun compte",
+      "AccountDescription": "Le compte avec lequel cet employé se connecte. Les comptes se créent et se relient dans les Paramètres.",
+      "AccountUser": "Nom d'utilisateur :"
+    }
   },
   "Errors": {
     "WorkerSexRequired": "Indiquez s'il s'agit d'un homme ou d'une femme.",
@@ -220,7 +447,6 @@
     "TotalDisagrees": "Le total ne correspond pas aux notes.",
     "BirthBeforeRegistration": "La date de naissance doit précéder la date d'inscription.",
     "PayBasisForRate": "Choisissez le mode de calcul de ce montant.",
-    "WorkerChangeNotWired": "La modification d'un agent inscrit n'est pas encore possible.",
     "HealthNotAllowed": "Vous n'avez pas l'autorisation d'enregistrer les réponses sur la santé.",
     "ScoreNotAllowed": "Vous n'avez pas l'autorisation d'enregistrer l'évaluation confidentielle.",
     "DecisionNotAllowed": "Vous n'avez pas l'autorisation d'enregistrer la décision de la direction.",
@@ -229,6 +455,31 @@
     "SanctionNameMatch": "Une personne portant ce nom est suspendue ou sanctionnée. Confirmez qu'il s'agit d'une autre personne avant d'enregistrer.",
     "DecisionNotFound": "Cette décision du directeur n'existe pas.",
     "DecisionNotAYes": "Seul l'accord du directeur permet une inscription.",
-    "DecisionUsed": "Cette décision du directeur a déjà été utilisée."
+    "DecisionUsed": "Cette décision du directeur a déjà été utilisée.",
+    "SanctionChoose": "Choisissez la sanction.",
+    "SanctionReasonRequired": "Écrivez le motif de la sanction.",
+    "SanctionEndBeforeStart": "La date de fin ne doit pas précéder la date de début.",
+    "SanctionClientNotFound": "Le client de cette sanction n'existe pas.",
+    "PersonNotFound": "Cette personne n'existe pas.",
+    "SanctionOverlap": "Cette personne a déjà une sanction pour ces jours. Levez-la d'abord.",
+    "SanctionLiftReasonRequired": "Écrivez le motif de la levée de la sanction.",
+    "SanctionNotFound": "Cette sanction n'existe pas.",
+    "SanctionAlreadyLifted": "Cette sanction a déjà été levée.",
+    "DecisionNoMatch": "Cette personne ne correspond pas à cette sanction.",
+    "DecisionSayFirst": "Dites d'abord s'il s'agit de la même personne.",
+    "DecisionReasonRequired": "Écrivez le motif de la décision.",
+    "DecisionAlreadyAnswered": "Cette demande a déjà reçu une réponse.",
+    "DecisionWithdrawReasonRequired": "Écrivez le motif du retrait de la demande.",
+    "WorkerIdNumberTaken": "Un agent portant ce numéro d'identité est déjà inscrit. Ouvrez le dossier de cet agent.",
+    "EmployeeIdNumberTaken": "Un employé portant ce numéro d'identité est déjà inscrit. Ouvrez le dossier de cet employé.",
+    "EmployeeNotFound": "Cet employé n'existe pas.",
+    "LeavingReasonRequired": "Écrivez le motif du départ.",
+    "AlreadyLeft": "Cette personne est déjà partie.",
+    "LeavingBeforeRegistration": "La date de départ ne peut pas précéder la date d'inscription.",
+    "ReadmitOnlyLeft": "Seule une personne partie ou refusée peut être réadmise.",
+    "PrintReasonRequired": "Écrivez le motif de l'impression de la fiche remplie.",
+    "EmployeeSexRequired": "Indiquez s'il s'agit d'un homme ou d'une femme (employé).",
+    "JobPositionRequired": "Choisissez le poste occupé.",
+    "ContractEndBeforeStart": "La fin du contrat ne peut pas précéder son début."
   }
 }

@@ -1,11 +1,12 @@
+import * as React from "react";
+
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery } from "@tanstack/react-query";
-import { Lock } from "lucide-react";
+import { Eye, Lock } from "lucide-react";
 import { Controller, useForm, useWatch, type Control, type FieldPath, type UseFormReturn } from "react-hook-form";
 import { toast } from "sonner";
 import { useLocale, useTranslations } from "use-intl";
 
-import { useConfirm } from "@/components/confirm-dialog";
 import { Ltr } from "@/components/ltr";
 import { StatusChip } from "@/components/status-chip";
 import { Button } from "@/components/ui/button";
@@ -17,10 +18,12 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { listCommunesQuery, listZonesQuery, PLACES_PATH } from "@/features/core/services/places";
+import { isolate, may } from "@/features/people/components/may";
+import { useSanctionGate } from "@/features/people/components/sanction-gate";
 import { workerFormRowByKey, YES_NO } from "@/features/people/forms/worker-form";
 import { WORKER_SCREEN_CARDS, type WorkerScreenCard } from "@/features/people/forms/worker-screen";
 import { hiringTotal } from "@/features/people/rules/scores";
-import { checkSanctionQuery, type CheckSanctionResult } from "@/features/people/services/sanctions";
+import { readWorkerRestrictedAction, type RestrictedPart } from "@/features/people/services/worker-reads";
 import { registerWorkerAction, updateWorkerAction, workerIdentity } from "@/features/people/services/workers";
 import {
   ABILITIES,
@@ -37,15 +40,15 @@ import {
 import { scoresAsNumbers, workerFormSchema, type WorkerFormValues } from "@/features/people/validators/worker";
 import { useErrorMessage } from "@/i18n/errors";
 import type { Capability } from "@/lib/access/catalogue";
-import { can, currentSession, hasSession } from "@/lib/access/session";
 import { useRouter } from "@/lib/compat/navigation";
 import { pathKey } from "@/lib/compat/revalidate";
 import { WILAYAS } from "@/lib/geo/wilayas";
 import { cn } from "@/lib/utils";
 
 /**
- * The registration screen of a cleaning worker: his worker form, card by card
- * in his order, then the office-only card.
+ * The screen of his worker form: card by card in his order, then the
+ * office-only card. It registers a new worker, and it is the same form on a
+ * registered worker's file, to change.
  *
  * Closest academy screen: the employee form (pages/dashboard/employees/
  * _components/employee-form.tsx): stacked cards of labelled fields in two
@@ -53,12 +56,25 @@ import { cn } from "@/lib/utils";
  * What is new: his options as ticks and choices, a date of expiry beside each
  * document, and two restricted cards (health answers, the confidential score).
  *
+ * On a registered worker's file the two restricted cards stay closed until
+ * someone allowed asks to see them: each opening is a line in the log, and a
+ * card left closed is not saved.
+ *
+ * Saving passes the suspended-or-penalised gate first (`useSanctionGate`): a
+ * registration always, a change only when it touches who she is.
+ *
  * The order of the cards and of the fields in them is data
  * (features/people/forms/worker-screen.ts), tested against his form. The labels
  * are his words in Arabic (tested), translated in French and English.
  */
 
-type Mode = { kind: "new" } | { kind: "edit"; id: string; number: string };
+type Mode =
+  | {
+      kind: "new";
+      /** The manager's answer this registration came back with (a request resumed). */
+      decisionId?: string | null;
+    }
+  | { kind: "edit"; id: string; number: string };
 
 type Props = {
   mode: Mode;
@@ -67,32 +83,28 @@ type Props = {
 
 type Commune = { id: string; nameAr: string; nameFr: string | null };
 type Zone = { id: string; name: string };
+type Opened = Record<RestrictedPart, boolean>;
 
 /** The wilaya whose communes «بلدية/ولاية إقامة» offers: the centre's. Another wilaya comes with Foundation's commune picker. */
 const RESIDENCE_WILAYA = "04";
-
-/** What the signed-in account holds. Until sign-in exists the manager is signed in at start, and holds everything. */
-function may(capability: Capability): boolean {
-  return !hasSession() || can(currentSession(), capability);
-}
-
-/** A number or a date inside a sentence: kept left to right in Arabic. */
-const isolate = (text: string) => `\u2066${text}\u2069`;
 
 type FormControl = Control<WorkerFormValues>;
 type Name = FieldPath<WorkerFormValues>;
 
 const SPAN_BOTH = "sm:col-span-2";
 
+/** What makes her who she is, for the check: a change to any of these is looked at like a registration. */
+const identityKey = (values: WorkerFormValues) => JSON.stringify(workerIdentity(values));
+
 export function WorkerForm({ mode, defaultValues }: Props) {
   const t = useTranslations("WorkerForm");
-  const tWorkers = useTranslations("Workers");
-  const tErrors = useTranslations("Errors");
   const errorMessage = useErrorMessage();
   const router = useRouter();
-  const [confirm, confirmDialog] = useConfirm();
+  const [passGate, gateDialogs] = useSanctionGate();
   const form = useForm<WorkerFormValues>({ resolver: zodResolver(workerFormSchema), defaultValues });
   const { control, formState } = form;
+  // A new worker's restricted cards are open, to fill. A registered worker's are opened on demand.
+  const [opened, setOpened] = React.useState<Opened>({ HEALTH: mode.kind === "new", SCORE: mode.kind === "new" });
 
   const communes = useQuery({
     queryKey: [...pathKey(PLACES_PATH), "communes", RESIDENCE_WILAYA],
@@ -100,64 +112,79 @@ export function WorkerForm({ mode, defaultValues }: Props) {
   });
   const zones = useQuery({ queryKey: [...pathKey(PLACES_PATH), "zones"], queryFn: () => listZonesQuery(undefined) });
 
-  /**
-   * The suspended-or-penalised check before saving (his note): a name alone asks
-   * the clerk whether it is the same person; anything stronger stops here until
-   * the manager can answer from this screen (the sanctions round). The save
-   * checks again whatever the screen did.
-   */
-  const askAboutSanctions = async (values: WorkerFormValues): Promise<{ notTheSamePerson: boolean } | null> => {
-    let check: CheckSanctionResult;
-    try {
-      check = await checkSanctionQuery({
-        context: "WORKER_REGISTRATION",
-        subjectKind: "WORKER",
-        identity: workerIdentity(values),
-      });
-    } catch (error) {
-      toast.error(errorMessage(error instanceof Error ? error.message : null, t("Actions.SaveFailed")));
-      return null;
+  const open = async (part: RestrictedPart) => {
+    if (mode.kind !== "edit") return;
+    const result = await readWorkerRestrictedAction({ id: mode.id, part });
+    if (!result.success) {
+      toast.error(errorMessage(result.error, t("Restricted.OpenFailed")));
+      return;
     }
-    if (check.outcome === "CLEAR") return { notTheSamePerson: false };
-    if (check.outcome !== "POSSIBLE") {
-      toast.error(tErrors(check.outcome === "REFUSED" ? "SanctionRefused" : "SanctionBlocked"));
-      return null;
+    if (result.data.health) {
+      form.setValue("healthConditions", result.data.health.healthConditions);
+      form.setValue("healthOtherText", result.data.health.healthOtherText);
     }
-    const [match] = check.matches;
-    const states = match.subjectKind === "CLIENT" ? "Sanction.ClientStates" : "Sanction.States";
-    const otherPerson = await confirm({
-      title: t("Sanction.NameMatchTitle"),
-      description: t("Sanction.NameMatchDescription", {
-        name: match.displayName,
-        state: t(`${states}.${match.state}`),
-        since: isolate(match.startDate),
-      }),
-      confirmLabel: t("Sanction.NotTheSamePerson"),
-    });
-    return otherPerson ? { notTheSamePerson: true } : null;
+    if (result.data.score) {
+      form.setValue("hiringScores", result.data.score.hiringScores);
+      form.setValue("hiringTotal", result.data.score.hiringTotal);
+    }
+    setOpened((current) => ({ ...current, [part]: true }));
   };
 
   const onSubmit = async (values: WorkerFormValues) => {
     if (mode.kind === "edit") {
-      const result = await updateWorkerAction({ id: mode.id, values });
-      if (!result.success) toast.error(errorMessage(result.error, t("Actions.SaveFailed")));
+      const passage =
+        identityKey(values) === identityKey(defaultValues)
+          ? { notTheSamePerson: false, decisionId: null }
+          : await passGate({
+              context: "IDENTITY_CHANGE",
+              subjectKind: "WORKER",
+              subjectId: mode.id,
+              identity: workerIdentity(values),
+              ignoreOwnRecord: true,
+            });
+      if (!passage) return;
+      const result = await updateWorkerAction({
+        id: mode.id,
+        values,
+        opened: { health: opened.HEALTH, score: opened.SCORE },
+        ...passage,
+      });
+      if (!result.success) {
+        toast.error(errorMessage(result.error, t("Actions.SaveFailed")));
+        return;
+      }
+      toast.success(t("Actions.Saved"));
+      form.reset(values);
       return;
     }
-    const answer = await askAboutSanctions(values);
-    if (!answer) return;
-    const result = await registerWorkerAction({ ...values, ...answer });
+
+    const passage = await passGate({
+      context: "WORKER_REGISTRATION",
+      subjectKind: "WORKER",
+      identity: workerIdentity(values),
+      decisionId: mode.decisionId,
+      draftPayload: values,
+      resumeRoute: "/dashboard/workers/new",
+    });
+    if (!passage) return;
+    const result = await registerWorkerAction({ ...values, ...passage });
     if (!result.success) {
       toast.error(errorMessage(result.error, t("Actions.SaveFailed")));
       return;
     }
     toast.success(t("Actions.Registered", { number: isolate(result.data.number) }));
-    router.push("/dashboard/workers");
+    router.push(`/dashboard/workers/${result.data.id}`);
   };
 
   return (
     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6" noValidate>
       {WORKER_SCREEN_CARDS.map((card) => (
-        <ScreenCard key={card.id} card={card}>
+        <ScreenCard
+          key={card.id}
+          card={card}
+          opened={card.restricted ? opened[card.restricted] : true}
+          onOpen={card.restricted ? () => open(card.restricted as RestrictedPart) : undefined}
+        >
           {card.rows.map((key) => (
             <RowField key={key} rowKey={key} control={control} mode={mode} communes={communes.data ?? []} form={form} />
           ))}
@@ -167,15 +194,16 @@ export function WorkerForm({ mode, defaultValues }: Props) {
       <OfficeCard control={control} zones={zones.data ?? []} />
 
       <div className="flex flex-col-reverse items-stretch justify-end gap-3 sm:flex-row sm:items-center">
-        {mode.kind === "edit" && <p className="text-sm text-muted-foreground sm:me-auto">{tWorkers("EditNotWired")}</p>}
-        <Button type="button" variant="outline" onClick={() => router.back()}>
-          {t("Actions.Cancel")}
-        </Button>
-        <Button type="submit" disabled={formState.isSubmitting}>
+        {mode.kind === "new" && (
+          <Button type="button" variant="outline" onClick={() => router.back()}>
+            {t("Actions.Cancel")}
+          </Button>
+        )}
+        <Button type="submit" variant={mode.kind === "new" ? "default" : "success"} disabled={formState.isSubmitting}>
           {formState.isSubmitting ? t("Actions.Saving") : mode.kind === "new" ? t("Actions.Create") : t("Actions.Save")}
         </Button>
       </div>
-      {confirmDialog}
+      {gateDialogs}
     </form>
   );
 }
@@ -186,8 +214,22 @@ const RESTRICTED_CAPABILITY: Record<NonNullable<WorkerScreenCard["restricted"]>,
   SCORE: "staff.hiringScore.read",
 };
 
-/** A card of his form: titled by his heading or by his label of the list it holds, restricted when it says so. */
-function ScreenCard({ card, children }: { card: WorkerScreenCard; children: React.ReactNode }) {
+/**
+ * A card of his form: titled by his heading or by his label of the list it
+ * holds. A restricted card says so; it is locked for an account that may not
+ * read it, and on a registered worker's file it stays closed until asked for.
+ */
+function ScreenCard({
+  card,
+  opened,
+  onOpen,
+  children,
+}: {
+  card: WorkerScreenCard;
+  opened: boolean;
+  onOpen?: () => void;
+  children: React.ReactNode;
+}) {
   const t = useTranslations("WorkerForm");
   const titleKey = card.heading ?? (card.titledByFirstRow ? card.rows[0] : undefined);
   const locked = card.restricted !== undefined && !may(RESTRICTED_CAPABILITY[card.restricted]);
@@ -207,9 +249,21 @@ function ScreenCard({ card, children }: { card: WorkerScreenCard; children: Reac
         </CardHeader>
       )}
       <CardContent>
-        <fieldset disabled={locked} className="m-0 grid min-w-0 grid-cols-1 gap-4 border-0 p-0 sm:grid-cols-2">
-          {children}
-        </fieldset>
+        {opened ? (
+          <fieldset disabled={locked} className="m-0 grid min-w-0 grid-cols-1 gap-4 border-0 p-0 sm:grid-cols-2">
+            {children}
+          </fieldset>
+        ) : (
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-base text-muted-foreground">{t("Restricted.Closed")}</p>
+            {!locked && (
+              <Button type="button" variant="outline" size="sm" onClick={onOpen}>
+                <Eye />
+                {t("Restricted.Open")}
+              </Button>
+            )}
+          </div>
+        )}
       </CardContent>
     </Card>
   );
@@ -230,6 +284,7 @@ function RowField({
   form: UseFormReturn<WorkerFormValues>;
 }) {
   const t = useTranslations("WorkerForm");
+  const tOptions = useTranslations("Options");
   const locale = useLocale();
   const label = t(`Labels.${rowKey}`);
   const row = workerFormRowByKey(rowKey);
@@ -249,7 +304,7 @@ function RowField({
             name="sex"
             label={t("Fields.sex")}
             description={t("Fields.sexHint")}
-            options={SEXES.map((code) => ({ value: code, label: t(`Sexes.${code}`) }))}
+            options={SEXES.map((code) => ({ value: code, label: tOptions(`Sex.${code}`) }))}
           />
         </>
       );
@@ -325,7 +380,7 @@ function RowField({
           control={control}
           name="workedInFieldBefore"
           label={label}
-          options={YES_NO.map((code) => ({ value: code, label: t(`YesNo.${code}`) }))}
+          options={YES_NO.map((code) => ({ value: code, label: tOptions(`YesNo.${code}`) }))}
           inline
         />
       );
@@ -337,7 +392,7 @@ function RowField({
           control={control}
           name="abilities"
           label={label}
-          options={ABILITIES.map((code) => ({ value: code, label: t(`Abilities.${code}`) }))}
+          options={ABILITIES.map((code) => ({ value: code, label: tOptions(`Ability.${code}`) }))}
         />
       );
     case "availableDays":
@@ -346,7 +401,7 @@ function RowField({
           control={control}
           name="availableDays"
           label={label}
-          options={WEEKDAYS.map((code) => ({ value: code, label: t(`Weekdays.${code}`) }))}
+          options={WEEKDAYS.map((code) => ({ value: code, label: tOptions(`Weekday.${code}`) }))}
         />
       );
     case "healthConditions":
@@ -793,7 +848,8 @@ function OfficeCard({ control, zones }: { control: FormControl; zones: readonly 
   const t = useTranslations("WorkerForm");
   const sex = useWatch({ control, name: "sex" });
   const canCollect = useWatch({ control, name: "canCollectCash" });
-  const roles = sex === "FEMALE" ? "RolesFeminine" : "Roles";
+  const tOptions = useTranslations("Options");
+  const roles = sex === "FEMALE" ? "WorkerRoleFeminine" : "WorkerRole";
   return (
     <Card id="worker-card-office">
       <CardHeader>
@@ -821,7 +877,7 @@ function OfficeCard({ control, zones }: { control: FormControl; zones: readonly 
           control={control}
           name="role"
           label={t("Fields.role")}
-          options={WORKER_ROLES.map((code) => ({ value: code, label: t(`${roles}.${code}`) }))}
+          options={WORKER_ROLES.map((code) => ({ value: code, label: tOptions(`${roles}.${code}`) }))}
         />
         <TextField
           control={control}

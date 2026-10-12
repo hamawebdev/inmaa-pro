@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import coreAr from "@/features/core/messages/ar.json";
 import ar from "@/features/people/messages/ar.json";
 import {
   ABILITIES,
@@ -209,14 +210,16 @@ describe("the Arabic screen labels", () => {
   // The Arabic message file is what an Arabic screen shows. It must say what
   // his form says: the same labels, and the same word for every option.
   const messages = (ar as unknown as { WorkerForm?: Record<string, Record<string, string>> }).WorkerForm ?? {};
-  const LISTS: Record<string, string> = {
-    workedInFieldBefore: "YesNo",
-    abilities: "Abilities",
-    availableDays: "Weekdays",
-    healthConditions: "HealthConditions",
-    documentsDelivered: "Documents",
-    hiringDecision: "Decisions",
-    maritalStatus: "MaritalStatuses",
+  // The lists every owner shares are labelled by Foundation, in `Options`.
+  const shared = (coreAr as unknown as { Options?: Record<string, Record<string, string>> }).Options ?? {};
+  const LISTS: Record<string, Record<string, string> | undefined> = {
+    workedInFieldBefore: shared.YesNo,
+    abilities: shared.Ability,
+    availableDays: shared.Weekday,
+    healthConditions: messages.HealthConditions,
+    documentsDelivered: messages.Documents,
+    hiringDecision: messages.Decisions,
+    maritalStatus: messages.MaritalStatuses,
   };
 
   it("labels every row of the screen in his words", () => {
@@ -229,7 +232,7 @@ describe("the Arabic screen labels", () => {
   it("labels every option in his words", () => {
     const different = WORKER_FORM_SCREEN_ROWS.flatMap((row) =>
       (row.options ?? [])
-        .filter((option) => messages[LISTS[row.key]]?.[option.code] !== option.label)
+        .filter((option) => LISTS[row.key]?.[option.code] !== option.label)
         .map((option) => `${row.id} ${option.code}`),
     );
     expect(different).toEqual([]);

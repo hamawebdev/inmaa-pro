@@ -42,31 +42,6 @@
       "hiringDecision": "Management decision",
       "issuedDate": "Issued at Oum El Bouaghi, on:"
     },
-    "YesNo": {
-      "YES": "Yes",
-      "NO": "No"
-    },
-    "Sexes": {
-      "MALE": "Male",
-      "FEMALE": "Female"
-    },
-    "Abilities": {
-      "CARRY_EQUIPMENT": "Carrying equipment",
-      "STAND_LONG_HOURS": "Standing for long hours",
-      "CLIMB_STAIRS": "Climbing stairs",
-      "UPPER_FLOORS": "Working on upper floors",
-      "WORK_UNDER_PRESSURE": "Working under pressure",
-      "MOVE_BETWEEN_SITES": "Moving between establishments"
-    },
-    "Weekdays": {
-      "SAT": "Saturday",
-      "SUN": "Sunday",
-      "MON": "Monday",
-      "TUE": "Tuesday",
-      "WED": "Wednesday",
-      "THU": "Thursday",
-      "FRI": "Friday"
-    },
     "HealthConditions": {
       "ASTHMA": "Asthma",
       "BACK": "Back problems",
@@ -131,17 +106,10 @@
       "Badge": "Restricted",
       "HEALTH": "Health answers: only the manager and the HR officer see them, and every look is logged.",
       "SCORE": "Confidential score: only the manager and the HR officer see it, and every look is logged.",
-      "Locked": "Only those allowed to see this part can fill it."
-    },
-    "Roles": {
-      "CLEANER": "Cleaner",
-      "SENIOR_WORKER": "Senior worker",
-      "TEAM_LEADER": "Team leader"
-    },
-    "RolesFeminine": {
-      "CLEANER": "Cleaner",
-      "SENIOR_WORKER": "Senior worker",
-      "TEAM_LEADER": "Team leader"
+      "Locked": "Only those allowed to see this part can fill it.",
+      "OpenFailed": "Could not show this part.",
+      "Closed": "Closed. Opening it is written in the log, and only an opened part is saved.",
+      "Open": "Show"
     },
     "PayBases": {
       "MONTHLY": "Monthly salary",
@@ -166,19 +134,6 @@
       "SaveFailed": "Could not save the worker.",
       "Saved": "The worker is saved.",
       "Registered": "Worker registered under number {number}."
-    },
-    "Sanction": {
-      "NameMatchTitle": "Someone with this name is suspended or penalised",
-      "NameMatchDescription": "{name}: {state} since {since}. Is this another person?",
-      "NotTheSamePerson": "Another person",
-      "States": {
-        "SUSPENDED": "suspended",
-        "PENALISED": "penalised"
-      },
-      "ClientStates": {
-        "SUSPENDED": "suspended",
-        "PENALISED": "penalised"
-      }
     }
   },
   "WorkerPrint": {
@@ -186,23 +141,295 @@
     "BlankDescription": "The four pages as he prints them from Word, with nothing filled in, to hand to a candidate.",
     "RecordTitle": "Registration form of {name}",
     "RecordDescription": "The form filled from the worker's record, ready to sign and stamp.",
-    "SampleNote": "Sample data: the worker files are not connected yet, so this sheet shows an invented worker.",
     "PartsLabel": "Pages to print",
     "Parts": {
       "all": "Form and regulations",
       "registration": "Form, pages 1 and 2",
       "regulations": "Internal regulations, pages 3 and 4"
-    }
+    },
+    "RecordTitlePending": "The filled registration form",
+    "BackToFile": "The worker's file",
+    "ReasonTitle": "Why is the filled form printed?",
+    "ReasonDescription": "The filled form shows the health answers and the confidential score. The reason is kept in the log with your name.",
+    "ReasonLabel": "Reason",
+    "ReasonRequired": "Write the reason.",
+    "ShowForm": "Show the form",
+    "LoadFailed": "Could not read the worker's form."
   },
   "Workers": {
     "NewDescription": "Registering a cleaning worker: his form, then what only the office keeps.",
-    "EditDescription": "The worker's registration form.",
-    "SampleNote": "Sample data: the worker files are not connected yet, so this page shows an invented worker.",
     "NewWorker": "New worker",
     "BlankForm": "Blank form",
     "PrintForm": "Print the form",
     "QuickNew": "Register a cleaning worker",
-    "EditNotWired": "Changes to a registered worker are not saved yet: they come with the worker files."
+    "Sanctions": "Suspended and penalised",
+    "SanctionsWaiting": "Waiting for the manager: {count}",
+    "Statuses": {
+      "CANDIDATE": "Candidate",
+      "ON_TRIAL": "On trial",
+      "ACCEPTED": "Accepted",
+      "REFUSED": "Refused",
+      "LEFT": "Left"
+    },
+    "Table": {
+      "Number": "Number",
+      "Name": "Surname and first name",
+      "Role": "Role",
+      "Zone": "Zone",
+      "Phone": "Phone",
+      "Status": "Status",
+      "Documents": "Documents",
+      "DocumentsToRenew": "To renew: {count}",
+      "OpenFile": "File",
+      "SearchPlaceholder": "Search by name, number or phone",
+      "AllStatuses": "All statuses",
+      "AllZones": "All zones",
+      "AllRoles": "All roles",
+      "Count": "{shown} of {total} workers",
+      "Empty": "No worker found."
+    },
+    "File": {
+      "Title": "Worker's file",
+      "Description": "The worker's file: state, documents, decisions, and the registration form to change.",
+      "Leave": "Left",
+      "LeaveTitle": "{name} leaves the centre",
+      "LeaveDescription": "From that day the worker is no longer scheduled.",
+      "LeaveDate": "Day of leaving",
+      "LeaveReason": "Reason",
+      "LeaveDone": "The departure is recorded.",
+      "Readmit": "Readmit",
+      "ReadmitDone": "Readmitted, as a candidate.",
+      "ActionFailed": "Could not save.",
+      "LeftOn": "Left on",
+      "AttachmentsTitle": "Photo and signed form",
+      "Photo": "Photo",
+      "SavePhoto": "Save the photo",
+      "PhotoSaved": "The photo is saved.",
+      "FileFailed": "Could not save the file.",
+      "Scan": "Scan of the signed pages 1 and 2",
+      "ScanHint": "Restricted: it shows the health answers and the score. An image or a PDF, saved as soon as it is chosen.",
+      "ScanStored": "Signed form",
+      "ScanCopy": "Save a copy",
+      "ScanCopyTitle": "Save a copy of the signed form",
+      "ScanCopied": "Copy saved: {path}",
+      "ScanRemove": "Remove",
+      "ScanRemoved": "The scan is removed from the file.",
+      "ScanSaved": "The scan is saved.",
+      "ScanWrongType": "Choose an image or a PDF.",
+      "ScanTooLarge": "This file is too large.",
+      "DocumentsHint": "What was handed in, and what expires. The ticks and the dates are changed in the form below.",
+      "DocumentStates": {
+        "VALID": "Valid",
+        "NO_EXPIRY": "Handed in",
+        "EXPIRING": "Expires soon",
+        "EXPIRED": "Expired",
+        "MISSING": "Not handed in"
+      },
+      "HistoryTitle": "Decisions and status",
+      "NoDecision": "No decision yet.",
+      "TrialUntil": "Trial until",
+      "StatusHistory": "Status over time"
+    },
+    "Resume": {
+      "PENDING": "The manager has not answered yet about {name}.",
+      "ALLOWED": "The manager allowed this registration (match with {name}). Check the form, fill the restricted parts again, and save.",
+      "REFUSED": "The manager did not allow this registration (match with {name}).",
+      "CANCELLED": "This question was withdrawn (match with {name}).",
+      "USED": "This registration is already done (match with {name})."
+    }
+  },
+  "PeopleDialogs": {
+    "Choose": "Choose",
+    "Required": "This field is required.",
+    "ReasonRequired": "Write the reason: it is kept in the log.",
+    "Cancel": "Cancel"
+  },
+  "Sanctions": {
+    "States": {
+      "SUSPENDED": "Suspended",
+      "PENALISED": "Penalised"
+    },
+    "ClientStates": {
+      "SUSPENDED": "Suspended",
+      "PENALISED": "Penalised"
+    },
+    "Subjects": {
+      "WORKER": "Cleaning worker",
+      "EMPLOYEE": "Centre employee",
+      "CLIENT": "Client"
+    },
+    "Bases": {
+      "SAME_RECORD": "The same file",
+      "NATIONAL_ID": "Identity card number",
+      "PHONE": "Phone number",
+      "NAME_AND_BIRTHDATE": "Name and date of birth",
+      "NAME_CONFIRMED": "Name, confirmed by the clerk",
+      "TAX_NUMBER": "Tax or register number",
+      "NAME_ONLY": "Name only"
+    },
+    "DecisionStatuses": {
+      "PENDING": "Waiting for the manager",
+      "ALLOWED": "Allowed by the manager",
+      "REFUSED": "Not allowed by the manager",
+      "CANCELLED": "Withdrawn"
+    },
+    "Contexts": {
+      "WORKER_REGISTRATION": "Registering a worker",
+      "EMPLOYEE_REGISTRATION": "Registering an employee",
+      "CLIENT_FILE": "A client's file",
+      "READMISSION": "Readmission",
+      "IDENTITY_CHANGE": "A changed identity"
+    },
+    "Facts": {
+      "Since": "Since",
+      "Until": "until",
+      "Reason": "Reason",
+      "FoundBy": "Found by"
+    },
+    "Gate": {
+      "NameTitle": "Someone with this name is suspended or penalised",
+      "NameDescription": "Only the name matches. Is this the same person?",
+      "SamePerson": "The same person",
+      "AnotherPerson": "Another person",
+      "Cancel": "Cancel",
+      "AnswerTitle": "Do we allow this person or not?",
+      "AnswerDescription": "This person is suspended or penalised. The manager's answer and its reason are kept in the log.",
+      "AnswerReason": "Reason for the decision",
+      "ReasonRequired": "Write the reason for the decision.",
+      "Allow": "We allow",
+      "Refuse": "We do not allow",
+      "RefusedToast": "Not allowed: nothing was registered.",
+      "RequestTitle": "The manager must answer first",
+      "RequestDescription": "This person is suspended or penalised. Send the question to the manager: what you typed is kept, and you come back to it once he answers.",
+      "SendRequest": "Send to the manager",
+      "RequestSent": "The question was sent to the manager. Find it under «Suspended and penalised»."
+    },
+    "Card": {
+      "Title": "Suspended or penalised",
+      "None": "No sanction",
+      "Upcoming": "{state}, from a later day",
+      "Set": "Suspend or penalise",
+      "Lift": "Lift",
+      "SetTitle": "Suspend or penalise",
+      "SetDescription": "From the first day, the program stops this person being registered again without the manager's answer.",
+      "State": "State",
+      "From": "From",
+      "Until": "Until (empty: until lifted)",
+      "Reason": "Reason",
+      "SetDone": "The sanction is recorded.",
+      "Failed": "Could not save the sanction.",
+      "LiftTitle": "Lift the sanction",
+      "LiftDescription": "It ends today, whatever its end date.",
+      "LiftReason": "Why it is lifted",
+      "LiftDone": "The sanction is lifted.",
+      "Period": "Since {since}",
+      "PeriodUntil": "until {until}",
+      "LiftedOn": "Lifted on {date}",
+      "SetBy": "By {name}"
+    },
+    "Page": {
+      "Title": "Suspended and penalised",
+      "Description": "The questions for the manager, and the sanctions in force on workers, employees and clients.",
+      "DecisionsTitle": "Do we allow them or not?",
+      "DecisionsForManager": "Every question asked when someone suspended or penalised was being registered. Yours to answer.",
+      "DecisionsForClerk": "The questions you sent to the manager, and his answers.",
+      "NoDecisions": "No question.",
+      "Used": "Yes, used",
+      "Answer": "Answer",
+      "AnswerDescription": "{name} is being registered. The answer and its reason are kept in the log.",
+      "Allowed": "Allowed. The registration can go on.",
+      "Refused": "Not allowed.",
+      "WithdrawTitle": "Withdraw the question",
+      "WithdrawReason": "Why it is withdrawn",
+      "Withdraw": "Withdraw",
+      "Withdrawn": "The question is withdrawn.",
+      "Resume": "Go on with the registration",
+      "InForceTitle": "Sanctions in force",
+      "InForceDescription": "Whoever is suspended or penalised today, or from a day to come.",
+      "NoSanctions": "Nobody is suspended or penalised.",
+      "Failed": "Could not save."
+    }
+  },
+  "Employees": {
+    "NewEmployee": "New employee",
+    "QuickNew": "Register a centre employee",
+    "NewTitle": "New centre employee",
+    "NewDescription": "The employee's personal information, post and pay.",
+    "Positions": {
+      "MANAGER": "Manager",
+      "ADMINISTRATION": "Administration",
+      "SUPERVISOR": "Supervisor",
+      "HR_OFFICER": "HR officer",
+      "OPERATIONS": "Operations officer",
+      "RECEPTION_SALES": "Reception and sales",
+      "SALES_REP": "Sales representative",
+      "ACCOUNTANT": "Accountant",
+      "STOREKEEPER": "Storekeeper",
+      "OTHER": "Other"
+    },
+    "Contracts": {
+      "NONE": "No contract",
+      "CDD": "Fixed-term contract",
+      "CDI": "Open-ended contract"
+    },
+    "WorkTimes": {
+      "FULL_TIME": "Full time",
+      "PART_TIME": "Part time"
+    },
+    "Statuses": {
+      "IN_POST": "In post",
+      "LEFT": "Left"
+    },
+    "Table": {
+      "Number": "Number",
+      "Name": "Surname and first name",
+      "Position": "Post",
+      "Phone": "Phone",
+      "Account": "Account",
+      "Status": "Status",
+      "OpenFile": "File",
+      "SearchPlaceholder": "Search by name, number or phone",
+      "AllPositions": "All posts",
+      "AllStatuses": "All statuses",
+      "Count": "{shown} of {total} employees",
+      "Empty": "No employee found."
+    },
+    "Form": {
+      "SaveFailed": "Could not save the employee.",
+      "Saved": "The employee is saved.",
+      "Registered": "Employee registered under number {number}.",
+      "Create": "Register the employee",
+      "Phone2": "Second phone",
+      "Email": "E-mail",
+      "PostTitle": "Post",
+      "JobPosition": "Job position",
+      "StartDate": "Start date",
+      "EmploymentContract": "Type of contract",
+      "ContractEndDate": "End of the contract",
+      "WorkTime": "Working time",
+      "CnasDeclared": "Declared to the CNAS",
+      "CnasNumber": "Social security number",
+      "PayTitle": "Pay",
+      "PayDescription": "Needed before the first pay run."
+    },
+    "File": {
+      "Title": "Employee's file",
+      "Description": "The employee's file: state, login account, and the information to change.",
+      "Leave": "Left",
+      "LeaveTitle": "{name} leaves the centre",
+      "LeaveDate": "Day of leaving",
+      "LeaveReason": "Reason",
+      "LeaveDone": "The departure is recorded.",
+      "Readmit": "Readmit",
+      "ReadmitDone": "Back in post.",
+      "ActionFailed": "Could not save.",
+      "AccountTitle": "Login account",
+      "AccountActive": "Active",
+      "AccountInactive": "Deactivated",
+      "NoAccount": "No account",
+      "AccountDescription": "The account this employee signs in with. Accounts are made and linked in Settings.",
+      "AccountUser": "User name:"
+    }
   },
   "Errors": {
     "WorkerSexRequired": "Choose whether the worker is a man or a woman.",
@@ -220,7 +447,6 @@
     "TotalDisagrees": "The total does not agree with the scores.",
     "BirthBeforeRegistration": "The date of birth must be before the registration date.",
     "PayBasisForRate": "Choose how this rate is paid.",
-    "WorkerChangeNotWired": "Changing a registered worker is not possible yet.",
     "HealthNotAllowed": "You do not have permission to record the health answers.",
     "ScoreNotAllowed": "You do not have permission to record the confidential evaluation.",
     "DecisionNotAllowed": "You do not have permission to record the management's decision.",
@@ -229,6 +455,31 @@
     "SanctionNameMatch": "Someone with this name is suspended or penalised. Confirm that this is another person before saving.",
     "DecisionNotFound": "This decision of the manager does not exist.",
     "DecisionNotAYes": "Only the manager's yes allows a registration.",
-    "DecisionUsed": "This decision of the manager has already been used."
+    "DecisionUsed": "This decision of the manager has already been used.",
+    "SanctionChoose": "Choose the sanction.",
+    "SanctionReasonRequired": "Write the reason for the sanction.",
+    "SanctionEndBeforeStart": "The end date must not be before the start date.",
+    "SanctionClientNotFound": "The client of this sanction does not exist.",
+    "PersonNotFound": "This person does not exist.",
+    "SanctionOverlap": "This person already has a sanction for these days. Lift it first.",
+    "SanctionLiftReasonRequired": "Write why the sanction is lifted.",
+    "SanctionNotFound": "This sanction does not exist.",
+    "SanctionAlreadyLifted": "This sanction has already been lifted.",
+    "DecisionNoMatch": "This person does not match this sanction.",
+    "DecisionSayFirst": "Say first whether this is the same person.",
+    "DecisionReasonRequired": "Write the reason for the decision.",
+    "DecisionAlreadyAnswered": "This request has already been answered.",
+    "DecisionWithdrawReasonRequired": "Write why the request is withdrawn.",
+    "WorkerIdNumberTaken": "A worker with this identity number is already registered. Open that worker's file.",
+    "EmployeeIdNumberTaken": "An employee with this identity number is already registered. Open that employee's file.",
+    "EmployeeNotFound": "This employee does not exist.",
+    "LeavingReasonRequired": "Write the reason for leaving.",
+    "AlreadyLeft": "This person has already left.",
+    "LeavingBeforeRegistration": "The leaving date cannot be before the registration date.",
+    "ReadmitOnlyLeft": "Only someone who left or was refused can be readmitted.",
+    "PrintReasonRequired": "Write why the filled form is printed.",
+    "EmployeeSexRequired": "Choose whether the employee is a man or a woman.",
+    "JobPositionRequired": "Choose the job position.",
+    "ContractEndBeforeStart": "The end of the contract cannot be before its start."
   }
 }
