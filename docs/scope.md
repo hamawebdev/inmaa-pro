@@ -243,3 +243,22 @@ Done means: one seeded job runs end to end in each of the four divisions and sho
 - A8. Wording follows his forms. I correct «مسأجر» to «مستأجر», and keep «تنظيف غ..الضيوف» as written until he confirms «غرف».
 - A9. Open questions become settings with working defaults: tax mode chosen at first run (16); the manager approves every quote (6); 40 hours a week and 8 a day, pay basis per worker (11); the commune as the zone (3); the plan's seven visit statuses (23); one order per team with a line per worker (8); the office types in (7); invoices at period end for visits done (15); inspections scored out of 100, client rating 1 to 5, complaints answered within 2 hours (25); no import (4).
 - A10. The program carries his letterhead name, «مركز إنماء برو». Arabic becomes the default language; French and English stay, so every new text is written in all three.
+
+## 10. Questions for the client or his accountant
+
+These came out of the data model. Each has a working default that is a setting or a seed row, so nothing waits for the answers.
+
+1. Is «متوقف» on his client forms the blocking state? In his older forms it meant a client who paused. Default: it blocks.
+2. «رقم التسجيل» and «رقم الملف»: one counter per form kind that never restarts, suffix BLC on the building contract and none on the others; one counter for all clients; workers numbered `n/H` or `n/F`. Does he already have numbers on paper to continue from?
+3. «طريقة السداد»: can several be ticked? Default: yes on the file, one chosen on each invoice.
+4. Stamp duty on cash: on the whole tax-included amount from 300 DA, or by bands? Default: the whole amount.
+5. VAT or IFU, and when he quotes «المبلغ إجمالي» under VAT, is tax included? Default: asked at first run; read as tax included. Does he have a NIN to print?
+6. Pay: the CNAS rates (9% and 26% assumed), the IRG scale (not seeded), the leave year, the premium for work on a rest day.
+7. Lead times and lengths with no source in his documents: document expiry warning (30 days), trial period (30 days), quote validity (15 days), worker evaluation every 3 months.
+8. Credit notes and refunds. Default: none; a wrong invoice is voided and issued again, and an overpayment stays as the file's credit.
+9. The residents list on a building contract and its «تاريخ التسجيل»: what is it for? Default: kept on the site, never billed, never printed on an order.
+10. Friday and public holidays. Default: client forms offer six days; a Friday visit only by hand.
+11. When «على عاتق صاحبها» is ticked, does the amount beside it mean anything? Default: stored, ignored in totals.
+12. A first deep clean followed by a periodic contract. Default: one file and one sheet, with the first job as an extra amount due.
+
+Two lists need checking against official sources before the first installer leaves: the 69 wilayas (the eleven created on 16 November 2025 are numbered 59 to 69 as the press reported them) and the 29 communes of the wilaya of أم البواقي (written from memory).
