@@ -303,7 +303,8 @@
     }
   },
   "Print": {
-    "Print": "Imprimer"
+    "Print": "Imprimer",
+    "NotRecorded": "L'impression n'a pas pu être enregistrée : rien n'a été imprimé. Réessayez."
   },
   "PrintSample": {
     "Title": "Feuille d'essai",

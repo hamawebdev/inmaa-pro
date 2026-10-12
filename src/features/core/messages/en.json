@@ -303,7 +303,8 @@
     }
   },
   "Print": {
-    "Print": "Print"
+    "Print": "Print",
+    "NotRecorded": "The print could not be recorded, so nothing was printed. Try again."
   },
   "PrintSample": {
     "Title": "Sample sheet",

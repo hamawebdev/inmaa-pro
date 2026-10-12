@@ -1,7 +1,8 @@
-import { Children, Fragment, isValidElement, useEffect, useState } from "react";
+import { Children, Fragment, isValidElement, useEffect, useRef, useState } from "react";
 
 import { Printer } from "lucide-react";
 import { createPortal } from "react-dom";
+import { toast } from "sonner";
 import { useTranslations } from "use-intl";
 
 import { LETTERHEAD, type FormFamily, type PlacedPicture } from "@/assets/letterhead/placement";
@@ -17,6 +18,7 @@ import {
   type SheetFont,
   type SheetMargins,
 } from "./sheet-constants";
+import { isPrintShortcut, printAfter, type OnPrint } from "./print-flow";
 import { PageBreak } from "./sheet-elements";
 
 /**
@@ -227,11 +229,66 @@ export function PrintSheet({
   );
 }
 
-/** The button that prints the sheet on the screen. Put it in the screen's `actions`. */
-export function PrintButton({ label }: { label?: string }) {
+/**
+ * The button that prints the sheet on the screen. Put it in the screen's
+ * `actions`.
+ *
+ *     <PrintButton onPrint={async () => {
+ *       const result = await recordOrderPrintedAction({ visitId });
+ *       if (!result.success) toast.error(errorMessage(result.error, t("PrintNotRecorded")));
+ *       return result.success;
+ *     }} />
+ *
+ * With `onPrint`, Ctrl+P on the page goes through the button too: a print the
+ * law asks to record is never made by a shortcut that skips the record. A hook
+ * that throws stops the print (src/components/print/print-flow.ts).
+ */
+export function PrintButton({ label, onPrint }: { label?: string; onPrint?: OnPrint }) {
   const t = useTranslations("Print");
+  const [busy, setBusy] = useState(false);
+
+  // The latest hook and words, for the shortcut's listener, which is added once.
+  const latest = useRef({ onPrint, failed: t("NotRecorded") });
+  useEffect(() => {
+    latest.current = { onPrint, failed: t("NotRecorded") };
+  });
+  const running = useRef(false);
+
+  const print = useRef(async () => {
+    if (running.current) return;
+    const { onPrint: hook, failed } = latest.current;
+    running.current = true;
+    if (hook) setBusy(true);
+    try {
+      await printAfter(
+        hook,
+        () => window.print(),
+        (error) => {
+          console.error("print: the hook failed", error);
+          toast.error(failed);
+        },
+      );
+    } finally {
+      running.current = false;
+      setBusy(false);
+    }
+  });
+
+  const hooked = onPrint !== undefined;
+  useEffect(() => {
+    if (!hooked) return;
+    const onKey = (event: KeyboardEvent) => {
+      // A second button on the page sees the first one's preventDefault, and leaves it.
+      if (event.defaultPrevented || !isPrintShortcut(event)) return;
+      event.preventDefault();
+      void print.current();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [hooked]);
+
   return (
-    <Button type="button" variant="info" onClick={() => window.print()}>
+    <Button type="button" variant="info" loading={busy} onClick={() => void print.current()}>
       <Printer />
       {label ?? t("Print")}
     </Button>

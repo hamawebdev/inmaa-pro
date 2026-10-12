@@ -102,9 +102,10 @@ export function BottomNav({ pathname }: { pathname: string }) {
   const sections = PRIMARY_SECTIONS.filter((section) => session !== null && mayOpenSection(session, section.id));
   const settingsOpen = session !== null && mayOpenSection(session, SETTINGS_SECTION.id);
 
-  // Narrow enough to read as secondary, wide enough for the longer of the two
-  // languages ("الإعدادات") at the bar's own type size.
-  const utility = "w-24 shrink-0 xl:w-28 tall:w-32";
+  // Narrow enough to read as secondary, wide enough for the longest of the
+  // three languages ("Paramètres") at the bar's own type size in the smallest
+  // window.
+  const utility = "w-28 shrink-0 tall:w-32";
 
   return (
     <nav aria-label={t("Sections")} className="flex shrink-0 border-t-[3px] border-border-strong bg-card">

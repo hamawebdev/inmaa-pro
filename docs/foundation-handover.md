@@ -2,7 +2,7 @@
 
 For a teammate who continues Foundation's work. Read CLAUDE.md first (its last section is Foundation's and is the
 manual for builders), then this page. Updated at the end of every round. **Last update: end of F3, items 1 to 3**
-(after commit 94258b6; F3's own files are not committed yet: the coordinator commits).
+(on top of the checkpoints f177b44 and 963de70; what changed since is not committed yet: the coordinator commits).
 
 ## What exists, and where
 
@@ -19,6 +19,7 @@ manual for builders), then this page. Updated at the end of every round. **Last 
 | Day-start job (F3) | Each folder's `daily.ts` handlers, one transaction per owner as the program, once per local day (setting `system.dayStart`), at start and at midnight; retried hourly for an owner that failed; not run when the anchor has something to ask | `src/lib/daily`, `src/features/core/services/day-start.ts`, `startup.ts` |
 | Sign-in and roles (F3) | The sign-in window instead of the program while nobody is signed in; first password, given password replaced, the manager's recovery code; «قفل الآن» signs out; bar, Ctrl+K and route gate follow the role's sections; `useCan`, `useSectionLevel`. The academy's manager password, section lock and their setting are removed | `src/features/core/services/{sign-in,session,users}.ts`, `src/components/security`, `src/components/{lock-menu,bottom-nav,command-palette}.tsx`, `src/lib/auth.ts`, `src/hooks/use-session.ts` |
 | Harness sign-in (F3) | Every page the harness opens signs in through the window (`--user`, default manager; password `inmaa-demo`); `--signed-out`, `--before` | `scripts/harness/lib/sign-in.mjs` |
+| Print kit additions (F3) | `PrintButton onPrint` (record before the dialog; false or a throw stops it; Ctrl+P follows the button when there is a hook), `SHEET_FONT_STAND_IN` exported from the index; asked by Operations | `src/components/print/{print-sheet.tsx,print-flow.ts,index.ts}` |
 | Money format (F3) | `formatMoney`, `formatMoneyAr`, `useMoneyText()`: «195.650,00 دج» | `src/lib/units`, `src/hooks/use-money-text.ts` |
 | Data-model documents | DESIGN (section 19: what changed while building), CONTRACTS, OPTION-CODES, RULINGS, BUILD-NOTES | `docs/data-model` (mine to keep in step) |
 
