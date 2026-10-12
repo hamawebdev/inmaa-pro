@@ -131,7 +131,11 @@ export function WorkerHistory({
           icon={CalendarCheck}
           label={t("History.Totals.Visits")}
           value={data ? data.totals.expected : "—"}
-          hint={data ? t("History.Totals.VisitsHint", { present: data.totals.present, absent: data.totals.absent }) : undefined}
+          hint={
+            data
+              ? t("History.Totals.VisitsHint", { present: data.totals.present, absent: data.totals.absent })
+              : undefined
+          }
         />
         <StatCard
           icon={Timer}
@@ -143,9 +147,7 @@ export function WorkerHistory({
           icon={Clock}
           label={t("History.Totals.Late")}
           value={data ? data.totals.lateCount : "—"}
-          hint={
-            data ? t("History.Totals.LateHint", { grace: data.graceMin, minutes: data.totals.lateMin }) : undefined
-          }
+          hint={data ? t("History.Totals.LateHint", { grace: data.graceMin, minutes: data.totals.lateMin }) : undefined}
         />
         <StatCard
           icon={CalendarX}

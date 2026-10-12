@@ -19,7 +19,7 @@ export default function WorkProgramPage() {
   const tNav = useTranslations("Nav");
 
   return (
-    <SectionScreen section="workers" title={tNav("WorkersHeading")}>
+    <SectionScreen section="workers" title={tNav("WorkProgram")}>
       <WeekProgrammeView />
     </SectionScreen>
   );

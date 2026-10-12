@@ -1,4 +1,5 @@
 import {
+  ACTIVE_STATUSES,
   getStaffSummary,
   listSchedulableWorkers,
   type SchedulableWorker as PeopleSchedulableWorker,
@@ -10,12 +11,12 @@ import type { LocalDate, LocalTime } from "@/lib/units";
 /**
  * What Operations reads of other owners' rows, in one place.
  *
- * CONTRACTS.md section 3 names the read functions the owners will export
- * (`getFileForScheduling` and `getSiteForOrder` from Clients,
- * `listSchedulableWorkers` and `getStaffSummary` from People). Until they
- * exist, these read the columns section 2 lets Operations read, read-only, and
- * nothing else. When an owner's function lands, its reader here becomes a call
- * to it and nothing else in this folder changes.
+ * CONTRACTS.md section 3 names the read functions the owners export. People's
+ * (`listSchedulableWorkers`, `getStaffSummary`) are called here. Clients'
+ * `getFileForScheduling` and `getSiteForOrder` do not exist yet: until they do,
+ * the two file and site readers below read the columns section 2 lets
+ * Operations read, read-only, and nothing else; each becomes a call to
+ * Clients' function when it lands, and nothing else in this folder changes.
  */
 
 /** A set of ticks stored as a JSON array of codes. Empty or unreadable is no tick. */
@@ -315,19 +316,24 @@ export async function readSiteForOrder(
   };
 }
 
-// ── Workers (People) ────────────────────────────────────────────────────────
+// ── Workers and staff (People) ──────────────────────────────────────────────
+
+/** Engagement states in which a worker may be given seats (People's `ACTIVE_STATUSES`). */
+export const SCHEDULABLE_ENGAGEMENTS: readonly string[] = [...ACTIVE_STATUSES];
+
+/** A cleaning worker as scheduling sees her (People's `listSchedulableWorkers`). Never anything restricted. */
+export type SchedulableWorker = PeopleSchedulableWorker;
 
 /**
- * The workers who may be given seats on a day, as People lists them
- * (`listSchedulableWorkers`: her state on that day from her history, her
- * training days, her sanction; never anything restricted). With `ids`, those
- * workers whatever their state.
+ * The workers who may be given seats on a day, as People lists them: her state
+ * on that day from her history, her training days, her sanction. With `ids`,
+ * those workers whatever their state (an order names a worker who has left since).
  */
-export async function schedulableWorkers(
+export async function readWorkers(
   ex: Executor,
   ctx: ServiceContext,
   input: { date?: string; zoneId?: string | null; ids?: readonly string[] } = {},
-): Promise<PeopleSchedulableWorker[]> {
+): Promise<SchedulableWorker[]> {
   return listSchedulableWorkers(ex, ctx, input);
 }
 
@@ -340,89 +346,4 @@ export async function staffSummaries(
   const wanted = [...new Set(ids.filter((id): id is string => Boolean(id)))];
   if (wanted.length === 0) return new Map();
   return new Map(Object.entries(await getStaffSummary(ex, ctx, { ids: wanted })));
-}
-
-/** Engagement states in which a worker may be given seats. */
-export const SCHEDULABLE_ENGAGEMENTS = ["ON_TRIAL", "ACCEPTED"] as const;
-
-/** A cleaning worker as scheduling sees her. Never anything of `StaffConfidential`. */
-export interface SchedulableWorker {
-  id: string;
-  number: string;
-  firstName: string;
-  lastName: string;
-  sex: string;
-  phone: string;
-  zoneId: string | null;
-  role: string | null;
-  isReserve: boolean;
-  weeklyCapacityMin: number;
-  availableDays: string[];
-  abilities: string[];
-  engagementStatus: string;
-}
-
-/**
- * Stands in for People's `listSchedulableWorkers`. Without `ids`, the workers
- * that may be given seats; with them, those workers whatever their state (an
- * order names a worker who has left since).
- */
-export async function readWorkers(ex: Executor, input: { ids?: readonly string[] } = {}): Promise<SchedulableWorker[]> {
-  let query = ex
-    .selectFrom("StaffMember")
-    .select([
-      "id",
-      "number",
-      "firstName",
-      "lastName",
-      "sex",
-      "phone",
-      "zoneId",
-      "role",
-      "isReserve",
-      "weeklyCapacityMin",
-      "availableDays",
-      "abilities",
-      "engagementStatus",
-    ])
-    .where("kind", "=", "WORKER");
-  if (input.ids) {
-    if (input.ids.length === 0) return [];
-    query = query.where("id", "in", [...new Set(input.ids)]);
-  } else {
-    query = query.where("deletedAt", "is", null).where("engagementStatus", "in", [...SCHEDULABLE_ENGAGEMENTS]);
-  }
-  const rows = await query.orderBy("lastName").orderBy("firstName").execute();
-  return rows.map((row) => ({
-    id: row.id,
-    number: row.number,
-    firstName: row.firstName,
-    lastName: row.lastName,
-    sex: row.sex,
-    phone: row.phone,
-    zoneId: row.zoneId,
-    role: row.role,
-    isReserve: row.isReserve === 1,
-    weeklyCapacityMin: row.weeklyCapacityMin,
-    availableDays: parseCodes(row.availableDays),
-    abilities: parseCodes(row.abilities),
-    engagementStatus: row.engagementStatus,
-  }));
-}
-
-/** Names of employees (supervisors), for labels. Stands in for People's `getStaffSummary`. */
-export async function readStaffNames(
-  ex: Executor,
-  ids: readonly (string | null)[],
-): Promise<Map<string, { firstName: string; lastName: string; phone: string }>> {
-  const wanted = [...new Set(ids.filter((id): id is string => Boolean(id)))];
-  const names = new Map<string, { firstName: string; lastName: string; phone: string }>();
-  if (wanted.length === 0) return names;
-  const rows = await ex
-    .selectFrom("StaffMember")
-    .select(["id", "firstName", "lastName", "phone"])
-    .where("id", "in", wanted)
-    .execute();
-  for (const row of rows) names.set(row.id, { firstName: row.firstName, lastName: row.lastName, phone: row.phone });
-  return names;
 }

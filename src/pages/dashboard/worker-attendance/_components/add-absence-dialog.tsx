@@ -421,13 +421,7 @@ function AbsenceForm({
 }
 
 /** What the absence did: the visits she leaves, each with the way to replace her; or nothing to do. */
-function RecordedView({
-  result,
-  onClose,
-}: {
-  result: RecordedAbsence & { leave: boolean };
-  onClose: () => void;
-}) {
+function RecordedView({ result, onClose }: { result: RecordedAbsence & { leave: boolean }; onClose: () => void }) {
   const t = useTranslations("WorkerAttendance.Dialog");
   const tCommon = useTranslations("Common");
   const dates = useDates();

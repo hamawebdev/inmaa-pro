@@ -332,7 +332,9 @@
     "ExtraVisitAlreadyPlanned": "Une visite supplémentaire est déjà planifiée pour cette visite.",
     "ProgrammeFormIncomplete": "Les jours ou les dates du formulaire de ce dossier manquent ou ne se suivent pas. Corrigez d'abord le formulaire.",
     "VisitNotMovable": "Seule une visite confirmée ou en attente de confirmation peut être déplacée.",
-    "VisitMoveIntoPast": "Une visite ne peut pas être déplacée à un jour déjà passé."
+    "VisitMoveIntoPast": "Une visite ne peut pas être déplacée à un jour déjà passé.",
+    "ZoneNotFound": "Cette zone n'existe pas.",
+    "SupervisorMustBeEmployee": "Choisissez un employé comme superviseur."
   },
   "FileVisits": {
     "ProgrammeTitle": "Programme",

@@ -255,7 +255,7 @@ describe("onDemandJobFinished", () => {
     expect(await finished(file.id)).toBe(false);
   });
 
-  it("is what the sign-off of the last day reads, and the handler writes nothing more yet", async () => {
+  it("closes the job through Clients' closeFile when the last day is signed off", async () => {
     const { file, second } = await twoDayJob();
     await setVisit(second.id, { status: "DONE" });
     await test.rows.insert("VisitReport", {
@@ -265,8 +265,32 @@ describe("onDemandJobFinished", () => {
       signoffStatus: "ACCEPTED",
     });
     await test.transact((ex, ctx) => emit(ex, ctx, "visit.signedOff", { visitId: second.id }));
-    expect(await finished(file.id)).toBe(true);
-    // Closing the job is Clients' closeFile, called from the handler once it is exported.
+    const after = await test.db
+      .selectFrom("File")
+      .select(["stage", "endKind", "endedDate", "closeReason"])
+      .where("id", "=", file.id)
+      .executeTakeFirstOrThrow();
+    expect(after).toMatchObject({ stage: "CONTRACT_ENDED", endKind: "JOB_DONE", closeReason: "JOB_DONE" });
+    expect(after.endedDate).toBe(second.visitDate);
+    const closed = await test.db
+      .selectFrom("File")
+      .select("closedAt")
+      .where("id", "=", file.id)
+      .executeTakeFirstOrThrow();
+    expect(closed.closedAt).not.toBeNull();
+  });
+
+  it("keeps the job open while an extra visit asked for on the order is not planned", async () => {
+    const { file, second } = await twoDayJob();
+    await setVisit(second.id, { status: "DONE" });
+    await test.rows.insert("VisitReport", {
+      visitId: second.id,
+      entryState: "COMPLETE",
+      completion: "FULL",
+      signoffStatus: "ACCEPTED",
+      needsExtraVisit: 1,
+    });
+    await test.transact((ex, ctx) => emit(ex, ctx, "visit.signedOff", { visitId: second.id }));
     const after = await test.db
       .selectFrom("File")
       .select(["stage", "closedAt"])

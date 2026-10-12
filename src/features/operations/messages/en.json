@@ -332,7 +332,9 @@
     "ExtraVisitAlreadyPlanned": "An extra visit is already planned for this visit.",
     "ProgrammeFormIncomplete": "The days or dates on this file's form are missing or out of order. Correct the form first.",
     "VisitNotMovable": "Only a visit confirmed or awaiting confirmation can be moved.",
-    "VisitMoveIntoPast": "A visit cannot be moved to a day already past."
+    "VisitMoveIntoPast": "A visit cannot be moved to a day already past.",
+    "ZoneNotFound": "This zone does not exist.",
+    "SupervisorMustBeEmployee": "Choose an employee as supervisor."
   },
   "FileVisits": {
     "ProgrammeTitle": "Programme",

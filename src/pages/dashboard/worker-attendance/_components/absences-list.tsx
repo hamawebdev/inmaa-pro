@@ -21,14 +21,7 @@ import type { AbsenceLine } from "@/features/operations/services/worker-attendan
 import { useCodeLabel } from "@/i18n/use-code-label";
 import { normaliseName } from "@/lib/text/normalise";
 
-import {
-  AbsenceKind,
-  AbsencePay,
-  AbsenceStatusChip,
-  AbsenceWhen,
-  PeriodSwitch,
-  WorkerCell,
-} from "./attendance-bits";
+import { AbsenceKind, AbsencePay, AbsenceStatusChip, AbsenceWhen, PeriodSwitch, WorkerCell } from "./attendance-bits";
 import { CANCELLABLE, useDates, workerName } from "./attendance-helpers";
 import { monthRange, shiftMonth } from "./attendance-params";
 import { absencesQuery } from "./attendance-queries";

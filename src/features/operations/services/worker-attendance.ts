@@ -487,9 +487,9 @@ export async function listAttendanceOverview(
   const date = dateOf(input.date);
 
   const seats = await readSeats(ex, { from: date, to: date, heldVisitsOnly: true });
-  const schedulable = await readWorkers(ex);
+  const schedulable = await readWorkers(ex, ctx);
   const listed = new Set(schedulable.map((worker) => worker.id));
-  const others = await readWorkers(ex, {
+  const others = await readWorkers(ex, ctx, {
     ids: [...new Set(seats.map((seat) => seat.workerId).filter((id) => !listed.has(id)))],
   });
   const workers = [...schedulable, ...others].map(attendanceWorker).sort(byName);
@@ -574,7 +574,7 @@ export async function listAttendanceAbsences(
 
   const merged = mergeAbsenceParts(items);
   const workers = new Map(
-    (await readWorkers(ex, { ids: merged.map((line) => line.workerId) })).map((worker) => [
+    (await readWorkers(ex, ctx, { ids: merged.map((line) => line.workerId) })).map((worker) => [
       worker.id,
       attendanceWorker(worker),
     ]),
@@ -603,7 +603,7 @@ export async function listWorkerAttendanceHistory(
 ): Promise<AttendanceHistory> {
   requireAttendanceRead(ctx);
   const { from, to } = rangeOf(input);
-  const [found] = await readWorkers(ex, { ids: [input.workerId] });
+  const [found] = await readWorkers(ex, ctx, { ids: [input.workerId] });
   if (!found) throw new ServiceError("This worker does not exist.");
 
   const seats = (await readSeats(ex, { from, to, workerId: found.id, heldVisitsOnly: false })).map(

@@ -13,7 +13,7 @@ export default function QualityPage() {
   const tNav = useTranslations("Nav");
 
   return (
-    <SectionScreen section="requests" title={tNav("RequestsHeading")}>
+    <SectionScreen section="requests" title={tNav("Quality")}>
       <PagePlaceholder owner="operations" />
     </SectionScreen>
   );

@@ -1,14 +1,17 @@
 import type { CodeLabelCase } from "@/i18n/code-labels";
 
-import { REPLACEMENT_REASONS } from "./services/absences";
+import { ABSENCE_CATEGORIES, ABSENCE_STATUSES, ABSENCE_VIAS, REPLACEMENT_REASONS } from "./services/absences";
 
 import {
+  AREA_KINDS,
   COMPLAINT_COUNTER_STATES,
   COMPLETIONS,
+  PRESENCE_PROOFS,
   PROBLEM_KINDS,
   PROGRAMME_WARNINGS,
   REPLACEMENT_EXCLUSIONS,
   REPLACEMENT_TIERS,
+  SEAT_STATUSES,
   SIGNOFF_STATUSES,
   TASK_FREQUENCIES,
   VISIT_STATUSES,
@@ -42,4 +45,10 @@ export const codeLabelCases: readonly CodeLabelCase[] = [
   ["SignoffStatuses.Housing", SIGNOFF_STATUSES],
   ["SignoffStatuses.Other", SIGNOFF_STATUSES],
   ["ReplacementReasons", REPLACEMENT_REASONS],
+  ["FileTasks.AreaKinds", AREA_KINDS],
+  ["WorkerAttendance.Categories", ABSENCE_CATEGORIES],
+  ["WorkerAttendance.AbsenceStatuses", ABSENCE_STATUSES],
+  ["WorkerAttendance.Vias", ABSENCE_VIAS],
+  ["WorkerAttendance.PresenceProofs", PRESENCE_PROOFS],
+  ["WorkerAttendance.SeatStatuses", SEAT_STATUSES],
 ];

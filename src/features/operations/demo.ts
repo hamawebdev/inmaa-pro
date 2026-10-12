@@ -5,6 +5,7 @@ import { entryValuesOf } from "./components/visit-entry/visit-entry-data";
 import { addDays, clockOf, minutesOf } from "./rules/calendar";
 import { assignVisitWorker, listSeatCandidates } from "./services/assignment";
 import { recordOrderPrinted } from "./services/mission-order";
+import { assignZoneSupervisor } from "./services/supervisors";
 import { generateFileVisits, OPEN_STATUSES } from "./services/programme";
 import { getVisitEntry, reportArrival, saveReturnedOrder } from "./services/visit-entry";
 import type { ReturnedOrderValues } from "./validators/returned-order";
@@ -31,6 +32,24 @@ export async function seedDemo(ex: Executor, ctx: ServiceContext, tools: DemoToo
     .orderBy("createdAt")
     .execute();
   for (const file of files) await generateFileVisits(ex, ctx, file.id);
+
+  // The zones' supervisor (People's demo employee), so the orders and the supervisor's day sheet name one.
+  const supervisorId = tools.names.people?.employeeSupervisor;
+  if (supervisorId) {
+    for (const zoneId of [
+      tools.names.core?.zoneOumElBouaghi,
+      tools.names.core?.zoneAinBeida,
+      tools.names.core?.zoneAinMlila,
+    ]) {
+      if (!zoneId) continue;
+      await assignZoneSupervisor(ex, ctx, {
+        zoneId,
+        supervisorEmployeeId: supervisorId,
+        fromDate: addDays(ctx.today, -14) as typeof ctx.today,
+      });
+    }
+    names.supervisor = supervisorId;
+  }
 
   const visits = await ex
     .selectFrom("Visit")

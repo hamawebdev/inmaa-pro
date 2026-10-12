@@ -332,7 +332,9 @@
     "ExtraVisitAlreadyPlanned": "سبقت برمجة زيارة إضافية لهذه الزيارة.",
     "ProgrammeFormIncomplete": "أيام التنفيذ أو التواريخ في استمارة هذا الملف ناقصة أو غير صحيحة. صحّح الاستمارة أولاً.",
     "VisitNotMovable": "لا تُنقل إلا زيارة مؤكدة أو بانتظار التأكيد.",
-    "VisitMoveIntoPast": "لا يمكن نقل زيارة إلى يوم مضى."
+    "VisitMoveIntoPast": "لا يمكن نقل زيارة إلى يوم مضى.",
+    "ZoneNotFound": "هذه المنطقة غير موجودة.",
+    "SupervisorMustBeEmployee": "اختر موظفاً ليكون مشرفاً."
   },
   "FileVisits": {
     "ProgrammeTitle": "برنامج الزيارات",

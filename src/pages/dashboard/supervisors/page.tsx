@@ -13,7 +13,7 @@ export default function SupervisorsPage() {
   const tNav = useTranslations("Nav");
 
   return (
-    <SectionScreen section="employees" title={tNav("EmployeesHeading")}>
+    <SectionScreen section="employees" title={tNav("Supervisors")}>
       <PagePlaceholder owner="operations" />
     </SectionScreen>
   );

@@ -253,10 +253,10 @@ export async function getWeekProgramme(
   ).filter((seat) => shownIds.has(seat.visitId));
 
   // The workers: those seated on a visit shown, and those who may be given seats in the zone shown.
-  const schedulable = await readWorkers(ex);
+  const schedulable = await readWorkers(ex, ctx);
   const workers = new Map<string, SchedulableWorker>(schedulable.map((worker) => [worker.id, worker]));
   const seated = new Set(seatRows.map((seat) => seat.workerId));
-  for (const worker of await readWorkers(ex, { ids: [...seated].filter((id) => !workers.has(id)) })) {
+  for (const worker of await readWorkers(ex, ctx, { ids: [...seated].filter((id) => !workers.has(id)) })) {
     workers.set(worker.id, worker);
   }
   const panel = [...workers.values()].filter(
@@ -465,9 +465,9 @@ async function assignedSeats(ex: Executor, visitId: string) {
 }
 
 /** The seated workers, whatever their state today: one who has left since still holds her seat. */
-async function seatedWorkers(ex: Executor, visitId: string) {
+async function seatedWorkers(ex: Executor, ctx: ServiceContext, visitId: string) {
   const seats = await assignedSeats(ex, visitId);
-  const workers = await readWorkers(ex, { ids: seats.map((seat) => seat.workerId) });
+  const workers = await readWorkers(ex, ctx, { ids: seats.map((seat) => seat.workerId) });
   return seats.map((seat) => {
     const worker = workers.find((each) => each.id === seat.workerId);
     if (!worker) throw new Error(`operations: worker ${seat.workerId} of seat ${seat.id} was not found`);
@@ -515,7 +515,7 @@ export async function previewVisitMove(
   const target = checkTarget(input);
   const visit = await readVisitForSeat(ex, input.visitId);
   const moved: VisitForSeat = { ...visit, visitDate: target.date, plannedStartTime: target.startTime };
-  const team = await seatedWorkers(ex, visit.id);
+  const team = await seatedWorkers(ex, ctx, visit.id);
   const ids = team.map(({ worker }) => worker.id);
   const settings = await workTimeSettings(ex);
   const weekSeats = await weekSeatsByWorker(ex, moved.visitDate, { workerIds: ids, exceptVisitId: visit.id });
@@ -571,7 +571,7 @@ export async function moveVisit(ex: Executor, ctx: ServiceContext, input: MoveVi
 
   const moved: VisitForSeat = { ...visit, visitDate: target.date, plannedStartTime: target.startTime };
   const judged: { seatId: string; worker: SchedulableWorker; judgement: SeatJudgement }[] = [];
-  for (const { seatId, worker } of await seatedWorkers(ex, visit.id)) {
+  for (const { seatId, worker } of await seatedWorkers(ex, ctx, visit.id)) {
     judged.push({ seatId, worker, judgement: await judgeSeat(ex, ctx, worker, moved, input.override) });
   }
 

@@ -5,89 +5,89 @@ orders, attendance, task lists, problem reports, sign-off and rating, supervisor
 worker phone: a phone feature is a printed office form typed in afterwards. Read `CLAUDE.md`, `docs/scope.md`,
 `docs/data-model/CONTRACTS.md` (sections 2–4: my tables, my exports, the events) before changing anything.
 
-## What exists
+## What exists (rounds 0 to 2)
 
-| Where                        | What                                                                                                                                                                                                                                                   |
-| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `validators/option-codes.ts` | my own code lists; the shared ones are re-exports of `@/lib/options`                                                                                                                                                                                   |
-| `rules/`                     | pure functions with tests: calendar, visit dates, visit tasks, working time, replacement ranking, arrival flag, inspection score, complaint counter                                                                                                    |
-| `catalog/`                   | the task catalogue per division and the inspection criteria                                                                                                                                                                                            |
-| `events.ts`                  | `file.contracted` → programme row, slots, tasks from «الخدمات المقدمة», every visit; `file.ended` → future visits cancelled, inspections stopped                                                                                                       |
-| `services/upstream.ts`       | read-only stand-ins for Clients' `getFileForScheduling`, `getSiteForOrder` and People's `listSchedulableWorkers`, `getStaffSummary`: replace each by the owner's export when it lands                                                                  |
-| `services/programme.ts`      | `generateFileVisits` (the engine), `generateVisits`, `previewVisitGeneration`, `cancelFutureVisits`, `ensureProgramme`                                                                                                                                 |
-| `services/tasks.ts`          | `seedTasksFromServices`; a visit's tick lines: computed until frozen (`checklistOf`), frozen at first print or first typing (`freezeChecklist`)                                                                                                        |
-| `services/board.ts`          | `listDayBoard`, `listFileVisits`                                                                                                                                                                                                                       |
-| `services/mission-order.ts`  | `getMissionOrder` (the sheet's data from stored rows; the hand-outs block from Money's `getHandOutsForVisit`), `recordOrderPrinted` (freeze, count, DISCLOSE log)                                                                                      |
-| `services/visit-entry.ts`    | `getVisitEntry`, `saveReturnedOrder` (one Save: seats, ticks, report, problems, status, `visit.signedOff`), `reportArrival`                                                                                                                            |
-| `services/assignment.ts`     | `listSeatCandidates`, `assignVisitWorker` (working-time rules, manager override → `RuleOverride`), `removeVisitWorker`, `confirmVisit`, `settleVisitTeam`                                                                                              |
-| `services/absences.ts`       | `recordWorkerAbsence`, `decideWorkerLeave`, `cancelWorkerAbsence`, `setAbsencePayTreatment`, `listWorkerAbsences` (People's exports), `suggestReplacements`, `replaceSeat`                                                                             |
-| `services/day-sheets.ts`     | `getSupervisorDaySheet`, `getCallList`, `nextWorkingDay`, `recordDaySheetPrinted`                                                                                                                                                                      |
-| `sheets/`                    | mission order, inspection sheet, supervisor day sheet, call list: pure pictures of plain objects (`sheet-data.ts`), set in the bundled Naskh; `samples.ts` now only feeds the blank sheets and the tests                                               |
-| `components/`                | `visit-entry/` (the returned order form), `day-board/` (the board), chips, toggles, notes                                                                                                                                                              |
-| `demo.ts`                    | `seedDemo`: teams where workers exist, two orders returned and signed off, today's first order printed and its arrival phoned in. Names: `fileWithVisits`, `visitReturned`, `visitReturnedWithNotes`, `visitInProgress`, `visitToday`, `visitTomorrow` |
-| pages                        | `visits/` (board), `visits/[id]` (returned order), `visits/[id]/print`, `visits/calls/[date]/print`, `supervisors/[id]/day/[date]/print`, `files/[id]/visits` (programme and list), `quality/inspections/[id]/print` (blank only)                      |
+| Where                                       | What                                                                                                                                                                                                                                                                                                                                                                                                              |
+| ------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `validators/`                               | `option-codes.ts` (my lists; shared ones re-exported from `@/lib/options`), `returned-order.ts`, `file-task.ts`                                                                                                                                                                                                                                                                                                   |
+| `rules/`                                    | pure functions with tests: calendar, visit dates, visit tasks, working time, replacement ranking, arrival flag, inspection score, complaint counter                                                                                                                                                                                                                                                               |
+| `catalog/`                                  | the task catalogue per division, the inspection criteria                                                                                                                                                                                                                                                                                                                                                          |
+| `events.ts`                                 | `file.contracted`, `file.ended`, `file.termsChanged`, `file.renewed`, `site.changed`, `staff.unavailable`, `visit.signedOff` (complaint from «غير راضٍ»; closes a finished on-demand job through Clients' `closeFile` unless an extra visit is still proposed)                                                                                                                                                    |
+| `services/upstream.ts`                      | People's `listSchedulableWorkers` / `getStaffSummary` (as `readWorkers`, `staffSummaries`); stand-ins `readFileForScheduling`, `readSiteForOrder` until Clients exports `getFileForScheduling`, `getSiteForOrder`                                                                                                                                                                                                 |
+| `services/programme.ts`                     | `generateFileVisits`, `generateVisits`, `previewVisitGeneration`, `cancelFutureVisits`, `ensureProgramme`                                                                                                                                                                                                                                                                                                         |
+| `services/programme-changes.ts`             | `updateFutureVisits` (+ preview), `copyFileSetup`, `markFormChanged`                                                                                                                                                                                                                                                                                                                                              |
+| `services/staff-changes.ts`                 | `applySiteChange`, `applyStaffUnavailable`                                                                                                                                                                                                                                                                                                                                                                        |
+| `services/tasks.ts`, `file-tasks.ts`        | a visit's tick lines (computed, then frozen at first print or first typing); the file's tasks and places editor                                                                                                                                                                                                                                                                                                   |
+| `services/board.ts`                         | `listDayBoard`, `listFileVisits`                                                                                                                                                                                                                                                                                                                                                                                  |
+| `services/mission-order.ts`                 | `getMissionOrder` (hand-outs from Money's `getHandOutsForVisit`), `recordOrderPrinted`                                                                                                                                                                                                                                                                                                                            |
+| `services/visit-entry.ts`                   | `getVisitEntry`, `saveReturnedOrder`, `reportArrival`                                                                                                                                                                                                                                                                                                                                                             |
+| `services/assignment.ts`                    | `listSeatCandidates`, `assignVisitWorker`, `removeVisitWorker`, `confirmVisit`, `settleVisitTeam`, the shared rule helpers (`judgeSeat`, `writeOverrides`…)                                                                                                                                                                                                                                                       |
+| `services/absences.ts`                      | `recordWorkerAbsence`, `decideWorkerLeave`, `cancelWorkerAbsence`, `setAbsencePayTreatment`, `listWorkerAbsences`, `suggestReplacements`, `replaceSeat`                                                                                                                                                                                                                                                           |
+| `services/week-programme.ts`                | `getWeekProgramme`, `moveVisit`                                                                                                                                                                                                                                                                                                                                                                                   |
+| `services/worker-attendance.ts`             | `listAttendanceOverview`, `listWorkerAttendanceHistory`                                                                                                                                                                                                                                                                                                                                                           |
+| `services/complaints.ts`, `extra-visits.ts` | `openComplaint`, `openComplaintFromSignoff`, `recordFirstResponse`, `getComplaintCounter`; `listExtraVisitProposals`, `planExtraVisit`, `onDemandJobFinished`                                                                                                                                                                                                                                                     |
+| `services/supervisors.ts`                   | `assignZoneSupervisor` (ends the one before, re-stamps the zone's visits to come)                                                                                                                                                                                                                                                                                                                                 |
+| `services/day-sheets.ts`                    | `getSupervisorDaySheet`, `getCallList`, `recordDaySheetPrinted`                                                                                                                                                                                                                                                                                                                                                   |
+| `sheets/`                                   | mission order, inspection sheet, supervisor day sheet, call list, set in the bundled Naskh; `samples.ts` feeds the blank sheets and tests                                                                                                                                                                                                                                                                         |
+| `components/`                               | `day-board/`, `visit-entry/` (returned order form), `visit-team/` (team card, seat picker, replacement dialog), chips                                                                                                                                                                                                                                                                                             |
+| `demo.ts`                                   | zone supervisors, teams, two orders returned and signed off, today's first order printed and arrived. Names: `supervisor`, `fileWithVisits`, `visitReturned`, `visitReturnedWithNotes`, `visitInProgress`, `visitToday`, `visitTomorrow`                                                                                                                                                                          |
+| pages                                       | `visits/` (board), `visits/[id]` (team card + returned order), `visits/[id]/print`, `visits/calls/[date]/print`, `supervisors/[id]/day/[date]/print`, `files/[id]/visits`, `files/[id]/tasks`, `work-program/` (weekly calendar, drag to move), `worker-attendance/` (records, absences, record an absence); `quality/` and `supervisors/` are still placeholders; `quality/inspections/[id]/print` is blank-only |
 
 Blank sheets: `visits/blank-<division>/print`, `visits/calls/blank/print`, `supervisors/blank/day/<date>/print`,
 `quality/inspections/blank-<division>/print`.
 
 ## Conventions I follow
 
-- Services `(ex, ctx, input)`, each tested on `createTestDatabase()`; screens call the `action`/`query` wrappers
-  at the foot of each file. A save sends only changed columns. Refusals are English sentences under `Errors` in
-  three languages. Handlers never throw for what the user cannot fix (no dates → no visits and a warning).
+- Services `(ex, ctx, input)`, each tested on `createTestDatabase()`; `action`/`query` wrappers at the foot of the
+  file. A save sends only changed columns. Refusals are English sentences under `Errors` in three languages.
+  Handlers never throw for what the user cannot fix (no dates → no visits and a warning).
 - Never nest `test.transact` (or any transaction) inside another: one connection, it waits for ever.
-- A visit is keyed by its slot and `slotDate`; generation only adds what is missing. Visit numbers are taken per
-  calendar year of the visit's date.
+- Messages are merged with a script, never by hand, when several people write at once (same keys in three files).
+- A visit is keyed by its slot and `slotDate`; generation only adds what is missing. Numbers are per calendar
+  year of the visit's date. A moved visit keeps its `slotDate` and gets `isManuallyEdited`.
 - Status rule (`settleVisitTeam`): a contract visit with every seat filled is «مؤكدة»; a seat opening returns it
-  to «بانتظار التأكيد»; an on-demand visit waits for `confirmVisit`. A team change after the order was printed
-  sets `planChangedAt`.
-- The log: one entry per user action (sign-off and typed times with their changes; a correction of a typed time
-  needs the user's reason and `visit.correctTimes`; an override needs `schedule.overrideRule` and a reason;
-  printing an order, a day sheet or a call list is a DISCLOSE).
-- Values: dates `YYYY-MM-DD`, times `HH:MM`, minutes, ISO instants. Worked minutes: end minus start of work, else
-  departure minus arrival, else empty (RULINGS-NEEDED 14). Late minutes: arrival read on the day nearest the
-  planned start.
-- Every date on screen through `intlLocaleFor(locale)` (`ar-DZ`); sheets print dates as digits.
-- `<Ltr>` for numbers, times, codes; `<bdi>` for typed names and addresses. No «» in Arabic text of mine.
-- Sheets: the print kit only, nothing over his letterhead or footer; check each page PNG with
-  `npm run pdf -- --demo --route "/dashboard/visits/{operations.visitReturned}/print" --png`.
-- Printing is recorded through `<PrintButton onPrint>` (the hook runs before the dialog and stops it when the
-  record fails; Ctrl+P goes through it too).
-- Read-only users (`useSectionLevel("REQUESTS") !== "WRITE"`) see no write button: the board's arrival menu,
-  the team card's acts, the returned order's Save (the form is disabled), the order's print, File › الزيارات'
-  generate button. Every write is also refused by its service.
+  to «بانتظار التأكيد»; an on-demand visit waits for `confirmVisit`. A team or time change after the order was
+  printed sets `planChangedAt`.
+- Working-time rules: REFUSED refuses; NEEDS_MANAGER needs `schedule.overrideRule` and a typed reason
+  (`RuleOverride` row, OVERRIDE log), night work by a woman also the inspector's derogation reference.
+- The log: one entry per user action; a corrected typed time needs `visit.correctTimes` and a reason; printing an
+  order, a day sheet or a call list is a DISCLOSE recorded through `<PrintButton onPrint>` before the dialog.
+- Read-only users (`useSectionLevel("REQUESTS") !== "WRITE"`) see no write button; every write is refused by its
+  service too.
+- Screens: a tab page is headed with its tab's name (`tNav("Visits")`); Save is `variant="success"` at the default
+  size inside `PageActions`, Cancel `outline`; a table fits its box at 1440×900 and 1024×640 in the three
+  languages, one line per cell (cap and `truncate`), row buttons icon-only below `2xl`. `<Ltr>` for numbers and
+  times, `<bdi>` for typed names, dates through `intlLocaleFor(locale)`, no «» in Arabic text of mine.
+- Sheets: the print kit only, nothing over his letterhead or footer; check each page PNG
+  (`npm run pdf -- --demo --route "/dashboard/visits/{operations.visitReturned}/print" --png`). A dialog is shot
+  with `--before "<js that clicks and waits>"`.
 
 ## Rulings I was given
 
-- Round 0: the site's work profile is Clients' office block on `Site` (I read it); `WorkerAbsence` is mine and
-  People books through my exports; Foundation mounts the board and tiles; the vehicle register is mine.
-- Round 0b accepted: «جارية» on the info tone until a seventh chip tone exists; «لا» before «نعم» on the problem
-  question; partial completion still records the visit done; the weaker presence proof.
-- Round 1 start: shared lists from `@/lib/options` (done); sheets in Naskh (done); demo through
-  `seedDemo(ex, ctx, tools)` (done).
+- Round 0: the site's work profile is Clients' office block on `Site`; `WorkerAbsence` is mine, People books
+  through my exports; the vehicle register is mine.
+- Round 0b / 1: «لا» before «نعم» on the problem question; partial completion still records the visit done; the
+  weaker presence proof; past visits of a late contract show as not returned; «مؤكدة» only with every seat
+  filled; future ON_DEMAND visits are cancelled too when a file ends; a no-show becomes an absence for People to
+  treat; «لم تكتمل» makes the visit «مشكلة»; a changed plan is a replacement notice on the call list.
+- Checker's audit (docs/checker/screens.md): the rules under "Screens" above; the heading row's `actions` slot
+  keeps the print action.
 
 ## Open items
 
-- Own reaction to `visit.signedOff` is not written: a complaint on «غير راضٍ», the proposal of an extra visit,
-  and closing an on-demand file after its last visit (needs Clients' `closeFile`).
-- `updateFutureVisits`, `copyFileSetup` (renewal), `site.changed` and `staff.unavailable` handlers: not written.
-- No screen yet for: the seat picker and the replacement suggestions (services exist), recording an absence,
-  File › المهام (tasks and areas editor), the weekly «برنامج العمل», inspections, complaints.
-- A no-show typed on an order is recorded as an absence of category OTHER, via NO_SHOW, for the visit's hours;
-  People sets its pay treatment.
-- Foundation: seventh `StatusChip` tone; `DayBoard` on the home screen; an `onPrint` hook on `PrintButton`;
-  `SHEET_FONT_STAND_IN` exported from the kit's index (I import it from `sheet-constants`).
-- In Naskh the mission order runs to three pages for every division: the third is the tear-off slip alone.
-
-## Round 2 (in progress)
-
-Briefed: the reactions to `visit.signedOff` (complaint from «غير راضٍ» with its counter, extra-visit proposal,
-closing an on-demand job through Clients' `closeFile` once it lands); `updateFutureVisits`, `copyFileSetup`, the
-`file.termsChanged`, `file.renewed`, `site.changed` and `staff.unavailable` handlers; screens: seat picker with
-the working-time warnings and the manager's override, replacement suggestions, recording an absence (tab
-«الحضور والغياب» under «عمال النظافة»), File › «المهام», the weekly «برنامج العمل» with drag to move a visit.
-Not in round 2: quality screens, supervisors and zones, alert tiles (round 3).
-Accepted at the end of round 1: the six interpretations listed in the round 1 report (past visits of a late
-contract show as not returned; «مؤكدة» only with every seat filled; future ON_DEMAND visits cancelled too; a
-no-show becomes an absence for People to treat; «لم تكتمل» makes the visit «مشكلة»; a changed plan is listed as
-a replacement notice on the call list).
+- Round 3 (next): quality screens (supervisor inspections with the sheet printed from a stored inspection,
+  complaints with the counter, ratings), supervisors and zones (screen on `assignZoneSupervisor`, worker's own
+  supervisor), alert tiles in `alerts.ts` (no arrival reported, orders not returned, complaints past their
+  target), `homeSlots` in `home.tsx` (today's tiles three to a row:
+  `grid min-w-0 grid-cols-1 gap-5 md:grid-cols-3 tall:gap-6`).
+- No screen yet for: extra-visit proposals (`listExtraVisitProposals`, `planExtraVisit`), «تحديث الزيارات
+  القادمة» (`updateFutureVisits` with its preview) on File › الزيارات, postponing or cancelling one visit.
+- Visits an update adds are announced by no event: Money's dues for a per-visit file follow only the cancelled
+  ones (`visit.statusChanged`). Needs a ruling: call Money's `syncDues`, or a new event.
+- `generateFileVisits` seats the standing team without reading sanctions (People's list now carries them).
+- `programme-changes.ts` and `staff-changes.ts` repeat a few private helpers of `programme.ts`; the complaint
+  code lists live in `complaints.ts` and belong in `option-codes.ts`.
+- In Naskh the blank mission order is three pages (the third is the tear-off slip alone); a filled one is two.
+- The day board shows three visits at 1024×640 (the academy's attendance list shows four: it has one row of
+  controls fewer).
+- Clients' `getFileForScheduling` and `getSiteForOrder` are not exported yet (`upstream.ts`).

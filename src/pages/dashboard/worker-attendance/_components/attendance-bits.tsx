@@ -1,5 +1,3 @@
-import * as React from "react";
-
 import {
   BadgeCheck,
   CalendarClock,
@@ -141,9 +139,7 @@ export function AbsenceWhen({ line }: { line: AbsenceLine }) {
   const typeLabel = useCodeLabel("Options.AbsenceType");
   const locale = useLocale();
   const days =
-    line.days === null
-      ? null
-      : (line.days / 1000).toLocaleString(intlLocaleFor(locale), { maximumFractionDigits: 3 });
+    line.days === null ? null : (line.days / 1000).toLocaleString(intlLocaleFor(locale), { maximumFractionDigits: 3 });
   return (
     <div className="min-w-0">
       <span className="block font-bold">
@@ -177,7 +173,7 @@ export function AbsenceKind({ line }: { line: AbsenceLine }) {
   const viaLabel = useCodeLabel("WorkerAttendance.Vias");
   const second = [line.reportedVia ? viaLabel(line.reportedVia) : null, line.reason].filter(Boolean).join(" · ");
   return (
-    <div className="min-w-0 max-w-72">
+    <div className="max-w-72 min-w-0">
       <span className="block font-bold">
         {categoryLabel(line.category)}
         {line.leaveType && <span className="font-normal"> · {leaveLabel(line.leaveType)}</span>}

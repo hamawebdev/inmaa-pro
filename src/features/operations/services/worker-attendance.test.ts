@@ -157,7 +157,13 @@ describe("listAttendanceOverview", () => {
     const seatB = await assign(monday.id, b.id);
     await typeOrder(monday.id, {
       [seatA]: { arrivedTime: "08:20", workStartTime: "08:25", workEndTime: "11:00", leftTime: "11:05" },
-      [seatB]: { arrivedTime: "07:55", workStartTime: "08:00", workEndTime: "11:00", leftTime: "11:10", departure: false },
+      [seatB]: {
+        arrivedTime: "07:55",
+        workStartTime: "08:00",
+        workEndTime: "11:00",
+        leftTime: "11:10",
+        departure: false,
+      },
     });
     test.clock.set("2026-11-02T15:00:00.000Z");
 
@@ -378,10 +384,7 @@ describe("listWorkerAttendanceHistory", () => {
       test.transact((ex, ctx) => listAttendanceOverview(ex, ctx, { date: "2026-11-02" }), nobody),
     ).rejects.toThrow("You do not have permission to do this.");
     await expect(
-      test.transact(
-        (ex, ctx) => listAttendanceAbsences(ex, ctx, { from: "2026-11-01", to: "2026-11-30" }),
-        nobody,
-      ),
+      test.transact((ex, ctx) => listAttendanceAbsences(ex, ctx, { from: "2026-11-01", to: "2026-11-30" }), nobody),
     ).rejects.toThrow("You do not have permission to do this.");
   });
 });

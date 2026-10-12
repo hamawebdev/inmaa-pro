@@ -140,13 +140,13 @@ export function FileVisits({ fileId }: { fileId: string }) {
             <Button variant="outline" size="sm" asChild>
               <Link to={`${VISITS_PATH}/${row.original.id}`}>
                 <ClipboardPen />
-                {t("Open")}
+                <span className="sr-only xl:not-sr-only">{t("Open")}</span>
               </Link>
             </Button>
             <Button variant="outline" size="sm" asChild>
               <Link to={`${VISITS_PATH}/${row.original.id}/print`}>
                 <Printer />
-                {t("Order")}
+                <span className="sr-only xl:not-sr-only">{t("Order")}</span>
               </Link>
             </Button>
           </div>

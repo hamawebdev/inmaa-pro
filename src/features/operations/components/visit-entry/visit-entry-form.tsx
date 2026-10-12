@@ -140,14 +140,13 @@ export function VisitEntryForm({
       </fieldset>
 
       <PageActions note={<EntryState data={data} missing={missing} />}>
-        <Button type="button" variant="outline" size="lg" onClick={() => navigate(-1)}>
+        <Button type="button" variant="outline" onClick={() => navigate(-1)}>
           {t("Cancel")}
         </Button>
         {!readOnly && (
           <Button
             type="submit"
             variant="success"
-            size="lg"
             loading={form.formState.isSubmitting}
             disabled={correcting && correctionReason.trim() === ""}
           >

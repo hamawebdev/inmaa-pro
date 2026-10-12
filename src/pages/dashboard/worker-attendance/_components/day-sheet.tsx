@@ -26,14 +26,7 @@ import {
 import { useCodeLabel } from "@/i18n/use-code-label";
 import { normaliseName } from "@/lib/text/normalise";
 
-import {
-  DayStateChip,
-  LateChip,
-  PeriodSwitch,
-  PresenceProofNote,
-  SeatStatusChip,
-  WorkerCell,
-} from "./attendance-bits";
+import { DayStateChip, LateChip, PeriodSwitch, PresenceProofNote, SeatStatusChip, WorkerCell } from "./attendance-bits";
 import { useDates, workerName } from "./attendance-helpers";
 import { dayQuery } from "./attendance-queries";
 

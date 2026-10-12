@@ -67,7 +67,10 @@ export default function WorkerAttendancePage() {
   );
 
   // What shows absences, after one is recorded or cancelled. The visits board refreshes through the actions.
-  const refresh = React.useCallback(() => void queryClient.invalidateQueries({ queryKey: ATTENDANCE_KEY }), [queryClient]);
+  const refresh = React.useCallback(
+    () => void queryClient.invalidateQueries({ queryKey: ATTENDANCE_KEY }),
+    [queryClient],
+  );
 
   const [absence, setAbsence] = React.useState<{ open: boolean; request: AbsenceRequest }>({
     open: false,
@@ -125,7 +128,7 @@ export default function WorkerAttendancePage() {
   return (
     <SectionScreen
       section="workers"
-      title={tNav("WorkersHeading")}
+      title={tNav("WorkerAttendance")}
       actions={
         canWrite ? (
           <Button variant="add" onClick={() => recordAbsence()}>

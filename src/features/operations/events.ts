@@ -1,7 +1,8 @@
+import { closeFile } from "@/features/clients/services/files";
 import type { OnEvent } from "@/lib/events";
 
 import { openComplaintFromSignoff } from "./services/complaints";
-import { onDemandJobFinished } from "./services/extra-visits";
+import { listExtraVisitProposals, onDemandJobFinished } from "./services/extra-visits";
 import { cancelFutureVisits, generateFileVisits } from "./services/programme";
 import { copyFileSetup, markFormChanged } from "./services/programme-changes";
 import { applySiteChange, applyStaffUnavailable } from "./services/staff-changes";
@@ -67,12 +68,11 @@ export function registerEvents(on: OnEvent) {
       .select(["fileId", "status", "visitDate"])
       .where("id", "=", visitId)
       .executeTakeFirst();
-    if (visit?.status === "DONE" && (await onDemandJobFinished(ex, visit.fileId))) {
-      // ── WAITING FOR CLIENTS: closeFile ───────────────────────────────────
-      // The last visit of an on-demand job is done and nothing is left open:
-      // the job ends here, in this transaction (RULINGS-NEEDED 15), once
-      // Clients' closeFile is exported:
-      //   await closeFile(ex, ctx, { fileId: visit.fileId, reason: "JOB_DONE", endedDate: visit.visitDate });
-    }
+    if (visit?.status !== "DONE" || !(await onDemandJobFinished(ex, visit.fileId))) return;
+    // An extra visit asked for on a returned order and not planned yet keeps the job open.
+    if ((await listExtraVisitProposals(ex, ctx, { fileId: visit.fileId })).length > 0) return;
+    // The last visit of an on-demand job is done and nothing is left open: the
+    // job ends here, in this transaction (RULINGS-NEEDED 15).
+    await closeFile(ex, ctx, { fileId: visit.fileId, reason: "JOB_DONE", endedDate: visit.visitDate });
   });
 }

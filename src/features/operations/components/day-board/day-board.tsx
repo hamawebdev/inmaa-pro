@@ -7,7 +7,7 @@ import {
   type PaginationState,
   useReactTable,
 } from "@tanstack/react-table";
-import { ChevronLeft, ChevronRight, ClipboardPen, MapPinCheck, Printer } from "lucide-react";
+import { BellRing, ChevronLeft, ChevronRight, ClipboardPen, Printer } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useLocale, useTranslations } from "use-intl";
 
@@ -73,6 +73,7 @@ export function DayBoard({
   onReportArrival?: (visitId: string, via: ArrivalVia) => void;
 }) {
   const t = useTranslations("DayBoard");
+  const tNotes = useTranslations("VisitEntry.Notes");
   const locale = useLocale();
   const [search, setSearch] = React.useState("");
   const [pagination, setPagination] = React.useState<PaginationState>({ pageIndex: 0, pageSize: 25 });
@@ -121,65 +122,99 @@ export function DayBoard({
         id: "site",
         header: t("Site"),
         cell: ({ row }) => {
-          const { site, visit } = row.original.visit;
+          const { site, visit, zone } = row.original.visit;
+          const name = site.commonName ?? site.address;
           return (
-            <div className="min-w-0">
-              <span className="block font-bold">
-                <bdi>{site.commonName ?? site.address}</bdi>
+            <div className="max-w-36 min-w-0 xl:max-w-56">
+              <span className="block truncate font-bold" title={name}>
+                <bdi>{name}</bdi>
               </span>
-              <span className="block text-sm text-muted-foreground">
+              <span className="block truncate text-sm text-muted-foreground">
                 <Ltr>{visit.number}</Ltr>
+                {zone && (
+                  <>
+                    {" · "}
+                    <bdi>{zone.name}</bdi>
+                  </>
+                )}
               </span>
             </div>
           );
         },
       },
       {
-        id: "zone",
-        header: t("Zone"),
-        cell: ({ row }) => {
-          const zone = row.original.visit.zone;
-          return zone ? <bdi className="whitespace-nowrap">{zone.name}</bdi> : "—";
-        },
-      },
-      {
         id: "team",
         header: t("Team"),
-        cell: ({ row }) => (
-          <div className="min-w-0">
-            <span className="block">
-              {row.original.visit.team.length === 0
-                ? "—"
-                : row.original.visit.team.map((worker, index) => (
-                    <React.Fragment key={index}>
-                      {index > 0 && listSeparator}
-                      <bdi>{`${worker.firstName} ${worker.lastName}`}</bdi>
-                    </React.Fragment>
-                  ))}
-            </span>
-            {row.original.openSeats > 0 && (
-              <span className="block text-sm font-semibold text-warning-ink">
-                {t("OpenSeats", { count: row.original.openSeats })}
+        cell: ({ row }) => {
+          const names = row.original.visit.team.map((worker) => `${worker.firstName} ${worker.lastName}`);
+          return (
+            <div className="max-w-36 min-w-0 xl:max-w-48">
+              <span className="block truncate" title={names.join(listSeparator)}>
+                {names.length === 0
+                  ? "—"
+                  : names.map((name, index) => (
+                      <React.Fragment key={index}>
+                        {index > 0 && listSeparator}
+                        <bdi>{name}</bdi>
+                      </React.Fragment>
+                    ))}
               </span>
-            )}
-          </div>
-        ),
+              {row.original.openSeats > 0 && (
+                <span className="block truncate text-sm font-semibold text-warning-ink">
+                  {t("OpenSeats", { count: row.original.openSeats })}
+                </span>
+              )}
+            </div>
+          );
+        },
       },
       {
         id: "service",
         header: t("Service"),
         cell: ({ row }) => {
-          const services = row.original.visit.services.map(serviceText).filter(Boolean);
-          return services.length > 0 ? <bdi>{services.join(listSeparator)}</bdi> : "—";
+          const services = row.original.visit.services.map(serviceText).filter(Boolean).join(listSeparator);
+          return services ? (
+            <span className="block max-w-28 truncate xl:max-w-40" title={services}>
+              <bdi>{services}</bdi>
+            </span>
+          ) : (
+            "—"
+          );
         },
       },
       {
         id: "status",
         header: t("Status"),
         cell: ({ row }) => (
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-2 whitespace-nowrap">
             <VisitStatusChip status={row.original.visit.visit.status as VisitStatus} />
-            {row.original.noArrival && <NoArrivalFlag />}
+            {row.original.noArrival &&
+              (onReportArrival ? (
+                // The flag is also the way to clear it: the arrival, as the office heard it.
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="icon-sm"
+                      className="text-destructive"
+                      title={tNotes("NO_ARRIVAL_REPORTED")}
+                    >
+                      <BellRing />
+                      <span className="sr-only">{tNotes("NO_ARRIVAL_REPORTED")}</span>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuLabel>{t("ArrivedVia")}</DropdownMenuLabel>
+                    {ARRIVAL_VIAS.map((via) => (
+                      <DropdownMenuItem key={via} onSelect={() => onReportArrival(row.original.visit.visit.id, via)}>
+                        {t(`Via.${via}`)}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ) : (
+                <BellRing className="size-5 text-destructive" aria-label={tNotes("NO_ARRIVAL_REPORTED")} />
+              ))}
           </div>
         ),
       },
@@ -188,41 +223,23 @@ export function DayBoard({
         header: "",
         cell: ({ row }) => (
           <div className="flex items-center justify-end gap-2">
-            {onReportArrival && row.original.noArrival && (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm">
-                    <MapPinCheck />
-                    {t("Arrived")}
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuLabel>{t("ArrivedVia")}</DropdownMenuLabel>
-                  {ARRIVAL_VIAS.map((via) => (
-                    <DropdownMenuItem key={via} onSelect={() => onReportArrival(row.original.visit.visit.id, via)}>
-                      {t(`Via.${via}`)}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
-            <Button variant="outline" size="sm" asChild>
+            <Button variant="outline" size="sm" asChild title={t("Open")}>
               <Link to={`/dashboard/visits/${row.original.visit.visit.id}`}>
                 <ClipboardPen />
-                {t("Open")}
+                <span className="sr-only 2xl:not-sr-only">{t("Open")}</span>
               </Link>
             </Button>
-            <Button variant="outline" size="sm" asChild>
+            <Button variant="outline" size="sm" asChild title={t("Order")}>
               <Link to={`/dashboard/visits/${row.original.visit.visit.id}/print`}>
                 <Printer />
-                {t("Order")}
+                <span className="sr-only 2xl:not-sr-only">{t("Order")}</span>
               </Link>
             </Button>
           </div>
         ),
       },
     ],
-    [t, listSeparator, serviceText, onReportArrival],
+    [t, tNotes, listSeparator, serviceText, onReportArrival],
   );
 
   const table = useReactTable({
@@ -240,25 +257,34 @@ export function DayBoard({
   };
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4 tall:space-y-5">
       <div className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-3">
         <div className="flex min-w-0 flex-wrap items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => goTo(addDays(date, -1))}>
+          <Button variant="outline" size="sm" onClick={() => goTo(addDays(date, -1))} title={t("PreviousDay")}>
             {/* "Previous" points left in English and right in Arabic. */}
             <ChevronLeft className="rtl:rotate-180" />
-            {t("PreviousDay")}
+            <span className="sr-only xl:not-sr-only">{t("PreviousDay")}</span>
           </Button>
-          <span className="min-w-56 text-center text-base font-bold">{dayLabel}</span>
-          <Button variant="outline" size="sm" onClick={() => goTo(addDays(date, 1))}>
-            {t("NextDay")}
+          <span className="min-w-48 text-center text-base font-bold xl:min-w-56">{dayLabel}</span>
+          <Button variant="outline" size="sm" onClick={() => goTo(addDays(date, 1))} title={t("NextDay")}>
+            <span className="sr-only xl:not-sr-only">{t("NextDay")}</span>
             <ChevronRight className="rtl:rotate-180" />
           </Button>
+          {date !== clock.today && (
+            <Button variant="outline" size="sm" onClick={() => goTo(clock.today)}>
+              {t("Today")}
+            </Button>
+          )}
         </div>
-        {date !== clock.today && (
-          <Button variant="outline" size="sm" onClick={() => goTo(clock.today)}>
-            {t("Today")}
-          </Button>
-        )}
+        <TableSearch
+          className="min-w-48 flex-1 sm:max-w-sm"
+          placeholder={t("Search")}
+          value={search}
+          onChange={(value) => {
+            setSearch(value);
+            setPagination((current) => ({ ...current, pageIndex: 0 }));
+          }}
+        />
       </div>
 
       <div className="flex min-w-0 flex-wrap items-center gap-2" aria-label={t("Counts")}>
@@ -277,15 +303,6 @@ export function DayBoard({
         )}
       </div>
 
-      <TableSearch
-        className="max-w-sm"
-        placeholder={t("Search")}
-        value={search}
-        onChange={(value) => {
-          setSearch(value);
-          setPagination((current) => ({ ...current, pageIndex: 0 }));
-        }}
-      />
       <DataTable
         table={table}
         columnCount={columns.length}

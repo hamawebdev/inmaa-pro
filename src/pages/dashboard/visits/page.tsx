@@ -44,7 +44,7 @@ export default function VisitsPage() {
   };
 
   return (
-    <SectionScreen section="requests" title={tNav("RequestsHeading")}>
+    <SectionScreen section="requests" title={tNav("Visits")}>
       {board.isError ? (
         <ErrorState onRetry={() => void board.refetch()} />
       ) : (

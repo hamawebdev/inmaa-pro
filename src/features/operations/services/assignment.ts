@@ -24,7 +24,6 @@ import {
   SCHEDULABLE_ENGAGEMENTS,
   readSiteForOrder,
   readWorkers,
-  schedulableWorkers,
   type SchedulableWorker,
   type SiteForOrder,
 } from "./upstream";
@@ -135,8 +134,8 @@ export function plannedSeat(visit: VisitForSeat): Seat {
 }
 
 /** Shared. A worker who may be given seats now: a cleaning worker on trial or accepted. */
-export async function workerForSeat(ex: Executor, workerId: string): Promise<SchedulableWorker> {
-  const [worker] = await readWorkers(ex, { ids: [workerId] });
+export async function workerForSeat(ex: Executor, ctx: ServiceContext, workerId: string): Promise<SchedulableWorker> {
+  const [worker] = await readWorkers(ex, ctx, { ids: [workerId] });
   if (!worker) throw new ServiceError("This worker does not exist.");
   if (!(SCHEDULABLE_ENGAGEMENTS as readonly string[]).includes(worker.engagementStatus)) {
     throw new ServiceError("This worker cannot be given visits.");
@@ -289,7 +288,7 @@ export function fitsSite(
 ): boolean {
   if (!site) return true;
   if (site.womenOnly && worker.sex !== "FEMALE") return false;
-  return site.requiredAbilityCodes.every((code) => worker.abilities.includes(code));
+  return site.requiredAbilityCodes.every((code) => (worker.abilities as readonly string[]).includes(code));
 }
 
 /**
@@ -559,7 +558,7 @@ export async function listSeatCandidates(
   const site = await readSiteForOrder(ex, { siteId: visit.siteId, securityTicked: false });
   const zoneId = visit.zoneId ?? site?.zoneId ?? null;
   const onVisit = await workersOnVisit(ex, visit.id);
-  const workers = (await schedulableWorkers(ex, ctx, { date: visit.visitDate })).filter(
+  const workers = (await readWorkers(ex, ctx, { date: visit.visitDate })).filter(
     (worker) => !onVisit.has(worker.id) && fitsSite(worker, site),
   );
   if (workers.length === 0) return [];
@@ -643,7 +642,7 @@ export async function assignVisitWorker(
     throw new ServiceError("Every seat of this visit is already filled.");
   }
 
-  const worker = await workerForSeat(ex, input.workerId);
+  const worker = await workerForSeat(ex, ctx, input.workerId);
   const judgement = await judgeSeat(ex, ctx, worker, visit, input.override);
   const seatId = await insertSeat(ex, ctx, { visitId: visit.id, worker });
   await writeOverrides(ex, ctx, judgement, { seatId, worker, visit });
