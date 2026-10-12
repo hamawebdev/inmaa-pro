@@ -261,4 +261,4 @@ These came out of the data model. Each has a working default that is a setting o
 11. When «على عاتق صاحبها» is ticked, does the amount beside it mean anything? Default: stored, ignored in totals.
 12. A first deep clean followed by a periodic contract. Default: one file and one sheet, with the first job as an extra amount due.
 
-Two lists need checking against official sources before the first installer leaves: the 69 wilayas (the eleven created on 16 November 2025 are numbered 59 to 69 as the press reported them) and the 29 communes of the wilaya of أم البواقي (written from memory).
+Two lists were checked on 2026-10-12. The 29 communes of the wilaya of أم البواقي match the 2008 census list and its official codes (0401 to 0429), with one correction («الراحية»). The 69 wilayas still need one check: the eleven created on 16 November 2025 are numbered 59 to 69 as the press reported them, not yet against the Journal officiel.
