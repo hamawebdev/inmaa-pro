@@ -1,1 +1,314 @@
-{}
+{
+  "OperationsSheets": {
+    "SampleNotice": "Sample data. This page will show the record's own data once Operations' services are built.",
+    "MissionOrder": {
+      "Title": "Mission order",
+      "Description": "Printed for the team, filled in on site, then brought back to be typed in.",
+      "Back": "The visit",
+      "PrintNotRecorded": "The print could not be recorded."
+    },
+    "InspectionSheet": {
+      "Title": "Supervisor inspection sheet",
+      "Description": "Marked on site by the supervisor; the office works out the score out of 100."
+    },
+    "DaySheet": {
+      "Title": "Supervisor day sheet",
+      "Description": "The day's visits, absences and quality follow-up for one supervisor."
+    },
+    "CallList": {
+      "Title": "Client call list",
+      "Description": "The clients to telephone about tomorrow's visits. Nothing is sent by the program."
+    }
+  },
+  "VisitStatuses": {
+    "CONFIRMED": "Confirmed",
+    "AWAITING_CONFIRMATION": "Awaiting confirmation",
+    "IN_PROGRESS": "In progress",
+    "DONE": "Done",
+    "POSTPONED": "Postponed",
+    "PROBLEM": "Problem",
+    "CANCELLED": "Cancelled"
+  },
+  "TaskFrequencies": {
+    "DAILY": "Daily",
+    "WEEKLY": "Weekly",
+    "MONTHLY": "Monthly",
+    "SPECIAL": "Special"
+  },
+  "WorkRules": {
+    "OVERLAP": "Two visits at the same time, or too close to travel between",
+    "DAY_SPAN_12H": "The working day spans too many hours",
+    "WEEK_OVER_48H": "Above the weekly limit, overtime included",
+    "NIGHT_WOMAN": "A woman scheduled at night",
+    "NO_REST_DAY": "No rest day in the week",
+    "UNAVAILABLE_DAY": "A day the worker is not available",
+    "ON_LEAVE": "A day of recorded absence or leave",
+    "WEEK_OVER_CAPACITY": "Above the worker's own weekly hours",
+    "WEEK_OVERTIME": "Overtime: above the legal week",
+    "DAY_OVER_8H": "Above a day's hours of work",
+    "REST_DAY_WORKED": "Work on the weekly rest day"
+  },
+  "WorkRuleLevels": {
+    "FLAG": "Noted",
+    "WARNING": "Warning",
+    "NEEDS_MANAGER": "Needs the manager's approval",
+    "REFUSED": "Refused"
+  },
+  "ReplacementExclusions": {
+    "ABSENT": "Absent or on leave",
+    "SANCTIONED": "Suspended or penalised",
+    "UNAVAILABLE_DAY": "Not available that day",
+    "OVERLAP": "On another visit at that time",
+    "WOMEN_ONLY": "The site asks for women only",
+    "MISSING_ABILITY": "Lacks an ability the site needs",
+    "DAY_SPAN_12H": "The day would span too many hours",
+    "WEEK_OVER_48H": "The week would pass the limit",
+    "NIGHT_WOMAN": "Night work for a woman",
+    "RESTING": "Rest day on this contract"
+  },
+  "ReplacementTiers": {
+    "FILE_ALTERNATE": "The file's alternate",
+    "RESERVE_SAME_ZONE": "Reserve, same zone",
+    "WORKER_SAME_ZONE": "Same zone",
+    "RESERVE_OTHER_ZONE": "Reserve, another zone",
+    "WORKER_OTHER_ZONE": "Another zone"
+  },
+  "ProgrammeWarnings": {
+    "END_BEFORE_START": "The end date is before the start date",
+    "NO_EXECUTION_DAY": "No execution day is chosen",
+    "VISITS_PER_WEEK_MISMATCH": "The days ticked do not match the number of visits a week",
+    "REST_DAY_SLOT": "A visit falls on the weekly rest day",
+    "OUTSIDE_ALLOWED_WINDOW": "A visit falls outside the hours the client allows",
+    "DURATION_DAYS_MISMATCH": "The length in days does not match the dates",
+    "NO_WORKING_DAY_IN_RANGE": "No working day between the two dates",
+    "MISSING_DATES": "The form gives no start or end date",
+    "OUTSIDE_SITE_DAYS": "A visit falls on a day the site does not allow",
+    "OUTSIDE_SITE_HOURS": "A visit falls outside the hours the site allows"
+  },
+  "ComplaintCounter": {
+    "RUNNING": "Within the target time",
+    "CLOSE_TO_TARGET": "Close to the target time",
+    "LATE": "Past the target time",
+    "ANSWERED_IN_TIME": "Answered in time",
+    "ANSWERED_LATE": "Answered late"
+  },
+  "VisitEntry": {
+    "Title": "Visit {number}",
+    "Description": "Type in the mission order returned from the site, as it is written on the sheet.",
+    "PrintOrder": "Print the order",
+    "Cards": {
+      "Order": "Mission order",
+      "OrderHint": "As printed on the order. Nothing here is changed by typing the sheet.",
+      "Attendance": "Arrival and departure",
+      "AttendanceHint": "Type the times as written on the sheet, and tick where the site contact initialled.",
+      "Checklist": "Tasks",
+      "ChecklistHint": "Tick what the worker ticked on the sheet.",
+      "WorkerNotes": "Worker's notes",
+      "Completion": "Completion",
+      "Signoff": "Sign-off and rating",
+      "SignoffHint": "The slip as the client filled it in.",
+      "Correction": "Correcting typed times",
+      "CorrectionHint": "A time typed before was changed. Say why: the log keeps the old time and your reason."
+    },
+    "OrderNumber": "Order number",
+    "VisitDate": "Date",
+    "Period": "Hours",
+    "Status": "Status",
+    "Site": "Site",
+    "Division": "Division",
+    "Supervisor": "Supervisor",
+    "ReturnedDate": "Date the order came back",
+    "DidNotCome": "Did not come",
+    "Times": {
+      "arrivedTime": "Arrival",
+      "workStartTime": "Start of work",
+      "workEndTime": "End of work",
+      "leftTime": "Departure"
+    },
+    "Initialled": "Initialled by the site contact",
+    "LateReason": "Reason for any delay",
+    "WorkedTime": "Time worked",
+    "FloorTable": "Floors and entrances",
+    "DepartureChecks": "Checks before leaving",
+    "SpecialTasks": "Special tasks for the day",
+    "WholeSite": "Whole site",
+    "TickAll": "Tick all",
+    "Carried": "carried over",
+    "Priority": "priority {rank}",
+    "ProblemOnSite": "Was there a problem on site?",
+    "ProblemKinds": "Kind of problem",
+    "ProblemDetails": "Details",
+    "Completion": "State of the work",
+    "CompletionPercent": "Completion (%)",
+    "IncompleteReason": "Why the work was not completed",
+    "NeedsExtraVisit": "Is an extra visit needed?",
+    "NeedsSupervisor": "Is the supervisor needed?",
+    "SignoffStatus": "Sign-off",
+    "SignerName": "Name of the person who signed",
+    "SignerRole": "Their role",
+    "SignoffDate": "Date of sign-off",
+    "NobodySigned": "Nobody signed: why",
+    "SignoffNotes": "Client's notes",
+    "WantsOtherService": "Does the client ask for another service?",
+    "OtherService": "Which service",
+    "Ratings": "Rating from 1 to 5",
+    "Rating": {
+      "quality": "Quality of cleaning",
+      "punctuality": "Punctuality",
+      "behaviour": "Worker's conduct",
+      "materials": "Quality of products",
+      "overall": "Overall"
+    },
+    "WouldRecommend": "Would the client recommend the centre?",
+    "SignedOnPaper": "The client or the site contact signed the slip",
+    "WorkerSigned": "The worker signed",
+    "Yes": "Yes",
+    "No": "No",
+    "Cancel": "Cancel",
+    "Save": "Save",
+    "FixMarkedFields": "Correct the marked fields.",
+    "EntryState": {
+      "COMPLETE": "Fully typed in",
+      "PARTIAL": "Partly typed in: {count, plural, one {# item missing} other {# items missing}}"
+    },
+    "Missing": {
+      "WORKER_ARRIVAL": "{name}: arrival time",
+      "WORKER_DEPARTURE": "{name}: departure time",
+      "COMPLETION": "The state of the work",
+      "INCOMPLETE_REASON": "Why the work was not completed",
+      "SIGNOFF": "The client's sign-off, or why nobody signed"
+    },
+    "Notes": {
+      "NO_ARRIVAL_REPORTED": "No arrival reported",
+      "LATE": "{minutes, plural, one {# minute} other {# minutes}} after the planned start",
+      "LATE_NO_REASON": "Late beyond the grace time: type the reason if the sheet gives one",
+      "ARRIVAL_NOT_INITIALLED": "The arrival time is not initialled by the site contact",
+      "DEPARTURE_NOT_INITIALLED": "The departure time is not initialled by the site contact",
+      "OVERLAP": "Overlaps another visit of the same worker",
+      "DAY_SPAN_12H": "The working day spans {duration} hours, more than 12",
+      "WEEK_OVER_48H": "{duration} hours this week, more than 48",
+      "NIGHT_WOMAN": "A woman working between 21:00 and 05:00",
+      "NO_REST_DAY": "No rest day this week",
+      "UNAVAILABLE_DAY": "A day the worker's form does not offer",
+      "ON_LEAVE": "A day of recorded absence or leave",
+      "WEEK_OVER_CAPACITY": "{duration} hours this week, more than the worker's own hours",
+      "WEEK_OVERTIME": "{duration} hours this week: overtime past 40",
+      "DAY_OVER_8H": "{duration} hours of work that day, more than 8",
+      "REST_DAY_WORKED": "Work on the weekly rest day",
+      "FULL_WITH_UNTICKED": "Marked fully completed, yet {count, plural, one {# task is} other {# tasks are}} not ticked",
+      "PERCENT_DISAGREES": "The percentage does not match the state of the work",
+      "BECOMES_DONE": "On saving, the visit is marked done",
+      "BECOMES_PROBLEM": "On saving, the visit is marked as a problem",
+      "OPENS_COMPLAINT": "On saving, a quality complaint is opened from the client's notes",
+      "PROPOSES_EXTRA_VISIT": "On saving, an extra visit is proposed",
+      "LEAD_FOR_CLIENTS": "On saving, the request goes to Clients as a lead"
+    },
+    "TitleLoading": "Visit",
+    "SaveFailed": "The returned order could not be saved.",
+    "SavedComplete": "The returned order is saved and the visit is signed off.",
+    "SavedPartial": "Saved. The entry is not complete yet.",
+    "CorrectionReason": "Reason for the correction"
+  },
+  "ProblemKinds": {
+    "MATERIAL_SHORTAGE": "Shortage of products",
+    "EQUIPMENT_SHORTAGE": "Shortage of equipment",
+    "OBSTACLE": "Obstacle to the work",
+    "AREA_UNAVAILABLE": "Area not available",
+    "PRIOR_DAMAGE": "Earlier damage",
+    "SAFETY_HAZARD": "Safety hazard",
+    "RESIDENT_COMPLAINT": "Complaint from a resident",
+    "EXTRA_SERVICE": "Extra service asked for",
+    "OTHER": "Other",
+    "DAMAGE_DURING_WORK": "Damage or breakage",
+    "INJURY_ACCIDENT": "Injury or accident"
+  },
+  "Completions": {
+    "FULL": "Fully completed",
+    "PARTIAL": "Partly completed",
+    "NOT_DONE": "Not completed"
+  },
+  "SignoffStatuses": {
+    "Housing": {
+      "ACCEPTED": "Satisfied",
+      "ACCEPTED_WITH_NOTES": "Satisfied, with notes",
+      "NOT_ACCEPTED": "Not satisfied"
+    },
+    "Other": {
+      "ACCEPTED": "Service accepted",
+      "ACCEPTED_WITH_NOTES": "Accepted with notes",
+      "NOT_ACCEPTED": "Needs correcting"
+    }
+  },
+  "DayBoard": {
+    "Time": "Time",
+    "Site": "Client / site",
+    "Zone": "Zone",
+    "Team": "Workers",
+    "Service": "Service",
+    "Status": "Status",
+    "Open": "Open",
+    "Order": "Order",
+    "OpenSeats": "{count, plural, one {# seat to fill} other {# seats to fill}}",
+    "PreviousDay": "Previous day",
+    "NextDay": "Next day",
+    "Today": "Today",
+    "Counts": "Visits by status",
+    "Total": "{count, plural, one {# visit} other {# visits}}",
+    "Search": "Site, worker or order number",
+    "NoVisits": "No visits on this day.",
+    "NoMatch": "No visit matches the search.",
+    "Loading": "Reading the day's visits…",
+    "Arrived": "Arrival",
+    "ArrivedVia": "The team's arrival, phoned in by",
+    "Via": {
+      "PHONE_WORKER": "The worker",
+      "PHONE_SUPERVISOR": "The supervisor",
+      "PHONE_CLIENT": "The client"
+    },
+    "ArrivalLogged": "The team's arrival is logged.",
+    "SaveFailed": "The arrival could not be logged."
+  },
+  "Errors": {
+    "InvalidTime": "Enter a time as HH:MM.",
+    "AbsentWorkerTimes": "A worker marked absent cannot have times.",
+    "TimesOutOfOrder": "The times must follow each other: arrival, start of work, end of work, departure.",
+    "ProblemKindsWithoutProblem": "Problem kinds are ticked, but the sheet says there was no problem.",
+    "SignoffOrNobody": "Give either the client's answer or why nobody signed, not both.",
+    "ClientFileNotFound": "This client file does not exist.",
+    "VisitsForContractedFileOnly": "Visits are made for a contracted file only.",
+    "VisitNotFound": "This visit does not exist.",
+    "VisitCancelled": "This visit is cancelled.",
+    "ReturnedOrderInvalid": "This returned order cannot be saved as it is typed.",
+    "ReturnedOrderVisitClosed": "A cancelled or postponed visit takes no returned order.",
+    "WorkerNotOnVisit": "This worker is not on the visit.",
+    "WorkerRecordedAbsent": "This worker is recorded absent that day. Cancel the absence first.",
+    "CorrectionNeedsReason": "Say why a time already typed is changed.",
+    "VisitNotWaiting": "This visit is not waiting for its team.",
+    "SupervisorNotFound": "This supervisor does not exist."
+  },
+  "FileVisits": {
+    "ProgrammeTitle": "Programme",
+    "ProgrammeHint": "What the form's execution days and dates call for. Visits that exist are never changed here.",
+    "Planned": "Visits called for",
+    "FirstDate": "First visit",
+    "LastDate": "Last visit",
+    "ToMake": "Still to make",
+    "PerWeekday": "{day}: {count}",
+    "Generate": "Make the {count} visits",
+    "Generated": "{count} visits made.",
+    "GenerateFailed": "The visits could not be made.",
+    "Date": "Date",
+    "Time": "Time",
+    "Number": "Order no.",
+    "Team": "Workers",
+    "Status": "Status",
+    "Entry": {
+      "COMPLETE": "Order typed in",
+      "PARTIAL": "Order partly typed"
+    },
+    "Open": "Open",
+    "Order": "Order",
+    "Loading": "Reading the file's visits…",
+    "NoVisits": "This file has no visit yet."
+  }
+}

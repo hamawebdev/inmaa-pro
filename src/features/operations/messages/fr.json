@@ -1,1 +1,314 @@
-{}
+{
+  "OperationsSheets": {
+    "SampleNotice": "Données d'exemple. Cette page affichera les données de l'enregistrement une fois les services des opérations construits.",
+    "MissionOrder": {
+      "Title": "Ordre de mission",
+      "Description": "Imprimé pour l'équipe, rempli sur place, puis rapporté au bureau pour la saisie.",
+      "Back": "La visite",
+      "PrintNotRecorded": "L'impression n'a pas pu être enregistrée."
+    },
+    "InspectionSheet": {
+      "Title": "Fiche d'inspection du superviseur",
+      "Description": "Notée sur place par le superviseur ; le bureau calcule la note sur 100."
+    },
+    "DaySheet": {
+      "Title": "Feuille de journée du superviseur",
+      "Description": "Les visites du jour, les absences et le suivi qualité d'un superviseur."
+    },
+    "CallList": {
+      "Title": "Liste d'appels aux clients",
+      "Description": "Les clients à appeler au sujet des visites du lendemain. Le programme n'envoie rien."
+    }
+  },
+  "VisitStatuses": {
+    "CONFIRMED": "Confirmée",
+    "AWAITING_CONFIRMATION": "En attente de confirmation",
+    "IN_PROGRESS": "En cours",
+    "DONE": "Effectuée",
+    "POSTPONED": "Reportée",
+    "PROBLEM": "Problème",
+    "CANCELLED": "Annulée"
+  },
+  "TaskFrequencies": {
+    "DAILY": "Quotidienne",
+    "WEEKLY": "Hebdomadaire",
+    "MONTHLY": "Mensuelle",
+    "SPECIAL": "Spéciale"
+  },
+  "WorkRules": {
+    "OVERLAP": "Deux visites en même temps, ou trop rapprochées pour le trajet",
+    "DAY_SPAN_12H": "Amplitude de la journée de travail dépassée",
+    "WEEK_OVER_48H": "Au-delà du plafond hebdomadaire, heures supplémentaires comprises",
+    "NIGHT_WOMAN": "Une travailleuse programmée de nuit",
+    "NO_REST_DAY": "Aucun jour de repos dans la semaine",
+    "UNAVAILABLE_DAY": "Jour où le travailleur n'est pas disponible",
+    "ON_LEAVE": "Un jour d'absence ou de congé enregistré",
+    "WEEK_OVER_CAPACITY": "Au-delà du volume horaire hebdomadaire du travailleur",
+    "WEEK_OVERTIME": "Heures supplémentaires : au-delà de la durée légale hebdomadaire",
+    "DAY_OVER_8H": "Au-delà de la durée journalière de travail",
+    "REST_DAY_WORKED": "Travail le jour de repos hebdomadaire"
+  },
+  "WorkRuleLevels": {
+    "FLAG": "Pour information",
+    "WARNING": "Avertissement",
+    "NEEDS_MANAGER": "Demande l'accord du directeur",
+    "REFUSED": "Refusé"
+  },
+  "ReplacementExclusions": {
+    "ABSENT": "Absent ou en congé",
+    "SANCTIONED": "Suspendu ou sanctionné",
+    "UNAVAILABLE_DAY": "Non disponible ce jour-là",
+    "OVERLAP": "Sur une autre visite à cette heure",
+    "WOMEN_ONLY": "Le site demande uniquement des femmes",
+    "MISSING_ABILITY": "Il manque une aptitude exigée par le site",
+    "DAY_SPAN_12H": "Amplitude de la journée dépassée",
+    "WEEK_OVER_48H": "Plafond hebdomadaire dépassé",
+    "NIGHT_WOMAN": "Travail de nuit pour une femme",
+    "RESTING": "Jour de repos sur ce contrat"
+  },
+  "ReplacementTiers": {
+    "FILE_ALTERNATE": "Remplaçant désigné du dossier",
+    "RESERVE_SAME_ZONE": "Réserve, même zone",
+    "WORKER_SAME_ZONE": "Même zone",
+    "RESERVE_OTHER_ZONE": "Réserve, autre zone",
+    "WORKER_OTHER_ZONE": "Autre zone"
+  },
+  "ProgrammeWarnings": {
+    "END_BEFORE_START": "La date de fin précède la date de début",
+    "NO_EXECUTION_DAY": "Aucun jour d'exécution n'est choisi",
+    "VISITS_PER_WEEK_MISMATCH": "Les jours cochés ne correspondent pas au nombre de visites par semaine",
+    "REST_DAY_SLOT": "Une visite tombe le jour de repos hebdomadaire",
+    "OUTSIDE_ALLOWED_WINDOW": "Une visite sort de la plage horaire fixée par le client",
+    "DURATION_DAYS_MISMATCH": "La durée en jours ne correspond pas aux dates",
+    "NO_WORKING_DAY_IN_RANGE": "Aucun jour ouvré entre les deux dates",
+    "MISSING_DATES": "Le formulaire ne donne ni date de début ni date de fin",
+    "OUTSIDE_SITE_DAYS": "Une visite tombe un jour que le site n'autorise pas",
+    "OUTSIDE_SITE_HOURS": "Une visite sort des heures que le site autorise"
+  },
+  "ComplaintCounter": {
+    "RUNNING": "Dans le délai visé",
+    "CLOSE_TO_TARGET": "Proche du délai visé",
+    "LATE": "Délai visé dépassé",
+    "ANSWERED_IN_TIME": "Répondu dans le délai",
+    "ANSWERED_LATE": "Répondu hors délai"
+  },
+  "VisitEntry": {
+    "Title": "Visite {number}",
+    "Description": "Saisir l'ordre de mission rapporté du site, tel qu'il est écrit sur la feuille.",
+    "PrintOrder": "Imprimer l'ordre",
+    "Cards": {
+      "Order": "Ordre de mission",
+      "OrderHint": "Tel qu'imprimé sur l'ordre. La saisie de la feuille n'y change rien.",
+      "Attendance": "Arrivée et départ",
+      "AttendanceHint": "Saisissez les heures telles qu'écrites sur la feuille, et cochez là où le responsable du site a paraphé.",
+      "Checklist": "Tâches",
+      "ChecklistHint": "Cochez ce que l'agent a coché sur la feuille.",
+      "WorkerNotes": "Remarques de l'agent",
+      "Completion": "Achèvement",
+      "Signoff": "Réception et évaluation",
+      "SignoffHint": "Le coupon tel que le client l'a rempli.",
+      "Correction": "Correction d'heures déjà saisies",
+      "CorrectionHint": "Une heure déjà saisie a changé. Indiquez pourquoi : le journal garde l'ancienne heure et votre motif."
+    },
+    "OrderNumber": "Numéro de l'ordre",
+    "VisitDate": "Date",
+    "Period": "Horaire",
+    "Status": "Statut",
+    "Site": "Site",
+    "Division": "Division",
+    "Supervisor": "Superviseur",
+    "ReturnedDate": "Date de retour de l'ordre",
+    "DidNotCome": "Absent(e)",
+    "Times": {
+      "arrivedTime": "Arrivée",
+      "workStartTime": "Début du travail",
+      "workEndTime": "Fin du travail",
+      "leftTime": "Départ"
+    },
+    "Initialled": "Paraphé par le responsable du site",
+    "LateReason": "Motif d'un retard",
+    "WorkedTime": "Temps travaillé",
+    "FloorTable": "Étages et entrées",
+    "DepartureChecks": "Vérifications avant le départ",
+    "SpecialTasks": "Tâches particulières du jour",
+    "WholeSite": "Tout le site",
+    "TickAll": "Tout cocher",
+    "Carried": "reportée",
+    "Priority": "priorité {rank}",
+    "ProblemOnSite": "Y a-t-il eu un problème sur le site ?",
+    "ProblemKinds": "Type de problème",
+    "ProblemDetails": "Détails",
+    "Completion": "État du travail",
+    "CompletionPercent": "Taux d'achèvement (%)",
+    "IncompleteReason": "Pourquoi le travail n'est pas achevé",
+    "NeedsExtraVisit": "Faut-il une visite supplémentaire ?",
+    "NeedsSupervisor": "Faut-il l'intervention du superviseur ?",
+    "SignoffStatus": "Réception",
+    "SignerName": "Nom du signataire",
+    "SignerRole": "Qualité",
+    "SignoffDate": "Date de réception",
+    "NobodySigned": "Personne n'a signé : pourquoi",
+    "SignoffNotes": "Remarques du client",
+    "WantsOtherService": "Le client demande-t-il un autre service ?",
+    "OtherService": "Quel service",
+    "Ratings": "Évaluation de 1 à 5",
+    "Rating": {
+      "quality": "Qualité du nettoyage",
+      "punctuality": "Ponctualité",
+      "behaviour": "Comportement de l'agent",
+      "materials": "Qualité des produits",
+      "overall": "Évaluation générale"
+    },
+    "WouldRecommend": "Le client recommanderait-il le centre ?",
+    "SignedOnPaper": "Le client ou le responsable du site a signé le coupon",
+    "WorkerSigned": "L'agent a signé",
+    "Yes": "Oui",
+    "No": "Non",
+    "Cancel": "Annuler",
+    "Save": "Enregistrer",
+    "FixMarkedFields": "Corrigez les champs signalés.",
+    "EntryState": {
+      "COMPLETE": "Saisie complète",
+      "PARTIAL": "Saisie partielle : {count, plural, one {# élément manquant} other {# éléments manquants}}"
+    },
+    "Missing": {
+      "WORKER_ARRIVAL": "{name} : heure d'arrivée",
+      "WORKER_DEPARTURE": "{name} : heure de départ",
+      "COMPLETION": "L'état du travail",
+      "INCOMPLETE_REASON": "Le motif de l'inachèvement",
+      "SIGNOFF": "La réception du client, ou pourquoi personne n'a signé"
+    },
+    "Notes": {
+      "NO_ARRIVAL_REPORTED": "Arrivée non signalée",
+      "LATE": "{minutes, plural, one {# minute} other {# minutes}} après le début prévu",
+      "LATE_NO_REASON": "Retard au-delà de la tolérance : saisissez le motif s'il figure sur la feuille",
+      "ARRIVAL_NOT_INITIALLED": "L'heure d'arrivée n'est pas paraphée par le responsable du site",
+      "DEPARTURE_NOT_INITIALLED": "L'heure de départ n'est pas paraphée par le responsable du site",
+      "OVERLAP": "Chevauche une autre visite du même agent",
+      "DAY_SPAN_12H": "La journée de travail s'étend sur {duration} heures, plus de 12",
+      "WEEK_OVER_48H": "{duration} heures cette semaine, plus de 48",
+      "NIGHT_WOMAN": "Une travailleuse entre 21:00 et 05:00",
+      "NO_REST_DAY": "Aucun jour de repos cette semaine",
+      "UNAVAILABLE_DAY": "Un jour que la fiche de l'agent ne propose pas",
+      "ON_LEAVE": "Un jour d'absence ou de congé enregistré",
+      "WEEK_OVER_CAPACITY": "{duration} heures cette semaine, plus que le volume horaire de l'agent",
+      "WEEK_OVERTIME": "{duration} heures cette semaine : heures supplémentaires au-delà de 40",
+      "DAY_OVER_8H": "{duration} heures de travail ce jour-là, plus de 8",
+      "REST_DAY_WORKED": "Travail le jour de repos hebdomadaire",
+      "FULL_WITH_UNTICKED": "Marqué entièrement achevé, mais {count, plural, one {# tâche n'est pas cochée} other {# tâches ne sont pas cochées}}",
+      "PERCENT_DISAGREES": "Le pourcentage ne correspond pas à l'état du travail",
+      "BECOMES_DONE": "À l'enregistrement, la visite passe à « effectuée »",
+      "BECOMES_PROBLEM": "À l'enregistrement, la visite passe à « problème »",
+      "OPENS_COMPLAINT": "À l'enregistrement, une réclamation qualité est ouverte à partir des remarques du client",
+      "PROPOSES_EXTRA_VISIT": "À l'enregistrement, une visite supplémentaire est proposée",
+      "LEAD_FOR_CLIENTS": "À l'enregistrement, la demande est transmise aux Clients comme piste"
+    },
+    "TitleLoading": "Visite",
+    "SaveFailed": "L'ordre retourné n'a pas pu être enregistré.",
+    "SavedComplete": "L'ordre retourné est enregistré et la visite est réceptionnée.",
+    "SavedPartial": "Enregistré. La saisie n'est pas encore complète.",
+    "CorrectionReason": "Motif de la correction"
+  },
+  "ProblemKinds": {
+    "MATERIAL_SHORTAGE": "Manque de produits",
+    "EQUIPMENT_SHORTAGE": "Manque de matériel",
+    "OBSTACLE": "Obstacle au travail",
+    "AREA_UNAVAILABLE": "Espace non disponible",
+    "PRIOR_DAMAGE": "Dégât antérieur",
+    "SAFETY_HAZARD": "Danger pour la sécurité",
+    "RESIDENT_COMPLAINT": "Plainte d'un résident",
+    "EXTRA_SERVICE": "Service supplémentaire demandé",
+    "OTHER": "Autre",
+    "DAMAGE_DURING_WORK": "Dégât ou casse",
+    "INJURY_ACCIDENT": "Blessure ou accident"
+  },
+  "Completions": {
+    "FULL": "Entièrement achevé",
+    "PARTIAL": "Partiellement achevé",
+    "NOT_DONE": "Non achevé"
+  },
+  "SignoffStatuses": {
+    "Housing": {
+      "ACCEPTED": "Satisfait",
+      "ACCEPTED_WITH_NOTES": "Satisfait, avec remarques",
+      "NOT_ACCEPTED": "Non satisfait"
+    },
+    "Other": {
+      "ACCEPTED": "Service accepté",
+      "ACCEPTED_WITH_NOTES": "Accepté avec remarques",
+      "NOT_ACCEPTED": "À corriger"
+    }
+  },
+  "DayBoard": {
+    "Time": "Heure",
+    "Site": "Client / site",
+    "Zone": "Zone",
+    "Team": "Agents",
+    "Service": "Service",
+    "Status": "Statut",
+    "Open": "Ouvrir",
+    "Order": "Ordre",
+    "OpenSeats": "{count, plural, one {# place à pourvoir} other {# places à pourvoir}}",
+    "PreviousDay": "Jour précédent",
+    "NextDay": "Jour suivant",
+    "Today": "Aujourd'hui",
+    "Counts": "Visites par statut",
+    "Total": "{count, plural, one {# visite} other {# visites}}",
+    "Search": "Site, agent ou n° d'ordre",
+    "NoVisits": "Aucune visite ce jour-là.",
+    "NoMatch": "Aucune visite ne correspond à la recherche.",
+    "Loading": "Lecture des visites du jour…",
+    "Arrived": "Arrivée",
+    "ArrivedVia": "Arrivée de l'équipe, signalée par téléphone par",
+    "Via": {
+      "PHONE_WORKER": "L'agent",
+      "PHONE_SUPERVISOR": "Le superviseur",
+      "PHONE_CLIENT": "Le client"
+    },
+    "ArrivalLogged": "L'arrivée de l'équipe est enregistrée.",
+    "SaveFailed": "L'arrivée n'a pas pu être enregistrée."
+  },
+  "Errors": {
+    "InvalidTime": "Saisissez une heure au format HH:MM.",
+    "AbsentWorkerTimes": "Un agent marqué absent ne peut pas avoir d'heures.",
+    "TimesOutOfOrder": "Les heures doivent se suivre : arrivée, début du travail, fin du travail, départ.",
+    "ProblemKindsWithoutProblem": "Des types de problème sont cochés, mais la feuille indique qu'il n'y a pas eu de problème.",
+    "SignoffOrNobody": "Indiquez soit la réponse du client, soit pourquoi personne n'a signé, pas les deux.",
+    "ClientFileNotFound": "Ce dossier client n'existe pas.",
+    "VisitsForContractedFileOnly": "Les visites se créent pour un dossier sous contrat seulement.",
+    "VisitNotFound": "Cette visite n'existe pas.",
+    "VisitCancelled": "Cette visite est annulée.",
+    "ReturnedOrderInvalid": "Cet ordre retourné ne peut pas être enregistré tel qu'il est saisi.",
+    "ReturnedOrderVisitClosed": "Une visite annulée ou reportée ne reçoit pas d'ordre retourné.",
+    "WorkerNotOnVisit": "Cet agent ne fait pas partie de la visite.",
+    "WorkerRecordedAbsent": "Cet agent est enregistré absent ce jour-là. Annulez d'abord l'absence.",
+    "CorrectionNeedsReason": "Indiquez pourquoi une heure déjà saisie est modifiée.",
+    "VisitNotWaiting": "Cette visite n'attend pas son équipe.",
+    "SupervisorNotFound": "Ce superviseur n'existe pas."
+  },
+  "FileVisits": {
+    "ProgrammeTitle": "Programme",
+    "ProgrammeHint": "Ce que les jours d'exécution et les dates du formulaire demandent. Les visites existantes ne sont jamais modifiées ici.",
+    "Planned": "Visites prévues",
+    "FirstDate": "Première visite",
+    "LastDate": "Dernière visite",
+    "ToMake": "Encore à créer",
+    "PerWeekday": "{day} : {count}",
+    "Generate": "Créer les {count} visites",
+    "Generated": "{count} visites créées.",
+    "GenerateFailed": "Les visites n'ont pas pu être créées.",
+    "Date": "Date",
+    "Time": "Heure",
+    "Number": "N° d'ordre",
+    "Team": "Agents",
+    "Status": "Statut",
+    "Entry": {
+      "COMPLETE": "Ordre saisi",
+      "PARTIAL": "Ordre saisi en partie"
+    },
+    "Open": "Ouvrir",
+    "Order": "Ordre",
+    "Loading": "Lecture des visites du dossier…",
+    "NoVisits": "Ce dossier n'a encore aucune visite."
+  }
+}

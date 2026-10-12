@@ -1,1 +1,314 @@
-{}
+{
+  "OperationsSheets": {
+    "SampleNotice": "بيانات تجريبية. ستعرض هذه الصفحة بيانات السجل نفسه بعد بناء خدمات العمليات.",
+    "MissionOrder": {
+      "Title": "أمر مهمة",
+      "Description": "يُطبع للفريق ويُملأ في الموقع ثم يُعاد إلى المكتب لإدخاله.",
+      "Back": "الزيارة",
+      "PrintNotRecorded": "تعذّر تسجيل الطباعة."
+    },
+    "InspectionSheet": {
+      "Title": "استمارة تفتيش المشرف",
+      "Description": "يضع المشرف العلامات في الموقع ويحسب المكتب الدرجة من 100."
+    },
+    "DaySheet": {
+      "Title": "برنامج يوم المشرف",
+      "Description": "زيارات اليوم والغيابات ومتابعة الجودة لمشرف واحد."
+    },
+    "CallList": {
+      "Title": "قائمة الاتصال بالعملاء",
+      "Description": "العملاء الذين يُتصل بهم بخصوص زيارات الغد. البرنامج لا يرسل شيئاً."
+    }
+  },
+  "VisitStatuses": {
+    "CONFIRMED": "مؤكدة",
+    "AWAITING_CONFIRMATION": "بانتظار التأكيد",
+    "IN_PROGRESS": "جارية",
+    "DONE": "منفذة",
+    "POSTPONED": "مؤجلة",
+    "PROBLEM": "مشكلة",
+    "CANCELLED": "ملغاة"
+  },
+  "TaskFrequencies": {
+    "DAILY": "يومية",
+    "WEEKLY": "أسبوعية",
+    "MONTHLY": "شهرية",
+    "SPECIAL": "خاصة"
+  },
+  "WorkRules": {
+    "OVERLAP": "زيارتان في الوقت نفسه، أو متقاربتان لا تسمحان بالتنقل",
+    "DAY_SPAN_12H": "يوم العمل يمتد أكثر من المسموح",
+    "WEEK_OVER_48H": "تجاوز الحد الأقصى الأسبوعي مع الساعات الإضافية",
+    "NIGHT_WOMAN": "عاملة مبرمجة ليلاً",
+    "NO_REST_DAY": "لا يوجد يوم راحة في الأسبوع",
+    "UNAVAILABLE_DAY": "يوم غير متاح للعامل",
+    "ON_LEAVE": "يوم غياب أو إجازة مسجل",
+    "WEEK_OVER_CAPACITY": "تجاوز الحجم الساعي الأسبوعي الخاص بالعامل",
+    "WEEK_OVERTIME": "ساعات إضافية: تجاوز المدة القانونية الأسبوعية",
+    "DAY_OVER_8H": "تجاوز ساعات العمل اليومية",
+    "REST_DAY_WORKED": "عمل في يوم الراحة الأسبوعية"
+  },
+  "WorkRuleLevels": {
+    "FLAG": "للعلم",
+    "WARNING": "تنبيه",
+    "NEEDS_MANAGER": "يتطلب موافقة المدير",
+    "REFUSED": "مرفوض"
+  },
+  "ReplacementExclusions": {
+    "ABSENT": "غائب أو في إجازة",
+    "SANCTIONED": "موقوف أو معاقب",
+    "UNAVAILABLE_DAY": "غير متاح في هذا اليوم",
+    "OVERLAP": "في زيارة أخرى في الوقت نفسه",
+    "WOMEN_ONLY": "الموقع يشترط عاملات فقط",
+    "MISSING_ABILITY": "تنقصه قدرة يتطلبها الموقع",
+    "DAY_SPAN_12H": "يوم العمل يمتد أكثر من المسموح",
+    "WEEK_OVER_48H": "الأسبوع يتجاوز الحد الأقصى",
+    "NIGHT_WOMAN": "عمل ليلي لعاملة",
+    "RESTING": "يوم الراحة في هذا العقد"
+  },
+  "ReplacementTiers": {
+    "FILE_ALTERNATE": "بديل الملف",
+    "RESERVE_SAME_ZONE": "احتياط، المنطقة نفسها",
+    "WORKER_SAME_ZONE": "المنطقة نفسها",
+    "RESERVE_OTHER_ZONE": "احتياط، منطقة أخرى",
+    "WORKER_OTHER_ZONE": "منطقة أخرى"
+  },
+  "ProgrammeWarnings": {
+    "END_BEFORE_START": "تاريخ النهاية يسبق تاريخ البداية",
+    "NO_EXECUTION_DAY": "لم يُحدَّد أي يوم من أيام التنفيذ",
+    "VISITS_PER_WEEK_MISMATCH": "أيام التنفيذ لا تطابق عدد الزيارات في الأسبوع",
+    "REST_DAY_SLOT": "زيارة في يوم الراحة الأسبوعية",
+    "OUTSIDE_ALLOWED_WINDOW": "زيارة خارج الفترة التي حددها العميل",
+    "DURATION_DAYS_MISMATCH": "مدة التنفيذ بالأيام لا تطابق التواريخ",
+    "NO_WORKING_DAY_IN_RANGE": "لا يوجد يوم عمل بين التاريخين",
+    "MISSING_DATES": "لم يُحدَّد تاريخ البداية أو تاريخ النهاية في الاستمارة",
+    "OUTSIDE_SITE_DAYS": "زيارة في يوم لا يسمح به الموقع",
+    "OUTSIDE_SITE_HOURS": "زيارة خارج الساعات التي يسمح بها الموقع"
+  },
+  "ComplaintCounter": {
+    "RUNNING": "ضمن الوقت المستهدف",
+    "CLOSE_TO_TARGET": "يقترب من الوقت المستهدف",
+    "LATE": "تجاوز الوقت المستهدف",
+    "ANSWERED_IN_TIME": "تم الرد في الوقت",
+    "ANSWERED_LATE": "تم الرد بعد الوقت المستهدف"
+  },
+  "VisitEntry": {
+    "Title": "الزيارة {number}",
+    "Description": "إدخال أمر المهمة المُعاد من الموقع، كما كُتب على الورقة.",
+    "PrintOrder": "طباعة الأمر",
+    "Cards": {
+      "Order": "أمر المهمة",
+      "OrderHint": "كما طُبع على الأمر. لا يتغيّر شيء منه بإدخال الورقة.",
+      "Attendance": "وقت الوصول والمغادرة",
+      "AttendanceHint": "اكتب الأوقات كما هي على الورقة، وأشّر حيث أشّر المسؤول في الموقع.",
+      "Checklist": "المهام المطلوبة",
+      "ChecklistHint": "أشّر ما أشّره العامل على الورقة.",
+      "WorkerNotes": "ملاحظات العامل",
+      "Completion": "حالة الإنجاز",
+      "Signoff": "استلام الخدمة وتقييمها",
+      "SignoffHint": "القسيمة كما ملأها العميل.",
+      "Correction": "تصحيح أوقات سبق إدخالها",
+      "CorrectionHint": "تغيّر وقت سبق إدخاله. اذكر السبب: يحتفظ السجل بالوقت القديم وبسببك."
+    },
+    "OrderNumber": "رقم أمر المهمة",
+    "VisitDate": "تاريخ التنفيذ",
+    "Period": "الفترة",
+    "Status": "الحالة",
+    "Site": "المكان",
+    "Division": "القسم",
+    "Supervisor": "المشرف",
+    "ReturnedDate": "تاريخ عودة الأمر إلى المكتب",
+    "DidNotCome": "لم يحضر(ت)",
+    "Times": {
+      "arrivedTime": "وقت الوصول الفعلي",
+      "workStartTime": "وقت بداية العمل",
+      "workEndTime": "وقت نهاية العمل",
+      "leftTime": "وقت المغادرة"
+    },
+    "Initialled": "تأشيرة المسؤول في الموقع",
+    "LateReason": "سبب أي تأخير",
+    "WorkedTime": "مدة العمل المحسوبة",
+    "FloorTable": "جدول الطوابق والمداخل",
+    "DepartureChecks": "قائمة التحقق قبل المغادرة",
+    "SpecialTasks": "مهام خاصة لهذا اليوم",
+    "WholeSite": "كل الموقع",
+    "TickAll": "تأشير الكل",
+    "Carried": "مرحّلة",
+    "Priority": "الأولوية رقم {rank}",
+    "ProblemOnSite": "هل توجد مشكلة في الموقع؟",
+    "ProblemKinds": "نوع المشكلة",
+    "ProblemDetails": "التفاصيل",
+    "Completion": "حالة الإنجاز",
+    "CompletionPercent": "نسبة الإنجاز (%)",
+    "IncompleteReason": "سبب عدم اكتمال المهمة",
+    "NeedsExtraVisit": "هل تحتاج إلى زيارة إضافية؟",
+    "NeedsSupervisor": "هل تحتاج إلى تدخل المشرف؟",
+    "SignoffStatus": "حالة الاستلام",
+    "SignerName": "اسم من وقّع الاستلام",
+    "SignerRole": "الصفة",
+    "SignoffDate": "تاريخ الاستلام",
+    "NobodySigned": "لم يوقّع أحد: السبب",
+    "SignoffNotes": "ملاحظات العميل",
+    "WantsOtherService": "هل يطلب العميل خدمة أخرى؟",
+    "OtherService": "نوع الخدمة",
+    "Ratings": "تقييم الخدمة من 1 إلى 5",
+    "Rating": {
+      "quality": "جودة التنظيف",
+      "punctuality": "الالتزام بالموعد",
+      "behaviour": "سلوك العامل(ة)",
+      "materials": "جودة المواد",
+      "overall": "التقييم العام"
+    },
+    "WouldRecommend": "هل توصي بالمركز؟",
+    "SignedOnPaper": "وقّع العميل أو المسؤول على القسيمة",
+    "WorkerSigned": "وقّع العامل",
+    "Yes": "نعم",
+    "No": "لا",
+    "Cancel": "إلغاء",
+    "Save": "حفظ",
+    "FixMarkedFields": "صحّح الحقول المؤشّر عليها.",
+    "EntryState": {
+      "COMPLETE": "الإدخال مكتمل",
+      "PARTIAL": "إدخال جزئي: {count, plural, zero {لا شيء ناقص} one {بند واحد ناقص} two {بندان ناقصان} few {# بنود ناقصة} many {# بندًا ناقصًا} other {# بند ناقص}}"
+    },
+    "Missing": {
+      "WORKER_ARRIVAL": "{name}: وقت الوصول",
+      "WORKER_DEPARTURE": "{name}: وقت المغادرة",
+      "COMPLETION": "حالة الإنجاز",
+      "INCOMPLETE_REASON": "سبب عدم اكتمال المهمة",
+      "SIGNOFF": "حالة الاستلام، أو سبب عدم التوقيع"
+    },
+    "Notes": {
+      "NO_ARRIVAL_REPORTED": "لم يُبلَّغ عن الوصول",
+      "LATE": "تأخر {minutes, plural, zero {أقل من دقيقة} one {دقيقة واحدة} two {دقيقتين} few {# دقائق} many {# دقيقة} other {# دقيقة}} عن موعد البداية",
+      "LATE_NO_REASON": "تأخر أكثر من المهلة: اكتب السبب إن كان مكتوبًا على الورقة",
+      "ARRIVAL_NOT_INITIALLED": "وقت الوصول بلا تأشيرة المسؤول في الموقع",
+      "DEPARTURE_NOT_INITIALLED": "وقت المغادرة بلا تأشيرة المسؤول في الموقع",
+      "OVERLAP": "يتداخل مع زيارة أخرى لنفس العامل",
+      "DAY_SPAN_12H": "يوم العمل يمتد {duration} ساعة، أكثر من 12",
+      "WEEK_OVER_48H": "{duration} ساعة هذا الأسبوع، أكثر من 48",
+      "NIGHT_WOMAN": "عاملة بين الساعة 21:00 والساعة 05:00",
+      "NO_REST_DAY": "لا يوم راحة في هذا الأسبوع",
+      "UNAVAILABLE_DAY": "يوم غير متاح في استمارة العامل",
+      "ON_LEAVE": "يوم غياب أو إجازة مسجل",
+      "WEEK_OVER_CAPACITY": "{duration} ساعة هذا الأسبوع، أكثر من الحجم الساعي للعامل",
+      "WEEK_OVERTIME": "{duration} ساعة هذا الأسبوع: ساعات إضافية بعد 40",
+      "DAY_OVER_8H": "{duration} ساعة عمل في هذا اليوم، أكثر من 8",
+      "REST_DAY_WORKED": "عمل في يوم الراحة الأسبوعية",
+      "FULL_WITH_UNTICKED": "مكتملة بالكامل، مع أن {count, plural, zero {لا مهمة} one {مهمة واحدة غير مؤشّرة} two {مهمتين غير مؤشّرتين} few {# مهام غير مؤشّرة} many {# مهمة غير مؤشّرة} other {# مهمة غير مؤشّرة}}",
+      "PERCENT_DISAGREES": "النسبة لا توافق حالة الإنجاز",
+      "BECOMES_DONE": "عند الحفظ تُسجَّل الزيارة منفذة",
+      "BECOMES_PROBLEM": "عند الحفظ تُسجَّل الزيارة بحالة مشكلة",
+      "OPENS_COMPLAINT": "عند الحفظ تُفتح شكوى جودة من ملاحظات العميل",
+      "PROPOSES_EXTRA_VISIT": "عند الحفظ تُقترح زيارة إضافية",
+      "LEAD_FOR_CLIENTS": "عند الحفظ يُحال الطلب إلى العملاء كفرصة"
+    },
+    "TitleLoading": "الزيارة",
+    "SaveFailed": "تعذّر حفظ أمر المهمة المُرجَع.",
+    "SavedComplete": "تم حفظ أمر المهمة وتسجيل استلام الزيارة.",
+    "SavedPartial": "تم الحفظ. الإدخال لم يكتمل بعد.",
+    "CorrectionReason": "سبب التصحيح"
+  },
+  "ProblemKinds": {
+    "MATERIAL_SHORTAGE": "نقص مواد",
+    "EQUIPMENT_SHORTAGE": "نقص معدات",
+    "OBSTACLE": "عائق أمام العمل",
+    "AREA_UNAVAILABLE": "مساحة غير متاحة",
+    "PRIOR_DAMAGE": "تلف سابق",
+    "SAFETY_HAZARD": "خطر على السلامة",
+    "RESIDENT_COMPLAINT": "شكوى من أحد السكان",
+    "EXTRA_SERVICE": "خدمة إضافية مطلوبة",
+    "OTHER": "أخرى",
+    "DAMAGE_DURING_WORK": "تلف أو كسر",
+    "INJURY_ACCIDENT": "إصابة أو حادث"
+  },
+  "Completions": {
+    "FULL": "مكتملة بالكامل",
+    "PARTIAL": "مكتملة جزئياً",
+    "NOT_DONE": "لم تكتمل"
+  },
+  "SignoffStatuses": {
+    "Housing": {
+      "ACCEPTED": "راضٍ",
+      "ACCEPTED_WITH_NOTES": "راضٍ مع ملاحظات",
+      "NOT_ACCEPTED": "غير راضٍ"
+    },
+    "Other": {
+      "ACCEPTED": "تم قبول الخدمة",
+      "ACCEPTED_WITH_NOTES": "تم قبولها مع ملاحظات",
+      "NOT_ACCEPTED": "تحتاج إلى تصحيح"
+    }
+  },
+  "DayBoard": {
+    "Time": "الوقت",
+    "Site": "العميل / المكان",
+    "Zone": "المنطقة",
+    "Team": "العمال",
+    "Service": "الخدمة",
+    "Status": "الحالة",
+    "Open": "فتح",
+    "Order": "الأمر",
+    "OpenSeats": "{count, plural, zero {لا مقعد شاغر} one {مقعد شاغر واحد} two {مقعدان شاغران} few {# مقاعد شاغرة} many {# مقعدًا شاغرًا} other {# مقعد شاغر}}",
+    "PreviousDay": "اليوم السابق",
+    "NextDay": "اليوم التالي",
+    "Today": "اليوم",
+    "Counts": "الزيارات حسب الحالة",
+    "Total": "{count, plural, zero {لا زيارة} one {زيارة واحدة} two {زيارتان} few {# زيارات} many {# زيارة} other {# زيارة}}",
+    "Search": "ابحث بالمكان أو العامل أو رقم الأمر",
+    "NoVisits": "لا زيارات في هذا اليوم.",
+    "NoMatch": "لا زيارة توافق البحث.",
+    "Loading": "جارٍ قراءة زيارات اليوم…",
+    "Arrived": "الوصول",
+    "ArrivedVia": "أبلغ عن وصول الفريق هاتفياً",
+    "Via": {
+      "PHONE_WORKER": "العامل(ة)",
+      "PHONE_SUPERVISOR": "المشرف(ة)",
+      "PHONE_CLIENT": "العميل"
+    },
+    "ArrivalLogged": "تم تسجيل وصول الفريق.",
+    "SaveFailed": "تعذّر تسجيل الوصول."
+  },
+  "Errors": {
+    "InvalidTime": "اكتب الوقت بالشكل HH:MM.",
+    "AbsentWorkerTimes": "لا تُكتب أوقات لعامل مؤشّر عليه غائبًا.",
+    "TimesOutOfOrder": "يجب أن تتتابع الأوقات: الوصول، ثم بداية العمل، ثم نهايته، ثم المغادرة.",
+    "ProblemKindsWithoutProblem": "أنواع مشكلة مؤشّر عليها، والورقة تقول إنه لا توجد مشكلة.",
+    "SignoffOrNobody": "اكتب إما حالة الاستلام وإما سبب عدم التوقيع، لا الاثنين معًا.",
+    "ClientFileNotFound": "هذا الملف غير موجود.",
+    "VisitsForContractedFileOnly": "تُنشأ الزيارات لملف متعاقد فقط.",
+    "VisitNotFound": "هذه الزيارة غير موجودة.",
+    "VisitCancelled": "هذه الزيارة ملغاة.",
+    "ReturnedOrderInvalid": "لا يمكن حفظ أمر المهمة كما أُدخل.",
+    "ReturnedOrderVisitClosed": "الزيارة الملغاة أو المؤجلة لا يُدخل لها أمر مهمة.",
+    "WorkerNotOnVisit": "هذا العامل ليس ضمن فريق الزيارة.",
+    "WorkerRecordedAbsent": "هذا العامل مسجّل غائباً في ذلك اليوم. ألغِ الغياب أولاً.",
+    "CorrectionNeedsReason": "اذكر سبب تغيير وقت سبق إدخاله.",
+    "VisitNotWaiting": "هذه الزيارة لا تنتظر وصول فريقها.",
+    "SupervisorNotFound": "هذا المشرف غير موجود."
+  },
+  "FileVisits": {
+    "ProgrammeTitle": "برنامج الزيارات",
+    "ProgrammeHint": "ما تقتضيه أيام التنفيذ والتاريخان في الاستمارة. لا تُعدَّل هنا الزيارات الموجودة.",
+    "Planned": "عدد الزيارات المبرمجة",
+    "FirstDate": "أول زيارة",
+    "LastDate": "آخر زيارة",
+    "ToMake": "زيارات لم تُنشأ بعد",
+    "PerWeekday": "{day}: {count}",
+    "Generate": "إنشاء الزيارات ({count})",
+    "Generated": "تم إنشاء {count} زيارة.",
+    "GenerateFailed": "تعذّر إنشاء الزيارات.",
+    "Date": "التاريخ",
+    "Time": "الوقت",
+    "Number": "رقم أمر المهمة",
+    "Team": "العمال",
+    "Status": "الحالة",
+    "Entry": {
+      "COMPLETE": "أُدخل الأمر",
+      "PARTIAL": "أُدخل الأمر جزئياً"
+    },
+    "Open": "فتح",
+    "Order": "الأمر",
+    "Loading": "جارٍ قراءة زيارات الملف…",
+    "NoVisits": "لا توجد زيارات لهذا الملف بعد."
+  }
+}
