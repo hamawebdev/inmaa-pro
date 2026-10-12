@@ -1,3 +1,5 @@
+import { UserPlus } from "lucide-react";
+
 import type { QuickAction } from "@/navigation/quick-actions";
 
 /**
@@ -7,4 +9,6 @@ import type { QuickAction } from "@/navigation/quick-actions";
  *
  * `labelKey` is the full path of a message in this folder's message files.
  */
-export const quickActions: readonly QuickAction[] = [];
+export const quickActions: readonly QuickAction[] = [
+  { labelKey: "Workers.QuickNew", href: "/dashboard/workers/new", icon: UserPlus },
+];

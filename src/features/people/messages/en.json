@@ -1,1 +1,234 @@
-{}
+{
+  "WorkerForm": {
+    "Labels": {
+      "formTitle": "Registration form of the Inmaa centre",
+      "regNumber": "Registration number:",
+      "registrationDate": "Date:",
+      "personalHeading": "Personal and family information",
+      "fullName": "Surname and first name",
+      "fullNameLatin": "In French",
+      "birthDate": "Date of birth",
+      "birthPlace": "Commune / wilaya",
+      "address": "Home address",
+      "residence": "Commune / wilaya of residence",
+      "maritalStatus": "Marital status",
+      "phone": "Phone number",
+      "emergencyHeading": "Emergency contact",
+      "emergencyName": "Person's name",
+      "emergencyAddress": "Home address",
+      "emergencyRelation": "Relationship",
+      "emergencyPhone": "Phone number",
+      "educationHeading": "Education and work",
+      "educationLevel": "Level of education",
+      "certificateName": "Name of the certificate",
+      "workedInFieldBefore": "Have you worked in this field",
+      "previousEmployer": "Name of the establishment",
+      "abilities": "Physical ability / are you able to",
+      "availableDays": "Available days",
+      "healthConditions": "Do you suffer from",
+      "documentsDelivered": "Documents handed in",
+      "hiringEvaluationHeading": "Evaluation by the human resources officer (confidential)",
+      "hiringTotal": "Total:",
+      "scoreAppearance": "General appearance",
+      "scorePersonalHygiene": "Personal hygiene",
+      "scoreCommunication": "Way of communicating",
+      "scoreDiscipline": "Discipline",
+      "scoreExperience": "Experience",
+      "scoreQuickUnderstanding": "Quick understanding",
+      "scorePhysicalFitness": "Physical fitness",
+      "scoreWorkPressure": "Bearing work pressure",
+      "scorePunctuality": "Punctuality",
+      "scoreTrustHonesty": "Trust and honesty",
+      "hiringDecision": "Management decision",
+      "issuedDate": "Issued at Oum El Bouaghi, on:"
+    },
+    "YesNo": {
+      "YES": "Yes",
+      "NO": "No"
+    },
+    "Sexes": {
+      "MALE": "Male",
+      "FEMALE": "Female"
+    },
+    "Abilities": {
+      "CARRY_EQUIPMENT": "Carrying equipment",
+      "STAND_LONG_HOURS": "Standing for long hours",
+      "CLIMB_STAIRS": "Climbing stairs",
+      "UPPER_FLOORS": "Working on upper floors",
+      "WORK_UNDER_PRESSURE": "Working under pressure",
+      "MOVE_BETWEEN_SITES": "Moving between establishments"
+    },
+    "Weekdays": {
+      "SAT": "Saturday",
+      "SUN": "Sunday",
+      "MON": "Monday",
+      "TUE": "Tuesday",
+      "WED": "Wednesday",
+      "THU": "Thursday",
+      "FRI": "Friday"
+    },
+    "HealthConditions": {
+      "ASTHMA": "Asthma",
+      "BACK": "Back problems",
+      "HEART": "Heart problems",
+      "CHRONIC": "Chronic illnesses",
+      "NONE": "None",
+      "OTHER": "Other"
+    },
+    "Documents": {
+      "ID_CARD_COPY": "Copy of the identity card",
+      "BIRTH_CERT": "Birth certificate",
+      "RESIDENCE_CERT": "Certificate of residence",
+      "MEDICAL_CERT": "Medical certificate",
+      "CROSSED_CCP_CHEQUE": "Crossed postal cheque",
+      "EXPERIENCE_CERT": "Certificate of experience",
+      "CRIMINAL_RECORD": "Criminal record extract (if required)"
+    },
+    "Decisions": {
+      "ACCEPTED": "Accepted",
+      "ACCEPTED_ON_TRIAL": "Accepted on trial",
+      "REFUSED_FINAL": "Final refusal"
+    },
+    "MaritalStatuses": {
+      "SINGLE": "Single",
+      "MARRIED": "Married",
+      "DIVORCED": "Divorced",
+      "WIDOWED": "Widowed"
+    },
+    "Fields": {
+      "lastName": "Surname",
+      "firstName": "First name",
+      "sex": "Sex *",
+      "sexHint": "It gives the letter after the registration number: H or F.",
+      "numberOnSave": "Given when the worker is saved",
+      "birthCommune": "Commune",
+      "birthWilaya": "Wilaya",
+      "residenceCommune": "Commune of residence",
+      "otherIllness": "Which one",
+      "expiryDate": "Expires on",
+      "totalComputed": "Worked out from the ten criteria.",
+      "totalAlone": "With no criterion scored, the total may be typed alone.",
+      "scoreHint": "0–10",
+      "nationalIdNumber": "Identity card number",
+      "nationalIdHint": "The surest way to find a suspended or penalised person.",
+      "zone": "Zone",
+      "role": "Role *",
+      "payBasis": "How the pay is worked out",
+      "payRate": "Rate (DA)",
+      "payPeriod": "Paid",
+      "weeklyCapacity": "Weekly capacity (hours) *",
+      "canCollectCash": "Authorised to collect money (article 12)",
+      "collectAuthFrom": "Since",
+      "collectAuthNote": "Document that authorises it",
+      "decisionLocked": "The management records its decision.",
+      "zoneHint": "Left empty: the zone of the commune of residence."
+    },
+    "Office": {
+      "Title": "For the office",
+      "Description": "Not printed on the registration form."
+    },
+    "Restricted": {
+      "Badge": "Restricted",
+      "HEALTH": "Health answers: only the manager and the HR officer see them, and every look is logged.",
+      "SCORE": "Confidential score: only the manager and the HR officer see it, and every look is logged.",
+      "Locked": "Only those allowed to see this part can fill it."
+    },
+    "Roles": {
+      "CLEANER": "Cleaner",
+      "SENIOR_WORKER": "Senior worker",
+      "TEAM_LEADER": "Team leader"
+    },
+    "RolesFeminine": {
+      "CLEANER": "Cleaner",
+      "SENIOR_WORKER": "Senior worker",
+      "TEAM_LEADER": "Team leader"
+    },
+    "PayBases": {
+      "MONTHLY": "Monthly salary",
+      "DAILY": "Daily wage",
+      "HOURLY": "By the hour",
+      "PER_TASK": "By the task"
+    },
+    "PayPeriods": {
+      "WEEKLY": "Weekly",
+      "MONTHLY": "Monthly"
+    },
+    "Placeholders": {
+      "Choose": "Choose",
+      "NoZone": "No zone yet",
+      "Phone": "0661 20 31 42"
+    },
+    "Actions": {
+      "Cancel": "Cancel",
+      "Create": "Register the worker",
+      "Save": "Save changes",
+      "Saving": "Saving…",
+      "SaveFailed": "Could not save the worker.",
+      "Saved": "The worker is saved.",
+      "Registered": "Worker registered under number {number}."
+    },
+    "Sanction": {
+      "NameMatchTitle": "Someone with this name is suspended or penalised",
+      "NameMatchDescription": "{name}: {state} since {since}. Is this another person?",
+      "NotTheSamePerson": "Another person",
+      "States": {
+        "SUSPENDED": "suspended",
+        "PENALISED": "penalised"
+      },
+      "ClientStates": {
+        "SUSPENDED": "suspended",
+        "PENALISED": "penalised"
+      }
+    }
+  },
+  "WorkerPrint": {
+    "BlankTitle": "Blank registration form",
+    "BlankDescription": "The four pages as he prints them from Word, with nothing filled in, to hand to a candidate.",
+    "RecordTitle": "Registration form of {name}",
+    "RecordDescription": "The form filled from the worker's record, ready to sign and stamp.",
+    "SampleNote": "Sample data: the worker files are not connected yet, so this sheet shows an invented worker.",
+    "PartsLabel": "Pages to print",
+    "Parts": {
+      "all": "Form and regulations",
+      "registration": "Form, pages 1 and 2",
+      "regulations": "Internal regulations, pages 3 and 4"
+    }
+  },
+  "Workers": {
+    "NewDescription": "Registering a cleaning worker: his form, then what only the office keeps.",
+    "EditDescription": "The worker's registration form.",
+    "SampleNote": "Sample data: the worker files are not connected yet, so this page shows an invented worker.",
+    "NewWorker": "New worker",
+    "BlankForm": "Blank form",
+    "PrintForm": "Print the form",
+    "QuickNew": "Register a cleaning worker",
+    "EditNotWired": "Changes to a registered worker are not saved yet: they come with the worker files."
+  },
+  "Errors": {
+    "WorkerSexRequired": "Choose whether the worker is a man or a woman.",
+    "SurnameRequired": "The surname is required.",
+    "FirstNameRequired": "The first name is required.",
+    "BirthDateRequired": "The date of birth is required.",
+    "PhoneDigits": "The phone number has 9 or 10 digits.",
+    "ScoreRange": "A score is a whole number from 0 to 10.",
+    "TotalRange": "A total is a whole number from 0 to 100.",
+    "NationalIdDigits": "An identity number is 6 to 20 digits.",
+    "PayRateAmount": "A pay rate is an amount in dinars, 0 or more.",
+    "CapacityRange": "The weekly capacity is between 1 and 48 hours.",
+    "HealthNoneAlone": "None cannot be ticked together with an illness.",
+    "HealthOtherText": "Write what the other illness is.",
+    "TotalDisagrees": "The total does not agree with the scores.",
+    "BirthBeforeRegistration": "The date of birth must be before the registration date.",
+    "PayBasisForRate": "Choose how this rate is paid.",
+    "WorkerChangeNotWired": "Changing a registered worker is not possible yet.",
+    "HealthNotAllowed": "You do not have permission to record the health answers.",
+    "ScoreNotAllowed": "You do not have permission to record the confidential evaluation.",
+    "DecisionNotAllowed": "You do not have permission to record the management's decision.",
+    "SanctionBlocked": "This person is suspended or penalised. The manager must allow the registration first.",
+    "SanctionRefused": "The manager did not allow this person to be registered.",
+    "SanctionNameMatch": "Someone with this name is suspended or penalised. Confirm that this is another person before saving.",
+    "DecisionNotFound": "This decision of the manager does not exist.",
+    "DecisionNotAYes": "Only the manager's yes allows a registration.",
+    "DecisionUsed": "This decision of the manager has already been used."
+  }
+}

@@ -1,1 +1,234 @@
-{}
+{
+  "WorkerForm": {
+    "Labels": {
+      "formTitle": "استمارة التسجيل بمركز إنماء",
+      "regNumber": "رقم التسجيل:",
+      "registrationDate": "التاريخ:",
+      "personalHeading": "المعلومات الشخصية والعائلية",
+      "fullName": "اللقب والاسم",
+      "fullNameLatin": "باللغة الفرنسية",
+      "birthDate": "تاريخ الإزدياد",
+      "birthPlace": "البلدية / الولاية",
+      "address": "العنوان الشخصي",
+      "residence": "بلدية/ولاية إقامة",
+      "maritalStatus": "الحالة الإجتماعية",
+      "phone": "رقم الهاتف",
+      "emergencyHeading": "معلومات الطوارئ",
+      "emergencyName": "اسم الشخص",
+      "emergencyAddress": "العنوان الشخصي",
+      "emergencyRelation": "صلة القرابة",
+      "emergencyPhone": "رقم الهاتف",
+      "educationHeading": "المعلومات الدراسية والمهنية",
+      "educationLevel": "المستوى الدراسي",
+      "certificateName": "اسم الشهادة",
+      "workedInFieldBefore": "هل عملت في المجال",
+      "previousEmployer": "اسم المؤسسة",
+      "abilities": "القدرة البدنية / هل لديك قدرة على",
+      "availableDays": "الأيام المتاحة",
+      "healthConditions": "هل تعاني من",
+      "documentsDelivered": "الوثائق المسلمة",
+      "hiringEvaluationHeading": "تقييم مسئول الموارد البشرية (سري)",
+      "hiringTotal": "المجموع:",
+      "scoreAppearance": "المظهر العام",
+      "scorePersonalHygiene": "النظافة الشخصية",
+      "scoreCommunication": "أسلوب التواصل",
+      "scoreDiscipline": "الانضباط",
+      "scoreExperience": "الخبرة",
+      "scoreQuickUnderstanding": "سرعة الفهم",
+      "scorePhysicalFitness": "اللياقة البدنية",
+      "scoreWorkPressure": "تحمل ضغط العمل",
+      "scorePunctuality": "الالتزام بالمواعيد",
+      "scoreTrustHonesty": "الثقة والأمانة",
+      "hiringDecision": "قرار الإدارة",
+      "issuedDate": "حررت: بأم البواقي، بتاريخ:"
+    },
+    "YesNo": {
+      "YES": "نعم",
+      "NO": "لا"
+    },
+    "Sexes": {
+      "MALE": "ذكر",
+      "FEMALE": "أنثى"
+    },
+    "Abilities": {
+      "CARRY_EQUIPMENT": "حمل المعدات",
+      "STAND_LONG_HOURS": "الوقوف لساعات طويلة",
+      "CLIMB_STAIRS": "صعود السلالم",
+      "UPPER_FLOORS": "العمل في الطوابق العليا",
+      "WORK_UNDER_PRESSURE": "العمل تحت الضغط",
+      "MOVE_BETWEEN_SITES": "التنقل بين المؤسسات"
+    },
+    "Weekdays": {
+      "SAT": "السبت",
+      "SUN": "الأحد",
+      "MON": "الإثنين",
+      "TUE": "الثلاثاء",
+      "WED": "الأربعاء",
+      "THU": "الخميس",
+      "FRI": "الجمعة"
+    },
+    "HealthConditions": {
+      "ASTHMA": "الربو",
+      "BACK": "مشاكل الظهر",
+      "HEART": "مشاكل القلب",
+      "CHRONIC": "أمراض مزمنة",
+      "NONE": "لا يوجد",
+      "OTHER": "أخرى"
+    },
+    "Documents": {
+      "ID_CARD_COPY": "نسخة من بطاقة التعريف",
+      "BIRTH_CERT": "شهادة الميلاد",
+      "RESIDENCE_CERT": "شهادة الإقامة",
+      "MEDICAL_CERT": "شهادة طبية",
+      "CROSSED_CCP_CHEQUE": "صك بريدي مشطوب",
+      "EXPERIENCE_CERT": "شهادة الخبرة",
+      "CRIMINAL_RECORD": "صحيفة السوابق العدلية (إذا كانت مطلوبة)"
+    },
+    "Decisions": {
+      "ACCEPTED": "قبول",
+      "ACCEPTED_ON_TRIAL": "قبول تحت التجربة",
+      "REFUSED_FINAL": "رفض المعني النهائي"
+    },
+    "MaritalStatuses": {
+      "SINGLE": "أعزب / عزباء",
+      "MARRIED": "متزوج(ة)",
+      "DIVORCED": "مطلق(ة)",
+      "WIDOWED": "أرمل(ة)"
+    },
+    "Fields": {
+      "lastName": "اللقب",
+      "firstName": "الاسم",
+      "sex": "الجنس *",
+      "sexHint": "يحدد الحرف بعد رقم التسجيل: H أو F.",
+      "numberOnSave": "يُعطى عند الحفظ",
+      "birthCommune": "البلدية",
+      "birthWilaya": "الولاية",
+      "residenceCommune": "بلدية الإقامة",
+      "otherIllness": "ما هي",
+      "expiryDate": "تاريخ انتهاء الصلاحية",
+      "totalComputed": "يُحسب من المعايير العشرة.",
+      "totalAlone": "إذا لم تُنقط المعايير يمكن كتابة المجموع وحده.",
+      "scoreHint": "0–10",
+      "nationalIdNumber": "رقم بطاقة التعريف",
+      "nationalIdHint": "أضمن وسيلة للتعرف على شخص موقف أو معاقب.",
+      "zone": "المنطقة",
+      "role": "الصفة *",
+      "payBasis": "طريقة احتساب الأجر",
+      "payRate": "مبلغ الأجر (دج)",
+      "payPeriod": "دورية الأجر",
+      "weeklyCapacity": "الطاقة الأسبوعية (ساعة) *",
+      "canCollectCash": "مخوّل بتحصيل الأموال (المادة 12)",
+      "collectAuthFrom": "منذ",
+      "collectAuthNote": "وثيقة التخويل",
+      "decisionLocked": "تسجّل الإدارة قرارها بنفسها.",
+      "zoneHint": "إن تُركت فارغة: منطقة بلدية الإقامة."
+    },
+    "Office": {
+      "Title": "للاستخدام الإداري",
+      "Description": "لا يُطبع على الاستمارة."
+    },
+    "Restricted": {
+      "Badge": "مقيّد",
+      "HEALTH": "إجابات صحية: لا يطّلع عليها إلا المدير ومسئول الموارد البشرية، ويُسجَّل كل اطلاع.",
+      "SCORE": "تقييم سري: لا يطّلع عليه إلا المدير ومسئول الموارد البشرية، ويُسجَّل كل اطلاع.",
+      "Locked": "لا يملأ هذا الجزء إلا من له صلاحية الاطلاع عليه."
+    },
+    "Roles": {
+      "CLEANER": "عامل نظافة",
+      "SENIOR_WORKER": "عامل رئيسي",
+      "TEAM_LEADER": "قائد فريق"
+    },
+    "RolesFeminine": {
+      "CLEANER": "عاملة نظافة",
+      "SENIOR_WORKER": "عاملة رئيسية",
+      "TEAM_LEADER": "قائدة فريق"
+    },
+    "PayBases": {
+      "MONTHLY": "راتب شهري",
+      "DAILY": "أجر يومي",
+      "HOURLY": "بالساعة",
+      "PER_TASK": "بالمهمة"
+    },
+    "PayPeriods": {
+      "WEEKLY": "أسبوعيًا",
+      "MONTHLY": "شهريًا"
+    },
+    "Placeholders": {
+      "Choose": "اختر",
+      "NoZone": "لا توجد مناطق بعد",
+      "Phone": "0661 20 31 42"
+    },
+    "Actions": {
+      "Cancel": "إلغاء",
+      "Create": "تسجيل العامل",
+      "Save": "حفظ التعديلات",
+      "Saving": "جارٍ الحفظ…",
+      "SaveFailed": "تعذّر حفظ العامل.",
+      "Saved": "تم حفظ العامل.",
+      "Registered": "سُجّل العامل تحت رقم {number}."
+    },
+    "Sanction": {
+      "NameMatchTitle": "يوجد شخص بهذا الاسم موقف أو معاقب",
+      "NameMatchDescription": "{name}: {state} منذ {since}. هل يتعلق الأمر بشخص آخر؟",
+      "NotTheSamePerson": "شخص آخر",
+      "States": {
+        "SUSPENDED": "موقف",
+        "PENALISED": "معاقب"
+      },
+      "ClientStates": {
+        "SUSPENDED": "متوقف",
+        "PENALISED": "معاقب"
+      }
+    }
+  },
+  "WorkerPrint": {
+    "BlankTitle": "استمارة تسجيل فارغة",
+    "BlankDescription": "الصفحات الأربع كما يطبعها من Word، دون أي بيانات، لتسليمها للمترشح.",
+    "RecordTitle": "استمارة تسجيل {name}",
+    "RecordDescription": "الاستمارة مملوءة من ملف العامل، جاهزة للإمضاء والختم.",
+    "SampleNote": "بيانات تجريبية: ملفات العمال غير موصولة بعد، وهذه الورقة تعرض عاملاً مختلَقاً.",
+    "PartsLabel": "الصفحات المطلوب طباعتها",
+    "Parts": {
+      "all": "الاستمارة والنظام الداخلي",
+      "registration": "الاستمارة، الصفحتان 1 و2",
+      "regulations": "النظام الداخلي، الصفحتان 3 و4"
+    }
+  },
+  "Workers": {
+    "NewDescription": "تسجيل عامل نظافة: الاستمارة كما هي، ثم ما يخص الإدارة.",
+    "EditDescription": "استمارة تسجيل العامل.",
+    "SampleNote": "بيانات تجريبية: ملفات العمال غير موصولة بعد، وهذه الصفحة تعرض عاملاً مختلَقاً.",
+    "NewWorker": "عامل جديد",
+    "BlankForm": "استمارة فارغة",
+    "PrintForm": "طباعة الاستمارة",
+    "QuickNew": "تسجيل عامل نظافة",
+    "EditNotWired": "تعديلات العامل المسجل لا تحفظ بعد: تأتي مع ملفات العمال."
+  },
+  "Errors": {
+    "WorkerSexRequired": "حدد هل العامل رجل أم امرأة.",
+    "SurnameRequired": "اللقب مطلوب.",
+    "FirstNameRequired": "الاسم مطلوب.",
+    "BirthDateRequired": "تاريخ الإزدياد مطلوب.",
+    "PhoneDigits": "رقم الهاتف من 9 أو 10 أرقام.",
+    "ScoreRange": "النقطة عدد صحيح من 0 إلى 10.",
+    "TotalRange": "المجموع عدد صحيح من 0 إلى 100.",
+    "NationalIdDigits": "رقم التعريف من 6 إلى 20 رقماً.",
+    "PayRateAmount": "مبلغ الأجر مبلغ بالدينار، صفر أو أكثر.",
+    "CapacityRange": "الطاقة الأسبوعية بين 1 و48 ساعة.",
+    "HealthNoneAlone": "لا يمكن تأشير «لا يوجد» مع مرض.",
+    "HealthOtherText": "اذكر المرض الآخر.",
+    "TotalDisagrees": "المجموع لا يوافق النقاط.",
+    "BirthBeforeRegistration": "يجب أن يسبق تاريخ الإزدياد تاريخ التسجيل.",
+    "PayBasisForRate": "اختر طريقة احتساب هذا الأجر.",
+    "WorkerChangeNotWired": "لا يمكن تعديل عامل مسجل بعد.",
+    "HealthNotAllowed": "ليست لديك صلاحية تسجيل المعلومات الصحية.",
+    "ScoreNotAllowed": "ليست لديك صلاحية تسجيل التقييم السري.",
+    "DecisionNotAllowed": "ليست لديك صلاحية تسجيل قرار الإدارة.",
+    "SanctionBlocked": "هذا الشخص موقف أو معاقب. يجب أن يسمح المدير بتسجيله أولاً.",
+    "SanctionRefused": "لم يسمح المدير بتسجيل هذا الشخص.",
+    "SanctionNameMatch": "يوجد شخص بهذا الاسم موقف أو معاقب. أكّد أن الأمر يتعلق بشخص آخر قبل الحفظ.",
+    "DecisionNotFound": "قرار المدير هذا غير موجود.",
+    "DecisionNotAYes": "لا يسمح بالتسجيل إلا قبول المدير.",
+    "DecisionUsed": "استُعمل قرار المدير هذا من قبل."
+  }
+}

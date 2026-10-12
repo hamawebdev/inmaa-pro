@@ -1,1 +1,234 @@
-{}
+{
+  "WorkerForm": {
+    "Labels": {
+      "formTitle": "Fiche d'inscription au centre Inmaa",
+      "regNumber": "Numéro d'inscription :",
+      "registrationDate": "Date :",
+      "personalHeading": "Informations personnelles et familiales",
+      "fullName": "Nom et prénom",
+      "fullNameLatin": "En français",
+      "birthDate": "Date de naissance",
+      "birthPlace": "Commune / wilaya",
+      "address": "Adresse personnelle",
+      "residence": "Commune / wilaya de résidence",
+      "maritalStatus": "Situation familiale",
+      "phone": "Numéro de téléphone",
+      "emergencyHeading": "Personne à prévenir en cas d'urgence",
+      "emergencyName": "Nom de la personne",
+      "emergencyAddress": "Adresse personnelle",
+      "emergencyRelation": "Lien de parenté",
+      "emergencyPhone": "Numéro de téléphone",
+      "educationHeading": "Études et parcours professionnel",
+      "educationLevel": "Niveau d'études",
+      "certificateName": "Intitulé du diplôme",
+      "workedInFieldBefore": "Avez-vous déjà travaillé dans le domaine",
+      "previousEmployer": "Nom de l'établissement",
+      "abilities": "Aptitude physique / êtes-vous capable de",
+      "availableDays": "Jours disponibles",
+      "healthConditions": "Souffrez-vous de",
+      "documentsDelivered": "Documents remis",
+      "hiringEvaluationHeading": "Évaluation du responsable des ressources humaines (confidentiel)",
+      "hiringTotal": "Total :",
+      "scoreAppearance": "Présentation générale",
+      "scorePersonalHygiene": "Hygiène personnelle",
+      "scoreCommunication": "Manière de communiquer",
+      "scoreDiscipline": "Discipline",
+      "scoreExperience": "Expérience",
+      "scoreQuickUnderstanding": "Rapidité de compréhension",
+      "scorePhysicalFitness": "Condition physique",
+      "scoreWorkPressure": "Résistance à la pression du travail",
+      "scorePunctuality": "Ponctualité",
+      "scoreTrustHonesty": "Confiance et honnêteté",
+      "hiringDecision": "Décision de la direction",
+      "issuedDate": "Établi à Oum El Bouaghi, le :"
+    },
+    "YesNo": {
+      "YES": "Oui",
+      "NO": "Non"
+    },
+    "Sexes": {
+      "MALE": "Homme",
+      "FEMALE": "Femme"
+    },
+    "Abilities": {
+      "CARRY_EQUIPMENT": "Porter le matériel",
+      "STAND_LONG_HOURS": "Rester debout de longues heures",
+      "CLIMB_STAIRS": "Monter les escaliers",
+      "UPPER_FLOORS": "Travailler dans les étages supérieurs",
+      "WORK_UNDER_PRESSURE": "Travailler sous pression",
+      "MOVE_BETWEEN_SITES": "Se déplacer entre les établissements"
+    },
+    "Weekdays": {
+      "SAT": "Samedi",
+      "SUN": "Dimanche",
+      "MON": "Lundi",
+      "TUE": "Mardi",
+      "WED": "Mercredi",
+      "THU": "Jeudi",
+      "FRI": "Vendredi"
+    },
+    "HealthConditions": {
+      "ASTHMA": "Asthme",
+      "BACK": "Problèmes de dos",
+      "HEART": "Problèmes cardiaques",
+      "CHRONIC": "Maladies chroniques",
+      "NONE": "Aucun",
+      "OTHER": "Autre"
+    },
+    "Documents": {
+      "ID_CARD_COPY": "Copie de la carte d'identité",
+      "BIRTH_CERT": "Acte de naissance",
+      "RESIDENCE_CERT": "Certificat de résidence",
+      "MEDICAL_CERT": "Certificat médical",
+      "CROSSED_CCP_CHEQUE": "Chèque postal barré",
+      "EXPERIENCE_CERT": "Attestation d'expérience",
+      "CRIMINAL_RECORD": "Extrait du casier judiciaire (si demandé)"
+    },
+    "Decisions": {
+      "ACCEPTED": "Admission",
+      "ACCEPTED_ON_TRIAL": "Admission à l'essai",
+      "REFUSED_FINAL": "Refus définitif"
+    },
+    "MaritalStatuses": {
+      "SINGLE": "Célibataire",
+      "MARRIED": "Marié(e)",
+      "DIVORCED": "Divorcé(e)",
+      "WIDOWED": "Veuf / veuve"
+    },
+    "Fields": {
+      "lastName": "Nom",
+      "firstName": "Prénom",
+      "sex": "Sexe *",
+      "sexHint": "Il donne la lettre après le numéro d'inscription : H ou F.",
+      "numberOnSave": "Attribué à l'enregistrement",
+      "birthCommune": "Commune",
+      "birthWilaya": "Wilaya",
+      "residenceCommune": "Commune de résidence",
+      "otherIllness": "Laquelle",
+      "expiryDate": "Expire le",
+      "totalComputed": "Calculé à partir des dix critères.",
+      "totalAlone": "Sans critère noté, le total peut être saisi seul.",
+      "scoreHint": "0–10",
+      "nationalIdNumber": "Numéro de la carte d'identité",
+      "nationalIdHint": "Le moyen le plus sûr de retrouver une personne suspendue ou sanctionnée.",
+      "zone": "Zone",
+      "role": "Fonction *",
+      "payBasis": "Mode de calcul de la paie",
+      "payRate": "Montant (DA)",
+      "payPeriod": "Périodicité de la paie",
+      "weeklyCapacity": "Capacité hebdomadaire (heures) *",
+      "canCollectCash": "Autorisé(e) à encaisser de l'argent (article 12)",
+      "collectAuthFrom": "Depuis",
+      "collectAuthNote": "Document d'autorisation",
+      "decisionLocked": "La direction enregistre elle-même sa décision.",
+      "zoneHint": "Laissée vide : la zone de la commune de résidence."
+    },
+    "Office": {
+      "Title": "Usage administratif",
+      "Description": "N'est pas imprimé sur la fiche d'inscription."
+    },
+    "Restricted": {
+      "Badge": "Restreint",
+      "HEALTH": "Réponses de santé : seuls le directeur et le responsable des ressources humaines les voient, et chaque consultation est enregistrée.",
+      "SCORE": "Évaluation confidentielle : seuls le directeur et le responsable des ressources humaines la voient, et chaque consultation est enregistrée.",
+      "Locked": "Seules les personnes autorisées à voir cette partie peuvent la remplir."
+    },
+    "Roles": {
+      "CLEANER": "Agent d'entretien",
+      "SENIOR_WORKER": "Agent principal",
+      "TEAM_LEADER": "Chef d'équipe"
+    },
+    "RolesFeminine": {
+      "CLEANER": "Agente d'entretien",
+      "SENIOR_WORKER": "Agente principale",
+      "TEAM_LEADER": "Cheffe d'équipe"
+    },
+    "PayBases": {
+      "MONTHLY": "Salaire mensuel",
+      "DAILY": "Salaire journalier",
+      "HOURLY": "À l'heure",
+      "PER_TASK": "À la tâche"
+    },
+    "PayPeriods": {
+      "WEEKLY": "Chaque semaine",
+      "MONTHLY": "Chaque mois"
+    },
+    "Placeholders": {
+      "Choose": "Choisir",
+      "NoZone": "Aucune zone pour l'instant",
+      "Phone": "0661 20 31 42"
+    },
+    "Actions": {
+      "Cancel": "Annuler",
+      "Create": "Inscrire l'agent",
+      "Save": "Enregistrer les modifications",
+      "Saving": "Enregistrement…",
+      "SaveFailed": "Impossible d'enregistrer l'agent.",
+      "Saved": "L'agent est enregistré.",
+      "Registered": "Agent inscrit sous le numéro {number}."
+    },
+    "Sanction": {
+      "NameMatchTitle": "Une personne portant ce nom est suspendue ou sanctionnée",
+      "NameMatchDescription": "{name} : {state} depuis le {since}. S'agit-il d'une autre personne ?",
+      "NotTheSamePerson": "Une autre personne",
+      "States": {
+        "SUSPENDED": "suspendu(e)",
+        "PENALISED": "sanctionné(e)"
+      },
+      "ClientStates": {
+        "SUSPENDED": "suspendu",
+        "PENALISED": "sanctionné"
+      }
+    }
+  },
+  "WorkerPrint": {
+    "BlankTitle": "Fiche d'inscription vierge",
+    "BlankDescription": "Les quatre pages telles qu'il les imprime depuis Word, sans aucune donnée, à remettre au candidat.",
+    "RecordTitle": "Fiche d'inscription de {name}",
+    "RecordDescription": "La fiche remplie à partir du dossier de l'agent, prête à signer et à tamponner.",
+    "SampleNote": "Données d'exemple : les dossiers des agents ne sont pas encore reliés, cette feuille montre un agent inventé.",
+    "PartsLabel": "Pages à imprimer",
+    "Parts": {
+      "all": "Fiche et règlement",
+      "registration": "Fiche, pages 1 et 2",
+      "regulations": "Règlement intérieur, pages 3 et 4"
+    }
+  },
+  "Workers": {
+    "NewDescription": "Inscription d'un agent d'entretien : la fiche, puis ce que seul le bureau conserve.",
+    "EditDescription": "La fiche d'inscription de l'agent.",
+    "SampleNote": "Données d'exemple : les dossiers des agents ne sont pas encore reliés, cette page montre un agent inventé.",
+    "NewWorker": "Nouvel agent",
+    "BlankForm": "Fiche vierge",
+    "PrintForm": "Imprimer la fiche",
+    "QuickNew": "Inscrire un agent d'entretien",
+    "EditNotWired": "Les modifications d'un agent inscrit ne sont pas encore enregistrées : elles arrivent avec les dossiers des agents."
+  },
+  "Errors": {
+    "WorkerSexRequired": "Indiquez s'il s'agit d'un homme ou d'une femme.",
+    "SurnameRequired": "Le nom est obligatoire.",
+    "FirstNameRequired": "Le prénom est obligatoire.",
+    "BirthDateRequired": "La date de naissance est obligatoire.",
+    "PhoneDigits": "Le numéro de téléphone compte 9 ou 10 chiffres.",
+    "ScoreRange": "Une note est un nombre entier de 0 à 10.",
+    "TotalRange": "Un total est un nombre entier de 0 à 100.",
+    "NationalIdDigits": "Un numéro d'identité compte de 6 à 20 chiffres.",
+    "PayRateAmount": "Un montant de paie est une somme en dinars, zéro ou plus.",
+    "CapacityRange": "La capacité hebdomadaire est comprise entre 1 et 48 heures.",
+    "HealthNoneAlone": "« Aucun » ne peut pas être coché avec une maladie.",
+    "HealthOtherText": "Précisez l'autre maladie.",
+    "TotalDisagrees": "Le total ne correspond pas aux notes.",
+    "BirthBeforeRegistration": "La date de naissance doit précéder la date d'inscription.",
+    "PayBasisForRate": "Choisissez le mode de calcul de ce montant.",
+    "WorkerChangeNotWired": "La modification d'un agent inscrit n'est pas encore possible.",
+    "HealthNotAllowed": "Vous n'avez pas l'autorisation d'enregistrer les réponses sur la santé.",
+    "ScoreNotAllowed": "Vous n'avez pas l'autorisation d'enregistrer l'évaluation confidentielle.",
+    "DecisionNotAllowed": "Vous n'avez pas l'autorisation d'enregistrer la décision de la direction.",
+    "SanctionBlocked": "Cette personne est suspendue ou sanctionnée. Le directeur doit d'abord autoriser l'inscription.",
+    "SanctionRefused": "Le directeur n'a pas autorisé l'inscription de cette personne.",
+    "SanctionNameMatch": "Une personne portant ce nom est suspendue ou sanctionnée. Confirmez qu'il s'agit d'une autre personne avant d'enregistrer.",
+    "DecisionNotFound": "Cette décision du directeur n'existe pas.",
+    "DecisionNotAYes": "Seul l'accord du directeur permet une inscription.",
+    "DecisionUsed": "Cette décision du directeur a déjà été utilisée."
+  }
+}
