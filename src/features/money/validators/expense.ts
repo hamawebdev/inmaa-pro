@@ -7,12 +7,26 @@ import { EXPENSE_CATEGORIES, EXPENSE_DIVISIONS, PAYMENT_METHODS, RECURRENCES } f
 /** The largest amount the program writes, in dinars: the amount in words goes no further. */
 export const MAX_AMOUNT_DINARS = 999_999_999.99;
 
-/** Trimmed text; an empty field is no value at all. */
-function optionalText(max: number) {
+/**
+ * Trimmed text; an empty field is no value at all.
+ *
+ * Every message is written here, in words the catalogue has: the same schema
+ * checks the dialog and the service, and the service runs where no global
+ * error map is installed (the tests).
+ */
+export function optionalText(max: number) {
   return z.preprocess(
-    (value) => (typeof value === "string" ? (value.trim() === "" ? undefined : value.trim()) : value),
-    z.string().max(max).optional(),
+    (value) => (typeof value === "string" ? (value.trim() === "" ? undefined : value.trim()) : (value ?? undefined)),
+    z
+      .string({ invalid_type_error: "Invalid form submission." })
+      .max(max, `Must be at most ${max} characters.`)
+      .optional(),
   );
+}
+
+/** One code of a list. A value that is not on it, or none, asks for a choice. */
+export function choice<const T extends readonly [string, ...string[]]>(codes: T) {
+  return z.enum(codes, { errorMap: () => ({ message: "Choose one of the options." }) });
 }
 
 /** Whether a number of dinars has no more than two decimals (whole centimes). */
@@ -32,22 +46,22 @@ export function isWholeCentimes(dinars: number): boolean {
  */
 export function expenseFormSchema(today: IsoDate) {
   return z.object({
-    division: z.enum(EXPENSE_DIVISIONS),
-    category: z.enum(EXPENSE_CATEGORIES),
+    division: choice(EXPENSE_DIVISIONS),
+    category: choice(EXPENSE_CATEGORIES),
     date: z
-      .string()
-      .min(1)
+      .string({ required_error: "This field is required.", invalid_type_error: "This field is required." })
+      .min(1, "This field is required.")
       .refine(isIsoDate, { message: "Enter a valid date." })
       .refine((date) => date <= today, { message: "An expense cannot be dated after today." }),
     amount: z
-      .number()
+      .number({ required_error: "This field is required.", invalid_type_error: "Must be a number." })
       .positive({ message: "An amount must be more than zero." })
-      .max(MAX_AMOUNT_DINARS)
+      .max(MAX_AMOUNT_DINARS, "This amount is too large.")
       .refine(isWholeCentimes, { message: "An amount has at most two decimals." }),
-    method: z.enum(PAYMENT_METHODS),
+    method: choice(PAYMENT_METHODS),
     paidTo: optionalText(120),
     spentByName: optionalText(120),
-    recurrence: z.enum(RECURRENCES),
+    recurrence: choice(RECURRENCES),
     note: optionalText(500),
   });
 }
