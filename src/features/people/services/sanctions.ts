@@ -457,29 +457,33 @@ export interface SanctionStateOf {
 }
 
 /**
- * The state of each of these people on `ctx.today`: the one way other owners
- * read «متوقف / معاقب» (CONTRACTS section 3). Every id asked for is in the
- * answer, with null when nothing is in force.
+ * The state of each of these people on a day, `ctx.today` unless another is
+ * asked for: the one way other owners read «متوقف / معاقب» (CONTRACTS section
+ * 3). Every id asked for is in the answer, with null when nothing is in force.
+ *
+ * In force on a day: begun, not over, and not lifted by then. A sanction
+ * lifted today no longer counts today: lifting puts the person back at once.
  */
 export async function getSanctionStates(
   ex: Executor,
   ctx: ServiceContext,
-  input: { kind: SanctionSubject; ids: readonly string[] },
+  input: { kind: SanctionSubject; ids: readonly string[]; date?: string },
 ): Promise<Record<string, SanctionStateOf | null>> {
   const states: Record<string, SanctionStateOf | null> = Object.fromEntries(input.ids.map((id) => [id, null]));
   if (input.ids.length === 0) return states;
+  const day = input.date === undefined ? ctx.today : localDate(input.date);
   const column = input.kind === "CLIENT" ? "clientId" : "staffId";
   const rows = await ex
     .selectFrom("Sanction")
-    .select(["id", "staffId", "clientId", "state", "reason", "startDate", "endDate"])
+    .select(["id", "staffId", "clientId", "state", "reason", "startDate", "endDate", "liftedAt"])
     .where("subjectKind", "=", input.kind)
-    .where(column, "in", [...input.ids])
-    .where("liftedAt", "is", null)
-    .where("startDate", "<=", ctx.today)
-    .where((eb) => eb.or([eb("endDate", "is", null), eb("endDate", ">=", ctx.today)]))
+    .where(column, "in", [...new Set(input.ids)])
+    .where("startDate", "<=", day)
+    .where((eb) => eb.or([eb("endDate", "is", null), eb("endDate", ">=", day)]))
     .orderBy("startDate")
     .execute();
   for (const row of rows) {
+    if (row.liftedAt !== null && ctx.toLocal(row.liftedAt).date <= day) continue;
     const id = (input.kind === "CLIENT" ? row.clientId : row.staffId) ?? "";
     states[id] = {
       sanctionId: row.id,

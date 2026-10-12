@@ -15,6 +15,7 @@ Owner of features 21, 25, 37, 38: centre employees, cleaning workers, his worker
   - `employees.ts`: register, change, leaving, readmission, the list, the file.
   - `sanctions.ts`: the check, setting and lifting a sanction, reading a state.
   - `sanction-decisions.ts`: the manager's yes or no.
+  - `staff-exports.ts`: `listSchedulableWorkers` and `getStaffSummary`, for the other owners.
   - `staff-shared.ts`: what workers and employees share.
 - **Components** (`components/`): the sanction gate, the sanction card and chip, the reason dialog, form fields.
 - **Screens**:
@@ -63,11 +64,12 @@ Owner of features 21, 25, 37, 38: centre employees, cleaning workers, his worker
 - An employee is in post from registration, and has no zone.
 - The manager's answer is typed by the manager's own account. Answering inside another user's session waits for `requestManagerApproval`.
 - Opening a file is logged on every load, not once a day.
+- "This worker does not exist." is Operations' sentence (`WorkerNotFound`); People reuses it and does not define it again.
 
 ## Open items
 
 1. Hiring and training (interviews, training days, skills), hours and pay, employee attendance: not started.
-2. `listSchedulableWorkers`, `getStaffSummary`, `setWorkerZone`, `canCollectCash` and the other People exports of CONTRACTS section 3: not written.
+2. `setWorkerZone`, `canCollectCash`, `listEmployees` as a picker, `getHourlyLabourCost` and the pay exports of CONTRACTS section 3: not written. (`listSchedulableWorkers` and `getStaffSummary` are.)
 3. Violations, and a sanction created from one.
 4. A file per document on the worker's file (`StaffDocument.fileUrl`).
 5. A person matching two sanctions in force cannot be allowed by one yes.
@@ -87,4 +89,5 @@ Owner of features 21, 25, 37, 38: centre employees, cleaning workers, his worker
   - read a client's state with `getSanctionStates`, show it with `<SanctionChip>` or `<SanctionCard>`;
   - set a client's sanction with `setSanction`.
 - **Operations:**
-  - handle `staff.unavailable` (LEFT, SANCTION_SET, SANCTION_LIFTED).
+  - handle `staff.unavailable` (LEFT, SANCTION_SET, SANCTION_LIFTED);
+  - replace the stand-ins `readWorkers` and `readStaffNames` with `listSchedulableWorkers` and `getStaffSummary`.

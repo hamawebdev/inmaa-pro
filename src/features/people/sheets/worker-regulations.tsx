@@ -5,6 +5,7 @@ import { workerFormRow } from "@/features/people/forms/worker-form";
 import type { WorkerFormData } from "@/features/people/forms/worker-form-data";
 
 import {
+  CELL_PADDING_MM,
   ABOVE_THE_LETTERHEAD,
   belowHisTop,
   emptyParagraphMm,
@@ -209,8 +210,9 @@ export function Regulations({ data }: { data: WorkerRegulationsData }) {
         {/* P55: an empty paragraph, its mark in 7 pt at 1.15 lines. */}
         <div style={{ height: mm(emptyParagraphMm("traditional", 7, 1.15)) }} />
 
-        {/* T4: no grid, only a heavy dash-dot rule across its top; the worker signs on the right, the centre on the left. */}
-        <KeepTogether>
+        {/* T4: no grid, only a heavy dash-dot rule across its top; the worker signs on the right, the centre on the left.
+            Its indent is 0, so its border stands one cell padding outside the right margin (10.6 mm from the paper's edge). */}
+        <KeepTogether style={{ marginInlineStart: mm(-CELL_PADDING_MM) }}>
           <DashDotRule widthMm={192.5} />
           <SheetTable columns={[96.24, 96.26]}>
             <SheetRow>

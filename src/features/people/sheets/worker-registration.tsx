@@ -6,7 +6,17 @@ import { workerFormRow, type WorkerFormRow } from "@/features/people/forms/worke
 import type { WorkerFormData } from "@/features/people/forms/worker-form-data";
 import { HIRING_CRITERIA, type MaritalStatus, type RegSuffix } from "@/features/people/validators/staff-codes";
 
-import { ABOVE_THE_LETTERHEAD, belowHisTop, emptyParagraphMm, hisType, lineMm, mm, typedValue } from "./his-type";
+import {
+  ABOVE_THE_LETTERHEAD,
+  belowHisTop,
+  CELL_PADDING_MM,
+  emptyParagraphMm,
+  hisType,
+  lineMm,
+  mm,
+  TABLE_INDENT_MM,
+  typedValue,
+} from "./his-type";
 import { DiamondMark, OvalMark, StretchedLabel } from "./marks";
 import { dateParts, fullName, phoneParts, slashed } from "./print-values";
 import { Cell, FillBlank, InlineDate, NumberAndDate, SlashedBlank, TitleBox } from "./worker-form-parts";
@@ -32,8 +42,15 @@ const LIST_LINE_MM = lineMm("traditional", 14, 1.15);
 /** P1, the first line of page 1, below the clear top margin. */
 const P1_MM = belowHisTop(emptyParagraphMm("typesetting", 11, 1));
 
-/** His tables start 3.1 mm outside the right margin and are wider than the text area. */
-const OUTSIDE_THE_MARGIN: CSSProperties = { marginInlineStart: "-3.1mm" };
+/**
+ * Where T1 and T2 stand: wider than the text area, starting outside the right
+ * margin. In his file's compatibility mode Word puts a table's indent (-3.1 mm)
+ * at the text of its first cell, so the border stands one cell padding (1.9 mm)
+ * further out: 5 mm outside the 12.5 mm margin, 7.5 mm from the paper's edge
+ * (the Checker's layout file, section 9; estimated until a PDF saved by Word
+ * confirms it).
+ */
+const OUTSIDE_THE_MARGIN: CSSProperties = { marginInlineStart: mm(-(TABLE_INDENT_MM + CELL_PADDING_MM)) };
 
 const T1_COLUMNS = [32.47, 25.01, 37.46, 35.05, 33.76, 33.78] as const;
 const T2_COLUMNS = [32.49, 40.02, 22.46, 35.03, 64.88] as const;
@@ -472,8 +489,8 @@ export function RegistrationBack({ data }: { data: WorkerFormData }) {
         </span>
       </p>
 
-      {/* T3: one cell with no rule, 64.9 mm wide, against the left: plain words, not a box. */}
-      <div style={{ display: "flex", justifyContent: "flex-end", marginInlineEnd: "-3.1mm" }}>
+      {/* T3: one cell with no rule, 64.9 mm wide, against the left margin (its indent is ignored there): plain words, not a box. */}
+      <div style={{ display: "flex", justifyContent: "flex-end" }}>
         <SheetTable columns={[64.88]}>
           <SheetRow heightMm={9.9}>
             <Cell

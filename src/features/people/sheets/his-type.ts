@@ -118,6 +118,14 @@ export const ABOVE_THE_LETTERHEAD: CSSProperties = { position: "relative", zInde
 export const WORKER_FORM_MARGINS: SheetMargins = SHEET_BODY.worker;
 
 /**
+ * How Word places his tables (the Checker's layout file, section 9, estimated):
+ * a right-to-left table's indent puts the text of its first cell that far from
+ * the right margin, and its border one cell padding further out.
+ */
+export const TABLE_INDENT_MM = 3.1;
+export const CELL_PADDING_MM = 1.9;
+
+/**
  * Where something that his Word file places `mm` below his own top margin lands
  * below the clear one: at the same place on the paper when that is below the
  * clear top, otherwise at the clear top itself.

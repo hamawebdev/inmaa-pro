@@ -56,7 +56,7 @@ export function WorkersTable({
       {
         id: "number",
         header: t("Table.Number"),
-        cell: ({ row }) => <Ltr className="font-bold tabular-nums">{row.original.number}</Ltr>,
+        cell: ({ row }) => <Ltr className="font-bold whitespace-nowrap tabular-nums">{row.original.number}</Ltr>,
       },
       {
         id: "name",
@@ -79,7 +79,7 @@ export function WorkersTable({
       {
         id: "phone",
         header: t("Table.Phone"),
-        cell: ({ row }) => <Ltr className="tabular-nums">{formatPhone(row.original.phone)}</Ltr>,
+        cell: ({ row }) => <Ltr className="whitespace-nowrap tabular-nums">{formatPhone(row.original.phone)}</Ltr>,
       },
       {
         id: "status",
