@@ -1,1 +1,165 @@
-{}
+{
+  "MoneyPrint": {
+    "InvoiceTitle": "فاتورة رقم {number}",
+    "StatementTitle": "كشف الزيارات المنجزة للفاتورة رقم {number}",
+    "ReceiptTitle": "سند قبض رقم {number}",
+    "ReminderTitle": "تذكير بالتسديد",
+    "SampleNote": "بيانات نموذجية، تُعرض إلى أن يصبح تسجيل الفواتير والتسديدات ممكنًا.",
+    "NoStatement": "هذه الفاتورة بلا كشف زيارات: تخص خدمة عند الطلب."
+  },
+  "MoneyPeriod": {
+    "Label": "الفترة",
+    "Presets": {
+      "today": "اليوم",
+      "7days": "آخر 7 أيام",
+      "this-month": "هذا الشهر",
+      "custom": "مخصص"
+    },
+    "ChooseDates": "اختر التاريخ"
+  },
+  "MoneyCommon": {
+    "Amount": "المبلغ",
+    "Total": "الإجمالي",
+    "ChartType": "نوع المخطط",
+    "BarChart": "مخطط أعمدة",
+    "LineChart": "مخطط خطي",
+    "AreaChart": "مخطط مساحي",
+    "NoDataForPeriod": "لا توجد بيانات للفترة المحددة.",
+    "AllDivisions": "الكل",
+    "SampleTitle": "بيانات تجريبية",
+    "SampleDescription": "هذه الأسطر أمثلة، تُعرض إلى أن تصبح سجلات المركز نفسها مقروءة. لا يُحفظ شيء مما يُكتب هنا."
+  },
+  "MoneyCodes": {
+    "Divisions": {
+      "HOUSING": "المنازل",
+      "ORGANISATION": "المؤسسات",
+      "BUILDING": "العمارات",
+      "COMPLEX": "التجمعات السكنية",
+      "COMMON": "عام"
+    },
+    "ExpenseCategories": {
+      "WAGES": "أجور",
+      "CONTRIBUTIONS": "مساهمات والتزامات",
+      "TRANSPORT": "نقل",
+      "MATERIALS": "مواد",
+      "RENT": "إيجار",
+      "PHONE": "هاتف",
+      "ACCOUNTING": "محاسبة",
+      "MARKETING": "تسويق",
+      "EQUIPMENT": "معدات",
+      "MAINTENANCE": "صيانة",
+      "COMPENSATION": "تعويضات",
+      "TAXES": "ضرائب",
+      "LOSSES": "خسائر/إلغاءات",
+      "OTHER": "أخرى"
+    },
+    "PaymentMethods": {
+      "CASH": "نقدًا",
+      "BANK_TRANSFER": "تحويل بنكي",
+      "POSTAL_TRANSFER": "تحويل بريدي"
+    },
+    "Recurrences": {
+      "NONE": "مرة واحدة",
+      "MONTHLY": "كل شهر"
+    },
+    "ExpenseSources": {
+      "MANUAL": "مسجّل يدويًا",
+      "PURCHASE": "من المشتريات",
+      "MAINTENANCE": "من الصيانة",
+      "PAYROLL": "من الأجور"
+    }
+  },
+  "Income": {
+    "Overview": "نظرة عامة",
+    "TotalIncome": "مجموع المداخيل",
+    "ByDivision": "حسب القسم",
+    "DivisionSwitch": "القسم المعروض",
+    "Figures": {
+      "Collected": "المحصّل",
+      "CollectedBeforeTax": "المحصّل خارج الرسم",
+      "VatCollected": "الرسم على القيمة المضافة المحصّل",
+      "Invoiced": "المفوتر",
+      "InvoicedBeforeTax": "المفوتر خارج الرسم",
+      "Outstanding": "غير المحصّل إلى اليوم",
+      "StampCollected": "حق الطابع المحصّل"
+    },
+    "ChartDaily": "المداخيل اليومية: {division}",
+    "ChartMonthly": "المداخيل حسب الشهر: {division}",
+    "PaymentCount": "{count, plural, zero {لا دفعات} one {دفعة واحدة} two {دفعتان} few {# دفعات} many {# دفعة} other {# دفعة}}",
+    "SearchPlaceholder": "ابحث بالعميل أو الملف أو الوصل…",
+    "NoPayments": "لم تُستلم أي دفعة في هذه الفترة.",
+    "Table": {
+      "Date": "تاريخ الدفع",
+      "Client": "العميل",
+      "PaidBy": "دفعها: {payer}",
+      "File": "رقم الملف",
+      "Method": "طريقة السداد",
+      "Amount": "المبلغ",
+      "ReceiptNumber": "وصل رقم",
+      "PlusStamp": "+ حق الطابع {amount}"
+    }
+  },
+  "Expenses": {
+    "Overview": "نظرة عامة",
+    "TotalExpenses": "مجموع المصاريف",
+    "ByDivision": "حسب القسم",
+    "DivisionSwitch": "القسم المعروض",
+    "Figures": {
+      "Total": "المبلغ المصروف",
+      "Monthly": "المصاريف الشهرية الثابتة",
+      "Count": "عدد العمليات",
+      "TopCategory": "أكبر بند: {category}",
+      "NoTopCategory": "أكبر بند"
+    },
+    "ChartDaily": "المصاريف اليومية: {division}",
+    "ChartMonthly": "المصاريف حسب الشهر: {division}",
+    "ExpenseCount": "{count, plural, zero {لا مصاريف} one {مصروف واحد} two {مصروفان} few {# مصاريف} many {# مصروفًا} other {# مصروف}}",
+    "SearchPlaceholder": "ابحث بالمستفيد أو المكلف بالشراء…",
+    "AllCategories": "جميع الفئات",
+    "NoExpenses": "لا توجد مصاريف في هذه الفترة.",
+    "Edit": "تعديل",
+    "ChangedAtSource": "سجّله البرنامج: يُعدَّل من مصدره.",
+    "ViewReceipt": "عرض",
+    "ReceiptImage": "الإيصال",
+    "Table": {
+      "Date": "التاريخ",
+      "Category": "الفئة",
+      "PaidTo": "المستفيد",
+      "SpentBy": "المكلف بالشراء: {name}",
+      "Amount": "المبلغ",
+      "Actions": "إجراءات"
+    }
+  },
+  "ExpenseForm": {
+    "AddExpense": "إضافة مصروف",
+    "NewTitle": "تسجيل مصروف",
+    "EditTitle": "تعديل المصروف",
+    "Description": "مبلغ دُفع فعلًا، على أحد الأقسام الأربعة أو على البند العام.",
+    "Division": "القسم",
+    "ChooseDivision": "اختر القسم",
+    "Category": "الفئة",
+    "ChooseCategory": "اختر الفئة",
+    "Date": "التاريخ",
+    "Amount": "المبلغ (دج)",
+    "PaidTo": "المستفيد",
+    "PaidToPlaceholder": "المورد أو من استلم المبلغ",
+    "SpentBy": "المكلف بالشراء",
+    "SpentByPlaceholder": "مثال: سميرة حداد",
+    "Method": "طريقة الدفع",
+    "Monthly": "مصروف شهري يتكرر كل شهر",
+    "MonthlyHint": "يُحسب في توقعات الأشهر القادمة.",
+    "Note": "ملاحظة",
+    "NotePlaceholder": "وصف اختياري…",
+    "Receipt": "الإيصال",
+    "ReceiptImage": "صورة الإيصال",
+    "SaveChanges": "حفظ التغييرات",
+    "Record": "تسجيل المصروف",
+    "ShownNotSaved": "يظهر في الشاشة فقط: لا يُحفظ شيء قبل ربط قاعدة البيانات."
+  },
+  "Errors": {
+    "ExpenseAfterToday": "لا يمكن أن يكون تاريخ المصروف بعد اليوم.",
+    "AmountMoreThanZero": "يجب أن يكون المبلغ أكبر من صفر.",
+    "AmountTwoDecimals": "للمبلغ رقمان عشريان على الأكثر.",
+    "PeriodStartAfterEnd": "بداية الفترة بعد نهايتها."
+  }
+}

@@ -1,1 +1,57 @@
-{}
+{
+  "StockPrint": {
+    "HandoutTitle": "وصل تسليم رقم {number}",
+    "SampleNote": "بيانات نموذجية، تُعرض إلى أن يصبح تسجيل التسليم ممكنًا."
+  },
+  "Inventory": {
+    "KindSwitch": "نوع المخزون",
+    "ItemCount": "{count, plural, zero {لا أصناف} one {صنف واحد} two {صنفان} few {# أصناف} many {# صنفًا} other {# صنف}}",
+    "ToBuyCount": "يحتاج طلب شراء: {count}",
+    "SearchPlaceholder": "ابحث بالاسم…",
+    "AllCategories": "جميع الفئات",
+    "NoItems": "لا توجد مادة مطابقة.",
+    "TrackedByUnit": "تُتابع كل وحدة برقمها",
+    "Table": {
+      "Item": "المادة/المعدة",
+      "Category": "الفئة",
+      "Unit": "الوحدة",
+      "OnHand": "المخزون",
+      "Minimum": "الحد الأدنى",
+      "State": "الحالة"
+    },
+    "States": {
+      "OUT": "نفد",
+      "LOW": "بلغ الحد الأدنى",
+      "OK": "متوفر",
+      "UNWATCHED": "بلا حد أدنى"
+    },
+    "StateFilters": {
+      "ALL": "جميع الحالات",
+      "TO_BUY": "يحتاج طلب شراء",
+      "OK": "متوفر",
+      "UNWATCHED": "بلا حد أدنى"
+    }
+  },
+  "StockCodes": {
+    "Kinds": {
+      "EQUIPMENT": "المعدات",
+      "MATERIAL": "المواد"
+    },
+    "Units": {
+      "PIECE": "قطعة",
+      "LITRE": "لتر",
+      "KG": "كلغ",
+      "BOX": "علبة",
+      "BAG": "كيس",
+      "PAIR": "زوج",
+      "ROLL": "لفة"
+    },
+    "Categories": {
+      "CLEANING_PRODUCT": "منظفات",
+      "CONSUMABLE": "مستهلكات",
+      "TOOL": "أدوات",
+      "MACHINE": "آلات",
+      "PPE": "معدات الوقاية"
+    }
+  }
+}

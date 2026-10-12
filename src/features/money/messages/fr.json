@@ -1,1 +1,165 @@
-{}
+{
+  "MoneyPrint": {
+    "InvoiceTitle": "Facture {number}",
+    "StatementTitle": "Relevé des visites de la facture {number}",
+    "ReceiptTitle": "Reçu de caisse {number}",
+    "ReminderTitle": "Rappel de paiement",
+    "SampleNote": "Données d'exemple, affichées en attendant l'enregistrement des factures et des paiements.",
+    "NoStatement": "Cette facture n'a pas de relevé de visites : elle porte sur une prestation à la demande."
+  },
+  "MoneyPeriod": {
+    "Label": "Période",
+    "Presets": {
+      "today": "Aujourd'hui",
+      "7days": "7 jours",
+      "this-month": "Ce mois-ci",
+      "custom": "Personnalisé"
+    },
+    "ChooseDates": "Sélectionner une date"
+  },
+  "MoneyCommon": {
+    "Amount": "Montant",
+    "Total": "Total",
+    "ChartType": "Type de graphique",
+    "BarChart": "Graphique en barres",
+    "LineChart": "Graphique linéaire",
+    "AreaChart": "Graphique en aires",
+    "NoDataForPeriod": "Aucune donnée pour la période sélectionnée.",
+    "AllDivisions": "Toutes",
+    "SampleTitle": "Données d'exemple",
+    "SampleDescription": "Ces lignes sont des exemples, affichés en attendant que les données du centre puissent être lues. Rien de ce qui est saisi ici n'est conservé."
+  },
+  "MoneyCodes": {
+    "Divisions": {
+      "HOUSING": "Logements",
+      "ORGANISATION": "Établissements",
+      "BUILDING": "Immeubles",
+      "COMPLEX": "Ensembles résidentiels",
+      "COMMON": "Commun"
+    },
+    "ExpenseCategories": {
+      "WAGES": "Salaires",
+      "CONTRIBUTIONS": "Cotisations et charges",
+      "TRANSPORT": "Transport",
+      "MATERIALS": "Fournitures",
+      "RENT": "Loyer",
+      "PHONE": "Téléphone",
+      "ACCOUNTING": "Comptabilité",
+      "MARKETING": "Marketing",
+      "EQUIPMENT": "Équipement",
+      "MAINTENANCE": "Maintenance",
+      "COMPENSATION": "Indemnités",
+      "TAXES": "Impôts et taxes",
+      "LOSSES": "Pertes/annulations",
+      "OTHER": "Autre"
+    },
+    "PaymentMethods": {
+      "CASH": "Espèces",
+      "BANK_TRANSFER": "Virement bancaire",
+      "POSTAL_TRANSFER": "Virement postal"
+    },
+    "Recurrences": {
+      "NONE": "Une fois",
+      "MONTHLY": "Chaque mois"
+    },
+    "ExpenseSources": {
+      "MANUAL": "Saisie manuelle",
+      "PURCHASE": "Des achats",
+      "MAINTENANCE": "De la maintenance",
+      "PAYROLL": "Des salaires"
+    }
+  },
+  "Income": {
+    "Overview": "Vue d'ensemble",
+    "TotalIncome": "Total des revenus",
+    "ByDivision": "Par division",
+    "DivisionSwitch": "Division affichée",
+    "Figures": {
+      "Collected": "Encaissé",
+      "CollectedBeforeTax": "Encaissé HT",
+      "VatCollected": "TVA encaissée",
+      "Invoiced": "Facturé",
+      "InvoicedBeforeTax": "Facturé HT",
+      "Outstanding": "Reste à encaisser à ce jour",
+      "StampCollected": "Droit de timbre encaissé"
+    },
+    "ChartDaily": "Revenus par jour : {division}",
+    "ChartMonthly": "Revenus par mois : {division}",
+    "PaymentCount": "{count, plural, one {# paiement} other {# paiements}}",
+    "SearchPlaceholder": "Rechercher par client, dossier ou reçu…",
+    "NoPayments": "Aucun paiement reçu sur cette période.",
+    "Table": {
+      "Date": "Date de paiement",
+      "Client": "Client",
+      "PaidBy": "Payé par {payer}",
+      "File": "Dossier",
+      "Method": "Mode de paiement",
+      "Amount": "Montant",
+      "ReceiptNumber": "Reçu",
+      "PlusStamp": "+ droit de timbre {amount}"
+    }
+  },
+  "Expenses": {
+    "Overview": "Vue d'ensemble",
+    "TotalExpenses": "Total des dépenses",
+    "ByDivision": "Par division",
+    "DivisionSwitch": "Division affichée",
+    "Figures": {
+      "Total": "Dépensé",
+      "Monthly": "Dépenses mensuelles fixes",
+      "Count": "Opérations",
+      "TopCategory": "Premier poste : {category}",
+      "NoTopCategory": "Premier poste"
+    },
+    "ChartDaily": "Dépenses par jour : {division}",
+    "ChartMonthly": "Dépenses par mois : {division}",
+    "ExpenseCount": "{count, plural, one {# dépense} other {# dépenses}}",
+    "SearchPlaceholder": "Rechercher par bénéficiaire ou acheteur…",
+    "AllCategories": "Toutes les catégories",
+    "NoExpenses": "Aucune dépense sur cette période.",
+    "Edit": "Modifier",
+    "ChangedAtSource": "Écrite par le programme : elle se modifie à sa source.",
+    "ViewReceipt": "Voir",
+    "ReceiptImage": "Reçu",
+    "Table": {
+      "Date": "Date",
+      "Category": "Catégorie",
+      "PaidTo": "Bénéficiaire",
+      "SpentBy": "Acheteur : {name}",
+      "Amount": "Montant",
+      "Actions": "Actions"
+    }
+  },
+  "ExpenseForm": {
+    "AddExpense": "Ajouter une dépense",
+    "NewTitle": "Enregistrer une dépense",
+    "EditTitle": "Modifier la dépense",
+    "Description": "Une somme déjà payée, sur l'une des quatre divisions ou sur la ligne commune.",
+    "Division": "Division",
+    "ChooseDivision": "Choisir la division",
+    "Category": "Catégorie",
+    "ChooseCategory": "Choisir la catégorie",
+    "Date": "Date",
+    "Amount": "Montant (DA)",
+    "PaidTo": "Bénéficiaire",
+    "PaidToPlaceholder": "Fournisseur ou personne payée",
+    "SpentBy": "Acheteur",
+    "SpentByPlaceholder": "ex. Samira Haddad",
+    "Method": "Mode de paiement",
+    "Monthly": "Mensuelle : elle revient chaque mois",
+    "MonthlyHint": "Comptée dans la prévision des mois à venir.",
+    "Note": "Note",
+    "NotePlaceholder": "Description facultative…",
+    "Receipt": "Reçu",
+    "ReceiptImage": "Image du reçu",
+    "SaveChanges": "Enregistrer les modifications",
+    "Record": "Enregistrer la dépense",
+    "ShownNotSaved": "Affichée à l'écran seulement : rien n'est conservé avant le raccordement de la base de données."
+  },
+  "Errors": {
+    "ExpenseAfterToday": "Une dépense ne peut pas être datée après aujourd'hui.",
+    "AmountMoreThanZero": "Un montant doit être supérieur à zéro.",
+    "AmountTwoDecimals": "Un montant a au plus deux décimales.",
+    "PeriodStartAfterEnd": "Le début de la période est après sa fin."
+  }
+}

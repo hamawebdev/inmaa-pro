@@ -1,1 +1,57 @@
-{}
+{
+  "StockPrint": {
+    "HandoutTitle": "Bon de remise {number}",
+    "SampleNote": "Données d'exemple, affichées en attendant l'enregistrement des remises."
+  },
+  "Inventory": {
+    "KindSwitch": "Type de stock",
+    "ItemCount": "{count, plural, one {# article} other {# articles}}",
+    "ToBuyCount": "À acheter : {count}",
+    "SearchPlaceholder": "Rechercher par nom…",
+    "AllCategories": "Toutes les catégories",
+    "NoItems": "Aucun article ne correspond.",
+    "TrackedByUnit": "Chaque unité suivie par son numéro",
+    "Table": {
+      "Item": "Article",
+      "Category": "Catégorie",
+      "Unit": "Unité",
+      "OnHand": "En stock",
+      "Minimum": "Minimum",
+      "State": "État"
+    },
+    "States": {
+      "OUT": "Épuisé",
+      "LOW": "Seuil atteint",
+      "OK": "En stock",
+      "UNWATCHED": "Sans minimum"
+    },
+    "StateFilters": {
+      "ALL": "Tous les états",
+      "TO_BUY": "À acheter",
+      "OK": "En stock",
+      "UNWATCHED": "Sans minimum"
+    }
+  },
+  "StockCodes": {
+    "Kinds": {
+      "EQUIPMENT": "Équipement",
+      "MATERIAL": "Fournitures"
+    },
+    "Units": {
+      "PIECE": "pièce",
+      "LITRE": "litre",
+      "KG": "kg",
+      "BOX": "boîte",
+      "BAG": "sac",
+      "PAIR": "paire",
+      "ROLL": "rouleau"
+    },
+    "Categories": {
+      "CLEANING_PRODUCT": "Produits d'entretien",
+      "CONSUMABLE": "Consommables",
+      "TOOL": "Outils",
+      "MACHINE": "Machines",
+      "PPE": "Équipements de protection"
+    }
+  }
+}

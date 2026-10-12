@@ -1,1 +1,165 @@
-{}
+{
+  "MoneyPrint": {
+    "InvoiceTitle": "Invoice {number}",
+    "StatementTitle": "Visit statement of invoice {number}",
+    "ReceiptTitle": "Cash receipt {number}",
+    "ReminderTitle": "Payment reminder",
+    "SampleNote": "Sample data, shown until invoices and payments can be recorded.",
+    "NoStatement": "This invoice has no visit statement: it bills a one-off job."
+  },
+  "MoneyPeriod": {
+    "Label": "Period",
+    "Presets": {
+      "today": "Today",
+      "7days": "7 days",
+      "this-month": "This month",
+      "custom": "Custom"
+    },
+    "ChooseDates": "Select date"
+  },
+  "MoneyCommon": {
+    "Amount": "Amount",
+    "Total": "Total",
+    "ChartType": "Chart type",
+    "BarChart": "Bar chart",
+    "LineChart": "Line chart",
+    "AreaChart": "Area chart",
+    "NoDataForPeriod": "No data for the selected period.",
+    "AllDivisions": "All",
+    "SampleTitle": "Sample data",
+    "SampleDescription": "These rows are examples, shown until the centre's own records can be read. Nothing typed here is kept."
+  },
+  "MoneyCodes": {
+    "Divisions": {
+      "HOUSING": "Homes",
+      "ORGANISATION": "Organisations",
+      "BUILDING": "Buildings",
+      "COMPLEX": "Residential complexes",
+      "COMMON": "Common"
+    },
+    "ExpenseCategories": {
+      "WAGES": "Wages",
+      "CONTRIBUTIONS": "Contributions and charges",
+      "TRANSPORT": "Transport",
+      "MATERIALS": "Materials",
+      "RENT": "Rent",
+      "PHONE": "Telephone",
+      "ACCOUNTING": "Accounting",
+      "MARKETING": "Marketing",
+      "EQUIPMENT": "Equipment",
+      "MAINTENANCE": "Maintenance",
+      "COMPENSATION": "Compensation",
+      "TAXES": "Taxes",
+      "LOSSES": "Losses/cancellations",
+      "OTHER": "Other"
+    },
+    "PaymentMethods": {
+      "CASH": "Cash",
+      "BANK_TRANSFER": "Bank transfer",
+      "POSTAL_TRANSFER": "Postal transfer"
+    },
+    "Recurrences": {
+      "NONE": "Once",
+      "MONTHLY": "Every month"
+    },
+    "ExpenseSources": {
+      "MANUAL": "Typed in",
+      "PURCHASE": "From purchases",
+      "MAINTENANCE": "From maintenance",
+      "PAYROLL": "From wages"
+    }
+  },
+  "Income": {
+    "Overview": "Overview",
+    "TotalIncome": "All income",
+    "ByDivision": "By division",
+    "DivisionSwitch": "Division shown",
+    "Figures": {
+      "Collected": "Collected",
+      "CollectedBeforeTax": "Collected before tax",
+      "VatCollected": "VAT collected",
+      "Invoiced": "Invoiced",
+      "InvoicedBeforeTax": "Invoiced before tax",
+      "Outstanding": "Still to collect, today",
+      "StampCollected": "Stamp duty collected"
+    },
+    "ChartDaily": "Daily income: {division}",
+    "ChartMonthly": "Income by month: {division}",
+    "PaymentCount": "{count, plural, one {# payment} other {# payments}}",
+    "SearchPlaceholder": "Search by client, file or receipt…",
+    "NoPayments": "No payment received in this period.",
+    "Table": {
+      "Date": "Date paid",
+      "Client": "Client",
+      "PaidBy": "Paid by {payer}",
+      "File": "File",
+      "Method": "Method",
+      "Amount": "Amount",
+      "ReceiptNumber": "Receipt",
+      "PlusStamp": "+ stamp duty {amount}"
+    }
+  },
+  "Expenses": {
+    "Overview": "Overview",
+    "TotalExpenses": "All expenses",
+    "ByDivision": "By division",
+    "DivisionSwitch": "Division shown",
+    "Figures": {
+      "Total": "Spent",
+      "Monthly": "Monthly expenses",
+      "Count": "Operations",
+      "TopCategory": "Largest: {category}",
+      "NoTopCategory": "Largest category"
+    },
+    "ChartDaily": "Daily expenses: {division}",
+    "ChartMonthly": "Expenses by month: {division}",
+    "ExpenseCount": "{count, plural, one {# expense} other {# expenses}}",
+    "SearchPlaceholder": "Search by payee or purchaser…",
+    "AllCategories": "All categories",
+    "NoExpenses": "No expense in this period.",
+    "Edit": "Edit",
+    "ChangedAtSource": "Written by the program: it is changed where it came from.",
+    "ViewReceipt": "View",
+    "ReceiptImage": "Receipt",
+    "Table": {
+      "Date": "Date",
+      "Category": "Category",
+      "PaidTo": "Paid to",
+      "SpentBy": "Purchaser: {name}",
+      "Amount": "Amount",
+      "Actions": "Actions"
+    }
+  },
+  "ExpenseForm": {
+    "AddExpense": "Add an expense",
+    "NewTitle": "Record an expense",
+    "EditTitle": "Edit the expense",
+    "Description": "Money already paid out, on one of the four divisions or on the common line.",
+    "Division": "Division",
+    "ChooseDivision": "Choose the division",
+    "Category": "Category",
+    "ChooseCategory": "Choose the category",
+    "Date": "Date",
+    "Amount": "Amount (DA)",
+    "PaidTo": "Paid to",
+    "PaidToPlaceholder": "Supplier or person paid",
+    "SpentBy": "Purchaser",
+    "SpentByPlaceholder": "e.g. Samira Haddad",
+    "Method": "Payment method",
+    "Monthly": "Monthly: it comes back every month",
+    "MonthlyHint": "Counted in the forecast of the months ahead.",
+    "Note": "Note",
+    "NotePlaceholder": "Optional description…",
+    "Receipt": "Receipt",
+    "ReceiptImage": "Receipt image",
+    "SaveChanges": "Save changes",
+    "Record": "Record the expense",
+    "ShownNotSaved": "Shown on the screen only: nothing is kept until the database is connected."
+  },
+  "Errors": {
+    "ExpenseAfterToday": "An expense cannot be dated after today.",
+    "AmountMoreThanZero": "An amount must be more than zero.",
+    "AmountTwoDecimals": "An amount has at most two decimals.",
+    "PeriodStartAfterEnd": "The start of the period is after its end."
+  }
+}

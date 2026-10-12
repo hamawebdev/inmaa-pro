@@ -1,1 +1,57 @@
-{}
+{
+  "StockPrint": {
+    "HandoutTitle": "Hand-out slip {number}",
+    "SampleNote": "Sample data, shown until hand-outs can be recorded."
+  },
+  "Inventory": {
+    "KindSwitch": "Kind of stock",
+    "ItemCount": "{count, plural, one {# item} other {# items}}",
+    "ToBuyCount": "To buy: {count}",
+    "SearchPlaceholder": "Search by name…",
+    "AllCategories": "All categories",
+    "NoItems": "No item matches.",
+    "TrackedByUnit": "Each unit followed by its number",
+    "Table": {
+      "Item": "Item",
+      "Category": "Category",
+      "Unit": "Unit",
+      "OnHand": "In stock",
+      "Minimum": "Minimum",
+      "State": "State"
+    },
+    "States": {
+      "OUT": "Out of stock",
+      "LOW": "Minimum reached",
+      "OK": "In stock",
+      "UNWATCHED": "No minimum"
+    },
+    "StateFilters": {
+      "ALL": "All states",
+      "TO_BUY": "To buy",
+      "OK": "In stock",
+      "UNWATCHED": "No minimum"
+    }
+  },
+  "StockCodes": {
+    "Kinds": {
+      "EQUIPMENT": "Equipment",
+      "MATERIAL": "Materials"
+    },
+    "Units": {
+      "PIECE": "piece",
+      "LITRE": "litre",
+      "KG": "kg",
+      "BOX": "box",
+      "BAG": "bag",
+      "PAIR": "pair",
+      "ROLL": "roll"
+    },
+    "Categories": {
+      "CLEANING_PRODUCT": "Cleaning products",
+      "CONSUMABLE": "Consumables",
+      "TOOL": "Tools",
+      "MACHINE": "Machines",
+      "PPE": "Protective equipment"
+    }
+  }
+}

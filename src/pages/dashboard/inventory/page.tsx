@@ -1,20 +1,32 @@
+import { useMemo } from "react";
+
 import { useTranslations } from "use-intl";
 
-import { PagePlaceholder } from "@/components/page-placeholder";
 import { SectionScreen } from "@/components/section-screen";
+import { SampleNotice } from "@/features/money/components/sample-notice";
+import { sampleInventory } from "@/features/stock/samples/inventory";
+
+import { InventoryView } from "./_components/inventory-view";
 
 /**
- * Placeholder. Section «المخزون», tab «جرد المخزون». Owner: Money and stock.
+ * Section «المخزون», tab «جرد المخزون».
  *
- * Replace the placeholder with the screen. Keep `section` and the heading as
- * they are: the tab strip and the lit bar item come from the route.
+ * Closest academy screen: the employees list (`/dashboard/employees`): a
+ * search and filters above a table, a count over it. The kind switch is the
+ * one on the academy's groups list. Until the services that read the stock
+ * exist, the list is drawn from sample items and says so.
  */
 export default function InventoryPage() {
   const tNav = useTranslations("Nav");
+  const tCommon = useTranslations("MoneyCommon");
+  const items = useMemo(() => sampleInventory(), []);
 
   return (
     <SectionScreen section="stock" title={tNav("StockHeading")}>
-      <PagePlaceholder owner="money" />
+      <div className="space-y-6">
+        <SampleNotice title={tCommon("SampleTitle")} description={tCommon("SampleDescription")} />
+        <InventoryView items={items} />
+      </div>
     </SectionScreen>
   );
 }
