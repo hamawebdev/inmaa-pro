@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/png" href="/icons/favicon-32.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>مركز إنماء برو</title>
+    <!--
+      The same boot script index.html carries, and for the same reason: the
+      centre chose a theme and a language, and a screen that asks them to ring a
+      number should not be the one screen that ignores both. It reads the same
+      two localStorage keys, which is all this page needs — nothing here touches
+      the database, and nothing here could.
+    -->
+    <script>
+      (function () {
+        try {
+          var root = document.documentElement;
+          // Arabic is the default language. Keep in step with DEFAULT_LOCALE in src/i18n/config.ts.
+          var DEFAULTS = { theme_mode: "system", locale: "ar" };
+
+          function read(key) {
+            try {
+              var value = window.localStorage.getItem(key);
+              return typeof value === "string" && value ? value : DEFAULTS[key];
+            } catch (e) {
+              return DEFAULTS[key];
+            }
+          }
+
+          var rawMode = read("theme_mode");
+          var mode = rawMode === "dark" || rawMode === "light" || rawMode === "system" ? rawMode : DEFAULTS.theme_mode;
+          var resolvedMode =
+            mode === "system" && window.matchMedia
+              ? window.matchMedia("(prefers-color-scheme: dark)").matches
+                ? "dark"
+                : "light"
+              : mode;
+
+          root.classList.toggle("dark", resolvedMode === "dark");
+          root.setAttribute("data-theme-mode", mode);
+          root.style.colorScheme = resolvedMode === "dark" ? "dark" : "light";
+
+          var rawLocale = read("locale");
+          var locale = ["en", "ar", "fr"].indexOf(rawLocale) >= 0 ? rawLocale : DEFAULTS.locale;
+          root.setAttribute("lang", locale);
+          root.setAttribute("dir", locale === "ar" ? "rtl" : "ltr");
+        } catch (e) {
+          console.warn("Boot script error:", e);
+        }
+      })();
+    </script>
+  </head>
+
+  <body class="antialiased">
+    <!--
+      The second entry point, and the only one an expired installation ever
+      loads. Rust decides which of the two windows is built, before either
+      exists — see src-tauri/src/lib.rs `run()`.
+
+      This is a separate bundle rather than a route because a route would still
+      be inside the app: the router, the query client, the Kysely driver and
+      every screen they reach would all be sitting in the same file, one
+      navigation away. None of those are in this bundle — verified by building
+      it. What is here is the generated IPC client (src/lib/bindings.ts), which
+      names every command including the database ones; those are covered by
+      `license::guard` in Rust, which refuses them all while the licence is
+      expired. Between that and `capabilities/lock.json` — no filesystem, no
+      store, no dialog — there is nothing here to navigate around, and nothing
+      here that could reach the centre's data if there were.
+    -->
+    <div id="root"></div>
+    <script type="module" src="/src/lock/main.tsx"></script>
+  </body>
+</html>

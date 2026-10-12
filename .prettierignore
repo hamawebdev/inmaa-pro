@@ -1,0 +1,29 @@
+# Build output and dependencies
+dist
+node_modules
+src-tauri/target
+src-tauri/gen
+package-lock.json
+
+# Not this program's code, or not Foundation's to reformat:
+# the client's documents and the plan are read-only, the checker's files are the
+# checker's, CLAUDE.md and the scope are the coordinator's.
+client docs
+plan
+docs
+CLAUDE.md
+.reference-scratch
+.harness
+.claude
+
+# Generated: rewritten by `cargo test` and by `npm run db:types`.
+src/lib/bindings.ts
+src/lib/db/schema.ts
+src/lib/db/models.ts
+src/lib/db/column-meta.ts
+
+# The design system, kept comparable with the reference app's copies so that a
+# diff shows only what was changed on purpose: the vendored shadcn/ui primitives
+# and the stylesheet that holds every token.
+src/components/ui
+src/index.css

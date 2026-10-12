@@ -40,31 +40,31 @@ node scripts/harness/csp-check.mjs --route /dashboard/home --route /dashboard/se
 
 `--help` on any of them lists every option. The ones used most:
 
-| Option | Meaning |
-|---|---|
-| `--route <path>` | the hash-router path, as in the address after `#` |
-| `--reference` | use the scratch copy of the academy app |
-| `--locale ar\|fr\|en` | language; left out, the app's own default applies |
-| `--theme light\|dark` | theme; left out, the app's own default applies (shown as light) |
-| `--size 1440x900`, `--both-sizes` | window size; `--both-sizes` is 1440x900 and 1024x640 from one load |
-| `--seed <file.sql>` | SQL run after the migrations; repeatable |
-| `--now <datetime>` | a fixed clock that still ticks, in the centre's time zone (Africa/Algiers) |
-| `--user <id>` | reserved: the account to be signed in as, once sign-in exists |
-| `--scroll bottom`, `--scroll-to <selector>` | scroll the main area before shooting |
-| `--clip <selector>` | shoot one element |
-| `--eval <js>` | print the value of an expression evaluated in the page |
-| `--page lock.html --license expired` | the lock window |
-| `--keep` | keep the run's database and browser profile, for looking inside |
+| Option                                      | Meaning                                                                    |
+| ------------------------------------------- | -------------------------------------------------------------------------- |
+| `--route <path>`                            | the hash-router path, as in the address after `#`                          |
+| `--reference`                               | use the scratch copy of the academy app                                    |
+| `--locale ar\|fr\|en`                       | language; left out, the app's own default applies                          |
+| `--theme light\|dark`                       | theme; left out, the app's own default applies (shown as light)            |
+| `--size 1440x900`, `--both-sizes`           | window size; `--both-sizes` is 1440x900 and 1024x640 from one load         |
+| `--seed <file.sql>`                         | SQL run after the migrations; repeatable                                   |
+| `--now <datetime>`                          | a fixed clock that still ticks, in the centre's time zone (Africa/Algiers) |
+| `--user <id>`                               | reserved: the account to be signed in as, once sign-in exists              |
+| `--scroll bottom`, `--scroll-to <selector>` | scroll the main area before shooting                                       |
+| `--clip <selector>`                         | shoot one element                                                          |
+| `--eval <js>`                               | print the value of an expression evaluated in the page                     |
+| `--page lock.html --license expired`        | the lock window                                                            |
+| `--keep`                                    | keep the run's database and browser profile, for looking inside            |
 
 ## Where things go
 
-| Path | What |
-|---|---|
-| `.harness/shots/` | screenshots, named `<route>__<locale>__<theme>__<WxH>.png` |
-| `.harness/pdf/` | PDFs and their page PNGs |
-| `.harness/baseline/` | the academy baseline, with `manifest.json` |
+| Path                           | What                                                                       |
+| ------------------------------ | -------------------------------------------------------------------------- |
+| `.harness/shots/`              | screenshots, named `<route>__<locale>__<theme>__<WxH>.png`                 |
+| `.harness/pdf/`                | PDFs and their page PNGs                                                   |
+| `.harness/baseline/`           | the academy baseline, with `manifest.json`                                 |
 | `.harness/baseline/tab-strip/` | Arabic before/after shots for the direction provider, with `findings.json` |
-| `.harness/run/<id>/` | one run's database, uploads and browser profile; deleted when the run ends |
+| `.harness/run/<id>/`           | one run's database, uploads and browser profile; deleted when the run ends |
 
 `.harness/` and `.reference-scratch/` are git-ignored.
 
@@ -81,6 +81,19 @@ Baseline views: `home`, `attendance`, `attendance-absences`, `settings`, `settin
 (employees), `form` (new employee), `finance`, `finance-tabs`, `finance-table`; each in Arabic and
 English, light and dark, at both sizes. For an academy screen that is not in the baseline, shoot
 it with `--reference`.
+
+**Arabic screens are compared with `.harness/baseline/ar-direction-fixed/`, not with the unchanged
+Arabic shots.** The academy lays every Radix part out left to right in Arabic: the tab strips, and
+whole forms and tables inside tabs (`.harness/baseline/tab-strip/` shows it, before and after).
+The approved scope fixes that defect here instead of copying it (scope section 7, R6), so this
+program mounts the direction provider and its Arabic screens mirror where the academy's do not.
+The `ar-direction-fixed` shots are the academy with that one fix applied in memory; they are what
+"same as the academy" means for an Arabic screen. French and English are compared with the
+unchanged shots.
+
+Two things in those shots are still not to be copied: the academy's charts, whose axis labels
+overlap the bars in Arabic (here a chart is always drawn left to right), and its phone numbers and
+date-times, which Arabic reorders (here such values go inside `<Ltr>`).
 
 ## What a run tells you besides the picture
 
@@ -142,17 +155,17 @@ cp -a "$REF/node_modules" "$DST/node_modules"
 
 ## How it works
 
-| File | Job |
-|---|---|
-| `lib/session.mjs` | one run: backend, server, Chrome, teardown |
-| `lib/backend.mjs` | answers Tauri commands from a real SQLite file (`node:sqlite`) and a folder for uploads |
-| `lib/endpoints.mjs` | the three URLs added to the server: the stub, a command, an uploaded file |
-| `browser/tauri-stub.js` | stands in for the Tauri runtime in the page; applies locale, theme and clock |
-| `lib/vite-server.mjs` | serves the app's source with the app's own Vite, plus one plugin |
-| `lib/dist-server.mjs` | serves the built `dist/` under the content security policy |
-| `lib/browser.mjs` | starts Chrome and talks to its debugging port with Node's WebSocket |
-| `lib/experiments.mjs` | changes applied in memory for a before/after pair |
-| `seeds/academy-demo.sql` | demo rows for the academy app only |
+| File                     | Job                                                                                     |
+| ------------------------ | --------------------------------------------------------------------------------------- |
+| `lib/session.mjs`        | one run: backend, server, Chrome, teardown                                              |
+| `lib/backend.mjs`        | answers Tauri commands from a real SQLite file (`node:sqlite`) and a folder for uploads |
+| `lib/endpoints.mjs`      | the three URLs added to the server: the stub, a command, an uploaded file               |
+| `browser/tauri-stub.js`  | stands in for the Tauri runtime in the page; applies locale, theme and clock            |
+| `lib/vite-server.mjs`    | serves the app's source with the app's own Vite, plus one plugin                        |
+| `lib/dist-server.mjs`    | serves the built `dist/` under the content security policy                              |
+| `lib/browser.mjs`        | starts Chrome and talks to its debugging port with Node's WebSocket                     |
+| `lib/experiments.mjs`    | changes applied in memory for a before/after pair                                       |
+| `seeds/academy-demo.sql` | demo rows for the academy app only                                                      |
 
 Needs Node 22.13 or later (for `node:sqlite` and the built-in WebSocket) and Google Chrome
 (`CHROME_BIN` overrides where it is looked for). It installs nothing.

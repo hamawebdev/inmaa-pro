@@ -213,6 +213,9 @@ export async function createBackend({ root, runDir, seeds = [], license = "unloc
       case "backup_to":
       case "restore_from":
         throw commandError("backup and restore are not available in the browser harness");
+      case "export_upload":
+        // Never reached: the save dialog always answers "cancelled" here.
+        throw commandError("saving a copy of an upload is not available in the browser harness");
       case "license_status":
         return licenseStatus();
       case "license_unlock":

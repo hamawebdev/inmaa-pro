@@ -75,4 +75,114 @@ End every task with a report to the coordinator: what you built (screens, servic
 
 ## How this codebase works
 
-Foundation maintains this section once the shell has landed. Until then, see `docs/reference-notes/`.
+Maintained by Foundation. The shell is the academy app's, copied here under a new name (`Inmaa Pro`, `com.hamawebdev.inmaa-pro`, `inmaa.db`), with this program's sections and a placeholder page on every route. React 19, React Router (hash router), TanStack Query, Kysely over SQLite through Tauri commands, Tailwind 4, shadcn/ui, `use-intl`.
+
+### Commands
+
+Run from the project root. `node_modules` is a copy of the reference's: **never run `npm install`**, there is no network to install from. If you need a package that is not there, say so in your report.
+
+| To do this | Run |
+|---|---|
+| Type-check | `npx tsc --noEmit` (read only the errors in your paths) |
+| Lint your paths | `npx eslint src/features/people src/pages/dashboard/workers` (`npm run lint` for everything; 17 warnings from the academy shell are known, errors are not) |
+| Run your tests | `npx vitest run src/features/people` (`npm test` for everything) |
+| Format your paths | `npx prettier --write src/features/people src/pages/dashboard/workers`; width 120; `npm run format:check` is a gate |
+| See a screen | `npm run shot -- --route /dashboard/workers --locale ar --theme dark --both-sizes` |
+| Print a sheet to PDF | `npm run pdf -- --route /dashboard/files/1/form --png` |
+| Everything about the two above | `scripts/harness/README.md` |
+
+Left to Foundation and the Checker, because they write shared output or take minutes: `npm run build` (writes `dist/`), `npm run csp:check` (the built app under the content security policy), `npm run db:types`, `npm run db:verify`, and in `src-tauri/`: `cargo check --offline`, `cargo test --lib --offline` (this one rewrites `src/lib/bindings.ts`).
+
+Nobody but the coordinator runs `npm run tauri dev` or a built binary: it opens a window on the developer's screen. Nothing is ever built, installed or run inside `/mnt/data/academy-system-desktop`.
+
+### Where things go
+
+| What | Where |
+|---|---|
+| A screen | `src/pages/dashboard/<first path segment>/page.tsx`; its own parts in `_components/` beside it; detail pages in sub-folders (`new/page.tsx`, `[id]/page.tsx`) |
+| Routes | `src/features/<owner>/routes.tsx` (core, people, clients, operations, money; stock's screens are in money's list) |
+| Services (reads and writes) | `src/features/<folder>/services/*.ts` |
+| Validators and code lists | `src/features/<folder>/validators/*.ts` |
+| Messages | `src/features/<folder>/messages/{en,ar,fr}.json` (core, people, clients, operations, money, stock) |
+| Stored codes that need labels | `src/features/<folder>/code-labels.ts` |
+| Kinds of uploaded file | `src/features/<folder>/uploads.ts` |
+| Ctrl+K "new …" entries | `src/features/<folder>/quick-actions.ts` |
+| Tests | beside the code, `*.test.ts` (not `.test.tsx`: it is not picked up) |
+| Sections, tabs, hues, the ten parts of a file | `src/navigation/` (Foundation; ask for a change) |
+| Printed sheets | `src/features/<folder>/sheets/*.tsx`, shown by a page whose path ends in `/print` |
+| Shared components | `src/components/`; shadcn primitives in `src/components/ui/`; the print kit in `src/components/print/` (Foundation) |
+| Schema, migrations, generated types | `src-tauri/migrations/`, `prisma/schema.prisma`, `src/lib/db/` (Foundation) |
+
+The folder names `services/`, `validators/` and `messages/` are not a matter of taste: tests find your files by them.
+
+### A page
+
+Every tab and every part of a file already has a page with a `<PagePlaceholder>` in it. Building a screen means replacing that element.
+
+- Keep the wrapper. A tab's page is `<SectionScreen section="workers" title={tNav("WorkersHeading")}>`: the heading, the tab strip and the lit bar item all follow from the route. Add `actions={<Button asChild variant="add">…</Button>}` for the screen's main button.
+- A page below a list (a new record, one record, a part of a file) is `<DetailScreen section=… title=… back={{ href, label }}>`. It has a back action and no tab strip.
+- Read data with `useQuery({ queryKey: pathKey("/dashboard/workers"), queryFn })`; a second query on the same screen uses `[...pathKey("/dashboard/workers"), "name"]`. Nothing refetches by itself: a service ends with `revalidatePath("/dashboard/workers")` and that is what refreshes the screen.
+- Match the academy's newer generation: `SectionScreen`, `DetailScreen`, `ScreenHeader`, `ScreenTabs`, `StatCard`, `StatusChip`, and `DataTable` with `TableSearch` and `TablePager` (`src/components/data-table-shell.tsx`). Name the closest academy screen in a comment at the top of the page. The academy's own pages are not in this repository: read them in the reference, and look at `.harness/baseline/`.
+- Arabic is the default and reads right to left. Use logical classes (`ps-`, `pe-`, `ms-`, `me-`, `start-`, `end-`, `text-start`), never `left`/`right`. Compare an Arabic screen with `.harness/baseline/ar-direction-fixed/`: this program mounts the direction provider the academy forgot, so tab strips and everything inside tabs mirror here.
+- Put a phone number, a date or time written in digits, a number with its unit, a registration number or a code inside `<Ltr>` (`src/components/ltr.tsx`), on screen and on paper. Without it Arabic shows `0661 20 31 42` as `42 31 20 0661`.
+- Colours come from tokens (`text-success`, `bg-section-workers/10`, `SECTION_ACCENT`), never from the raw palette (`text-green-600`). A chart goes through `ChartContainer`. Confirm with `useConfirm()`, never `confirm()`.
+- Native date fields and file buttons stay as the academy has them.
+
+### A route
+
+Add it to your own list: `{ path: "workers/:id", element: <WorkerPage /> }`. The path is relative to `/dashboard`, is written as a plain string, and its first segment must be one of yours. `src/navigation/routes.test.ts` fails otherwise. A new tab or section is a change to `src/navigation/sections.ts`: ask Foundation.
+
+A file's pages are `files/:id/<part>`. The list of parts is `src/navigation/file-parts.ts`; the hub page links to every part from it, so the three owners never edit each other's files.
+
+### A service and a validator
+
+**Wait for the data model before writing services.** Today the database has two provisional tables (`User`, `Setting`). The data model arrives with the tables, the generated types and the way a service is written so that a test can run it against a real database. What will not change:
+
+- A service is a plain async function in `src/features/<folder>/services/`. It returns data, or `{ success: true }` / `{ success: false, error: "An English sentence." }`, and ends a write with `revalidatePath()`.
+- A validator is a zod schema in `src/features/<folder>/validators/`, with its codes as `as const` arrays and its messages as English sentences.
+- Every English sentence a service or a validator can produce must be a value under `Errors` in your `messages/en.json`, with its Arabic and French. `useErrorMessage()` finds the translation by the English sentence; `src/i18n/errors.test.ts` fails on a sentence with no entry.
+- The database stores codes (`"FULL_DAY"`), never labels. Label them in your messages, show them with `useCodeLabel("Namespace")`, and list the pair in your `code-labels.ts` so the test can check all three languages.
+- You do not write migrations or edit `src/lib/db/`. Ask for the table, column or code.
+
+### A message
+
+Write the key in your folder's `en.json`, then the same key in `ar.json` and `fr.json`. English is the reference the tests compare against; Arabic is what the centre reads, in the client's own words (scope sections 2, 7 and 9). Use namespaces of your own (`Workers`, `WorkerForm`). `Errors` is the one namespace every folder adds to. No key may be defined by two folders, and `Nav` (bar, tabs, headings, parts of a file) is Foundation's. `src/i18n/messages.test.ts` checks each folder: same keys in three languages, same `{arguments}`, nothing empty.
+
+### A file the user attaches
+
+Name the kind of record and the kind of file in your `uploads.ts`, save with `saveManagedUpload()` (`src/server/uploads.ts`), put `<MediaUploadField>` in the form. An image is shown in the page with `useUploadSrc()`. A PDF is not opened: the user saves a copy with the field's button (`saveUploadCopy()`), because nothing in this program leaves its window.
+
+### A printed sheet
+
+Everything that goes to paper is drawn on the A4 sheet in `src/components/print/`. Do not print a screen the way the academy does (`window.print()` on the live page): its headings, links and dark background end up on paper.
+
+- The sheet is a component in `src/features/<folder>/sheets/`, built from the kit: `PrintSheet`, `TickBox` (ticked or empty, box before or after the label), `DottedBlank`, `SheetTable` with `SheetRow` and `SheetCell` (column widths in millimetres), `PageBreak`, `KeepTogether`. `src/features/core/sheets/sample-sheet.tsx` uses every one of them; copy from it.
+- It is shown by a page below the record it prints, on a path that ends in `/print` (or `/print-<name>` when a record has several sheets). That page is a `DetailScreen` with `<PrintButton />` in its `actions` and the sheet as its content. The preview on screen and the printing are the sheet's own work. The sample is at `/dashboard/settings/print-sample`.
+- `<PrintSheet letterhead="worker" | "client" margins={…}>`. His two letterhead placements and his two margin sets are constants (`SHEET_MARGINS`, from the Checker's layout files); `SHEET_MARGINS_CLEAR_OF_LETTERHEAD` is for a sheet of our own that can run onto further pages by itself. The facts to print his six forms from are the Checker's: `docs/checker/forms/` and `docs/checker/data/*.json`.
+- Inside a sheet, sizes are millimetres and points in `style`. No Tailwind classes and no rem units: the app's type scale follows the window, and paper must not. His three faces are `SHEET_FONT.traditional`, `.sakkal` and `.typesetting`; each falls back to the bundled Arabic font where his is not installed, which is the case on this machine.
+- A sheet is always Arabic and right to left, white paper and black ink, whatever the interface language and theme. Its text is written in the sheet, in his words, not in the message files. Digits read left to right go inside `<Ltr>`.
+- A sheet is rendered twice (the preview, and the copy that prints), so it must be a pure picture of its data: no state, no effects.
+- `<PageBreak />` must be a direct child of `<PrintSheet>`.
+- Look at what will reach paper: `npm run pdf -- --route /dashboard/…/print --png`, then open the PNG of each page. It prints with the print dialog's defaults (no "Background graphics"); shading inside a sheet survives that.
+
+### Offline, enforced
+
+Rule 1 is checked by tools, not left to care:
+
+- ESLint refuses, in `src/`: `fetch`, `XMLHttpRequest`, `WebSocket`, `window.open`, a web address in a string, `target="_blank"`, and `tel:` / `mailto:` links.
+- The content security policy (`src-tauri/tauri.conf.json`) refuses anything not bundled with the program, and the windows refuse to navigate anywhere else (`src-tauri/src/lib.rs`).
+- `src/lib/offline.test.ts` fails if a network plugin, crate or capability is added.
+- The policy is not applied by `tauri dev` or by the harness's normal mode. `npm run csp:check` is where it is seen working, on the built `dist/`.
+
+### The database, for now
+
+- **Provisional.** `src-tauri/migrations/0001_init.sql` and `0002_seed.sql` hold only what the shell reads. The data model replaces them.
+- **Until the first installer leaves the developer's machine, migrations may be rewritten and every development database is disposable.** sqlx remembers a checksum of each migration it applied, so after a migration is edited an old development database stops the program at start; delete the file (`~/.local/share/com.hamawebdev.inmaa-pro/inmaa.db` on Linux) and start again. After the first installer is delivered, migrations are forward-only: a new numbered file, never an edit.
+- The harness builds a fresh database for every run, so screenshots are never affected.
+- SQL is proven on the engine that ships by a Rust test (`cargo test --lib`, `migrations_apply_on_the_shipped_engine`). Node's SQLite, which the JavaScript tests and the harness use, is a newer release.
+
+### Still the academy's, and provisional
+
+- No sign-in and no roles: `src/server/tenant.ts` returns one constant user, and the academy's manager password and section lock are what protect a section.
+- The home screen and three of the four Settings tabs are placeholders.
+- Licence: a 7-day trial that counts real time, on this machine too. In a debug build, `INMAA_LICENSE_RESET=1` starts it again. The developer makes an unlock code with `cargo run --quiet --bin unlock-code -- <DEVICE-ID>` in `src-tauri/`.

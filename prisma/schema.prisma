@@ -1,0 +1,56 @@
+// PROVISIONAL type source for مركز إنماء برو.
+//
+// Only the two tables the shell reads. The data model for the whole program
+// replaces this file together with src-tauri/migrations (see CLAUDE.md).
+//
+// Prisma is NOT a dependency. This file is read as text by
+// scripts/generate-db-types.mjs, which writes src/lib/db/schema.ts, models.ts
+// and column-meta.ts. The SQL in src-tauri/migrations is written by hand to
+// match it.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model User {
+  id              String    @id @default(cuid())
+  name            String
+  email           String    @unique
+  password        String
+  role            String    @default("ADMIN")
+  parentAdminId   String?
+  permissions     Json?
+  isActive        Boolean   @default(true)
+  academyName     String?
+  logoUrl         String?
+  phone           String?
+  notes           String?
+  accessStartDate DateTime?
+  accessEndDate   DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  settings Setting[]
+
+  parentAdmin User?  @relation("AdminStaff", fields: [parentAdminId], references: [id], onDelete: Cascade)
+  staffUsers  User[] @relation("AdminStaff")
+
+  @@index([parentAdminId])
+}
+
+model Setting {
+  id        String   @id @default(cuid())
+  adminId   String?
+  key       String
+  value     String
+  updatedAt DateTime @updatedAt
+
+  admin User? @relation(fields: [adminId], references: [id])
+
+  @@unique([adminId, key])
+  @@index([adminId])
+}

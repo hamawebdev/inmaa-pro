@@ -1,0 +1,281 @@
+/*
+ * The A4 print sheet.
+ *
+ * Plain CSS, in millimetres and points, and deliberately none of the app's
+ * design tokens: paper is white, ink is black, and a sheet must measure the
+ * same whatever the window, the theme or the interface language. The app's
+ * own type scale is tied to the window size (see src/index.css), which is why
+ * nothing inside a sheet may use rem units or Tailwind's spacing classes.
+ *
+ * See src/components/print/print-sheet.tsx for how the pieces fit.
+ */
+
+/* ── Only the sheet prints ─────────────────────────────────────────────── */
+
+/* The copy that goes to paper lives here, outside the app. Not shown on screen. */
+#print-root {
+  display: none;
+}
+
+@media print {
+  /* While a sheet is mounted, paper gets the sheet and nothing else: not the
+     screen heading, not the back link, not the bar, not a toast or a menu that
+     happens to be open. */
+  html[data-print-sheet] body > *:not(#print-root) {
+    display: none !important;
+  }
+  html[data-print-sheet] #print-root {
+    display: block !important;
+  }
+  /* White paper whatever the theme, also when the user ticks "Background
+     graphics" in the print dialog. */
+  html[data-print-sheet],
+  html[data-print-sheet] body {
+    background: #fff !important;
+    color: #000 !important;
+  }
+}
+
+/* ── The sheet ─────────────────────────────────────────────────────────── */
+
+.sheet {
+  /* His fonts first: they are on a Windows PC with Arabic support, and then the
+     sheet is set in the faces his Word files name. The font bundled with the
+     program stands in where they are missing. */
+  --sheet-font-traditional: "Traditional Arabic", "IBM Plex Sans Arabic", "Geist Variable", serif;
+  --sheet-font-sakkal: "Sakkal Majalla", "IBM Plex Sans Arabic", "Geist Variable", sans-serif;
+  --sheet-font-typesetting: "Arabic Typesetting", "IBM Plex Sans Arabic", "Geist Variable", serif;
+
+  box-sizing: border-box;
+  background: #fff;
+  color: #000;
+  color-scheme: light;
+  direction: rtl;
+  text-align: start;
+  font-family: var(--sheet-font, var(--sheet-font-traditional));
+  font-size: 12pt;
+  font-weight: 400;
+  line-height: 1.4;
+  letter-spacing: normal;
+  /* Shading and borders reach paper with the print dialog's default settings,
+     where "Background graphics" is off. Inherited by everything inside. */
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+.sheet *,
+.sheet *::before,
+.sheet *::after {
+  box-sizing: border-box;
+}
+
+.sheet h1,
+.sheet h2,
+.sheet h3,
+.sheet p {
+  margin: 0;
+  font-family: inherit;
+  letter-spacing: normal;
+  color: #000;
+}
+
+/* The letterhead: in front of the text, pushing nothing, at the size his Word
+   file stretches it to. The box ends where the paper ends; the picture inside
+   keeps its full placed size. */
+.sheet-letterhead {
+  overflow: hidden;
+  pointer-events: none;
+  user-select: none;
+  z-index: 1;
+}
+
+.sheet-letterhead img {
+  display: block;
+  max-width: none;
+  object-fit: fill;
+}
+
+/* ── On screen: a preview ──────────────────────────────────────────────── */
+
+.sheet-preview-frame {
+  overflow-x: auto;
+  padding: 2mm 0 6mm;
+}
+
+.sheet-preview {
+  position: relative;
+  width: 210mm;
+  min-height: 297mm;
+  margin-inline: auto;
+  padding: var(--sheet-margin-top) var(--sheet-margin-right) var(--sheet-margin-bottom) var(--sheet-margin-left);
+  border: 1px solid #b5b0a6;
+  box-shadow: 0 1mm 4mm rgb(0 0 0 / 0.18);
+  overflow: hidden;
+}
+
+.sheet-preview.sheet-landscape {
+  width: 297mm;
+  min-height: 210mm;
+}
+
+.sheet-preview .sheet-letterhead {
+  position: absolute;
+  left: var(--at-left);
+}
+
+.sheet-preview .sheet-letterhead-header {
+  top: var(--at-top);
+}
+
+/* The preview is one long sheet, so the footer goes to its foot. On paper it
+   is on every page, at the place his Word file gives it. */
+.sheet-preview .sheet-letterhead-footer {
+  bottom: var(--from-bottom);
+}
+
+/* ── On paper ──────────────────────────────────────────────────────────── */
+
+/* The printed page has no margin of its own (the sheet writes
+   `@page { margin: 0 }`), so a millimetre here is a millimetre from the edge
+   of the paper. Two things then stand in for page margins:
+
+   - The letterhead is a fixed box. The print engine repeats a fixed box on
+     every page, at the same place, and with no page margin nothing clips it.
+     (With real page margins the engine cuts whatever reaches into them, and
+     the letterhead does: that was tried first.)
+   - The sheet's own margins are the head and foot of a one-cell table around
+     the content. A table's head and foot are repeated on every page it runs
+     onto, so the text of page two starts below the top margin, like page one. */
+.sheet-print .sheet-letterhead {
+  position: fixed;
+  left: var(--at-left);
+  top: var(--at-top);
+}
+
+.sheet-frame {
+  width: 100%;
+  border-collapse: collapse;
+  border-spacing: 0;
+}
+
+/* The next run of blocks starts on a new page. */
+.sheet-frame-then-break {
+  break-after: page;
+  page-break-after: always;
+}
+
+.sheet-frame > thead > tr > td,
+.sheet-frame > tfoot > tr > td,
+.sheet-frame > tbody > tr > td {
+  padding: 0;
+  border: 0;
+}
+
+.sheet-frame > thead > tr > td {
+  height: var(--sheet-margin-top);
+}
+
+.sheet-frame > tfoot > tr > td {
+  height: var(--sheet-margin-bottom);
+}
+
+.sheet-frame > tbody > tr > td {
+  padding: 0 var(--sheet-margin-right) 0 var(--sheet-margin-left);
+  vertical-align: top;
+}
+
+/* ── Pages ─────────────────────────────────────────────────────────────── */
+
+.sheet-page-break {
+  break-after: page;
+  page-break-after: always;
+}
+
+/* On screen the break is a marked line; on paper it is the break itself. */
+.sheet-preview .sheet-page-break {
+  margin: 6mm calc(-1 * var(--sheet-margin-right)) 6mm calc(-1 * var(--sheet-margin-left));
+  border-top: 0.4mm dashed #9a958b;
+}
+
+.sheet-keep {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+/* ── A tick box and its label ──────────────────────────────────────────── */
+
+.sheet-tick {
+  display: inline-flex;
+  align-items: center;
+  gap: 1.2mm;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.sheet-tick-box {
+  position: relative;
+  flex: none;
+  width: 3.6mm;
+  height: 3.6mm;
+  border: 0.75pt solid #000;
+  background: #fff;
+}
+
+/* Drawn, not typed: a glyph depends on a font that may not be there. */
+.sheet-tick-box svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/* ── A dotted blank ────────────────────────────────────────────────────── */
+
+.sheet-blank {
+  display: inline-block;
+  min-width: 12mm;
+  min-height: 1.25em;
+  padding: 0 1mm;
+  border-bottom: 1pt dotted #000;
+  text-align: center;
+  vertical-align: baseline;
+  line-height: 1.25;
+}
+
+/* His blanks are rows of full stops that run to the end of the cell. */
+.sheet-blank-fill {
+  display: block;
+  width: 100%;
+}
+
+/* ── A table with fixed columns ────────────────────────────────────────── */
+
+.sheet-table {
+  border-collapse: collapse;
+  table-layout: fixed;
+  direction: rtl;
+}
+
+.sheet-table td,
+.sheet-table th {
+  padding: 0.6mm 1.9mm;
+  border: 0.75pt solid #000;
+  font-weight: inherit;
+  text-align: start;
+  vertical-align: middle;
+  overflow-wrap: anywhere;
+}
+
+.sheet-table .sheet-cell-shaded {
+  background: #d9d9d9;
+}
+
+.sheet-table .sheet-cell-borderless {
+  border: 0;
+}
+
+/* A row is not split between two pages. */
+.sheet-table tr {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}

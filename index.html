@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/png" href="/icons/favicon-32.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>مركز إنماء برو</title>
+    <!--
+      Boot script. Applies the theme and text direction to <html> before first
+      paint so the app never flashes the wrong theme or direction. Must stay
+      synchronous, which is why these live in localStorage rather than the
+      (async) Tauri store.
+
+      It used to also seed a theme preset, a font key and four sidebar/layout
+      attributes. The sidebar is gone and the palette and typeface are fixed by
+      the design system, so two values are all that is left to restore.
+    -->
+    <script>
+      (function () {
+        try {
+          var root = document.documentElement;
+          // Arabic is the default language. Keep in step with DEFAULT_LOCALE in src/i18n/config.ts.
+          var DEFAULTS = { theme_mode: "system", locale: "ar" };
+
+          function read(key) {
+            try {
+              var value = window.localStorage.getItem(key);
+              return typeof value === "string" && value ? value : DEFAULTS[key];
+            } catch (e) {
+              return DEFAULTS[key];
+            }
+          }
+
+          var rawMode = read("theme_mode");
+          var mode = rawMode === "dark" || rawMode === "light" || rawMode === "system" ? rawMode : DEFAULTS.theme_mode;
+          var resolvedMode =
+            mode === "system" && window.matchMedia
+              ? window.matchMedia("(prefers-color-scheme: dark)").matches
+                ? "dark"
+                : "light"
+              : mode;
+
+          root.classList.toggle("dark", resolvedMode === "dark");
+          root.setAttribute("data-theme-mode", mode);
+          root.style.colorScheme = resolvedMode === "dark" ? "dark" : "light";
+
+          var rawLocale = read("locale");
+          var locale = ["en", "ar", "fr"].indexOf(rawLocale) >= 0 ? rawLocale : DEFAULTS.locale;
+          root.setAttribute("lang", locale);
+          root.setAttribute("dir", locale === "ar" ? "rtl" : "ltr");
+        } catch (e) {
+          console.warn("Boot script error:", e);
+        }
+      })();
+    </script>
+  </head>
+
+  <!-- The shell owns the scroll; <body> is pinned shut in index.css so the
+       bottom bar can never be scrolled out of reach. -->
+  <body class="antialiased">
+    <div id="root"></div>
+    <!-- Where a printed sheet is placed, outside the app, so that the sheet and
+         nothing else reaches paper. Empty and hidden on screen. See
+         src/components/print/print-sheet.tsx. -->
+    <div id="print-root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

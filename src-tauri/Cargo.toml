@@ -1,0 +1,79 @@
+[package]
+name = "inmaa-pro"
+version = "0.1.0"
+description = "Inmaa Pro — cleaning centre management, offline desktop"
+authors = ["hamawebdev"]
+edition = "2021"
+# With a second binary target (unlock-code) present, Cargo/Tauri can't infer
+# which binary is the app; `default-run` names the one `tauri build` bundles.
+default-run = "inmaa-pro"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+# Turns a customer's Device ID into the code that unlocks that one machine.
+# Run by the developer, never shipped: `cargo run --bin unlock-code -- <id>`.
+# See src/license/code.rs for the derivation it mirrors.
+[[bin]]
+name = "unlock-code"
+path = "src/bin/unlock_code.rs"
+
+[lib]
+# The `_lib` suffix may seem redundant but it is necessary
+# to make the lib name unique and wouldn't conflict with the bin name.
+# This seems to be only an issue on Windows, see https://github.com/rust-lang/cargo/issues/8519
+name = "inmaa_pro_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+# protocol-asset backs the assetProtocol scope in tauri.conf.json, which is how
+# uploaded photos and scans get served to <img> from the app data dir.
+#
+# No opener, http, shell, updater or websocket plugin, on purpose: the program
+# is offline, and src/lib/offline.test.ts fails if one of them comes back.
+tauri = { version = "2", features = ["protocol-asset"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tauri-plugin-store = "2.4.3"
+tauri-plugin-dialog = "2.7.1"
+tauri-plugin-fs = "2.5.1"
+tauri-plugin-notification = "2.3.3"
+tauri-plugin-log = "2.8.0"
+tauri-plugin-os = "2.3.2"
+thiserror = "2.0.18"
+specta = { version = "=2.0.0-rc.22", features = ["derive", "serde_json"] }
+specta-typescript = "=0.0.9"
+tauri-specta = { version = "=2.0.0-rc.21", features = ["derive", "typescript"] }
+
+# The application database. `tauri-plugin-sql` is deliberately NOT used: it opens
+# a multi-connection sqlx pool and hands an arbitrary connection to each call, so
+# a BEGIN issued by one call and the statements after it can land on different
+# connections. We own a single connection instead (see src/db.rs), which is what
+# makes the transactions the ported server actions rely on actually atomic.
+sqlx = { version = "0.8", default-features = false, features = [
+  "runtime-tokio",
+  "sqlite",
+  "json",
+  "migrate",
+  "macros",
+] }
+
+# Licensing. Symmetric only — the record signatures and the unlock codes are
+# both HMAC-SHA256 under the constant in src/license/secret.rs. An offline app
+# has nobody to verify an asymmetric signature against, so a keypair would buy
+# nothing that this does not. Both crates were already in the tree as transitive
+# dependencies of sqlx and tauri, so promoting them adds nothing to the build.
+sha2 = "0.10"
+hmac = "0.12"
+
+[target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
+tauri-plugin-process = "2.3.1"
+tauri-plugin-single-instance = "2.4.2"
+tauri-plugin-window-state = "2.4.1"
+
+# Reads MachineGuid for the device fingerprint, and holds two of the six
+# licensing anchors. See src/license/device.rs and src/license/vault/windows.rs.
+[target.'cfg(windows)'.dependencies]
+winreg = "0.55"

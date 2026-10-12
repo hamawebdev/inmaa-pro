@@ -1,0 +1,793 @@
+/* Tailwind looks for class names in the files named here and nowhere else.
+   Left to itself it scans the whole project folder, which in this repository
+   also holds the client's documents, the plan, the checker's tables and a
+   scratch copy of another app: none of that is this program's markup, and
+   every edit to a document would rebuild the stylesheet. */
+@import "tailwindcss" source(none);
+@source "./";
+@source "../index.html";
+@source "../lock.html";
+@import "tw-animate-css";
+
+/* Self-hosted typefaces — the app must render identically with no network.
+   Geist: a precise neutral grotesk with true tabular figures, which is what a
+   dense data application actually needs from a typeface.
+   IBM Plex Sans Arabic: dedicated Arabic letterforms for RTL, at the four
+   weights the UI uses and no more. */
+@import "@fontsource-variable/geist/index.css";
+@import "@fontsource-variable/geist-mono/index.css";
+@import "@fontsource/ibm-plex-sans-arabic/arabic-400.css";
+@import "@fontsource/ibm-plex-sans-arabic/arabic-500.css";
+@import "@fontsource/ibm-plex-sans-arabic/arabic-600.css";
+@import "@fontsource/ibm-plex-sans-arabic/arabic-700.css";
+
+@custom-variant dark (&:is(.dark *));
+
+/* Height-aware variants — the density scale of this app.
+
+   The Tauri window refuses to open below 1024x640 and defaults to 1440x900, so
+   `sm` (640), `md` (768) and `lg` (1024) are *always* matched: a `sm:text-2xl`
+   in this codebase is simply `text-2xl` wearing a disguise. Only `xl` (1280)
+   and `2xl` (1536) ever distinguish one machine from another by width.
+
+   Height is the axis that actually varies across the machines this ships to:
+
+     1024x640   tight   the contractual minimum
+     1366x768   tight   the common school laptop
+     1440x900   short   the default window
+     1600x900   short
+     1920x1080  tall    detail comes back
+     2560x1440  tall
+
+   `tight` implies `short` — anything that shrinks at `short` shrinks further at
+   `tight` — so a rule written once at `short` covers both.
+
+   Registration order is the whole contract and is not cosmetic. These are all
+   plain media queries of equal specificity, so at 640px both `short:h-14` and
+   `tight:h-12` match and the one emitted *later* wins. Tailwind emits custom
+   variants in the order declared here, which is why `tight` is last: move it
+   above `short` and every tight override silently stops working, with no error
+   and no failing build to say so. */
+@custom-variant tall (@media (min-height: 1001px));
+@custom-variant short (@media (max-height: 1000px));
+@custom-variant tight (@media (max-height: 820px));
+
+:root {
+  /* ---- Radius scale (squircle-friendly) -------------------------------- */
+  --radius: 0.875rem;
+
+  /* ---- Border weight ---------------------------------------------------
+     This interface separates its regions with *drawn lines*, not with shadow.
+     A 1px hairline on a warm near-white canvas under classroom lighting is, in
+     practice, invisible: the eye reads one undifferentiated field and has to
+     re-find the boundaries of every card on every glance. Two pixels is the
+     point where a border becomes a structural element you can navigate by, and
+     three is for the outermost enclosures — the app chrome and the panels that
+     hold a whole section of a form.
+
+     Expressed in px, never rem: a border is a drawn line at a fixed optical
+     weight, and letting it ride the fluid root font-size turns a crisp 2px rule
+     into a 3.1px slab on a 4K monitor. */
+  --border-width: 2px;
+  --border-width-strong: 3px;
+
+  /* ---- Fluid chrome ----------------------------------------------------
+     The app shell is one piece of fixed furniture: the bottom bar, present on
+     every screen. On a 640px-tall window it must not eat the content, and on a
+     1440px one it should not look lost, so it is a clamp of viewport height
+     rather than a constant.
+
+     The floor is a touch/precision contract, not an aesthetic choice: this is
+     the most-pressed control in the app and never falls under the 44px WCAG
+     target, because these are px and so do not ride the fluid root font-size
+     down. */
+  --chrome-navbar: clamp(4.25rem, 10vh, 5.75rem);
+
+  /* ---- Section accents -------------------------------------------------
+     Each section of the app owns a hue, carried from the bottom bar into that
+     screen's heading, its rule, its panel tints and the plate behind its icon.
+     The point is orientation for a user with low digital literacy: "I am on the
+     blue screen" is recallable in a way that "I am on the second tab" is not.
+
+     Seven distinct families rather than seven shades of one, because a
+     monochrome interface makes every screen look like every other screen and
+     forces the user to read a word to know where they are. Chroma is high
+     enough that the hues are unmistakable side by side and low enough that a
+     large tinted panel never vibrates; all of them sit at roughly one lightness
+     so they read as one designed family, and each clears WCAG AA as text on the
+     canvas.
+
+     The tightest pair is home/stock (195 vs 155, teal against green) at
+     40 degrees. That is acceptable only because colour is never the only
+     signal: every section also carries an icon, a word, a top rule and a weight
+     change, and no information in this app is conveyed by hue alone. */
+  --section-home: oklch(0.505 0.115 195);
+  --section-requests: oklch(0.495 0.155 250);
+  --section-employees: oklch(0.5 0.135 300);
+  --section-workers: oklch(0.545 0.145 55);
+  --section-stock: oklch(0.495 0.135 155);
+  --section-money: oklch(0.505 0.15 345);
+  --section-settings: oklch(0.495 0.11 105);
+
+  /* ---- Typography ------------------------------------------------------ */
+  --font-sans:
+    "Geist Variable", "IBM Plex Sans Arabic", ui-sans-serif, system-ui,
+    -apple-system, "Segoe UI", sans-serif;
+  --font-display:
+    "Geist Variable", "IBM Plex Sans Arabic", ui-sans-serif, system-ui,
+    sans-serif;
+  --font-mono:
+    "Geist Mono Variable", ui-monospace, "SF Mono", "Cascadia Code", monospace;
+
+  /* ---- Light theme: warm, low-strain, and never white ------------------
+     A deliberately WARM canvas rather than the pure #ffffff this replaces. An
+     administrator reads this screen for a whole day under fluorescent lighting,
+     and a blue-tinted white is the single biggest contributor to that kind of
+     eye fatigue: it pushes the most scattered wavelengths straight at the
+     reader and forces the ciliary muscle to keep re-focusing.
+
+     So every surface carries a trace of amber (hue ~80), text is a warm
+     near-black rather than pure black, and chroma on the *fills* is kept low so
+     large areas never vibrate — the colour in this interface lives in the
+     borders, the headings and the accents, which is where it can be strong
+     without being tiring.
+
+     NOTHING IN THIS THEME IS #FFFFFF, and that is the point of the scale below.
+     The canvas used to sit at pure white with cards also at pure white — zero
+     separation doing the work of a layout, and ~250 nits of undifferentiated
+     glare doing the work of nothing at all.
+
+     So the canvas RECEDES and the cards keep their lift. The step from page to
+     card is ~9% of relative luminance, which is what makes a card read as a card
+     without a single extra pixel of shadow — and the whole scale sits below
+     white, so the brightest thing on screen is a dialog you opened on purpose,
+     not the background you stare past all day. */
+
+  /* The page. Everything else is measured from here. */
+  --background: oklch(0.955 0.009 80);
+  --foreground: oklch(0.235 0.014 62);
+
+  /* Cards and panels sit ABOVE the canvas — brighter, but still short of white.
+     With borders this heavy the card edge is what separates them; the lift
+     stops a stack of cards reading as one long sheet. */
+  --card: oklch(0.985 0.005 80);
+  --card-foreground: oklch(0.235 0.014 62);
+
+  /* The top layer: dialogs, dropdowns, popovers. The brightest surface in the
+     app, and the only one that earns it — it is transient, it is on purpose,
+     and it needs to out-rank the card it was opened from. */
+  --popover: oklch(0.992 0.004 80);
+  --popover-foreground: oklch(0.235 0.014 62);
+
+  /* ---- Editable surfaces ------------------------------------------------
+     A field is not a card. Giving an input the card's own colour makes it
+     invisible as a *surface*, so the border alone has to say "you can type
+     here", at two different amounts of contrast depending on what it sits on.
+
+     `--field` is the fill of anything typeable. It sits one step ABOVE the card
+     it usually lives on, so an input reads as an open slot rather than a
+     painted rectangle, and one step below nothing — it is the same value as
+     `--popover`, which is the app's ceiling.
+
+     `--field-empty` is the same slot with nothing in it: recessed instead of
+     lifted, so on a dense grid (the group attendance sheet) a blank cell reads
+     as a hole and a filled one reads as a plate. That distinction is the
+     difference between "which of these sessions still needs marking" being a
+     glance and being a count. */
+  --field: oklch(0.992 0.004 80);
+  --field-empty: oklch(0.958 0.011 80);
+
+  /* A calm teal. Far enough from the amber canvas to stay legible as "the
+     interactive colour", and the same hue the overview section wears. */
+  --primary: oklch(0.505 0.115 195);
+  --primary-foreground: oklch(0.99 0.004 80);
+
+  /* The recessed neutrals, all BELOW the canvas rather than above it. A table
+     header, an icon plate and the page behind them must not be one flat field. */
+  --secondary: oklch(0.925 0.012 80);
+  --secondary-foreground: oklch(0.31 0.018 66);
+
+  --muted: oklch(0.928 0.012 80);
+  /* 0.44, not 0.45: secondary text has to clear WCAG AA on the *darkest*
+     surface it ever lands on, which is not the canvas but `--accent` (6.00:1)
+     and `--muted` (6.30:1). */
+  --muted-foreground: oklch(0.44 0.021 66);
+
+  --accent: oklch(0.912 0.024 82);
+  --accent-foreground: oklch(0.335 0.06 196);
+
+  --destructive: oklch(0.535 0.19 27);
+  --destructive-foreground: oklch(0.99 0.004 80);
+
+  --success: oklch(0.5 0.135 155);
+  --success-foreground: oklch(0.99 0.008 150);
+  --warning: oklch(0.72 0.14 74);
+  --warning-foreground: oklch(0.26 0.06 60);
+  /* Amber has to exist twice, and only amber does.
+     `--warning` is a *fill*: it sits behind dark text on a button, and at that
+     job it has to stay light. As *ink* — an amber word or icon on the warm
+     near-white canvas — the same value is below every WCAG threshold. Every
+     other semantic colour is mid-lightness and works both ways; this one cannot,
+     so the two roles get two tokens instead of one token that fails at half its
+     job. */
+  --warning-ink: oklch(0.535 0.135 68);
+  --info: oklch(0.505 0.145 245);
+  --info-foreground: oklch(0.99 0.004 80);
+
+  /* Action colours. Colour carries meaning in this app, not just emphasis:
+     green commits, blue prints, orange edits, emerald adds, violet exports, red
+     destroys. That mapping is fixed everywhere — a green button never prints
+     and a red one never saves. */
+  --edit: oklch(0.7 0.15 48);
+  --edit-foreground: oklch(0.24 0.05 40);
+  /* Deliberately apart from `success` (155) so "add a student" and "save" never
+     read as the same commit action. */
+  --add: oklch(0.5 0.15 165);
+  --add-foreground: oklch(0.99 0.008 150);
+  /* Apart from the staff section hue (300) and from `info` (245) so exporting a
+     file never reads as printing one. */
+  --export: oklch(0.5 0.15 285);
+  --export-foreground: oklch(0.99 0.004 80);
+  /* A cooler, greener teal than `primary` (195) so bringing a file in never
+     reads as the app's ordinary brand action. */
+  --import: oklch(0.5 0.13 176);
+  --import-foreground: oklch(0.99 0.004 80);
+
+  /* ---- Categorical chip palette ------------------------------------------
+     Eight hues, ~40 degrees apart, for pickers where every choice needs to be
+     tellable apart at a glance and none of them "means" anything the way the
+     action colours above do — an education level, a subject, a job position.
+     Chips wear a tint of their colour at rest and the solid fill once picked, so
+     a row of eight never reads as eight equally loud blocks. */
+  --chip-1: oklch(0.62 0.16 15);
+  --chip-1-foreground: oklch(0.24 0.05 15);
+  --chip-2: oklch(0.68 0.15 55);
+  --chip-2-foreground: oklch(0.24 0.05 55);
+  --chip-3: oklch(0.6 0.13 95);
+  --chip-3-foreground: oklch(0.24 0.045 95);
+  --chip-4: oklch(0.5 0.14 135);
+  --chip-4-foreground: oklch(0.99 0.008 140);
+  --chip-5: oklch(0.48 0.13 175);
+  --chip-5-foreground: oklch(0.99 0.004 175);
+  --chip-6: oklch(0.52 0.13 215);
+  --chip-6-foreground: oklch(0.99 0.004 215);
+  --chip-7: oklch(0.5 0.15 255);
+  --chip-7-foreground: oklch(0.99 0.004 255);
+  --chip-8: oklch(0.5 0.15 295);
+  --chip-8-foreground: oklch(0.99 0.004 295);
+
+  /* ---- Lines ------------------------------------------------------------
+     Materially darker than a hairline grey. At 2px a pale border is a smudge;
+     these are meant to be read as structure from across a desk. */
+  --border: oklch(0.835 0.017 80);
+  /* The outer enclosure: app chrome, section panels, dense grids. */
+  --border-strong: oklch(0.75 0.024 80);
+
+  /* The field boundary, and the one line in this file with a hard number
+     behind it rather than a judgement.
+
+     WCAG 1.4.11 asks for 3:1 against adjacent colour on any boundary that is
+     the only thing identifying a control — which is exactly what an input
+     border is. 0.58 clears 3:1 on every surface a field is ever drawn on:
+
+       on --field (0.992)       4.19:1
+       on --field-empty (0.958) 3.80:1
+       on --card (0.985)        4.11:1
+       on --background (0.955)  3.76:1
+       on --muted (0.928)       3.47:1
+       on --accent (0.912)      3.30:1
+
+     Which leaves room above it for the states, and that ordering is the
+     contract: a field must never gain its first visible border by being
+     touched. `--ring` reaches 5.19:1 on a field and `--destructive` 5.57:1, so
+     hover, focus and invalid all ESCALATE a line that was already legible
+     instead of introducing one. */
+  --input: oklch(0.58 0.03 80);
+  --ring: oklch(0.505 0.115 195);
+
+  /* Chart ramp — drawn from the section hues, so a chart on the finance screen
+     belongs to the same colour world as the rest of the app. */
+  --chart-1: oklch(0.505 0.135 195);
+  --chart-2: oklch(0.545 0.14 155);
+  --chart-3: oklch(0.62 0.145 60);
+  --chart-4: oklch(0.545 0.15 250);
+  --chart-5: oklch(0.55 0.13 300);
+
+  /* ---- Elevation: soft, warm-tinted -------------------------------------
+     Deliberately restrained: this interface separates itself with drawn lines,
+     and a screen under glare flattens shadow to nothing. Elevation confirms the
+     hierarchy here; it never carries it alone. */
+  --shadow-color: 40 22% 25%;
+  --shadow-xs: 0 1px 2px -1px hsl(var(--shadow-color) / 0.1);
+  --shadow-sm:
+    0 1px 2px -1px hsl(var(--shadow-color) / 0.08),
+    0 2px 4px -2px hsl(var(--shadow-color) / 0.08);
+  --shadow-md:
+    0 2px 4px -2px hsl(var(--shadow-color) / 0.08),
+    0 6px 12px -3px hsl(var(--shadow-color) / 0.11);
+  --shadow-lg:
+    0 4px 8px -3px hsl(var(--shadow-color) / 0.09),
+    0 12px 24px -6px hsl(var(--shadow-color) / 0.13);
+  --shadow-xl:
+    0 8px 16px -6px hsl(var(--shadow-color) / 0.1),
+    0 24px 48px -12px hsl(var(--shadow-color) / 0.18);
+}
+
+.dark {
+  /* Warm charcoal, never blue-black. A cool-black dark theme under warm room
+     lighting reads as a hole in the desk and makes the surrounding room look
+     yellow; matching the canvas hue to the room is what makes a dark UI restful
+     rather than merely dim. Contrast is held just under maximum for the same
+     reason as the light theme: pure white on pure black haloes. */
+  --background: oklch(0.185 0.008 68);
+  --foreground: oklch(0.94 0.006 82);
+
+  --card: oklch(0.232 0.009 68);
+  --card-foreground: oklch(0.94 0.006 82);
+  --popover: oklch(0.262 0.01 68);
+  --popover-foreground: oklch(0.94 0.006 82);
+
+  /* The same two editable surfaces as the light theme, mirrored: a field is
+     lifted off the card it sits on, an empty one is sunk into it. */
+  --field: oklch(0.272 0.011 68);
+  --field-empty: oklch(0.212 0.008 68);
+
+  --primary: oklch(0.735 0.115 195);
+  --primary-foreground: oklch(0.185 0.014 68);
+
+  --secondary: oklch(0.288 0.012 68);
+  --secondary-foreground: oklch(0.94 0.006 82);
+
+  --muted: oklch(0.288 0.012 68);
+  --muted-foreground: oklch(0.775 0.016 78);
+
+  --accent: oklch(0.322 0.038 196);
+  --accent-foreground: oklch(0.95 0.006 82);
+
+  --destructive: oklch(0.665 0.17 27);
+  --destructive-foreground: oklch(0.985 0.004 80);
+
+  --success: oklch(0.715 0.14 158);
+  --success-foreground: oklch(0.195 0.045 152);
+  --warning: oklch(0.79 0.135 78);
+  --warning-foreground: oklch(0.225 0.055 60);
+  /* On a dark canvas the fill is already legible as ink, so the two roles
+     collapse back into one value. The token still exists so call sites never
+     have to branch on theme. */
+  --warning-ink: oklch(0.79 0.135 78);
+  --info: oklch(0.715 0.13 248);
+  --info-foreground: oklch(0.185 0.014 68);
+
+  --edit: oklch(0.78 0.13 52);
+  --edit-foreground: oklch(0.24 0.055 42);
+  --add: oklch(0.72 0.135 168);
+  --add-foreground: oklch(0.195 0.045 162);
+  --export: oklch(0.72 0.14 285);
+  --export-foreground: oklch(0.185 0.014 68);
+  --import: oklch(0.7 0.12 176);
+  --import-foreground: oklch(0.185 0.014 68);
+
+  --chip-1: oklch(0.72 0.15 15);
+  --chip-1-foreground: oklch(0.24 0.05 15);
+  --chip-2: oklch(0.8 0.13 55);
+  --chip-2-foreground: oklch(0.24 0.05 55);
+  --chip-3: oklch(0.76 0.12 95);
+  --chip-3-foreground: oklch(0.24 0.045 95);
+  --chip-4: oklch(0.73 0.13 135);
+  --chip-4-foreground: oklch(0.195 0.045 135);
+  --chip-5: oklch(0.72 0.12 175);
+  --chip-5-foreground: oklch(0.185 0.02 175);
+  --chip-6: oklch(0.73 0.12 215);
+  --chip-6-foreground: oklch(0.185 0.02 215);
+  --chip-7: oklch(0.72 0.13 255);
+  --chip-7-foreground: oklch(0.185 0.02 255);
+  --chip-8: oklch(0.72 0.13 295);
+  --chip-8-foreground: oklch(0.185 0.02 295);
+
+  --border: oklch(1 0 0 / 17%);
+  --border-strong: oklch(1 0 0 / 30%);
+  /* Kept as an alpha rather than a solid: an alpha border lands at the right
+     contrast on every one of the dark surfaces at once — it composites to
+     L 0.54-0.59 on all of them (>=3:1), where a single solid value would have to
+     favour one. */
+  --input: oklch(1 0 0 / 44%);
+  --ring: oklch(0.735 0.115 195);
+
+  --chart-1: oklch(0.735 0.115 195);
+  --chart-2: oklch(0.75 0.13 158);
+  --chart-3: oklch(0.79 0.135 72);
+  --chart-4: oklch(0.71 0.14 250);
+  --chart-5: oklch(0.72 0.12 300);
+
+  /* Same seven hues lifted for a dark canvas — the section->hue mapping is
+     identical, only the lightness flips. */
+  --section-home: oklch(0.735 0.115 195);
+  --section-requests: oklch(0.71 0.14 250);
+  --section-employees: oklch(0.72 0.125 300);
+  --section-workers: oklch(0.765 0.135 58);
+  --section-stock: oklch(0.73 0.13 155);
+  --section-money: oklch(0.73 0.14 345);
+  --section-settings: oklch(0.76 0.115 105);
+
+  --shadow-color: 40 30% 3%;
+  --shadow-xs: 0 1px 2px -1px hsl(var(--shadow-color) / 0.4);
+  --shadow-sm:
+    0 1px 2px -1px hsl(var(--shadow-color) / 0.35),
+    0 2px 4px -2px hsl(var(--shadow-color) / 0.35);
+  --shadow-md:
+    0 2px 4px -2px hsl(var(--shadow-color) / 0.35),
+    0 6px 12px -3px hsl(var(--shadow-color) / 0.45);
+  --shadow-lg:
+    0 4px 8px -3px hsl(var(--shadow-color) / 0.4),
+    0 12px 24px -6px hsl(var(--shadow-color) / 0.5);
+  --shadow-xl:
+    0 8px 16px -6px hsl(var(--shadow-color) / 0.45),
+    0 24px 48px -12px hsl(var(--shadow-color) / 0.6);
+}
+
+@theme inline {
+  --font-sans: var(--font-sans);
+  --font-display: var(--font-display);
+  --font-mono: var(--font-mono);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  /* Editable surfaces, usable as `bg-field` / `bg-field-empty`. */
+  --color-field: var(--field);
+  --color-field-empty: var(--field-empty);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-warning-ink: var(--warning-ink);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+  --color-edit: var(--edit);
+  --color-edit-foreground: var(--edit-foreground);
+  --color-add: var(--add);
+  --color-add-foreground: var(--add-foreground);
+  --color-export: var(--export);
+  --color-export-foreground: var(--export-foreground);
+  --color-import: var(--import);
+  --color-import-foreground: var(--import-foreground);
+
+  --color-chip-1: var(--chip-1);
+  --color-chip-1-foreground: var(--chip-1-foreground);
+  --color-chip-2: var(--chip-2);
+  --color-chip-2-foreground: var(--chip-2-foreground);
+  --color-chip-3: var(--chip-3);
+  --color-chip-3-foreground: var(--chip-3-foreground);
+  --color-chip-4: var(--chip-4);
+  --color-chip-4-foreground: var(--chip-4-foreground);
+  --color-chip-5: var(--chip-5);
+  --color-chip-5-foreground: var(--chip-5-foreground);
+  --color-chip-6: var(--chip-6);
+  --color-chip-6-foreground: var(--chip-6-foreground);
+  --color-chip-7: var(--chip-7);
+  --color-chip-7-foreground: var(--chip-7-foreground);
+  --color-chip-8: var(--chip-8);
+  --color-chip-8-foreground: var(--chip-8-foreground);
+
+  /* Fluid chrome, usable as `h-chrome-navbar`. Without this bridge the class
+     silently produces no CSS at all. */
+  --spacing-chrome-navbar: var(--chrome-navbar);
+
+  /* Section accents, usable as `text-section-requests`,
+     `bg-section-money/10`, `border-section-employees/35`… */
+  --color-section-home: var(--section-home);
+  --color-section-requests: var(--section-requests);
+  --color-section-employees: var(--section-employees);
+  --color-section-workers: var(--section-workers);
+  --color-section-stock: var(--section-stock);
+  --color-section-money: var(--section-money);
+  --color-section-settings: var(--section-settings);
+
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+
+  /* Concentric radii so nested enclosures share a curve center */
+  --radius-sm: calc(var(--radius) - 6px);
+  --radius-md: calc(var(--radius) - 4px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+
+  --shadow-xs: var(--shadow-xs);
+  --shadow-sm: var(--shadow-sm);
+  --shadow-md: var(--shadow-md);
+  --shadow-lg: var(--shadow-lg);
+  --shadow-xl: var(--shadow-xl);
+
+  /* Spring easing tokens for motion choreography */
+  --ease-spring: cubic-bezier(0.32, 0.72, 0, 1);
+  --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  /* The one lever that scales the entire interface.
+
+     Every Tailwind size in this project is expressed in `rem`, so moving the
+     root font-size moves type, padding, heights and gaps together, in
+     proportion. That is what lets one layout serve a 1024x640 laptop and a 4K
+     monitor with no second set of breakpoints.
+
+     `min(vw, vh)` is the whole trick, and keying off width alone would be a
+     bug: a 1366x768 panel is wide enough to look roomy and is in fact short, so
+     a width-only scale would size the type for a screen with 200px more height
+     than it has. Whichever axis is scarcer wins.
+
+       1024x640  -> 16.0px     1366x768  -> 19.1px
+       1440x900  -> 20.2px     1920x1080 -> 22.0px (capped)
+
+     The cap matters as much as the floor: past ~22px a dense table stops
+     gaining readability and starts costing rows. */
+  html {
+    font-size: clamp(16px, min(1.4vw, 2.6vh), 22px);
+    font-optical-sizing: auto;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    overscroll-behavior: none;
+  }
+
+  /* Short screens buy their headroom from the chrome first. Compressing the
+     furniture is always cheaper than compressing a table, so the bottom bar
+     gives up its slack before any content does — while staying clear of the
+     44px touch floor, which is why these are px and not rem. */
+  @media (max-height: 1000px) {
+    :root {
+      --chrome-navbar: clamp(3.75rem, 9vh, 4.5rem);
+    }
+  }
+  @media (max-height: 820px) {
+    :root {
+      --chrome-navbar: max(3.5rem, 56px);
+    }
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    margin: 0;
+    /* The window is the viewport and the app shell owns the scroll inside it,
+       so the document itself must never gain one — that is what keeps the
+       bottom bar from ever being scrolled out of reach. A sideways scrollbar
+       here is always a bug in a child, and this makes that bug loud (content
+       clipped at the window edge) instead of quiet.
+
+       This replaces the previous document-level scrolling. The reason that was
+       chosen — WebKitGTK does not make scrollable <div>s focusable, so
+       Arrow/PageUp/PageDown only scroll when the document is the scroller — is
+       still real, and is handled instead by handleScrollKeyDown() in
+       src/lib/scroll-keyboard-nav.ts, wired to the shell's <main>. */
+    overflow: hidden;
+    font-family: var(--font-sans);
+    /* The crisp render: hint the optical axis, smooth the edges, keep kerning
+       and contextual ligatures on, and pull tracking fractionally tight the way
+       premium grotesks are set. */
+    font-optical-sizing: auto;
+    font-kerning: normal;
+    font-feature-settings:
+      "kern" 1,
+      "liga" 1,
+      "calt" 1;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    letter-spacing: -0.011em;
+  }
+
+  /* Headings get the display family and a tighter optical set for hierarchy. */
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-display);
+    letter-spacing: -0.022em;
+    font-optical-sizing: auto;
+    text-wrap: balance;
+  }
+
+  /* Tabular figures keep money and counts vertically aligned in dense data. */
+  table,
+  th,
+  td,
+  .tabular,
+  [data-slot="table-cell"],
+  [data-slot="table-head"] {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Arabic (RTL) hands off to IBM Plex Sans Arabic and drops the Latin-only
+     negative tracking, which otherwise fights cursive joining. */
+  :lang(ar),
+  [dir="rtl"] {
+    letter-spacing: normal;
+  }
+  :lang(ar) body,
+  [dir="rtl"] body {
+    font-family: "IBM Plex Sans Arabic", var(--font-sans);
+    letter-spacing: normal;
+  }
+  :lang(ar) :is(h1, h2, h3, h4),
+  [dir="rtl"] :is(h1, h2, h3, h4) {
+    font-family: "IBM Plex Sans Arabic", var(--font-display);
+    letter-spacing: normal;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    ::before,
+    ::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+
+  /* ---- Scrollbars ------------------------------------------------------
+     The platform scrollbar is the last piece of OS chrome visible inside this
+     app, and on Windows it arrives as a grey slab in a completely different
+     design language from everything around it. This draws it from the same
+     tokens as the rest of the interface. */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-strong) transparent;
+  }
+  ::-webkit-scrollbar {
+    width: 14px;
+    height: 14px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background-color: var(--border-strong);
+    border-radius: 999px;
+    /* A transparent border with `background-clip: content-box` is the only way
+       to inset a webkit thumb; padding and margin do nothing here. */
+    border: 4px solid transparent;
+    background-clip: content-box;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: var(--muted-foreground);
+    background-clip: content-box;
+  }
+  ::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+}
+
+@layer utilities {
+  /* The app's two structural line weights, as utilities, so a card and a panel
+     cannot drift apart by one component author picking `border-2` and the next
+     picking `border`. */
+  .border-app {
+    border-width: var(--border-width);
+  }
+  .border-app-strong {
+    border-width: var(--border-width-strong);
+  }
+
+  /* Subtle inner top highlight for the "machined" nested-card look */
+  .ring-inset-highlight {
+    box-shadow: inset 0 1px 0 0 oklch(1 0 0 / 0.04);
+  }
+  .dark .ring-inset-highlight {
+    box-shadow: inset 0 1px 0 0 oklch(1 0 0 / 0.06);
+  }
+
+  /* Native number inputs draw OS spinner arrows that no amount of styling can
+     bring into this design language.
+
+     Firefox needs the property on the element itself; WebKit needs the
+     pseudo-element. Both are required. */
+  .no-spinner {
+    -moz-appearance: textfield;
+    appearance: textfield;
+  }
+  .no-spinner::-webkit-outer-spin-button,
+  .no-spinner::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    appearance: none;
+    margin: 0;
+  }
+}
+
+/* Suppresses the theme cross-fade while the theme itself is being swapped, so
+   the change lands in one frame instead of animating every colour on screen. */
+.disable-transitions * {
+  transition: none !important;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+/* ─── Print styles ──────────────────────────────────────────── */
+@page print-portrait {
+  size: portrait;
+}
+
+@page print-landscape {
+  size: landscape;
+}
+
+@media print {
+  /* Hide non-printable UI. `nav` covers the bottom bar. */
+  header,
+  nav,
+  button,
+  .no-print {
+    display: none !important;
+  }
+
+  /* Paper is always white and always LTR-neutral, whatever the app theme and
+     language are set to on screen. */
+  body {
+    background: white !important;
+    color: black !important;
+  }
+
+  .print-layout {
+    display: block !important;
+    padding: 0;
+    margin: 0;
+  }
+
+  .print-portrait {
+    page: print-portrait;
+  }
+
+  .print-landscape {
+    page: print-landscape;
+  }
+
+  /* Show print-only elements */
+  .print-header,
+  .print-footer {
+    display: flex !important;
+  }
+
+  /* The desktop shell pins height to the window and owns the scroll; printing
+     must not inherit either, or every receipt is clipped to one screen. This
+     has to reach the shell's own flex column and its <main>, not just the
+     document, since those are what actually carry the height and the overflow. */
+  html,
+  body,
+  #root,
+  [data-app-shell],
+  [data-app-main] {
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    display: block !important;
+  }
+}
