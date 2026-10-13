@@ -7,6 +7,13 @@ import fs from "node:fs";
 import path from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 
+/**
+ * How long a screen may take to settle. Generous on purpose: several teammates
+ * share this machine, and a run that waited its turn should not then fail for
+ * being slow. `HARNESS_SETTLE_MS` changes it.
+ */
+const SETTLE_TIMEOUT_MS = Number(process.env.HARNESS_SETTLE_MS) > 0 ? Number(process.env.HARNESS_SETTLE_MS) : 75_000;
+
 const CHROME_CANDIDATES = ["/usr/bin/google-chrome", "/usr/bin/google-chrome-stable", "/opt/google/chrome/chrome"];
 
 function findChrome() {
@@ -168,7 +175,7 @@ class Page {
    *
    * @returns {Promise<{ settled: boolean, state: object }>}
    */
-  async waitUntilSettled({ selector, timeoutMs = 45_000, quietMs = 450 } = {}) {
+  async waitUntilSettled({ selector, timeoutMs = SETTLE_TIMEOUT_MS, quietMs = 450 } = {}) {
     const probe = `(() => {
       const h = window.__HARNESS__;
       const root = document.getElementById("root");

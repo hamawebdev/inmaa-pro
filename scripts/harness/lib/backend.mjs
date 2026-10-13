@@ -13,6 +13,7 @@
  *  - the licence is whatever the run asks for, never the real state;
  *  - dialogs always answer "cancelled".
  */
+import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 
@@ -293,9 +294,46 @@ export async function createBackend({ root, runDir, seeds = [], license = "unloc
         return null;
       case "db_path":
         return dbPath;
-      case "backup_to":
+      case "backup_to": {
+        // A copy lands in this run's folder, whatever path was asked: the harness never writes outside it.
+        const out = path.join(runDir, "backups");
+        fs.mkdirSync(out, { recursive: true });
+        const copy = path.join(out, path.basename(String(args?.target ?? "backup.db")));
+        sqlite.exec("PRAGMA wal_checkpoint(TRUNCATE);");
+        fs.copyFileSync(dbPath, copy);
+        return {
+          size_bytes: fs.statSync(copy).size,
+          sha256: crypto.createHash("sha256").update(fs.readFileSync(copy)).digest("hex"),
+        };
+      }
+      case "backup_folder_check": {
+        const dir = String(args?.dir ?? "");
+        const synced = /onedrive|dropbox|google drive/i.exec(dir);
+        return {
+          exists: dir !== "" && !/missing/i.test(dir),
+          writable: !/readonly/i.test(dir),
+          synced_by: synced ? synced[0] : null,
+        };
+      }
+      case "backup_rotate":
+        return [];
+      case "backup_manifest":
+      case "restore_pending":
+        return null;
+      case "restore_pending_clear":
+        return null;
       case "restore_from":
-        throw commandError("backup and restore are not available in the browser harness");
+        throw commandError("restoring is not available in the browser harness");
+      case "save_text_file": {
+        // What the program exports lands in this run's folder, where a check can read it.
+        const out = path.join(runDir, "exports");
+        fs.mkdirSync(out, { recursive: true });
+        fs.writeFileSync(
+          path.join(out, path.basename(String(args?.target ?? "export.txt"))),
+          String(args?.contents ?? ""),
+        );
+        return null;
+      }
       case "export_upload":
         // Never reached: the save dialog always answers "cancelled" here.
         throw commandError("saving a copy of an upload is not available in the browser harness");

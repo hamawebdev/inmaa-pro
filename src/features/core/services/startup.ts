@@ -6,7 +6,7 @@ import { loadFeatureAlerts } from "@/lib/alerts";
 import { loadFeatureDaily } from "@/lib/daily";
 import { loadFeatureEvents } from "@/lib/events";
 import { buildContext, SYSTEM_SESSION } from "@/lib/service/context";
-import { setProgramAnchor, setProgramClock } from "@/lib/service/program";
+import { programClock, setProgramAnchor, setProgramClock } from "@/lib/service/program";
 import { getSetting } from "@/lib/settings";
 
 import { startDayWatch } from "./day-start";
@@ -26,9 +26,39 @@ import { firstRun, isFirstRunDone } from "./first-run";
  *  6. the day's own work, when the anchor found nothing to ask about.
  */
 let anchorAtStart: AnchorComparison | null = null;
+const anchorListeners = new Set<() => void>();
 
 /** What the anchor said when the program started: "normal", or the state the manager must answer. */
 export const startupAnchor = (): AnchorComparison | null => anchorAtStart;
+
+/** Calls `listener` when the anchor's answer changes (the manager answered). Returns how to stop. */
+export function subscribeToStartupAnchor(listener: () => void): () => void {
+  anchorListeners.add(listener);
+  return () => anchorListeners.delete(listener);
+}
+
+function setStartupAnchor(next: AnchorComparison | null): void {
+  anchorAtStart = next;
+  for (const listener of anchorListeners) listener();
+}
+
+/**
+ * Compares the anchor again, after the manager's answer wrote a new one. When
+ * it now agrees, the day's own work starts: it was held back until then.
+ */
+export async function recheckStartupAnchor(): Promise<AnchorComparison> {
+  const clock = programClock();
+  const comparison = await reconcileAnchor(db, desktopAnchorStore, clock.now().toISOString());
+  setStartupAnchor(comparison);
+  if (comparison.state === "normal") {
+    try {
+      await startDayWatch(clock);
+    } catch (error) {
+      console.error("daily: the day could not be started", error);
+    }
+  }
+  return comparison;
+}
 
 export async function startProgram(): Promise<void> {
   const clock = systemClock(await getSetting(db, "system.utcOffsetMin"));
@@ -47,7 +77,7 @@ export async function startProgram(): Promise<void> {
   loadFeatureDaily();
 
   try {
-    anchorAtStart = await reconcileAnchor(db, desktopAnchorStore, clock.now().toISOString());
+    setStartupAnchor(await reconcileAnchor(db, desktopAnchorStore, clock.now().toISOString()));
   } catch (error) {
     console.error("anchor: could not be compared at start", error);
   }

@@ -9,9 +9,10 @@ import {
   verifySecret,
 } from "@/lib/auth";
 import { logSecurity } from "@/lib/log";
-import { action, asProgram } from "@/lib/service/action";
+import { action, asProgram, query } from "@/lib/service/action";
 import type { Executor, ServiceContext, Session } from "@/lib/service/context";
 import { ServiceError } from "@/lib/service/errors";
+import { getSetting } from "@/lib/settings";
 
 /**
  * Sign-in (plan feature 23, DESIGN.md section 12).
@@ -327,8 +328,14 @@ export async function renewRecoveryCode(
   return { recoveryCode };
 }
 
-/** «قفل الآن»: the signed-in user leaves. The window goes back to the list of names. */
-export async function signOut(ex: Executor, ctx: ServiceContext): Promise<void> {
+/** Why a session ended: the user said so («قفل الآن»), or nobody touched the program for too long. */
+export type LockCause = "USER" | "IDLE";
+
+/**
+ * The signed-in user leaves, by «قفل الآن» or by the idle lock
+ * (`security.idleLockMinutes`). The window goes back to the list of names.
+ */
+export async function signOut(ex: Executor, ctx: ServiceContext, input: { cause?: LockCause } = {}): Promise<void> {
   if (!ctx.userId) return;
   await logSecurity(ex, ctx, {
     owner: "FOUNDATION",
@@ -336,7 +343,14 @@ export async function signOut(ex: Executor, ctx: ServiceContext): Promise<void> 
     entity: "User",
     entityId: ctx.userId,
     subject: { kind: "USER", id: ctx.userId, label: ctx.userName },
+    context: { cause: input.cause ?? "USER" },
   });
+}
+
+/** The idle lock's delay in minutes, for whoever is signed in; 0 is off. */
+export async function readIdleLockMinutes(ex: Executor): Promise<number> {
+  const minutes = await getSetting(ex, "security.idleLockMinutes");
+  return Number.isFinite(minutes) && minutes > 0 ? minutes : 0;
 }
 
 // Before anybody is signed in, the program itself asks.
@@ -347,4 +361,5 @@ export const resetManagerPasswordAction = asProgram.action(resetManagerPassword)
 
 export const changeOwnPasswordAction = action(changeOwnPassword);
 export const renewRecoveryCodeAction = action(renewRecoveryCode);
-export const signOutAction = action((ex: Executor, ctx: ServiceContext) => signOut(ex, ctx));
+export const signOutAction = action(signOut);
+export const readIdleLockMinutesQuery = query((ex: Executor) => readIdleLockMinutes(ex));

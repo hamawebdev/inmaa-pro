@@ -20,7 +20,6 @@ import { getSection, type SectionId } from "@/navigation/sections";
 export function DetailScreen({
   section,
   title,
-  description,
   icon,
   back,
   actions,
@@ -29,6 +28,11 @@ export function DetailScreen({
 }: {
   section: SectionId;
   title: string;
+  /**
+   * Not drawn. A page below a list has no line under its heading: the academy
+   * keeps that line for its tab pages (the Checker's S-14). The prop stays so
+   * that a page written before the ruling still compiles; pass none.
+   */
   description?: string;
   /** Defaults to the section's own icon. */
   icon?: LucideIcon;
@@ -43,14 +47,7 @@ export function DetailScreen({
   return (
     <Screen className={className}>
       <div className="space-y-5 tall:space-y-6">
-        <ScreenHeader
-          section={section}
-          icon={icon ?? def.icon}
-          title={title}
-          description={description}
-          back={back}
-          actions={actions}
-        />
+        <ScreenHeader section={section} icon={icon ?? def.icon} title={title} back={back} actions={actions} />
         <div className="min-w-0">{children}</div>
       </div>
     </Screen>

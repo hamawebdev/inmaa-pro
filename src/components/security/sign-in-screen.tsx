@@ -9,8 +9,9 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
-import { enterSession } from "@/features/core/services/session";
+import { enterSession, takeLastLock } from "@/features/core/services/session";
 import {
   listSignInAccountsQuery,
   resetManagerPasswordAction,
@@ -76,6 +77,8 @@ export function SignInScreen() {
   const [code, setCode] = React.useState("");
   const [error, setError] = React.useState("");
   const [busy, setBusy] = React.useState(false);
+  // Said once, the first time the window shows after an idle lock.
+  const [idleLock] = React.useState(() => takeLastLock());
 
   const list = accounts.data ?? [];
   // One account (a new installation has only the manager): there is nothing to choose.
@@ -173,7 +176,9 @@ export function SignInScreen() {
   if (step.kind === "code") {
     return (
       <Shell step="code">
-        <RecoveryCodePanel code={step.code} onContinue={() => enterSession(step.session)} />
+        <div className="flex min-h-0 flex-col gap-6 overflow-y-auto tight:gap-4">
+          <RecoveryCodePanel code={step.code} onContinue={() => enterSession(step.session)} />
+        </div>
       </Shell>
     );
   }
@@ -183,11 +188,15 @@ export function SignInScreen() {
 
   return (
     <Shell step={form ?? "accounts"}>
-      <div className="flex flex-col items-center gap-3 text-center">
-        <div className="flex size-16 items-center justify-center rounded-full bg-muted text-muted-foreground">
-          {form === "recovery" ? <KeyRound className="size-8" /> : <LockKeyhole className="size-8" />}
+      <div className="flex shrink-0 flex-col items-center gap-3 text-center tight:gap-2">
+        <div className="flex size-16 items-center justify-center rounded-full bg-muted text-muted-foreground tight:size-12">
+          {form === "recovery" ? (
+            <KeyRound className="size-8 tight:size-6" />
+          ) : (
+            <LockKeyhole className="size-8 tight:size-6" />
+          )}
         </div>
-        <h1 className="text-3xl font-bold">
+        <h1 className="text-3xl font-bold tight:text-2xl">
           {form === "first"
             ? t("FirstPasswordTitle")
             : form === "replace"
@@ -207,6 +216,12 @@ export function SignInScreen() {
         </p>
       </div>
 
+      {idleLock && (
+        <p role="status" className="rounded-lg border-2 border-border-strong bg-card px-5 py-3 text-center text-base">
+          {t("LockedIdle", { minutes: idleLock.minutes })}
+        </p>
+      )}
+
       {accounts.isPending ? (
         <div className="flex flex-col gap-3">
           <Skeleton className="h-16 w-full" />
@@ -215,11 +230,18 @@ export function SignInScreen() {
       ) : accounts.isError ? (
         <ErrorState title={t("AccountsFailed")} onRetry={() => void accounts.refetch()} />
       ) : !chosen ? (
-        <div role="radiogroup" aria-label={t("Accounts")} className="flex flex-col gap-2">
-          {list.map((account) => (
-            <AccountRow key={account.id} account={account} role={roleOf(account)} onChoose={() => choose(account)} />
-          ))}
-        </div>
+        // The names scroll inside their own box: with twenty accounts the heading is still in view.
+        <ScrollArea
+          data-signin-accounts
+          className="min-h-0 shrink rounded-xl border-2 border-border-strong bg-card/60"
+          type="auto"
+        >
+          <div role="radiogroup" aria-label={t("Accounts")} className="flex flex-col gap-2 p-2.5">
+            {list.map((account) => (
+              <AccountRow key={account.id} account={account} role={roleOf(account)} onChoose={() => choose(account)} />
+            ))}
+          </div>
+        </ScrollArea>
       ) : (
         <>
           <AccountRow
@@ -230,7 +252,7 @@ export function SignInScreen() {
             onChoose={list.length > 1 ? () => choose(null) : undefined}
           />
 
-          <form className="flex flex-col gap-4" onSubmit={submit}>
+          <form className="-mx-1 flex min-h-0 flex-col gap-4 overflow-y-auto px-1 pb-1" onSubmit={submit}>
             {form === "password" && (
               <Field
                 id="signin_password"
@@ -493,15 +515,18 @@ function RecoveryCodePanel({ code, onContinue }: { code: string; onContinue: () 
 }
 
 /**
- * The window's whole frame, as the licence lock window's: it scrolls inside
- * rather than growing, so the form is reachable in the shortest window.
- * `data-signin` names the step for whoever drives the screen from outside
- * (the harness).
+ * The window's whole frame, in the licence lock window's style. It never grows
+ * past the window and never scrolls as a whole: the heading stays where it
+ * is, and what can be long (the list of names, a form with three fields in a
+ * short window) scrolls inside its own box. `data-signin` names the step for
+ * whoever drives the screen from outside (the harness).
  */
 function Shell({ step, children }: { step: string; children: React.ReactNode }) {
   return (
-    <div data-signin={step} className="flex h-dvh flex-col overflow-y-auto bg-background text-foreground">
-      <main className="mx-auto flex w-full max-w-lg flex-col justify-center gap-6 px-6 py-10">{children}</main>
+    <div data-signin={step} className="flex h-dvh flex-col overflow-hidden bg-background text-foreground">
+      <main className="mx-auto flex min-h-0 w-full max-w-lg flex-1 flex-col gap-6 px-6 py-10 tight:gap-4 tight:py-6">
+        {children}
+      </main>
     </div>
   );
 }

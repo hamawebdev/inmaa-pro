@@ -185,6 +185,7 @@ export const SETTING_GROUPS: readonly SettingGroup[] = [
         field: { kind: "choice", options: APP_LOCALES, labels: own("SettingsForm.Locales") },
       },
       { key: "feature.siteQrOnOrder", field: yesNo },
+      { key: "security.idleLockMinutes", field: { kind: "minutes", max: 480 } },
     ],
   },
 

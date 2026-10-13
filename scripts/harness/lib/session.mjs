@@ -12,6 +12,7 @@ import { createBackend } from "./backend.mjs";
 import { launchChrome } from "./browser.mjs";
 import { startDistServer } from "./dist-server.mjs";
 import { signIn } from "./sign-in.mjs";
+import { acquireSlot } from "./slots.mjs";
 import { startViteServer } from "./vite-server.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -144,6 +145,9 @@ export async function openHarness({
     throw new Error(`${root} has no index.html. Is it an app folder?`);
   }
 
+  // One of a few slots first: twenty runs at once starve one another (lib/slots.mjs).
+  const releaseSlot = await acquireSlot(HARNESS_DIR);
+
   const runsDir = path.join(HARNESS_DIR, "run");
   sweepDeadRuns(runsDir);
   const stamp = new Date()
@@ -184,6 +188,7 @@ export async function openHarness({
     process.off("SIGINT", onSignal);
     process.off("SIGTERM", onSignal);
     process.off("exit", onExit);
+    releaseSlot();
   }
 
   function close() {

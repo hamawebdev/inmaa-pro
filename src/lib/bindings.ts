@@ -56,9 +56,10 @@ async dbPath() : Promise<Result<string, CommandError>> {
 },
 /**
  * Copies the database (already checkpointed by the caller) and its uploads to
- * the chosen path.
+ * the chosen path. The folder is made when it is not there (a dated folder on
+ * a USB stick).
  */
-async backupTo(target: string) : Promise<Result<null, CommandError>> {
+async backupTo(target: string) : Promise<Result<BackupCopy, CommandError>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("backup_to", { target }) };
 } catch (e) {
@@ -72,9 +73,9 @@ async backupTo(target: string) : Promise<Result<null, CommandError>> {
  * The caller relaunches afterwards: the open connection has the previous file
  * mapped, so continuing in-process would serve stale pages.
  */
-async restoreFrom(source: string) : Promise<Result<null, CommandError>> {
+async restoreFrom(source: string, note: string | null) : Promise<Result<null, CommandError>> {
     try {
-    return { status: "ok", data: await TAURI_INVOKE("restore_from", { source }) };
+    return { status: "ok", data: await TAURI_INVOKE("restore_from", { source, note }) };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
@@ -96,6 +97,78 @@ async restoreFrom(source: string) : Promise<Result<null, CommandError>> {
 async exportUpload(segments: string[], target: string) : Promise<Result<null, CommandError>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("export_upload", { segments, target }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Writes a text the program made (an export of the log, a file for the
+ * accountant) to the place the user chose in the save dialog.
+ * 
+ * In Rust for the same reason as a backup: the destination is wherever the
+ * user points the dialog (a USB stick, a folder of his own), and the window's
+ * file permissions stop at its own uploads folder. The text is written as it
+ * is given, byte order mark included.
+ */
+async saveTextFile(target: string, contents: string) : Promise<Result<null, CommandError>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("save_text_file", { target, contents }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * The manifest written beside a backup (`<name>.json`), or `None` when the
+ * copy has none (a copy made by hand, or by the academy's older backup).
+ */
+async backupManifest(source: string) : Promise<Result<string | null, CommandError>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("backup_manifest", { source }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async backupFolderCheck(dir: string) : Promise<Result<FolderCheck, CommandError>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("backup_folder_check", { dir }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Keeps the newest `keep` automatic backups of a folder and removes the
+ * older ones, each with its manifest and its uploads folder. Nothing else in
+ * the folder is touched: not a copy made by hand, not the copy kept before a
+ * restore (`inmaa-pre-restore-…`). Answers the names removed.
+ */
+async backupRotate(dir: string, keep: number) : Promise<Result<string[], CommandError>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("backup_rotate", { dir, keep }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * What the last restore left for the next start: the file restored from and
+ * where the copy of the replaced database is. The restored database cannot
+ * hold this itself: it was written before the restore happened.
+ */
+async restorePending() : Promise<Result<string | null, CommandError>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("restore_pending") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async restorePendingClear() : Promise<Result<null, CommandError>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("restore_pending_clear") };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
@@ -177,11 +250,24 @@ async licenseRestart() : Promise<void> {
 /** user-defined types **/
 
 /**
+ * What a backup copy is: its size, and the SHA-256 of the database file as it
+ * was written. Both go in the manifest beside it and in `BackupRun`.
+ */
+export type BackupCopy = { size_bytes: number; sha256: string }
+/**
  * A serializable error type for fallible Tauri commands.
  * The frontend receives the `message` string (and a typed shape via tauri-specta).
  */
 export type CommandError = { message: string }
 export type ExecuteResult = { rowsAffected: number; lastInsertId: number }
+/**
+ * What the program can tell about a folder before copying into it every day.
+ */
+export type FolderCheck = { exists: boolean; writable: boolean; 
+/**
+ * The cloud client that synchronises this folder, when one can be told.
+ */
+synced_by: string | null }
 export type JsonValue = null | boolean | number | string | JsonValue[] | Partial<{ [key in string]: JsonValue }>
 /**
  * What the frontend is told. Deliberately thin: a state, a countdown, an id to

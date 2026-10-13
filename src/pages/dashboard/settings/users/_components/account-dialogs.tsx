@@ -147,7 +147,12 @@ export function NewAccountDialog({ open, onOpenChange }: { open: boolean; onOpen
         <form className="space-y-4" onSubmit={submit}>
           <div className="grid gap-2">
             <Label htmlFor="account_display_name">{t("DisplayName")}</Label>
-            <Input id="account_display_name" value={displayName} onChange={(event) => setDisplayName(event.target.value)} autoFocus />
+            <Input
+              id="account_display_name"
+              value={displayName}
+              onChange={(event) => setDisplayName(event.target.value)}
+              autoFocus
+            />
           </div>
           <div className="grid gap-2">
             <Label htmlFor="account_username">{t("Username")}</Label>
@@ -192,22 +197,31 @@ export function EditAccountDialog({
   onOpenChange: (open: boolean) => void;
 }) {
   const t = useTranslations("UsersTab");
+  return (
+    <Dialog open={account !== null} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{t("EditAccount")}</DialogTitle>
+          <DialogDescription>{t("RoleTakesEffect")}</DialogDescription>
+        </DialogHeader>
+        {/* Mounted per account: its fields start from that account's own values. */}
+        {account && <EditAccountForm key={account.id} account={account} onDone={() => onOpenChange(false)} />}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function EditAccountForm({ account, onDone }: { account: AccountRow; onDone: () => void }) {
+  const t = useTranslations("UsersTab");
   const tCommon = useTranslations("Common");
   const errorMessage = useErrorMessage();
-  const [displayName, setDisplayName] = React.useState("");
-  const [roleId, setRoleId] = React.useState<RoleCode>("RECEPTION_SALES");
+  const [displayName, setDisplayName] = React.useState(account.displayName);
+  const [roleId, setRoleId] = React.useState<RoleCode>(account.roleId as RoleCode);
   const [busy, setBusy] = React.useState(false);
-
-  React.useEffect(() => {
-    if (account) {
-      setDisplayName(account.displayName);
-      setRoleId(account.roleId as RoleCode);
-    }
-  }, [account]);
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
-    if (!account || busy) return;
+    if (busy) return;
     setBusy(true);
     try {
       const result = await updateAccountAction({ userId: account.id, displayName, roleId });
@@ -216,40 +230,32 @@ export function EditAccountDialog({
         return;
       }
       toast.success(t("Saved"));
-      onOpenChange(false);
+      onDone();
     } finally {
       setBusy(false);
     }
   }
 
   return (
-    <Dialog open={account !== null} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>{t("EditAccount")}</DialogTitle>
-          <DialogDescription>{t("RoleTakesEffect")}</DialogDescription>
-        </DialogHeader>
-        <form className="space-y-4" onSubmit={submit}>
-          <div className="grid gap-2">
-            <Label htmlFor="edit_display_name">{t("DisplayName")}</Label>
-            <Input id="edit_display_name" value={displayName} onChange={(event) => setDisplayName(event.target.value)} />
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor="edit_role">{t("Role")}</Label>
-            <RoleSelect id="edit_role" value={roleId} onChange={setRoleId} />
-          </div>
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              {tCommon("Cancel")}
-            </Button>
-            <Button type="submit" variant="success" loading={busy} disabled={!displayName.trim()}>
-              <Save />
-              {tCommon("Save")}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+    <form className="space-y-4" onSubmit={submit}>
+      <div className="grid gap-2">
+        <Label htmlFor="edit_display_name">{t("DisplayName")}</Label>
+        <Input id="edit_display_name" value={displayName} onChange={(event) => setDisplayName(event.target.value)} />
+      </div>
+      <div className="grid gap-2">
+        <Label htmlFor="edit_role">{t("Role")}</Label>
+        <RoleSelect id="edit_role" value={roleId} onChange={setRoleId} />
+      </div>
+      <DialogFooter>
+        <Button type="button" variant="outline" onClick={onDone}>
+          {tCommon("Cancel")}
+        </Button>
+        <Button type="submit" variant="success" loading={busy} disabled={!displayName.trim()}>
+          <Save />
+          {tCommon("Save")}
+        </Button>
+      </DialogFooter>
+    </form>
   );
 }
 
@@ -357,18 +363,29 @@ export function LinkEmployeeDialog({
   onOpenChange: (open: boolean) => void;
 }) {
   const t = useTranslations("UsersTab");
+  return (
+    <Dialog open={account !== null} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{t("LinkTitle", { name: account?.displayName ?? "" })}</DialogTitle>
+          <DialogDescription>{t("LinkHint")}</DialogDescription>
+        </DialogHeader>
+        {account && <LinkEmployeeForm key={account.id} account={account} onDone={() => onOpenChange(false)} />}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function LinkEmployeeForm({ account, onDone }: { account: AccountRow; onDone: () => void }) {
+  const t = useTranslations("UsersTab");
   const tCommon = useTranslations("Common");
   const errorMessage = useErrorMessage();
-  const [staffMemberId, setStaffMemberId] = React.useState("");
+  const [staffMemberId, setStaffMemberId] = React.useState(account.staffMemberId ?? "");
   const [busy, setBusy] = React.useState(false);
-
-  React.useEffect(() => {
-    if (account) setStaffMemberId(account.staffMemberId ?? "");
-  }, [account]);
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
-    if (!account || busy) return;
+    if (busy) return;
     setBusy(true);
     try {
       const result = await linkAccountToStaffAction({ userId: account.id, staffMemberId: staffMemberId || null });
@@ -377,41 +394,33 @@ export function LinkEmployeeDialog({
         return;
       }
       toast.success(t("Saved"));
-      onOpenChange(false);
+      onDone();
     } finally {
       setBusy(false);
     }
   }
 
   return (
-    <Dialog open={account !== null} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>{t("LinkTitle", { name: account?.displayName ?? "" })}</DialogTitle>
-          <DialogDescription>{t("LinkHint")}</DialogDescription>
-        </DialogHeader>
-        <form className="space-y-4" onSubmit={submit}>
-          <div className="grid gap-2">
-            <Label htmlFor="link_employee">{t("Employee")}</Label>
-            <EmployeeSelect
-              id="link_employee"
-              value={staffMemberId}
-              onChange={setStaffMemberId}
-              open={account !== null}
-              exceptUserName={account?.username}
-            />
-          </div>
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              {tCommon("Cancel")}
-            </Button>
-            <Button type="submit" variant="success" loading={busy}>
-              <Link2 />
-              {tCommon("Save")}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+    <form className="space-y-4" onSubmit={submit}>
+      <div className="grid gap-2">
+        <Label htmlFor="link_employee">{t("Employee")}</Label>
+        <EmployeeSelect
+          id="link_employee"
+          value={staffMemberId}
+          onChange={setStaffMemberId}
+          open
+          exceptUserName={account.username}
+        />
+      </div>
+      <DialogFooter>
+        <Button type="button" variant="outline" onClick={onDone}>
+          {tCommon("Cancel")}
+        </Button>
+        <Button type="submit" variant="success" loading={busy}>
+          <Link2 />
+          {tCommon("Save")}
+        </Button>
+      </DialogFooter>
+    </form>
   );
 }

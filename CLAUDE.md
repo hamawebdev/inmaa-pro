@@ -91,6 +91,7 @@ Run from the project root. `node_modules` is a copy of the reference's: **never 
 | See a screen | `npm run shot -- --route /dashboard/workers --locale ar --theme dark --both-sizes` |
 | See it as another role | `npm run shot -- --demo --user accountant --route /dashboard/expenses` (`hr`, `admin`, `supervisor`, `reception`, `operations`, `accountant`; `manager` when left out) |
 | Print a sheet to PDF | `npm run pdf -- --route /dashboard/files/1/form --png` |
+| Print many sheets in one run | `npm run pdf -- --demo --routes sheets.txt --png` (one route a line; several people share this machine, and one run takes one place in the harness's queue) |
 | Build the demo data | `npm run demo`; then `--demo` on `shot` and `pdf` opens it (see "Demo data" below) |
 | Everything about the two above | `scripts/harness/README.md` |
 
@@ -128,8 +129,11 @@ The folder names `services/`, `validators/` and `messages/` are not a matter of 
 
 Every tab and every part of a file already has a page with a `<PagePlaceholder>` in it. Building a screen means replacing that element.
 
-- Keep the wrapper. A tab's page is `<SectionScreen section="workers" title={tNav("WorkersHeading")}>`: the heading, the tab strip and the lit bar item all follow from the route. Add `actions={<Button asChild variant="add">…</Button>}` for the screen's main button.
+- Keep the wrapper. A tab's page is `<SectionScreen section="workers" title={…} description={…}>`: the tab strip and the lit bar item follow from the route. Add `actions={<Button asChild variant="add">…</Button>}` for the screen's main button.
+- **The heading of a tab page is the tab's own name**, as in the academy: `title={tNav("Hiring")}`, the tab's `labelKey` in `src/navigation/sections.ts`. The first tab of a section is the exception: it keeps the section's heading from his notes (`title={tNav("WorkersHeading")}`: «عمال وعاملات النظافة», «المصاريف والمداخيل»…).
+- **The line under the heading** (`description`) is for tab pages: one sentence saying what the tab is for, shown only on a tall window. A page below a list (`DetailScreen`) passes none. That is the academy's way round.
 - A page below a list (a new record, one record, a part of a file) is `<DetailScreen section=… title=… back={{ href, label }}>`. It has a back action and no tab strip.
+- **Save, one rule for every form:** `<Button type="submit" variant="success">` at the default size, at the form's foot inside `<PageActions>` (`src/components/screen.tsx`), with the way back (`variant="outline"`) beside it. Never `size="lg"`. A dialog's form keeps `DialogFooter`.
 - Read data with `useQuery({ queryKey: pathKey("/dashboard/workers"), queryFn })`; a second query on the same screen uses `[...pathKey("/dashboard/workers"), "name"]`. Nothing refetches by itself: the action that saved names the paths it refreshes (`action(saveWorker, { revalidate: ["/dashboard/workers"] })`), and that is what refreshes the screen.
 - Match the academy's newer generation: `SectionScreen`, `DetailScreen`, `ScreenHeader`, `ScreenTabs`, `StatCard`, `StatusChip`, and `DataTable` with `TableSearch` and `TablePager` (`src/components/data-table-shell.tsx`). Name the closest academy screen in a comment at the top of the page. The academy's own pages are not in this repository: read them in the reference, and look at `.harness/baseline/`.
 - Arabic is the default and reads right to left. Use logical classes (`ps-`, `pe-`, `ms-`, `me-`, `start-`, `end-`, `text-start`), never `left`/`right`. Compare an Arabic screen with `.harness/baseline/ar-direction-fixed/`: this program mounts the direction provider the academy forgot, so tab strips and everything inside tabs mirror here.
@@ -138,6 +142,8 @@ Every tab and every part of a file already has a page with a `<PagePlaceholder>`
 - `StatusChip` has seven tones: `success`, `warning`, `danger`, `info`, `pending`, `neutral` and `progress`. `progress` (violet, a play mark) is for what is under way now: «جارية».
 - An amount is written one way everywhere, «195.650,00 دج»: `useMoneyText()` (`src/hooks/use-money-text.ts`) on a screen, `formatMoneyAr()` or `formatMoney()` (`src/lib/units`) on a sheet. Amounts are whole centimes.
 - What a screen shows by role: `useCan("cost.read")` and `useSectionLevel("WORKERS") === "WRITE"` (`src/hooks/use-session.ts`) leave out a button the reader could only be refused by. The service checks again. `useCentreClock()` gives the centre's date and time to a screen.
+- A place is typed with `<CommunePicker id value={{ wilayaCode, communeId }} onChange>` (`src/components/commune-picker.tsx`): the wilaya of 69, then its commune, with «إضافة بلدية» for one the list does not hold yet. A zone with `<ZonePicker id value onChange allowNone?>`. Save with `ensureZoneForCommune` where a zone follows from the place.
+- **A worker's or an employee's name is written surname then first name**, as his form's label «اللقب و الاسم», on every screen and sheet: `staffName({ lastName, firstName })` (`src/lib/text/names.ts`). «حمدي رضا», never «رضا حمدي».
 - Native date fields and file buttons stay as the academy has them.
 
 ### A route
@@ -252,8 +258,8 @@ export async function seedDemo(ex: Executor, ctx: ServiceContext, tools: DemoToo
 ### What every service calls
 
 - **Numbers** (`src/lib/numbering`), in the transaction that writes the document: `nextNumber(ex, ctx, "QUOTE", { date })` gives `{ seq, year, display }` for `numberSeq`, `numberYear`, `number`; the year is the document's own date's. A file: `nextNumber(ex, ctx, fileSequenceKey(formKind), { date })` (`31/BLC` on a building contract). A block: `nextNumbers(ex, ctx, "VISIT", { date, count })`. A number typed from paper: `claimNumber(ex, ctx, key, { value, date, reason, isFree })`. A rolled-back transaction gives its numbers back. Invoices and receipts: `peekLegalNumber(ex, ctx, "INVOICE", { date })` gives the number the insert must carry and the earliest date allowed; the insert of the document moves the counter, and the database refuses any other number or date. Call `assertClockSane(ex, ctx)` (`src/lib/clock/sanity.ts`) before issuing one. Formats: DESIGN.md section 6.
-- **The log** (`src/lib/log`), in the same transaction as the change, one entry per operation on personal data (DESIGN.md section 9): `logCollect` (a row holding personal data created), `logConsult` (restricted data read, a person's file opened), `logChange` (with `changes: { field: [old, new] }`), `logDisclose` (a sheet naming a person printed, an export), `logErase` (a soft delete, a removed file), `logSecurity`. Each takes `{ owner, action, entity, entityId, entityLabel, subject: { kind, id, label }, changes, context, reason }`; the date, time and user come from `ctx`. The acts in `ACTIONS_NEEDING_A_TYPED_REASON` (void, cancel, soft delete, override, a number from paper, a sanction, an approval…) are refused without the reason the user typed. Health answers, the hiring score, password hashes and costs never reach `changes`. Nobody else writes `AuditLog`.
-- **Settings** (`src/lib/settings`): `getSetting(ex, "stamp.minimum")` is the typed value or its default; `getSettings(ex, [...])` reads several; `setSetting(ex, ctx, key, value)` writes and logs. Keys and defaults: `src/lib/settings/catalogue.ts` (DESIGN.md section 11). Read a setting in the action that uses it; never keep it.
+- **The log** (`src/lib/log`), in the same transaction as the change, one entry per operation on personal data (DESIGN.md section 9): `logCollect` (a row holding personal data created), `logConsult` (restricted data, at every read), `logConsultOnce` (a person's file page: once per user, record and day; it answers null when today's entry exists), `logChange` (with `changes: { field: [old, new] }`), `logDisclose` (a sheet naming a person printed, an export), `logErase` (a soft delete, a removed file), `logSecurity`. Each takes `{ owner, action, entity, entityId, entityLabel, subject: { kind, id, label }, changes, context, reason }`; the date, time and user come from `ctx`. The acts in `ACTIONS_NEEDING_A_TYPED_REASON` (void, cancel, soft delete, override, a number from paper, a sanction, an approval…) are refused without the reason the user typed. Health answers, the hiring score, password hashes and costs never reach `changes`. Nobody else writes `AuditLog`.
+- **Settings** (`src/lib/settings`): `getSetting(ex, "stamp.minimum")` is the typed value or its default; `getSettings(ex, [...])` reads several; `setSetting(ex, ctx, key, value)` writes and logs. Keys and defaults: `src/lib/settings/catalogue.ts` (DESIGN.md section 11). Read a setting in the action that uses it; never keep it. Every setting a person sets has its form in Settings, described once in `src/features/core/validators/settings-form.ts` (the field's kind, its limits, its card): a new setting is asked of Foundation with its key, default and kind.
 - **Who may do what** (`src/lib/access`): `requireSection(ctx, "MONEY", "WRITE")`, `requireCapability(ctx, "quote.approve")`, or `can(ctx, "cost.read")` to decide what a screen shows. The manager and the program itself hold everything. Roles, sections, capabilities and their default holders: `src/lib/access/catalogue.ts` (DESIGN.md section 12). The harness signs in as the manager unless `--user` names another account, so every check passes on screen by default; test the refusals with `test.sessionFor(role)`, and look at a screen as a role with `--demo --user`.
 - **Events between owners** (`src/lib/events`, CONTRACTS.md section 4): when something you own changes in a way another owner must follow, `await emit(ex, ctx, "file.contracted", { fileId })` in your transaction. To follow another owner's event, export `registerEvents` from your own `src/features/<folder>/events.ts`:
 
@@ -274,9 +280,10 @@ export async function seedDemo(ex: Executor, ctx: ServiceContext, tools: DemoToo
 
 ### Sign-in and roles
 
-- Nobody is signed in when the program opens. The sign-in window (`src/components/security/sign-in-screen.tsx`, in the licence lock window's style) is drawn instead of the program: no page is mounted behind it. A person picks his name and types his password; an account with no password yet chooses one there; a password the manager gave is replaced at once by its owner; the manager alone has a recovery code, shown once. «قفل الآن» on the bar signs out. The services are `src/features/core/services/sign-in.ts`; DESIGN.md section 12 has the rules.
+- Nobody is signed in when the program opens. The sign-in window (`src/components/security/sign-in-screen.tsx`, in the licence lock window's style) is drawn instead of the program: no page is mounted behind it. A person picks his name and types his password; an account with no password yet chooses one there; a password the manager gave is replaced at once by its owner; the manager alone has a recovery code, shown once. «قفل الآن» on the bar signs out, and so does the idle lock after `security.idleLockMinutes` minutes without input (default 15; 0 is off): the router is unmounted, so a form in progress is lost. Never keep half-typed work anywhere that outlives the page. The services are `src/features/core/services/sign-in.ts`; DESIGN.md section 12 has the rules.
 - **Roles by section.** The bar and the Ctrl+K list leave out a section the signed-in role holds no level on; the route gate answers any other way in with "not open to your account", and the page is never mounted. الرئيسية is everybody's. A role that only reads a section sees its pages: every write must be refused by its service (`requireSection(ctx, …, "WRITE")` or a capability), and the screen should leave the button out (`useSectionLevel`, `useCan`).
 - **The manager answers under his own name.** There is no dialog that takes his password inside another user's session. What only he may do (`sanction.answer`, an approval, an override) he does signed in himself: the question waits in its owner's list and on its alert tile.
+- Accounts are made, given a password, switched off and linked to a centre employee in Settings › المستخدمون والصلاحيات, where each role's level on every section and its capabilities are set too (`src/features/core/services/users.ts`: `createAccount`, `giveAccountPassword`, `setAccountActive`, `linkAccountToStaff(ex, ctx, { userId, staffMemberId })`, `saveRoleGrants`). A change of rights takes effect at the account's next sign-in.
 - The harness signs in on every page it opens, as a person would (`scripts/harness/README.md`, "Signing in"). `--signed-out` shows the sign-in window; `--before <js>` reaches a step of it, or opens a dialog before a picture.
 
 ### An alert
@@ -305,6 +312,8 @@ export function registerAlerts(register: RegisterAlert) {
 
 A tile appears only when its count is above zero. `count` is a read: it runs outside a transaction, as the reader, every time the home screen opens. The worked example is `src/features/core/alerts.ts`.
 
+An alert is also said once on the desktop, by a notification of the operating system (nothing leaves the PC): the first time in a day that it concerns something, and again that day only if it comes to concern more (`src/lib/alerts/announce.ts`). Nothing to do for it: registering the alert is enough, and its `Title` and `Hint` are the notification's words.
+
 ### The day-start job
 
 What an owner must do because the date changed, not because somebody pressed something: a contract past its end date, a dated suspension ending, a document expiring. Export `registerDaily` from your own `src/features/<folder>/daily.ts`:
@@ -323,7 +332,13 @@ The runner (`src/lib/daily`) calls each owner's handlers in one transaction, as 
 
 ### The home screen
 
-`src/pages/dashboard/home/page.tsx` has three places: today's tiles, the day board, and the alert tiles. The first two are Operations': `src/features/operations/home.tsx` exports `homeSlots: HomeSlots` (`{ today?, board? }`, components without props; `src/lib/home/slots.ts`). Until it does, Foundation's defaults beside the page draw them from Operations' own `DayBoard` and `boardCounts`.
+`src/pages/dashboard/home/page.tsx` has three places: today's tiles, the day board, and the alert tiles. The first two are Operations': `src/features/operations/home.tsx` exports `homeSlots: HomeSlots` (`{ today?, board? }`, components without props; `src/lib/home/slots.ts`). Until it does, Foundation's defaults beside the page draw them from Operations' own `DayBoard` and `boardCounts`. Tiles on the home screen stand three to a row, in the academy's classes: `grid min-w-0 grid-cols-1 gap-5 md:grid-cols-3 tall:gap-6`.
+
+### Backup and restore
+
+- A backup is the database file, a folder of the stored files beside it, and a manifest saying what it holds (`<name>.json`). One is made by the program itself once a day, after the day-start job, into the folder the manager chose in Settings › عام (`inmaa-auto-YYYY-MM-DD.db`; the oldest beyond `backup.keepCount` are removed), and one by hand from the same card or from the lock menu (`backup.run`). A folder a cloud client synchronises is refused. Every copy that succeeds is a DISCLOSE entry in the log and a row of `BackupRun`.
+- A restore is the manager's alone. It says first what the copy would cost (another centre's data, a state older than the last invoice), keeps a protected copy of what it replaces, asks for his reason, and restarts. At the next start, a database that does not agree with its anchor opens on the screen that asks the manager (`src/components/security/anchor-screen.tsx`); nobody works until he has answered.
+- The services are `src/features/core/services/backups.ts` (tested), the copying is Rust's (`src-tauri/src/backup.rs`), and `src/server/backup.ts` joins them. A service of yours never copies a file.
 
 ### A message
 
@@ -374,6 +389,7 @@ Rule 1 is checked by tools, not left to care:
 
 ### Still provisional
 
-- Settings: عام is the academy's page with this program's cards; قواعد العمل, المستخدمون والصلاحيات and السجل are placeholders (F3b). Until the users tab exists, accounts are made by the demo data or by a test (`createAccount`, `giveAccountPassword` in `src/features/core/services/users.ts`): a new installation has the manager only.
-- Backup is the academy's manual copy. The daily copy, the guarded restore, the screen that asks the manager about an anchor that does not agree, and the desktop notifications for alerts come in F3b.
+- Settings › قواعد العمل holds every setting of DESIGN.md section 11 and the zones of communes. The lists that are tables of another owner (training days and skills, inspection criteria, clause text) have no editor there yet: each is its owner's, and a branch editor is not built.
+- The letterhead pictures are the bundled ones: `letterhead.headerUrl` and `letterhead.footerUrl` have no upload field.
+- The log screen names a record by its table (`StaffMember`) beside its label: the tables have no words of their own yet.
 - Licence: a 7-day trial that counts real time, on this machine too. In a debug build, `INMAA_LICENSE_RESET=1` starts it again. The developer makes an unlock code with `cargo run --quiet --bin unlock-code -- <DEVICE-ID>` in `src-tauri/`.

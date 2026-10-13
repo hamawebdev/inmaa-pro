@@ -162,6 +162,33 @@ async function record(ex: Executor, ctx: ServiceContext, operation: LogOperation
 export const logCollect = (ex: Executor, ctx: ServiceContext, entry: LogEntry) => record(ex, ctx, "COLLECT", entry);
 /** Restricted data was read, or a person's file was opened. Lists are not logged. */
 export const logConsult = (ex: Executor, ctx: ServiceContext, entry: LogEntry) => record(ex, ctx, "CONSULT", entry);
+/**
+ * A person's file page was opened: logged once per user, record and day
+ * (ruling 29). The first opening of the day writes the CONSULT entry and
+ * answers its id; the next ones that day answer null and write nothing.
+ *
+ *     await logConsultOnce(ex, ctx, { owner: "PEOPLE", action: "VIEW", entity: "StaffMember", entityId: id, subject });
+ *
+ * Only for the ordinary page of a file. Restricted data (health answers, the
+ * hiring score, a restricted upload, the residents list, cost and margin) is
+ * logged at every read: `readRestricted`, or `logConsult` itself. Lists are
+ * not logged. The read that calls this is an `action`, not a `query`: it
+ * writes.
+ */
+export async function logConsultOnce(ex: Executor, ctx: ServiceContext, entry: LogEntry): Promise<string | null> {
+  if (!entry.entity || !entry.entityId) throw new Error("log: logConsultOnce needs the record's entity and id");
+  let seen = ex
+    .selectFrom("AuditLog")
+    .select("id")
+    .where("operation", "=", "CONSULT")
+    .where("action", "=", entry.action)
+    .where("entity", "=", entry.entity)
+    .where("entityId", "=", entry.entityId)
+    .where("localDate", "=", ctx.today);
+  seen = ctx.userId === null ? seen.where("userId", "is", null) : seen.where("userId", "=", ctx.userId);
+  if (await seen.limit(1).executeTakeFirst()) return null;
+  return record(ex, ctx, "CONSULT", entry);
+}
 /** A record was changed: old and new value per field, a status, a setting. */
 export const logChange = (ex: Executor, ctx: ServiceContext, entry: LogEntry) => record(ex, ctx, "CHANGE", entry);
 /** A sheet naming a person was printed, a file exported, a backup made. */

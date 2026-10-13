@@ -102,7 +102,8 @@
     "MyAccountDesc": "The account that is signed in on this computer now.",
     "ChangePasswordDesc": "Type your current password, then the new one twice.",
     "RegenerateRecoveryPassword": "Type your password to get the new code.",
-    "RegenerateRecoveryAction": "Show the new code"
+    "RegenerateRecoveryAction": "Show the new code",
+    "LockedIdle": "Locked after {minutes} minutes without use."
   },
   "Common": {
     "Cancel": "Cancel",
@@ -183,7 +184,10 @@
     "AccountLinkEmployeeOnly": "An account can be linked only to a centre employee.",
     "AccountLinkTaken": "This employee already has an account.",
     "RoleManagerFixed": "The manager's role holds everything and is not changed.",
-    "RoleNoRestore": "Restoring a backup is the manager's alone."
+    "RoleNoRestore": "Restoring a backup is the manager's alone.",
+    "BackupFolderSynced": "This folder is synchronised by {client}. Choose a folder that stays on this PC or on a USB drive.",
+    "BackupFolderMissing": "This folder does not exist.",
+    "BackupFolderReadOnly": "The program cannot write in this folder."
   },
   "Table": {
     "ScrollLeft": "Scroll left",
@@ -203,19 +207,53 @@
   },
   "Settings": {
     "Backup": {
-      "Title": "Backup & Restore",
-      "Description": "A backup contains the whole database plus every uploaded photo, scan and document. Keep a copy somewhere other than this computer.",
-      "Back Up Now": "Back up now",
-      "Backing Up": "Backing up…",
-      "Restore": "Restore from backup",
-      "Restoring": "Restoring…",
-      "Backup Saved": "Backup saved to {path}",
-      "Backup Failed": "Could not create the backup.",
-      "Restore Failed": "Could not restore from that backup.",
-      "Restore Title": "Restore from backup?",
-      "Restore Description": "This replaces all current data — files, contracts, visits, payments and uploaded documents — with the contents of the backup. It cannot be undone. The program will restart when the restore finishes.",
-      "Cancel": "Cancel",
-      "Confirm Restore": "Replace all data"
+      "Title": "Backup and restore",
+      "Description": "A backup holds the whole database and every stored photo, scan and document. Keep it somewhere other than this computer: with everything in one file here, it is the only way back.",
+      "ChooseFolder": "Choose the folder",
+      "FolderSaved": "The daily copy will go to this folder.",
+      "SaveFailed": "Could not save.",
+      "BackUpNow": "Back up now",
+      "BackupSaved": "Backup saved to {path}",
+      "BackupFailed": "Could not make the backup.",
+      "Restore": "Restore a backup",
+      "RestoreFailed": "Could not restore that backup. Nothing was replaced.",
+      "RestoreTitle": "Replace everything with this backup?",
+      "RestoreDescription": "Every file, contract, visit, payment and stored document is replaced by what the backup holds. A copy of today's data is kept first, and the program restarts.",
+      "RestoreReason": "Why this backup is restored",
+      "ConfirmRestore": "Replace all data",
+      "Daily": {
+        "Title": "The daily copy",
+        "Folder": "Folder of the daily copy",
+        "NoFolder": "No folder chosen: no daily copy is made",
+        "FolderHint": "A second drive or a USB stick. Never a folder that OneDrive, Google Drive or Dropbox synchronises: the centre's data would leave this PC.",
+        "Auto": "A copy every day, by itself",
+        "On": "On",
+        "Off": "Off",
+        "Keep": "Daily copies kept"
+      },
+      "Latest": {
+        "Title": "Latest copies",
+        "None": "No backup has been made yet.",
+        "Failed": "failed"
+      },
+      "Kinds": {
+        "AUTO": "Daily copy",
+        "MANUAL": "Copy made by hand",
+        "PRE_RESTORE": "Copy kept before a restore",
+        "RESTORE": "Restore"
+      },
+      "Errors": {
+        "Synced": "The folder is synchronised by {client}.",
+        "Missing": "The folder was not there (is the USB stick in?).",
+        "ReadOnly": "The folder could not be written.",
+        "Other": "The copy could not be written."
+      },
+      "Warnings": {
+        "OTHER_DATABASE": "This backup belongs to another installation of the program, not to this centre's data.",
+        "OLDER_THAN_LAST_INVOICE": "This backup is older than the last invoice: the last invoice recorded here is {current} of {currentDate}, and the backup stops at {backup}. What was recorded since will be lost.",
+        "NO_MANIFEST": "This backup says nothing about what it holds: the program cannot tell how old it is.",
+        "NoInvoice": "no invoice"
+      }
     },
     "Title": "Settings",
     "Description": "Everything the centre configures once and then leaves alone.",
@@ -928,6 +966,10 @@
       },
       "sanction_matchAcrossKinds": {
         "Label": "Look across workers, employees and clients"
+      },
+      "security_idleLockMinutes": {
+        "Label": "Lock after no use for",
+        "Hint": "After this long without a key or the mouse, the program goes back to the sign-in window, so that nobody's work is recorded under another name. What was being typed is lost. 0 switches this off."
       }
     },
     "Units": {
@@ -1036,5 +1078,302 @@
       "PURCHASE": "Purchases",
       "EQUIPMENT_UNIT": "Equipment units"
     }
+  },
+  "UsersTab": {
+    "NewAccount": "New account",
+    "NewAccountHint": "The account has no password yet: its owner chooses one the first time he signs in.",
+    "DisplayName": "Name",
+    "Username": "Sign-in name",
+    "Role": "Role",
+    "Employee": "Centre employee",
+    "NoEmployee": "Not linked",
+    "Create": "Create",
+    "AccountCreated": "Account created.",
+    "Saved": "Saved.",
+    "SaveFailed": "Could not save.",
+    "Discard": "Discard changes",
+    "EditAccount": "Name and role",
+    "RoleTakesEffect": "A new role takes effect the next time this account signs in.",
+    "GivePassword": "Give a password",
+    "GivePasswordTitle": "A password for {name}",
+    "GivePasswordHint": "For someone who forgot his. He will be asked to replace it the first time he signs in with it.",
+    "PasswordGiven": "{name} has a new password.",
+    "LinkEmployee": "Link to an employee",
+    "LinkTitle": "Who uses the account of {name}",
+    "LinkHint": "The employee's file then shows this account, and what the account does is tied to that person.",
+    "SwitchOff": "Switch off",
+    "SwitchOn": "Switch on again",
+    "SwitchOffTitle": "Switch off the account of {name}?",
+    "SwitchOffHint": "It leaves the sign-in window. Nothing it did is removed: the log keeps its name.",
+    "SwitchedOff": "Account switched off.",
+    "SwitchedOn": "Account switched on again.",
+    "Never": "Never",
+    "Actions": "Actions",
+    "ManagerOnly": "Accounts and roles are managed by the manager.",
+    "GrantsSaved": "Permissions saved.",
+    "Accounts": {
+      "Title": "Accounts",
+      "Description": "One account per person. An account is switched off, never deleted."
+    },
+    "Table": {
+      "Name": "Name",
+      "Role": "Role",
+      "Employee": "Employee",
+      "LastSignIn": "Last sign-in",
+      "State": "State",
+      "SearchPlaceholder": "Search a name",
+      "Empty": "No account matches."
+    },
+    "States": {
+      "Active": "Active",
+      "Off": "Switched off",
+      "NoPassword": "No password yet",
+      "MustChange": "Password to replace"
+    },
+    "Grants": {
+      "Title": "Roles and permissions",
+      "Description": "What each role opens on the bar, and what it may do there.",
+      "ManagerHoldsAll": "The manager's role opens everything and may do everything. It is not changed.",
+      "Sections": "Sections of the bar",
+      "TakesEffect": "A change takes effect the next time each account of this role signs in.",
+      "Levels": {
+        "NONE": "Closed",
+        "READ": "Reads",
+        "WRITE": "Reads and writes"
+      },
+      "Groups": {
+        "people": "Employees and workers",
+        "clients": "Clients and contracts",
+        "operations": "Visits and quality",
+        "money": "Money and stock",
+        "program": "The program"
+      }
+    }
+  },
+  "Capabilities": {
+    "staff_write": "Create and edit worker and employee files; decide a worker's leave",
+    "staff_health_read": "Read the health answers and open restricted files (logged)",
+    "staff_hiringScore_read": "Read and write the confidential hiring score (logged)",
+    "staff_printFilledForm": "Print a filled worker form",
+    "hiring_decide": "Record «قرار الإدارة» on a candidate",
+    "attendance_employee_edit": "Edit or delete an employee's check record or absence",
+    "pay_read": "See hours, pay runs, payslips, payouts and advances",
+    "pay_write": "Prepare and close pay runs, record payouts and advances",
+    "sanction_set": "Set or lift «موقف / معاقب» on a worker, an employee or a client",
+    "sanction_answer": "Answer «هل نسمح له أم لا؟»",
+    "cost_read": "See cost, margin and profitability",
+    "quote_approve": "Approve a quote",
+    "file_editLocked": "Edit a file after «متعاقد»",
+    "file_stageBack": "Move a file back a stage",
+    "file_delete": "Delete a file",
+    "file_setNumber": "Type a file or client number that already exists on paper",
+    "residents_read": "Open the residents list (logged)",
+    "visit_enterOrder": "Type in a returned mission order",
+    "visit_correctTimes": "Correct typed attendance times (with a reason, logged)",
+    "visit_reopen": "Reopen a visit that is done, postponed or cancelled",
+    "schedule_overrideRule": "Pass a working-time rule",
+    "order_releaseSanctioned": "Let an order print for a client who is «متوقف» or «معاقب»",
+    "complaint_settleDiscount": "Settle a complaint with a discount",
+    "invoice_issue": "Issue invoices",
+    "invoice_void": "Void an invoice",
+    "payment_record": "Record a payment and print its receipt",
+    "payment_void": "Void a payment or a receipt",
+    "reconciliation_close": "Close a collector's day",
+    "export_run": "Export files for the accountant",
+    "stock_manage": "Counts, write-offs, purchases, maintenance; cancel a hand-out or a purchase",
+    "users_manage": "Manage accounts and roles",
+    "settings_rules": "Change قواعد العمل",
+    "log_read": "Read the access and change log",
+    "backup_run": "Make a backup now",
+    "backup_restore": "Restore a backup (the manager only)"
+  },
+  "AnchorScreen": {
+    "Reason": "Your reason",
+    "Confirm": "I keep this database",
+    "Failed": "Could not record the answer. Nothing was changed.",
+    "ManagerOnly": "The manager must sign in and answer before the program can be used.",
+    "SignOut": "Lock",
+    "Restored": "Restored by {name} from",
+    "Behind": {
+      "Anchor": "Last invoice recorded on this PC:",
+      "Database": "This copy stops at:",
+      "None": "no invoice",
+      "Lost": "{count} invoice or receipt numbers issued since are not in this copy."
+    },
+    "States": {
+      "behind": {
+        "Title": "This copy is older than the last invoice",
+        "Body": "An older copy of the data was restored, or records were removed. Confirm that you keep it, or close the program and restore another copy.",
+        "Consequence": "The missing numbers are declared as lost and never given again: the next invoice takes the number after them."
+      },
+      "altered": {
+        "Title": "A record was changed outside the program",
+        "Body": "An invoice, a receipt, a payment or a line of the log is not what the program wrote. Call support before going on if you do not know why.",
+        "Consequence": "Your answer is kept in the log with what the program found, and work goes on from the database as it is."
+      },
+      "foreign": {
+        "Title": "This data comes from another installation",
+        "Body": "The database on this PC is not the one the program was last used with here. Confirm if you moved the centre's data to this PC.",
+        "Consequence": "From now on this PC follows this database."
+      },
+      "unanchored": {
+        "Title": "The program was reinstalled on data it already had",
+        "Body": "The database holds invoices or log entries, and this PC has no memory of them. Confirm that this is the centre's data.",
+        "Consequence": "From now on this PC follows this database."
+      },
+      "ahead": {
+        "Title": "The database must be checked",
+        "Body": "The program could not confirm the last records.",
+        "Consequence": "Your answer is kept in the log."
+      },
+      "normal": {
+        "Title": "The database is in order",
+        "Body": "Nothing to answer.",
+        "Consequence": "—"
+      }
+    }
+  },
+  "LogTab": {
+    "TheProgram": "The program",
+    "Details": "Details",
+    "Changes": "What changed",
+    "Context": "Other details",
+    "Withheld": "Changed. The value is never kept in the log.",
+    "Recipient": "Went to",
+    "Export": "Export",
+    "ExportKind": "Delimited text",
+    "Exported": "Log exported to {path}",
+    "ExportFailed": "Could not export the log.",
+    "ManagerOnly": "The log is read by the manager.",
+    "Count": "{count, plural, =0 {No entry} one {# entry} other {# entries}}",
+    "Table": {
+      "When": "Date and time",
+      "Who": "Who",
+      "Operation": "Operation",
+      "What": "Record",
+      "Whose": "Whose data",
+      "Why": "Reason",
+      "Empty": "No entry matches."
+    },
+    "Filters": {
+      "Person": "Person",
+      "Everyone": "Everyone",
+      "Operation": "Operation",
+      "EveryOperation": "Every operation",
+      "Entity": "Kind of record",
+      "EveryEntity": "Every kind",
+      "From": "From",
+      "To": "To"
+    },
+    "Operations": {
+      "COLLECT": "Collection",
+      "CONSULT": "Consultation",
+      "CHANGE": "Change",
+      "DISCLOSE": "Disclosure",
+      "ERASE": "Erasure",
+      "SECURITY": "Security"
+    },
+    "Subjects": {
+      "WORKER": "Worker",
+      "EMPLOYEE": "Employee",
+      "CLIENT": "Client",
+      "RESIDENT": "Resident",
+      "CONTACT": "Contact",
+      "USER": "Account"
+    },
+    "Actions": {
+      "CREATE": "Created",
+      "UPDATE": "Edited",
+      "SOFT_DELETE": "Deleted",
+      "STATUS_CHANGE": "Status changed",
+      "VIEW": "Opened",
+      "VIEW_RESTRICTED": "Restricted data read",
+      "PRINT": "Printed",
+      "EXPORT": "Exported",
+      "BACKUP": "Backup",
+      "RESTORE": "Restore",
+      "ISSUE": "Issued",
+      "VOID": "Voided",
+      "CANCEL": "Cancelled",
+      "APPROVE": "Approved",
+      "REFUSE": "Refused",
+      "OVERRIDE": "Rule passed",
+      "NUMBER_CLAIM": "Number typed from paper",
+      "SANCTION_CHECK": "Sanction check",
+      "SANCTION_SET": "Sanction set",
+      "SANCTION_LIFT": "Sanction lifted",
+      "UPLOAD_REMOVE": "File removed",
+      "SETTINGS_CHANGE": "Setting changed",
+      "SIGN_IN": "Signed in",
+      "SIGN_IN_FAILED": "Sign-in refused",
+      "LOCK": "Locked",
+      "PASSWORD_CHANGE": "Password changed",
+      "CHAIN_VERIFY": "Records verified",
+      "ANCHOR_REBASE": "Database accepted as it is",
+      "CLOCK_WARNING": "Clock warning"
+    },
+    "Reasons": {
+      "Routine": "Routine work of the centre",
+      "CREATE": "Keeping the centre's records",
+      "UPDATE": "Keeping the centre's records up to date",
+      "STATUS_CHANGE": "Following the work",
+      "VIEW": "Handling this person's file",
+      "VIEW_RESTRICTED": "Handling this person's file",
+      "PRINT": "A document for the person concerned or for the work",
+      "EXPORT": "A file handed over on the manager's order",
+      "BACKUP": "Protecting the centre's data against loss",
+      "ISSUE": "Billing the centre's services",
+      "SANCTION_CHECK": "Checking before a registration",
+      "UPLOAD_REMOVE": "A stored file replaced or taken off",
+      "SETTINGS_CHANGE": "Setting the program",
+      "SIGN_IN": "Access to the program",
+      "SIGN_IN_FAILED": "Access to the program refused",
+      "LOCK": "End of a session",
+      "PASSWORD_CHANGE": "Protecting an account",
+      "CHAIN_VERIFY": "Checking that records were not altered",
+      "CLOCK_WARNING": "The PC's date was checked"
+    }
+  },
+  "Places": {
+    "Wilaya": "Wilaya",
+    "Commune": "Commune",
+    "ChooseCommune": "Choose a commune",
+    "AddCommune": "Add a commune",
+    "NewCommuneName": "Name of the commune, in Arabic",
+    "Add": "Add",
+    "Cancel": "Cancel",
+    "AddFailed": "Could not add this commune.",
+    "Zone": "Zone",
+    "ChooseZone": "Choose a zone",
+    "ZonesTitle": "Zones and communes",
+    "ZonesDescription": "A commune takes a zone of its own name the first time a site or a residence is recorded there. Move it to another zone here: its sites follow.",
+    "NoZoneYet": "No zone yet",
+    "ChooseCommuneFirst": "Choose a commune first",
+    "ZoneSaved": "The commune is in its new zone.",
+    "SaveFailed": "Could not save."
+  },
+  "TabLines": {
+    "EmployeesList": "The centre's own staff: their files, posts and contracts.",
+    "EmployeeAttendance": "Arrivals, departures, absences and leave of the centre's employees.",
+    "Supervisors": "Each supervisor's zone, workers and day in the field.",
+    "RepVisits": "The sales representative's visits to prospects, and what came of them.",
+    "WorkersList": "Every cleaning worker's registration file, as his form asks for it.",
+    "Hiring": "Candidates, the administration's decision, the trial period and training days.",
+    "WorkProgram": "Who works where and when this week, and who replaces whom.",
+    "WorkerAttendance": "Hours typed from the returned orders, absences and their reasons.",
+    "HoursPay": "Hours worked, pay runs, payslips, advances and what is still owed.",
+    "Files": "Every request and contract, from the first call to the signed contract.",
+    "Visits": "The day's visits, their teams and their mission orders.",
+    "Quality": "The supervisor's inspections, clients' complaints and what was done about them.",
+    "Clients": "Every client and site, with the files opened for each.",
+    "Expenses": "What the centre spends, division by division.",
+    "Income": "What the centre earns, division by division.",
+    "Invoices": "Invoices issued, to issue and voided, in their legal sequence.",
+    "Payments": "Payments received, receipts, and what each client still owes.",
+    "Reports": "The month in figures: income, costs, profit and the centre's indicators.",
+    "Inventory": "What is in stock, what is running low and what must be bought.",
+    "Handouts": "Materials and tools handed to workers, and what came back.",
+    "Purchases": "Purchase requests, purchases and what suppliers were paid.",
+    "Maintenance": "The upkeep of machines and equipment, done and due."
   }
 }

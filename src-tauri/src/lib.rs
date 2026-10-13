@@ -44,6 +44,12 @@ fn specta_builder() -> Builder {
         backup::backup_to,
         backup::restore_from,
         backup::export_upload,
+        backup::save_text_file,
+        backup::backup_manifest,
+        backup::backup_folder_check,
+        backup::backup_rotate,
+        backup::restore_pending,
+        backup::restore_pending_clear,
         anchor::anchor_read,
         anchor::anchor_write,
         // The only three commands without a `license::guard`. They are what a

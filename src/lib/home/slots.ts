@@ -9,7 +9,10 @@ import type { ComponentType } from "react";
  *
  *     export const homeSlots: HomeSlots = { today: TodayTiles, board: HomeDayBoard };
  *
- *  - `today`: the tiles at the top (today's visits by status);
+ *  - `today`: the tiles at the top (today's visits by status). Three to a row,
+ *    in the academy's own classes, as its home and the alert tiles are laid
+ *    out (the Checker's S-15):
+ *    `grid min-w-0 grid-cols-1 gap-5 md:grid-cols-3 tall:gap-6`;
  *  - `board`: the day board under the alert tiles.
  *
  * Each is a component that takes no props and reads what it shows. A slot

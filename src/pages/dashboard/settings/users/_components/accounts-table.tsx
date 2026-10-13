@@ -88,8 +88,7 @@ export function AccountsTable({ rows }: { rows: AccountRow[] }) {
       {
         id: "employee",
         header: t("Table.Employee"),
-        cell: ({ row }) =>
-          row.original.staffLabel ?? <span className="text-muted-foreground">{t("NoEmployee")}</span>,
+        cell: ({ row }) => row.original.staffLabel ?? <span className="text-muted-foreground">{t("NoEmployee")}</span>,
       },
       {
         id: "lastSignIn",
@@ -131,7 +130,12 @@ export function AccountsTable({ rows }: { rows: AccountRow[] }) {
             <div className="flex justify-end">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="icon-sm" aria-label={t("Actions")} data-account-actions={account.username}>
+                  <Button
+                    variant="outline"
+                    size="icon-sm"
+                    aria-label={t("Actions")}
+                    data-account-actions={account.username}
+                  >
                     <Ellipsis />
                   </Button>
                 </DropdownMenuTrigger>

@@ -22,7 +22,6 @@ export default function PrintSamplePage() {
     <DetailScreen
       section="settings"
       title={t("Title")}
-      description={t("Description")}
       back={{ href: "/dashboard/settings", label: tNav("SettingsHeading") }}
       actions={<PrintButton />}
     >

@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { useTranslations } from "use-intl";
 
 import { ErrorState } from "@/components/error-state";
+import { PageActions } from "@/components/screen";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -30,8 +31,9 @@ const settingValuesKey = (tab: SettingsTab) => [...pathKey(SETTINGS_PATH), "valu
 /**
  * The cards of one Settings tab, one per group of DESIGN.md section 11.
  *
- * Each card commits behind its own button, as the academy's identity card
- * does: the fields of a group are typed together and only make sense saved
+ * Each card commits behind its own button at its foot (`PageActions`: save is
+ * `success` at the default size, with an `outline` way back beside it), as the
+ * academy's identity card does: the fields of a group are typed together and only make sense saved
  * together, and only what changed is sent (one log entry per key). Without
  * the right to change them, the values are shown and the button is not.
  */
@@ -160,7 +162,7 @@ function SettingsGroupCard({
             })}
           </div>
           {mayWrite ? (
-            <div className="flex min-w-0 flex-wrap justify-end gap-3">
+            <PageActions className="mt-0 pt-5 tall:mt-0 tall:pt-6">
               {changed.length > 0 && (
                 <Button type="button" variant="outline" onClick={reset} disabled={busy}>
                   <Undo2 />
@@ -176,7 +178,7 @@ function SettingsGroupCard({
                 <Save />
                 {tCommon("Save")}
               </Button>
-            </div>
+            </PageActions>
           ) : (
             <p className="text-base text-muted-foreground">{t("ReadOnly")}</p>
           )}

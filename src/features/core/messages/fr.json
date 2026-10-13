@@ -102,7 +102,8 @@
     "MyAccountDesc": "Le compte actuellement connecté sur cet ordinateur.",
     "ChangePasswordDesc": "Saisissez votre mot de passe actuel, puis le nouveau deux fois.",
     "RegenerateRecoveryPassword": "Saisissez votre mot de passe pour obtenir le nouveau code.",
-    "RegenerateRecoveryAction": "Afficher le nouveau code"
+    "RegenerateRecoveryAction": "Afficher le nouveau code",
+    "LockedIdle": "Verrouillé après {minutes} minutes sans utilisation."
   },
   "Common": {
     "Cancel": "Annuler",
@@ -183,7 +184,10 @@
     "AccountLinkEmployeeOnly": "Un compte ne peut être lié qu'à un employé du centre.",
     "AccountLinkTaken": "Cet employé a déjà un compte.",
     "RoleManagerFixed": "Le rôle du directeur a tous les droits et ne se modifie pas.",
-    "RoleNoRestore": "La restauration d'une sauvegarde appartient au seul directeur."
+    "RoleNoRestore": "La restauration d'une sauvegarde appartient au seul directeur.",
+    "BackupFolderSynced": "Ce dossier est synchronisé par {client}. Choisissez un dossier qui reste sur ce PC ou sur une clé USB.",
+    "BackupFolderMissing": "Ce dossier n'existe pas.",
+    "BackupFolderReadOnly": "Le programme ne peut pas écrire dans ce dossier."
   },
   "Table": {
     "ScrollLeft": "Défiler à gauche",
@@ -204,18 +208,52 @@
   "Settings": {
     "Backup": {
       "Title": "Sauvegarde et restauration",
-      "Description": "Une sauvegarde contient toute la base de données ainsi que chaque photo et document téléversé. Conservez une copie ailleurs que sur cet ordinateur.",
-      "Back Up Now": "Sauvegarder maintenant",
-      "Backing Up": "Sauvegarde en cours…",
-      "Restore": "Restaurer depuis une sauvegarde",
-      "Restoring": "Restauration en cours…",
-      "Backup Saved": "Sauvegarde enregistrée dans {path}",
-      "Backup Failed": "Impossible de créer la sauvegarde.",
-      "Restore Failed": "Impossible de restaurer depuis cette sauvegarde.",
-      "Restore Title": "Restaurer depuis la sauvegarde ?",
-      "Restore Description": "Cela remplace toutes les données actuelles — dossiers, contrats, visites, paiements et documents téléversés — par le contenu de la sauvegarde. L'opération est irréversible. Le programme redémarrera à la fin de la restauration.",
-      "Cancel": "Annuler",
-      "Confirm Restore": "Remplacer toutes les données"
+      "Description": "Une sauvegarde contient toute la base et chaque photo, scan et document stockés. Gardez-la ailleurs que sur cet ordinateur : tout est ici dans un seul fichier, et c'est le seul retour possible.",
+      "ChooseFolder": "Choisir le dossier",
+      "FolderSaved": "La copie quotidienne ira dans ce dossier.",
+      "SaveFailed": "Impossible d'enregistrer.",
+      "BackUpNow": "Sauvegarder maintenant",
+      "BackupSaved": "Sauvegarde enregistrée dans {path}",
+      "BackupFailed": "Impossible de faire la sauvegarde.",
+      "Restore": "Restaurer une sauvegarde",
+      "RestoreFailed": "Impossible de restaurer cette sauvegarde. Rien n'a été remplacé.",
+      "RestoreTitle": "Tout remplacer par cette sauvegarde ?",
+      "RestoreDescription": "Chaque dossier, contrat, visite, paiement et document stocké est remplacé par le contenu de la sauvegarde. Une copie des données d'aujourd'hui est d'abord gardée, puis le programme redémarre.",
+      "RestoreReason": "Pourquoi cette sauvegarde est restaurée",
+      "ConfirmRestore": "Remplacer toutes les données",
+      "Daily": {
+        "Title": "La copie quotidienne",
+        "Folder": "Dossier de la copie quotidienne",
+        "NoFolder": "Aucun dossier choisi : aucune copie quotidienne",
+        "FolderHint": "Un second disque ou une clé USB. Jamais un dossier synchronisé par OneDrive, Google Drive ou Dropbox : les données du centre quitteraient ce PC.",
+        "Auto": "Une copie chaque jour, toute seule",
+        "On": "Activée",
+        "Off": "Désactivée",
+        "Keep": "Copies quotidiennes gardées"
+      },
+      "Latest": {
+        "Title": "Dernières copies",
+        "None": "Aucune sauvegarde n'a encore été faite.",
+        "Failed": "échouée"
+      },
+      "Kinds": {
+        "AUTO": "Copie quotidienne",
+        "MANUAL": "Copie manuelle",
+        "PRE_RESTORE": "Copie avant restauration",
+        "RESTORE": "Restauration"
+      },
+      "Errors": {
+        "Synced": "Le dossier est synchronisé par {client}.",
+        "Missing": "Le dossier était absent (la clé USB est-elle branchée ?).",
+        "ReadOnly": "Impossible d'écrire dans le dossier.",
+        "Other": "La copie n'a pas pu être écrite."
+      },
+      "Warnings": {
+        "OTHER_DATABASE": "Cette sauvegarde appartient à une autre installation du programme, pas aux données de ce centre.",
+        "OLDER_THAN_LAST_INVOICE": "Cette sauvegarde est antérieure à la dernière facture : la dernière facture enregistrée ici est {current} du {currentDate}, et la sauvegarde s'arrête à {backup}. Ce qui a été enregistré depuis sera perdu.",
+        "NO_MANIFEST": "Cette sauvegarde ne dit rien de son contenu : le programme ne peut pas dire de quand elle date.",
+        "NoInvoice": "aucune facture"
+      }
     },
     "Title": "Paramètres",
     "Description": "Tout ce que le centre configure une fois et ne retouche plus.",
@@ -928,6 +966,10 @@
       },
       "sanction_matchAcrossKinds": {
         "Label": "Chercher parmi agents, employés et clients"
+      },
+      "security_idleLockMinutes": {
+        "Label": "Verrouiller après une inactivité de",
+        "Hint": "Après ce délai sans clavier ni souris, le programme revient à la fenêtre de connexion, pour que le travail de personne ne soit enregistré sous un autre nom. Ce qui était en cours de saisie est perdu. 0 désactive ce verrouillage."
       }
     },
     "Units": {
@@ -1036,5 +1078,302 @@
       "PURCHASE": "Achats",
       "EQUIPMENT_UNIT": "Unités de matériel"
     }
+  },
+  "UsersTab": {
+    "NewAccount": "Nouveau compte",
+    "NewAccountHint": "Le compte n'a pas encore de mot de passe : son titulaire le choisit à sa première connexion.",
+    "DisplayName": "Nom",
+    "Username": "Identifiant",
+    "Role": "Rôle",
+    "Employee": "Employé du centre",
+    "NoEmployee": "Non lié",
+    "Create": "Créer",
+    "AccountCreated": "Compte créé.",
+    "Saved": "Enregistré.",
+    "SaveFailed": "Impossible d'enregistrer.",
+    "Discard": "Annuler les modifications",
+    "EditAccount": "Nom et rôle",
+    "RoleTakesEffect": "Un nouveau rôle prend effet à la prochaine connexion de ce compte.",
+    "GivePassword": "Donner un mot de passe",
+    "GivePasswordTitle": "Un mot de passe pour {name}",
+    "GivePasswordHint": "Pour quelqu'un qui a oublié le sien. Il devra le remplacer à sa première connexion.",
+    "PasswordGiven": "{name} a un nouveau mot de passe.",
+    "LinkEmployee": "Lier à un employé",
+    "LinkTitle": "Qui utilise le compte de {name}",
+    "LinkHint": "Le dossier de l'employé affiche alors ce compte, et ce que fait le compte est rattaché à cette personne.",
+    "SwitchOff": "Désactiver",
+    "SwitchOn": "Réactiver",
+    "SwitchOffTitle": "Désactiver le compte de {name} ?",
+    "SwitchOffHint": "Il disparaît de la fenêtre de connexion. Rien de ce qu'il a fait n'est supprimé : le journal garde son nom.",
+    "SwitchedOff": "Compte désactivé.",
+    "SwitchedOn": "Compte réactivé.",
+    "Never": "Jamais",
+    "Actions": "Actions",
+    "ManagerOnly": "Les comptes et les rôles sont gérés par le directeur.",
+    "GrantsSaved": "Droits enregistrés.",
+    "Accounts": {
+      "Title": "Comptes",
+      "Description": "Un compte par personne. Un compte se désactive, il ne se supprime jamais."
+    },
+    "Table": {
+      "Name": "Nom",
+      "Role": "Rôle",
+      "Employee": "Employé",
+      "LastSignIn": "Dernière connexion",
+      "State": "État",
+      "SearchPlaceholder": "Rechercher un nom",
+      "Empty": "Aucun compte ne correspond."
+    },
+    "States": {
+      "Active": "Actif",
+      "Off": "Désactivé",
+      "NoPassword": "Pas encore de mot de passe",
+      "MustChange": "Mot de passe à remplacer"
+    },
+    "Grants": {
+      "Title": "Rôles et droits",
+      "Description": "Ce que chaque rôle ouvre dans la barre, et ce qu'il peut y faire.",
+      "ManagerHoldsAll": "Le rôle du directeur ouvre tout et peut tout faire. Il ne se modifie pas.",
+      "Sections": "Sections de la barre",
+      "TakesEffect": "Un changement prend effet à la prochaine connexion de chaque compte de ce rôle.",
+      "Levels": {
+        "NONE": "Fermée",
+        "READ": "Lecture",
+        "WRITE": "Lecture et écriture"
+      },
+      "Groups": {
+        "people": "Employés et agents",
+        "clients": "Clients et contrats",
+        "operations": "Visites et qualité",
+        "money": "Finances et stock",
+        "program": "Le programme"
+      }
+    }
+  },
+  "Capabilities": {
+    "staff_write": "Créer et modifier les dossiers des agents et employés ; décider d'un congé",
+    "staff_health_read": "Lire les réponses de santé et ouvrir les fichiers restreints (journalisé)",
+    "staff_hiringScore_read": "Lire et saisir la note confidentielle de recrutement (journalisé)",
+    "staff_printFilledForm": "Imprimer un formulaire d'agent rempli",
+    "hiring_decide": "Enregistrer « قرار الإدارة » pour un candidat",
+    "attendance_employee_edit": "Modifier ou supprimer un pointage ou une absence d'employé",
+    "pay_read": "Voir les heures, paies, bulletins, versements et avances",
+    "pay_write": "Préparer et clore les paies, enregistrer versements et avances",
+    "sanction_set": "Poser ou lever « موقف / معاقب » sur un agent, un employé ou un client",
+    "sanction_answer": "Répondre à « هل نسمح له أم لا؟ »",
+    "cost_read": "Voir les coûts, la marge et la rentabilité",
+    "quote_approve": "Approuver un devis",
+    "file_editLocked": "Modifier un dossier après « متعاقد »",
+    "file_stageBack": "Ramener un dossier à l'étape précédente",
+    "file_delete": "Supprimer un dossier",
+    "file_setNumber": "Saisir un numéro de dossier ou de client qui existe sur papier",
+    "residents_read": "Ouvrir la liste des résidents (journalisé)",
+    "visit_enterOrder": "Saisir un ordre de mission revenu",
+    "visit_correctTimes": "Corriger des heures de présence saisies (avec motif, journalisé)",
+    "visit_reopen": "Rouvrir une visite effectuée, reportée ou annulée",
+    "schedule_overrideRule": "Passer outre une règle de temps de travail",
+    "order_releaseSanctioned": "Laisser imprimer un ordre pour un client « متوقف » ou « معاقب »",
+    "complaint_settleDiscount": "Régler une réclamation par une remise",
+    "invoice_issue": "Émettre des factures",
+    "invoice_void": "Annuler une facture",
+    "payment_record": "Enregistrer un paiement et imprimer son reçu",
+    "payment_void": "Annuler un paiement ou un reçu",
+    "reconciliation_close": "Clore la journée d'un encaisseur",
+    "export_run": "Exporter les fichiers pour le comptable",
+    "stock_manage": "Inventaires, mises au rebut, achats, entretien ; annuler une remise ou un achat",
+    "users_manage": "Gérer les comptes et les rôles",
+    "settings_rules": "Modifier قواعد العمل",
+    "log_read": "Lire le journal des accès et modifications",
+    "backup_run": "Faire une sauvegarde maintenant",
+    "backup_restore": "Restaurer une sauvegarde (le directeur seul)"
+  },
+  "AnchorScreen": {
+    "Reason": "Votre motif",
+    "Confirm": "Je garde cette base",
+    "Failed": "Impossible d'enregistrer la réponse. Rien n'a été modifié.",
+    "ManagerOnly": "Le directeur doit se connecter et répondre avant que le programme puisse être utilisé.",
+    "SignOut": "Verrouiller",
+    "Restored": "Restaurée par {name} depuis",
+    "Behind": {
+      "Anchor": "Dernière facture enregistrée sur ce PC :",
+      "Database": "Cette copie s'arrête à :",
+      "None": "aucune facture",
+      "Lost": "{count} numéros de facture ou de reçu émis depuis ne sont pas dans cette copie."
+    },
+    "States": {
+      "behind": {
+        "Title": "Cette copie est antérieure à la dernière facture",
+        "Body": "Une copie plus ancienne des données a été restaurée, ou des enregistrements ont été retirés. Confirmez que vous la gardez, ou fermez le programme et restaurez une autre copie.",
+        "Consequence": "Les numéros manquants sont déclarés perdus et ne sont jamais redonnés : la prochaine facture prend le numéro suivant."
+      },
+      "altered": {
+        "Title": "Un enregistrement a été modifié hors du programme",
+        "Body": "Une facture, un reçu, un paiement ou une ligne du journal n'est pas ce que le programme a écrit. Appelez l'assistance avant de continuer si vous ne savez pas pourquoi.",
+        "Consequence": "Votre réponse est gardée dans le journal avec ce que le programme a trouvé, et le travail reprend sur la base telle qu'elle est."
+      },
+      "foreign": {
+        "Title": "Ces données viennent d'une autre installation",
+        "Body": "La base de ce PC n'est pas celle avec laquelle le programme a été utilisé ici la dernière fois. Confirmez si vous avez déplacé les données du centre sur ce PC.",
+        "Consequence": "Désormais ce PC suit cette base."
+      },
+      "unanchored": {
+        "Title": "Le programme a été réinstallé sur des données existantes",
+        "Body": "La base contient des factures ou des lignes du journal, et ce PC n'en garde aucun souvenir. Confirmez qu'il s'agit bien des données du centre.",
+        "Consequence": "Désormais ce PC suit cette base."
+      },
+      "ahead": {
+        "Title": "La base doit être vérifiée",
+        "Body": "Le programme n'a pas pu confirmer les derniers enregistrements.",
+        "Consequence": "Votre réponse est gardée dans le journal."
+      },
+      "normal": {
+        "Title": "La base est en ordre",
+        "Body": "Rien à répondre.",
+        "Consequence": "—"
+      }
+    }
+  },
+  "LogTab": {
+    "TheProgram": "Le programme",
+    "Details": "Détails",
+    "Changes": "Ce qui a changé",
+    "Context": "Autres détails",
+    "Withheld": "Modifié. La valeur n'est jamais gardée dans le journal.",
+    "Recipient": "Destinataire",
+    "Export": "Exporter",
+    "ExportKind": "Texte délimité",
+    "Exported": "Journal exporté vers {path}",
+    "ExportFailed": "Impossible d'exporter le journal.",
+    "ManagerOnly": "Le journal est lu par le directeur.",
+    "Count": "{count, plural, =0 {Aucune entrée} one {# entrée} other {# entrées}}",
+    "Table": {
+      "When": "Date et heure",
+      "Who": "Qui",
+      "Operation": "Opération",
+      "What": "Enregistrement",
+      "Whose": "Personne concernée",
+      "Why": "Motif",
+      "Empty": "Aucune entrée ne correspond."
+    },
+    "Filters": {
+      "Person": "Personne",
+      "Everyone": "Tout le monde",
+      "Operation": "Opération",
+      "EveryOperation": "Toutes les opérations",
+      "Entity": "Type d'enregistrement",
+      "EveryEntity": "Tous les types",
+      "From": "Du",
+      "To": "Au"
+    },
+    "Operations": {
+      "COLLECT": "Collecte",
+      "CONSULT": "Consultation",
+      "CHANGE": "Modification",
+      "DISCLOSE": "Communication",
+      "ERASE": "Effacement",
+      "SECURITY": "Sécurité"
+    },
+    "Subjects": {
+      "WORKER": "Agent",
+      "EMPLOYEE": "Employé",
+      "CLIENT": "Client",
+      "RESIDENT": "Résident",
+      "CONTACT": "Contact",
+      "USER": "Compte"
+    },
+    "Actions": {
+      "CREATE": "Création",
+      "UPDATE": "Modification",
+      "SOFT_DELETE": "Suppression",
+      "STATUS_CHANGE": "Changement d'état",
+      "VIEW": "Ouverture",
+      "VIEW_RESTRICTED": "Lecture de données restreintes",
+      "PRINT": "Impression",
+      "EXPORT": "Export",
+      "BACKUP": "Sauvegarde",
+      "RESTORE": "Restauration",
+      "ISSUE": "Émission",
+      "VOID": "Annulation",
+      "CANCEL": "Annulation",
+      "APPROVE": "Approbation",
+      "REFUSE": "Refus",
+      "OVERRIDE": "Dérogation",
+      "NUMBER_CLAIM": "Numéro repris du papier",
+      "SANCTION_CHECK": "Contrôle de sanction",
+      "SANCTION_SET": "Sanction posée",
+      "SANCTION_LIFT": "Sanction levée",
+      "UPLOAD_REMOVE": "Fichier retiré",
+      "SETTINGS_CHANGE": "Paramètre modifié",
+      "SIGN_IN": "Connexion",
+      "SIGN_IN_FAILED": "Connexion refusée",
+      "LOCK": "Verrouillage",
+      "PASSWORD_CHANGE": "Mot de passe modifié",
+      "CHAIN_VERIFY": "Vérification des enregistrements",
+      "ANCHOR_REBASE": "Base acceptée telle quelle",
+      "CLOCK_WARNING": "Alerte d'horloge"
+    },
+    "Reasons": {
+      "Routine": "Travail courant du centre",
+      "CREATE": "Tenue des registres du centre",
+      "UPDATE": "Mise à jour des registres du centre",
+      "STATUS_CHANGE": "Suivi du travail",
+      "VIEW": "Traitement du dossier de la personne",
+      "VIEW_RESTRICTED": "Traitement du dossier de la personne",
+      "PRINT": "Un document pour l'intéressé ou pour le travail",
+      "EXPORT": "Un fichier remis sur ordre du directeur",
+      "BACKUP": "Protection des données du centre contre la perte",
+      "ISSUE": "Facturation des prestations du centre",
+      "SANCTION_CHECK": "Contrôle avant une inscription",
+      "UPLOAD_REMOVE": "Un fichier stocké remplacé ou retiré",
+      "SETTINGS_CHANGE": "Réglage du programme",
+      "SIGN_IN": "Accès au programme",
+      "SIGN_IN_FAILED": "Accès au programme refusé",
+      "LOCK": "Fin d'une session",
+      "PASSWORD_CHANGE": "Protection d'un compte",
+      "CHAIN_VERIFY": "Vérification de l'intégrité des enregistrements",
+      "CLOCK_WARNING": "La date du PC a été contrôlée"
+    }
+  },
+  "Places": {
+    "Wilaya": "Wilaya",
+    "Commune": "Commune",
+    "ChooseCommune": "Choisir une commune",
+    "AddCommune": "Ajouter une commune",
+    "NewCommuneName": "Nom de la commune, en arabe",
+    "Add": "Ajouter",
+    "Cancel": "Annuler",
+    "AddFailed": "Impossible d'ajouter cette commune.",
+    "Zone": "Zone",
+    "ChooseZone": "Choisir une zone",
+    "ZonesTitle": "Zones et communes",
+    "ZonesDescription": "Une commune prend une zone à son nom dès qu'un site ou un domicile y est enregistré. Déplacez-la ici vers une autre zone : ses sites suivent.",
+    "NoZoneYet": "Pas encore de zone",
+    "ChooseCommuneFirst": "Choisissez d'abord une commune",
+    "ZoneSaved": "La commune est dans sa nouvelle zone.",
+    "SaveFailed": "Impossible d'enregistrer."
+  },
+  "TabLines": {
+    "EmployeesList": "Le personnel du centre : dossiers, postes et contrats.",
+    "EmployeeAttendance": "Arrivées, départs, absences et congés des employés du centre.",
+    "Supervisors": "La zone de chaque superviseur, ses agents et sa journée de terrain.",
+    "RepVisits": "Les visites du commercial aux prospects, et ce qu'elles ont donné.",
+    "WorkersList": "Le dossier d'inscription de chaque agent de nettoyage, tel que son formulaire le demande.",
+    "Hiring": "Les candidats, la décision de l'administration, la période d'essai et les jours de formation.",
+    "WorkProgram": "Qui travaille où et quand cette semaine, et qui remplace qui.",
+    "WorkerAttendance": "Les heures saisies depuis les ordres revenus, les absences et leurs motifs.",
+    "HoursPay": "Heures travaillées, paies, bulletins, avances et ce qui reste dû.",
+    "Files": "Chaque demande et chaque contrat, du premier appel au contrat signé.",
+    "Visits": "Les visites du jour, leurs équipes et leurs ordres de mission.",
+    "Quality": "Les inspections du superviseur, les réclamations des clients et leur suivi.",
+    "Clients": "Chaque client et chaque site, avec les dossiers ouverts pour chacun.",
+    "Expenses": "Ce que dépense le centre, division par division.",
+    "Income": "Ce que gagne le centre, division par division.",
+    "Invoices": "Les factures émises, à émettre et annulées, dans leur suite légale.",
+    "Payments": "Les paiements reçus, les reçus, et ce que chaque client doit encore.",
+    "Reports": "Le mois en chiffres : recettes, coûts, bénéfice et indicateurs du centre.",
+    "Inventory": "Ce qui est en stock, ce qui s'épuise et ce qu'il faut acheter.",
+    "Handouts": "Produits et outils remis aux agents, et ce qui est revenu.",
+    "Purchases": "Demandes d'achat, achats et ce qui a été payé aux fournisseurs.",
+    "Maintenance": "L'entretien des machines et du matériel, fait et à faire."
   }
 }

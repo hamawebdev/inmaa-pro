@@ -1,6 +1,7 @@
 import * as React from "react";
 
-import { KeyRound, LockKeyhole, UserRound } from "lucide-react";
+import { DatabaseBackup, KeyRound, LockKeyhole, UserRound } from "lucide-react";
+import { toast } from "sonner";
 import { useLocale, useTranslations } from "use-intl";
 
 import { PasswordChangeDialog } from "@/components/security/password-dialogs";
@@ -13,8 +14,9 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { leaveSession } from "@/features/core/services/session";
-import { useSession } from "@/hooks/use-session";
+import { useCan, useSession } from "@/hooks/use-session";
 import { ROLE_CODES, ROLE_LABELS, type RoleCode } from "@/lib/access/catalogue";
+import { backupDatabase } from "@/server/backup";
 
 /**
  * The lock menu: who is signed in, «قفل الآن», and the way to change one's own
@@ -28,13 +30,25 @@ import { ROLE_CODES, ROLE_LABELS, type RoleCode } from "@/lib/access/catalogue";
  *
  * «قفل الآن» signs out: the program goes back to the sign-in window, and the
  * next person signs in under his own name. The password item is here, and not
- * only in Settings, because most roles cannot open Settings at all.
+ * only in Settings, because most roles cannot open Settings at all; so is
+ * «نسخة احتياطية الآن», for whoever may back up (`backup.run`).
  */
 export function LockMenu({ children }: { children: React.ReactNode }) {
   const t = useTranslations("Auth");
   const locale = useLocale();
   const session = useSession();
   const [passwordOpen, setPasswordOpen] = React.useState(false);
+  const tBackup = useTranslations("Settings.Backup");
+  const mayBackUp = useCan("backup.run");
+
+  async function backUpNow() {
+    const outcome = await backupDatabase({ title: tBackup("BackUpNow"), filterName: tBackup("Title") });
+    if (outcome.done) toast.success(tBackup("BackupSaved", { path: outcome.path }));
+    else if (!outcome.cancelled) {
+      console.error("backup: failed", outcome.error);
+      toast.error(tBackup("BackupFailed"));
+    }
+  }
 
   const labels = (ROLE_CODES as readonly string[]).includes(session?.roleId ?? "")
     ? ROLE_LABELS[session?.roleId as RoleCode]
@@ -70,6 +84,13 @@ export function LockMenu({ children }: { children: React.ReactNode }) {
             <KeyRound />
             {t("ChangePassword")}
           </DropdownMenuItem>
+          {/* A role that may back up but cannot open Settings (الإدارة, by default) reaches the copy from here. */}
+          {mayBackUp && (
+            <DropdownMenuItem onSelect={() => void backUpNow()}>
+              <DatabaseBackup />
+              {tBackup("BackUpNow")}
+            </DropdownMenuItem>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
 

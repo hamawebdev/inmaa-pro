@@ -18,6 +18,7 @@ import { action, query } from "@/lib/service/action";
 import { changedColumns } from "@/lib/service/changes";
 import type { Executor, ServiceContext } from "@/lib/service/context";
 import { ServiceError } from "@/lib/service/errors";
+import { staffName } from "@/lib/text/names";
 
 /**
  * Sign-in accounts (plan feature 23, DESIGN.md section 12).
@@ -193,7 +194,9 @@ export async function listAccounts(ex: Executor, ctx: ServiceContext): Promise<A
     needsPassword: row.passwordHash.trim() === "",
     mustChangePassword: row.mustChangePassword === 1,
     staffMemberId: row.staffMemberId,
-    staffLabel: row.staffMemberId ? `${row.staffNumber} — ${row.staffLastName} ${row.staffFirstName}` : null,
+    staffLabel: row.staffMemberId
+      ? `${row.staffNumber} — ${staffName({ lastName: row.staffLastName, firstName: row.staffFirstName })}`
+      : null,
     lastSignInAt: row.lastSignInAt,
     failedSignInCount: row.failedSignInCount,
   }));
@@ -346,7 +349,7 @@ export async function listLinkableEmployees(
     .filter((employee) => employee.status !== "LEFT")
     .map((employee) => ({
       id: employee.id,
-      label: `${employee.number} — ${employee.lastName} ${employee.firstName}`,
+      label: `${employee.number} — ${staffName(employee)}`,
       account: employee.account,
     }));
 }

@@ -97,9 +97,6 @@ const DIGEST_LEFT_OUT: ReadonlySet<string> = new Set(["id", "invoiceId", "chainS
  * will give it.
  *
  *     {"lines":[{…},{…}],"visits":[{…}]}       sha256 of this text, in hex
- *
- * src/features/money/rules/hash-chain.ts computes the same text from the same
- * column lists.
  */
 export function invoiceContentDigest(content: {
   lines: ReadonlyArray<Record<string, unknown>>;

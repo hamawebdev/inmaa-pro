@@ -80,6 +80,21 @@ npm run shot -- --demo --user accountant --route /dashboard/expenses
 
 A refused sign-in stops the run and says what the window said.
 
+## Several people at once
+
+A run is heavy (a Vite server and a headless Chrome), and six teammates share this machine: twenty runs at once starve
+one another, screens "never settle" and the machine runs out of file handles. So a run takes one of a few slots before
+it starts anything, and waits its turn when they are taken (`lib/slots.mjs`): it says so on stderr and goes on by
+itself. Nothing to do, except to leave your own time limit long enough for the wait.
+
+- `HARNESS_SLOTS=<n>` sets how many runs go at once (default: half the processors, between 2 and 6); `0` switches the
+  queue off.
+- `HARNESS_SETTLE_MS=<ms>` sets how long a screen may take to settle (default 75 000).
+- Print many sheets in **one** run: `npm run pdf -- --demo --routes sheets.txt --png`. The file holds one route a line
+  (`/dashboard/files/{clients.housingContract}/form/print`), optionally ` > name` to choose the PDF's name; `#` starts
+  a comment. One slot, one browser, one database; a sheet that fails does not cost the others their turn.
+- `pdf` takes `--before <js>` as `shot` does: for a page whose sheet appears only after something is typed or pressed.
+
 ## Demo data
 
 `npm run demo` builds one database from every folder's `src/features/<folder>/demo.ts` (see "Demo data" in
@@ -164,7 +179,10 @@ It shows the web part of the app in Chrome. These still need the real program:
 - **The database engine.** Node's SQLite is newer (3.50) than the one built into the app (3.46).
   A migration is proven on the app's engine by the Rust migration test, not here.
 - **The licence.** `--license` only chooses what the screens are told.
-- **Dialogs, backup and restore.** File dialogs always answer "cancelled".
+- **Dialogs, backup and restore.** File dialogs always answer "cancelled", so a backup made by hand, a restore and an
+  export stop at their dialog. A copy the program makes by itself (`backup_to`) and a file it saves (`save_text_file`)
+  land in the run's own folder (`backups/`, `exports/`), whatever path was asked; `restore_from` is refused. The daily
+  copy is not made in a run: no folder is chosen in a new database.
 - **Paper.** `pdf.mjs` uses Chrome's print engine on A4, which is what WebView2 on Windows uses
   too. The printer, its margins and the user's choices in the print dialog are not covered.
   Backgrounds are left out unless `--backgrounds` is given, as in the dialog by default.

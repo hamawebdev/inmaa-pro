@@ -3,6 +3,7 @@ import { useEffect, useRef } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import { useLocale } from "use-intl";
 
+import { AlertNotifier } from "@/components/alert-notifier";
 import { BottomNav } from "@/components/bottom-nav";
 import { CommandPalette } from "@/components/command-palette";
 import { RouteGate } from "@/components/security/route-gate";
@@ -76,6 +77,9 @@ export default function DashboardLayout() {
 
       {/* Ctrl+K. Renders nothing until it is opened. */}
       <CommandPalette />
+
+      {/* New alerts, said once on the desktop. Renders nothing. */}
+      <AlertNotifier />
 
       {/* Toasts hug the reading-start corner, so top-left in Arabic. Mounted
           here rather than in main.tsx so it can see the locale. */}

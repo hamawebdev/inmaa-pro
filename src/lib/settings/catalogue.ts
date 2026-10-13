@@ -71,6 +71,8 @@ export const SETTING_DEFAULTS = {
   "backup.targetDir": "" as string,
   "backup.keepCount": 30 as number,
   "feature.siteQrOnOrder": false as boolean,
+  /** Minutes without input after which the program signs out to the sign-in window. 0 switches it off. */
+  "security.idleLockMinutes": 15 as number,
 
   // ── Work rules (قواعد العمل) ─────────────────────────────────────────────
   "work.days": ["SAT", "SUN", "MON", "TUE", "WED", "THU"] as string[],

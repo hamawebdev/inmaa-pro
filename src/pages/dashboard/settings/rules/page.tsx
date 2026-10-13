@@ -3,6 +3,7 @@ import { useTranslations } from "use-intl";
 import { SectionScreen } from "@/components/section-screen";
 
 import { SettingsGroups } from "../_components/settings-form/settings-groups";
+import { ZonesCard } from "../_components/zones-card";
 
 /**
  * Settings › قواعد العمل: every work rule of DESIGN.md section 11, one card per
@@ -20,12 +21,13 @@ export default function SettingsRulesPage() {
   return (
     <SectionScreen
       section="settings"
-      title={tNav("SettingsHeading")}
+      title={tNav("SettingsRules")}
       description={t("RulesDescription")}
       className="max-w-4xl"
     >
       <div className="flex flex-col gap-6 tall:gap-7">
         <SettingsGroups tab="rules" />
+        <ZonesCard />
       </div>
     </SectionScreen>
   );

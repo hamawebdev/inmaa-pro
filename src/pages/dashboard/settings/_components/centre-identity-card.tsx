@@ -5,6 +5,7 @@ import { Save } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslations } from "use-intl";
 
+import { PageActions } from "@/components/screen";
 import { MediaUploadField, createEmptyUploadSelection, type UploadSelection } from "@/components/media-upload-field";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -112,12 +113,12 @@ export function CentreIdentityCard() {
               previewAlt={t("Logo")}
             />
 
-            <div className="flex flex-wrap justify-end">
+            <PageActions className="mt-0 pt-5 tall:mt-0 tall:pt-6">
               <Button type="submit" variant="success" loading={save.isPending} disabled={!nameValue.trim()}>
                 <Save />
                 {tCommon("Save")}
               </Button>
-            </div>
+            </PageActions>
           </form>
         )}
       </CardContent>

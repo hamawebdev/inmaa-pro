@@ -39,8 +39,13 @@ export function SectionScreen({
 }) {
   const { pathname } = useLocation();
   const t = useTranslations("Nav");
+  const tLines = useTranslations("TabLines");
   const def = getSection(section);
   const activeTab = resolveTab(section, pathname);
+  // A tab page has a line under its heading, as the academy's have (the
+  // Checker's S-14): the page's own, or the tab's standing one.
+  const tabLabelKey = def.tabs?.find((tab) => tab.id === activeTab)?.labelKey;
+  const line = description ?? (tabLabelKey && tLines.has(tabLabelKey) ? tLines(tabLabelKey) : undefined);
 
   const items = def.tabs?.map((tab) => ({
     id: tab.id,
@@ -52,7 +57,7 @@ export function SectionScreen({
   return (
     <Screen className={className}>
       <div className="space-y-5 tall:space-y-6">
-        <ScreenHeader section={section} title={title} description={description} icon={def.icon} actions={actions} />
+        <ScreenHeader section={section} title={title} description={line} icon={def.icon} actions={actions} />
 
         {items && items.length > 0 && (
           <ScreenTabs section={section} items={items} value={activeTab} ariaLabel={tabsAriaLabel ?? t(def.labelKey)} />
