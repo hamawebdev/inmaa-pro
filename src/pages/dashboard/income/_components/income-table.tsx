@@ -43,10 +43,12 @@ export function IncomeTable({ rows, showDivision }: { rows: readonly IncomePayme
         id: "client",
         header: t("Table.Client"),
         cell: ({ row }) => (
-          <div className="min-w-0">
-            <p className="font-bold">{row.original.clientName}</p>
+          <div className="max-w-36 min-w-0 xl:max-w-56">
+            <p className="truncate leading-tight font-bold">{row.original.clientName}</p>
             {row.original.payerName !== row.original.clientName && (
-              <p className="text-sm text-muted-foreground">{t("Table.PaidBy", { payer: row.original.payerName })}</p>
+              <p className="truncate text-sm leading-tight text-muted-foreground">
+                {t("Table.PaidBy", { payer: row.original.payerName })}
+              </p>
             )}
           </div>
         ),
@@ -55,12 +57,16 @@ export function IncomeTable({ rows, showDivision }: { rows: readonly IncomePayme
         id: "file",
         header: t("Table.File"),
         cell: ({ row }) => (
-          <div className="min-w-0">
-            <p className="whitespace-nowrap">
+          <div className="max-w-36 min-w-0 xl:max-w-56">
+            <p className="leading-tight whitespace-nowrap">
               <Ltr>{row.original.fileNumber}</Ltr>
             </p>
             {/* On «الكل» the file's division is said under its number: a file belongs to one. */}
-            {showDivision && <p className="text-sm text-muted-foreground">{divisionLabel(row.original.division)}</p>}
+            {showDivision && (
+              <p className="truncate text-sm leading-tight text-muted-foreground">
+                {divisionLabel(row.original.division)}
+              </p>
+            )}
           </div>
         ),
       },
@@ -68,10 +74,10 @@ export function IncomeTable({ rows, showDivision }: { rows: readonly IncomePayme
         id: "method",
         header: t("Table.Method"),
         cell: ({ row }) => (
-          <div className="min-w-0">
-            <p>{methodLabel(row.original.method)}</p>
+          <div className="max-w-36 min-w-0 xl:max-w-56">
+            <p className="truncate leading-tight">{methodLabel(row.original.method)}</p>
             {row.original.receiptNumber && (
-              <p className="text-sm whitespace-nowrap text-muted-foreground">
+              <p className="truncate text-sm leading-tight text-muted-foreground">
                 {t("Table.ReceiptNumber")} <Ltr>{row.original.receiptNumber}</Ltr>
               </p>
             )}
@@ -82,11 +88,13 @@ export function IncomeTable({ rows, showDivision }: { rows: readonly IncomePayme
         id: "amount",
         header: t("Table.Amount"),
         cell: ({ row }) => (
-          <div className="min-w-0">
-            <p className="font-bold whitespace-nowrap text-success tabular-nums">{money(row.original.amount)}</p>
+          <div className="max-w-36 min-w-0 xl:max-w-56">
+            <p className="leading-tight font-bold whitespace-nowrap text-success tabular-nums">
+              {money(row.original.amount)}
+            </p>
             {/* Stamp duty is collected with a cash payment but is not income: said apart, never added. */}
             {row.original.stampDuty > 0 && (
-              <p className="text-sm whitespace-nowrap text-muted-foreground tabular-nums">
+              <p className="text-sm leading-tight whitespace-nowrap text-muted-foreground tabular-nums">
                 {t("Table.PlusStamp", { amount: money(row.original.stampDuty) })}
               </p>
             )}

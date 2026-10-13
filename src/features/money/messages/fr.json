@@ -4,8 +4,10 @@
     "StatementTitle": "Relevé des visites de la facture {number}",
     "ReceiptTitle": "Reçu de caisse {number}",
     "ReminderTitle": "Rappel de paiement",
-    "SampleNote": "Données d'exemple, affichées en attendant l'enregistrement des factures et des paiements.",
-    "NoStatement": "Cette facture n'a pas de relevé de visites : elle porte sur une prestation à la demande."
+    "NoStatement": "Cette facture n'a pas de relevé de visites : elle porte sur une prestation à la demande.",
+    "PrintNotRecorded": "L'impression n'a pas pu être enregistrée : rien n'a été imprimé.",
+    "BatchTitle": "Reçus vierges de {first} à {last}",
+    "NoReminder": "Aucun rappel à imprimer pour ce dossier."
   },
   "MoneyPeriod": {
     "Label": "Période",
@@ -26,8 +28,9 @@
     "AreaChart": "Graphique en aires",
     "NoDataForPeriod": "Aucune donnée pour la période sélectionnée.",
     "AllDivisions": "Toutes",
-    "SampleTitle": "Données d'exemple",
-    "SampleDescription": "Ces lignes sont des exemples, affichés en attendant que les données du centre puissent être lues. Rien de ce qui est saisi ici n'est conservé."
+    "Reason": "Motif",
+    "VoidedInvoice": "Annulée",
+    "DaysLate": "{state} · {days} j"
   },
   "MoneyCodes": {
     "Divisions": {
@@ -58,6 +61,26 @@
       "PURCHASE": "Des achats",
       "MAINTENANCE": "De la maintenance",
       "PAYROLL": "Des salaires"
+    },
+    "PaymentStates": {
+      "PAID": "Payé en totalité",
+      "PARTIAL": "Payé en partie",
+      "UNPAID": "Non payé"
+    },
+    "DueStates": {
+      "UPCOMING": "Non échu",
+      "DUE_SOON": "Échéance proche",
+      "OVERDUE": "En retard",
+      "PARTIAL": "Payé en partie",
+      "PAID": "Payé",
+      "CANCELLED": "Annulé"
+    },
+    "Readiness": {
+      "READY": "Prêt à facturer",
+      "PERIOD_OPEN": "Période en cours",
+      "VISITS_OPEN": "Visites non clôturées",
+      "AWAITING_SIGNOFF": "En attente de réception",
+      "NOTHING_DONE": "Rien de réalisé"
     }
   },
   "Income": {
@@ -119,7 +142,12 @@
       "SpentBy": "Acheteur : {name}",
       "Amount": "Montant",
       "Actions": "Actions"
-    }
+    },
+    "Remove": "Supprimer",
+    "RemoveFailed": "La dépense n'a pas pu être supprimée.",
+    "Removed": "Dépense supprimée.",
+    "RemoveTitle": "Supprimer cette dépense ?",
+    "RemoveDescription": "Elle sort des totaux ; le journal la conserve avec le motif saisi."
   },
   "ExpenseForm": {
     "AddExpense": "Ajouter une dépense",
@@ -145,7 +173,9 @@
     "ReceiptImage": "Image du reçu",
     "SaveChanges": "Enregistrer les modifications",
     "Record": "Enregistrer la dépense",
-    "ShownNotSaved": "Affichée à l'écran seulement : rien n'est conservé avant le raccordement de la base de données."
+    "SaveFailed": "La dépense n'a pas pu être enregistrée.",
+    "Updated": "Dépense modifiée.",
+    "Recorded": "Dépense enregistrée."
   },
   "Errors": {
     "ExpenseAfterToday": "Une dépense ne peut pas être datée après aujourd'hui.",
@@ -176,7 +206,8 @@
     "NothingToInvoice": "Il n'y a rien à facturer : le total est nul.",
     "ExpenseNotFound": "Cette dépense n'existe pas.",
     "ExpenseFromProgram": "Cette dépense a été écrite par le programme : elle se modifie à sa source.",
-    "AmountTooLarge": "Ce montant est trop élevé."
+    "AmountTooLarge": "Ce montant est trop élevé.",
+    "NoReminderOwed": "Ce dossier ne doit rien : aucun rappel à imprimer."
   },
   "Alerts": {
     "ContractEnding": {
@@ -190,6 +221,272 @@
     "PaymentOverdue": {
       "Title": "Paiements en retard",
       "Hint": "Date passée, non payés"
+    }
+  },
+  "Invoices": {
+    "Issue": "Émettre une facture",
+    "Figures": {
+      "Invoiced": "Facturé",
+      "Paid": "Payé",
+      "Remaining": "Reste"
+    },
+    "InvoiceCount": "{count, plural, =0 {Aucune facture} one {# facture} other {# factures}}",
+    "SearchPlaceholder": "Rechercher par numéro, client ou dossier…",
+    "StateFilters": {
+      "ALL": "Tous les états",
+      "UNPAID": "Non payé",
+      "PARTIAL": "Payé en partie",
+      "PAID": "Payé en totalité",
+      "VOIDED": "Annulées"
+    },
+    "NoInvoices": "Aucune facture sur cette période.",
+    "Table": {
+      "Number": "Facture",
+      "Client": "Client",
+      "Amount": "Montant",
+      "Remaining": "Reste",
+      "State": "État du paiement",
+      "Actions": "Actions"
+    },
+    "DueOn": "Échéance {date}",
+    "Print": "Imprimer",
+    "PrintStatement": "Relevé des visites",
+    "Void": "Annuler",
+    "VoidFailed": "La facture n'a pas pu être annulée.",
+    "Voided": "Facture {number} annulée.",
+    "VoidTitle": "Annuler la facture {number} ?",
+    "VoidDescription": "La facture et son numéro restent, marqués annulés ; ce qu'elle facturait peut l'être de nouveau."
+  },
+  "IssueInvoice": {
+    "Title": "Émettre une facture",
+    "Description": "Cochez ce qui est à facturer pour un dossier, vérifiez la facture, puis émettez-la.",
+    "WhatToInvoice": "Ce qui peut être facturé",
+    "TheInvoice": "La facture",
+    "Issue": "Émettre la facture",
+    "ReadOnly": "Votre compte consulte les factures sans les émettre.",
+    "ConfirmTitle": "Émettre la facture de {client} ?",
+    "ConfirmDescription": "Net à payer : {amount}. Une facture émise prend le numéro suivant et ne se modifie pas : elle s'annule seulement.",
+    "ClockTitle": "Confirmer la date de ce PC",
+    "ClockConfirm": "La date est exacte",
+    "IssueFailed": "La facture n'a pas pu être émise.",
+    "Issued": "Facture {number} émise.",
+    "Period": "Du {from} au {to}",
+    "Visit": "Visite du {date}",
+    "Job": "Prestation ponctuelle",
+    "Table": {
+      "Choose": "Choisir",
+      "ChooseDue": "Facturer ceci pour {client}",
+      "Client": "Client",
+      "What": "Objet",
+      "Visits": "Visites",
+      "Amount": "Montant",
+      "State": "État"
+    },
+    "NothingToInvoice": "Rien n'attend d'être facturé.",
+    "DueOn": "Échéance {date}",
+    "VisitsBilled": "{billed} sur {visits}",
+    "CannotIssue": "Cette facture ne peut pas encore être émise",
+    "Method": "Mode de paiement",
+    "DueDate": "Date de paiement",
+    "Statement": "Relevé des visites",
+    "StatementVisits": "{billed} facturées sur {visits} visites",
+    "Lines": {
+      "Description": "Désignation",
+      "Quantity": "Quantité",
+      "UnitPrice": "Prix unitaire",
+      "Amount": "Montant"
+    },
+    "NoLines": "Aucune ligne.",
+    "Totals": {
+      "Gross": "Valeur de la prestation",
+      "Discount": "Déduction",
+      "HT": "Total hors taxe",
+      "Vat": "TVA",
+      "TTC": "Montant dû",
+      "Stamp": "Droit de timbre",
+      "Net": "Net à payer"
+    }
+  },
+  "PaymentForm": {
+    "Title": "Enregistrer un paiement",
+    "Description": "Somme reçue pour un dossier. Un paiement en espèces donne un reçu numéroté à imprimer.",
+    "Loading": "Chargement…",
+    "NothingOwed": "Aucun dossier ne doit quoi que ce soit pour le moment.",
+    "File": "Dossier",
+    "ChooseFile": "Choisir le dossier",
+    "FileOption": "{client} · {number} · reste {owed}",
+    "Dues": "Ce qu'il règle",
+    "DuesHint": "Rien de coché : les plus anciens d'abord.",
+    "DuePeriod": "Du {from} au {to}",
+    "DueOn": "Échéance {date}",
+    "Invoice": "Facture",
+    "Date": "Date du paiement",
+    "Method": "Mode de paiement",
+    "Amount": "Montant (DA)",
+    "CashHint": "Le droit de timbre s'ajoute au montant payé en espèces.",
+    "Payer": "Payé par",
+    "Reference": "Numéro de référence",
+    "Note": "Remarque",
+    "Record": "Enregistrer le paiement",
+    "SaveFailed": "Le paiement n'a pas pu être enregistré.",
+    "Recorded": "Paiement enregistré : {amount} reçus.",
+    "ClockTitle": "Confirmer la date de ce PC",
+    "ClockConfirm": "La date est exacte"
+  },
+  "Payments": {
+    "BlankReceipts": "Reçus vierges",
+    "Record": "Enregistrer un paiement",
+    "ViewSwitch": "Paiements ou dettes",
+    "Views": {
+      "payments": "Paiements",
+      "dues": "Dettes"
+    },
+    "Table": {
+      "Date": "Date",
+      "Client": "Client",
+      "Payer": "Payé par",
+      "Amount": "Montant",
+      "Receipt": "Reçu",
+      "Actions": "Actions"
+    },
+    "WithStamp": "+ {stamp} de timbre",
+    "VoidedChip": "Annulé",
+    "PrintReceipt": "Reçu",
+    "Void": "Annuler le paiement",
+    "VoidFailed": "Le paiement n'a pas pu être annulé.",
+    "Voided": "Paiement annulé.",
+    "VoidTitle": "Annuler ce paiement ?",
+    "VoidDescription": "Ce qu'il réglait redevient dû et son reçu est marqué annulé.",
+    "Figures": {
+      "Received": "Encaissé",
+      "Cash": "Dont espèces",
+      "Stamp": "Droit de timbre"
+    },
+    "PaymentCount": "{count, plural, =0 {Aucun paiement} one {# paiement} other {# paiements}}",
+    "SearchPlaceholder": "Rechercher par client, dossier, payeur ou reçu…",
+    "NoPayments": "Aucun paiement sur cette période."
+  },
+  "Dues": {
+    "Period": "Du {from} au {to}",
+    "Visit": "Visite du {date}",
+    "Job": "Prestation ponctuelle",
+    "Table": {
+      "Client": "Client",
+      "Payer": "Payeur",
+      "What": "Objet",
+      "Remaining": "Reste",
+      "State": "État",
+      "Actions": "Actions"
+    },
+    "DueOn": "Échéance {date}",
+    "PaidOf": "{paid} payés sur {amount}",
+    "Reminder": "Rappel",
+    "RecordFor": "Enregistrer un paiement pour {client}",
+    "Figures": {
+      "Owed": "Total dû",
+      "Overdue": "En retard",
+      "DueSoon": "Échéance proche",
+      "Files": "{count, plural, one {# dossier débiteur} other {# dossiers débiteurs}}"
+    },
+    "DueCount": "{count, plural, =0 {Rien de dû} one {# montant dû} other {# montants dus}}",
+    "SearchPlaceholder": "Rechercher par client, dossier, payeur ou téléphone…",
+    "StateFilters": {
+      "ALL": "Tous les états",
+      "OVERDUE": "En retard",
+      "DUE_SOON": "Échéance proche",
+      "UPCOMING": "Non échu",
+      "PARTIAL": "Payé en partie"
+    },
+    "NoDues": "Rien n'est dû."
+  },
+  "ReceiptBatch": {
+    "Title": "Reçus vierges pour un encaisseur",
+    "Description": "Reçus numérotés imprimés vierges, pour la personne autorisée à encaisser chez un client. Chacun est rempli à la saisie de son paiement.",
+    "Count": "Combien",
+    "CountHint": "De 1 à {max} reçus.",
+    "Collector": "Remis à",
+    "Office": "Le bureau",
+    "Worker": "{name} · agent {number}",
+    "Employee": "{name} · employé {number}",
+    "CollectorHint": "Un agent n'encaisse chez un client que s'il y est officiellement autorisé.",
+    "Issue": "Numéroter et imprimer",
+    "Failed": "Les reçus n'ont pas pu être numérotés.",
+    "Issued": "Les reçus {first} à {last} sont prêts à imprimer.",
+    "ClockTitle": "Confirmer la date de ce PC",
+    "ClockConfirm": "La date est exacte"
+  },
+  "Reports": {
+    "Result": "Résultat de la période",
+    "Income": "Recettes",
+    "Expenses": "Dépenses",
+    "Profit": "Bénéfice",
+    "ByDivision": "Par division",
+    "Indicators": "Indicateurs",
+    "Forecast": "Les mois à venir",
+    "ForecastNote": "En retard aujourd'hui : {overdue}. À échoir avant la fin du mois : {rest}. Dépenses attendues par mois : {monthly}.",
+    "ByFile": "Par dossier",
+    "NoFiles": "Aucun dossier facturé, payé ou débiteur sur cette période.",
+    "Table": {
+      "Division": "Division",
+      "Result": "Résultat",
+      "Total": "Total",
+      "Month": "Mois",
+      "Receipts": "Encaissements attendus",
+      "ExpectedExpenses": "Dépenses attendues",
+      "Net": "Net",
+      "Running": "Solde cumulé",
+      "File": "Dossier",
+      "Invoiced": "Facturé",
+      "Received": "Encaissé",
+      "Outstanding": "Dû aujourd'hui"
+    },
+    "Figures": {
+      "Invoiced": "{count, plural, =0 {Facturé} one {Facturé (# facture)} other {Facturé (# factures)}}",
+      "Received": "{count, plural, =0 {Encaissé} one {Encaissé (# paiement)} other {Encaissé (# paiements)}}",
+      "Outstanding": "Dû aujourd'hui",
+      "Overdue": "Dont en retard",
+      "Visits": "Visites de la période",
+      "VisitsDone": "Réalisées",
+      "VisitsNotDone": "Reportées, annulées ou en problème",
+      "OrdersNotReturned": "Ordres non encore retournés"
+    }
+  },
+  "FileMoney": {
+    "Of": "{client} · dossier {number}",
+    "Reminder": "Rappel",
+    "Issue": "Émettre une facture",
+    "Record": "Enregistrer un paiement",
+    "CouldNotLoad": "Les paiements de ce dossier n'ont pas pu être lus.",
+    "State": "État du paiement",
+    "Amount": "Montant",
+    "Paid": "Payé",
+    "Remaining": "Reste",
+    "OverdueHint": "dont {amount} en retard",
+    "Dues": "Échéances",
+    "Invoices": "Factures",
+    "Payments": "Paiements reçus",
+    "Period": "Du {from} au {to}",
+    "Visit": "Visite du {date}",
+    "Job": "Prestation ponctuelle",
+    "Invoice": "Facture",
+    "NoDues": "Rien n'est encore dû sur ce dossier.",
+    "NoInvoices": "Aucune facture pour l'instant.",
+    "NoPayments": "Aucun paiement pour l'instant.",
+    "Print": "Imprimer",
+    "PrintReceipt": "Reçu",
+    "WithStamp": "+ {stamp} de timbre",
+    "Voided": "Annulé",
+    "Table": {
+      "What": "Objet",
+      "DueDate": "Date de paiement",
+      "Amount": "Montant",
+      "Remaining": "Reste",
+      "State": "État",
+      "Invoice": "Facture",
+      "Actions": "Actions",
+      "Date": "Date",
+      "Payer": "Payé par",
+      "Receipt": "Reçu"
     }
   }
 }

@@ -66,7 +66,7 @@ export default function PaymentsPage() {
   return (
     <SectionScreen
       section="money"
-      title={tNav("MoneyHeading")}
+      title={tNav("Payments")}
       actions={
         records ? (
           <div className="flex flex-wrap items-center gap-2">
@@ -126,7 +126,12 @@ export default function PaymentsPage() {
       </div>
 
       {records && (
-        <RecordPaymentDialog open={recording || askedNew} onOpenChange={changeRecording} today={today} fileId={forFile} />
+        <RecordPaymentDialog
+          open={recording || askedNew}
+          onOpenChange={changeRecording}
+          today={today}
+          fileId={forFile}
+        />
       )}
       {records && <ReceiptBatchDialog open={blanks} onOpenChange={setBlanks} />}
     </SectionScreen>

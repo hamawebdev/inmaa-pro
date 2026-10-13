@@ -1,7 +1,7 @@
 {
   "StockPrint": {
     "HandoutTitle": "Hand-out slip {number}",
-    "SampleNote": "Sample data, shown until hand-outs can be recorded."
+    "PrintNotRecorded": "The print could not be recorded, so nothing was printed."
   },
   "Inventory": {
     "KindSwitch": "Kind of stock",
@@ -17,7 +17,8 @@
       "Unit": "Unit",
       "OnHand": "In stock",
       "Minimum": "Minimum",
-      "State": "State"
+      "State": "State",
+      "Actions": "Actions"
     },
     "States": {
       "OUT": "Out of stock",
@@ -30,7 +31,8 @@
       "TO_BUY": "To buy",
       "OK": "In stock",
       "UNWATCHED": "No minimum"
-    }
+    },
+    "Edit": "Edit"
   },
   "StockCodes": {
     "Kinds": {
@@ -52,6 +54,29 @@
       "TOOL": "Tools",
       "MACHINE": "Machines",
       "PPE": "Protective equipment"
+    },
+    "Trackings": {
+      "QUANTITY": "By quantity",
+      "UNIT": "Piece by piece"
+    },
+    "Conditions": {
+      "GOOD": "Good",
+      "NEEDS_MAINTENANCE": "Needs maintenance",
+      "OUT_OF_SERVICE": "Out of service"
+    },
+    "Purposes": {
+      "JOB": "For a job",
+      "WORKER_KIT": "A worker's own kit"
+    },
+    "Locations": {
+      "STORE": "In the store",
+      "WITH_WORKER": "With a worker",
+      "AT_SITE": "At a client's",
+      "IN_MAINTENANCE": "In maintenance"
+    },
+    "MaintenanceKinds": {
+      "PREVENTIVE": "Periodic service",
+      "REPAIR": "Repair"
     }
   },
   "Errors": {
@@ -91,7 +116,12 @@
     "ItemNotFound": "This item does not exist.",
     "PieceNotInStore": "This piece is not in the store.",
     "VisitNotOfFile": "This visit is not one of this file's visits.",
-    "CountAllLines": "Type what was counted for every line before closing."
+    "CountAllLines": "Type what was counted for every line before closing.",
+    "UnitNotFound": "This piece of equipment does not exist.",
+    "MaintenanceInterval": "A maintenance interval is a number of days, from 1 to 3650.",
+    "MaintenanceAfterToday": "A maintenance cannot be dated after today.",
+    "ConditionAfterMaintenance": "Say in what condition the equipment is after the maintenance.",
+    "MaintenanceWhat": "Write what was done."
   },
   "Alerts": {
     "StockLow": {
@@ -102,5 +132,162 @@
       "Title": "Maintenance due",
       "Hint": "Within {days} days, or reported in need of it"
     }
+  },
+  "ItemForm": {
+    "AddItem": "New item",
+    "NewTitle": "Add an item to the store",
+    "EditTitle": "Edit the item",
+    "Description": "Its name, kind, unit and minimum. Quantities move by purchases, hand-outs and counts.",
+    "NameAr": "Name (Arabic)",
+    "NameFr": "Name (French)",
+    "NameEn": "Name (English)",
+    "Kind": "Kind",
+    "Category": "Category",
+    "NoCategory": "None",
+    "Unit": "Unit",
+    "Tracking": "Followed",
+    "TrackingHint": "Piece by piece: each machine has its own number and maintenance.",
+    "Minimum": "Minimum",
+    "MinimumHint": "At or below it, the item is to buy. Empty: not watched.",
+    "Opening": "On the shelf today",
+    "OpeningHint": "Written as the item's first movement.",
+    "SaveFailed": "The item could not be saved.",
+    "Updated": "Item updated.",
+    "Added": "Item added.",
+    "SaveChanges": "Save changes",
+    "Add": "Add the item"
+  },
+  "Handouts": {
+    "New": "New hand-out",
+    "Table": {
+      "Number": "Hand-out",
+      "Worker": "Received by",
+      "Job": "Job",
+      "Lines": "Items",
+      "State": "State",
+      "Actions": "Actions"
+    },
+    "LineCount": "{count, plural, one {# item} other {# items}}",
+    "States": {
+      "Cancelled": "Cancelled",
+      "StillOut": "{count, plural, one {# piece of equipment out} other {# pieces of equipment out}}",
+      "Settled": "Nothing out"
+    },
+    "Print": "Slip",
+    "Return": "Return",
+    "Cancel": "Cancel the hand-out",
+    "CancelFailed": "The hand-out could not be cancelled.",
+    "Cancelled": "Hand-out {number} cancelled.",
+    "CancelTitle": "Cancel hand-out {number}?",
+    "CancelDescription": "Everything it took goes back to the store. Only a hand-out typed by mistake, with nothing returned yet.",
+    "HandoutCount": "{count, plural, =0 {No hand-outs} one {# hand-out} other {# hand-outs}}",
+    "SearchPlaceholder": "Search by number, worker, client or file…",
+    "NoHandouts": "Nothing has been handed out yet."
+  },
+  "HandoutReturn": {
+    "Title": "What came back of hand-out {number}",
+    "Description": "Line by line: what returned to the store, what was lost or damaged.",
+    "Loading": "Loading…",
+    "NothingOut": "Nothing of this hand-out is still out.",
+    "Line": "Item",
+    "StillOut": "Still out:",
+    "Returned": "Returned",
+    "Lost": "Lost",
+    "Damaged": "Damaged",
+    "Condition": "Condition on return",
+    "Note": "Note",
+    "NoteHint": "Required when something is lost or damaged.",
+    "Record": "Record the return",
+    "Failed": "The return could not be recorded.",
+    "Recorded": "Return recorded."
+  },
+  "HandoutForm": {
+    "Title": "New hand-out",
+    "Description": "Equipment and materials handed to a named worker, for a job or as his own kit.",
+    "Who": "To whom and for what",
+    "Purpose": "Purpose",
+    "Worker": "Worker who receives",
+    "ChooseWorker": "Choose the worker",
+    "Date": "Date",
+    "File": "Job (file)",
+    "ChooseFile": "Choose the file",
+    "Visit": "Visit",
+    "NoVisit": "No particular visit",
+    "VisitHint": "Its mission order then prints what was handed out.",
+    "What": "What is handed out",
+    "StoreEmpty": "The store holds nothing to hand out.",
+    "Item": "Item {number}",
+    "ChooseItem": "Choose the item",
+    "InStore": "In the store:",
+    "Piece": "Piece",
+    "ChoosePiece": "Choose the piece",
+    "Quantity": "Quantity",
+    "Condition": "Condition when handed over",
+    "StayAtSite": "Stays at the client's",
+    "RemoveLine": "Remove this line",
+    "AddLine": "Add an item",
+    "Note": "Note",
+    "Save": "Record and print the slip",
+    "SaveFailed": "The hand-out could not be recorded.",
+    "Saved": "Hand-out {number} recorded.",
+    "ReadOnly": "Your account reads the store and does not hand out."
+  },
+  "FileHandouts": {
+    "New": "New hand-out",
+    "CouldNotLoad": "This file's hand-outs could not be read."
+  },
+  "Purchases": {
+    "PurchaseCount": "{count, plural, =0 {No purchases} one {# purchase} other {# purchases}}",
+    "NoPurchases": "Nothing has been bought yet.",
+    "LineCount": "{count, plural, one {# item} other {# items}}",
+    "Cancelled": "Cancelled",
+    "Table": {
+      "Number": "Purchase",
+      "Supplier": "Supplier",
+      "Division": "Division",
+      "Lines": "Items",
+      "Total": "Total"
+    }
+  },
+  "Maintenance": {
+    "UnitCount": "{count, plural, =0 {No equipment followed piece by piece} one {# piece of equipment} other {# pieces of equipment}}",
+    "NoUnits": "No machine is followed piece by piece yet: buy one under المشتريات.",
+    "Record": "Record a maintenance",
+    "Plan": "Maintenance schedule",
+    "States": {
+      "Overdue": "Overdue",
+      "DueSoon": "Due soon",
+      "NotPlanned": "Not scheduled",
+      "Planned": "Scheduled"
+    },
+    "Table": {
+      "Piece": "Piece",
+      "Condition": "Condition",
+      "Last": "Last maintenance",
+      "Next": "Next maintenance",
+      "State": "Schedule",
+      "Actions": "Actions"
+    }
+  },
+  "MaintenanceForm": {
+    "SaveFailed": "It could not be saved.",
+    "PlanSaved": "Schedule saved.",
+    "PlanTitle": "Maintenance schedule of {piece} {number}",
+    "PlanDescription": "How often this piece is serviced. The home screen warns a few days before.",
+    "Interval": "Every (days)",
+    "IntervalHint": "Empty: not on the calendar.",
+    "NextDate": "Next maintenance",
+    "NextDateHint": "Empty: one interval after the last one.",
+    "Recorded": "Maintenance recorded.",
+    "RecordTitle": "Maintenance of {piece} {number}",
+    "RecordDescription": "What was done, by whom and for how much. A cost goes into the expenses.",
+    "Kind": "Kind",
+    "Date": "Date",
+    "What": "What was done",
+    "Cost": "Cost (DA)",
+    "CostHint": "Empty when the centre did it itself.",
+    "Provider": "Done by",
+    "ConditionAfter": "Condition afterwards",
+    "Record": "Record the maintenance"
   }
 }

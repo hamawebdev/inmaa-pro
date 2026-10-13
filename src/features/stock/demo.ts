@@ -5,6 +5,7 @@ import type { DemoNames, DemoTools } from "@/testing/demo";
 import { sampleInventory } from "./samples/inventory";
 import { createHandOut } from "./services/handouts";
 import { createStockItem } from "./services/items";
+import { setMaintenancePlan } from "./services/maintenance";
 import { createSupplier, recordPurchase } from "./services/purchases";
 
 /**
@@ -72,6 +73,30 @@ export async function seedDemo(ex: Executor, ctx: ServiceContext, tools: DemoToo
     ],
   });
   names.purchase = purchase.id;
+
+  // ── The first vacuum cleaner is serviced every three months: its next service falls this Thursday ──
+  // (inside `alerts.maintenanceLeadDays`: it lights the maintenance tile of the home screen.)
+  const firstVacuum = await ex
+    .selectFrom("EquipmentUnit")
+    .select("id")
+    .where("itemId", "=", item("VACUUM"))
+    .orderBy("numberSeq")
+    .executeTakeFirst();
+  if (firstVacuum) {
+    await setMaintenancePlan(ex, ctx, { unitId: firstVacuum.id, intervalDays: 90, nextDate: "2026-10-15" });
+    names.unitMaintenanceDue = firstVacuum.id;
+  }
+
+  // The item the low-stock tile counts first: one of his materials at or below its minimum.
+  const low = await ex
+    .selectFrom("StockItem")
+    .select("id")
+    .where("kind", "=", "MATERIAL")
+    .where("minLevel", "is not", null)
+    .whereRef("onHandQty", "<=", "minLevel")
+    .orderBy("code")
+    .executeTakeFirst();
+  if (low) names.itemLow = low.id;
 
   // ── This morning: the team of today's first visit takes its materials ──
   const visitId = tools.names.operations?.visitInProgress ?? tools.names.operations?.visitToday;

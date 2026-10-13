@@ -22,7 +22,12 @@ async function partlyPaidNovember() {
   for (const date of NOVEMBER_TUESDAYS) await visitOn(test, file.id, date);
   await test.transact((ex, ctx) => syncDues(ex, ctx, { fileId: file.id }));
   await openDay(test, "2026-12-01T08:00:00.000Z");
-  const dues = await test.db.selectFrom("PaymentDue").select("id").where("fileId", "=", file.id).orderBy("seq").execute();
+  const dues = await test.db
+    .selectFrom("PaymentDue")
+    .select("id")
+    .where("fileId", "=", file.id)
+    .orderBy("seq")
+    .execute();
   const invoice = await test.transact((ex, ctx) =>
     issueInvoice(ex, ctx, { fileId: file.id, dueIds: [dues[0].id], paymentMethod: "CASH" }),
   );

@@ -35,7 +35,8 @@ const DUE_TONE: Record<DueState, StatusTone> = {
 export function DueStateChip({ state, daysLate = 0 }: { state: DueState; daysLate?: number }) {
   const label = useCodeLabel("MoneyCodes.DueStates");
   const t = useTranslations("MoneyCommon");
-  const word = state === "OVERDUE" && daysLate > 0 ? t("DaysLate", { state: label(state), days: daysLate }) : label(state);
+  const word =
+    state === "OVERDUE" && daysLate > 0 ? t("DaysLate", { state: label(state), days: daysLate }) : label(state);
   return <StatusChip tone={DUE_TONE[state]} label={word} />;
 }
 

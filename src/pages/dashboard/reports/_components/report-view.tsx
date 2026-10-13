@@ -1,0 +1,194 @@
+import { CircleDollarSign, ReceiptText, Scale } from "lucide-react";
+import { Link } from "react-router-dom";
+import { useLocale, useTranslations } from "use-intl";
+
+import { Ltr } from "@/components/ltr";
+import { SectionHeading } from "@/components/screen";
+import { StatCard } from "@/components/stat-card";
+import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { FigureStrip } from "@/features/money/components/figure-strip";
+import { useDivisionLabel } from "@/features/money/components/labels";
+import { useDateText, useMoneyText } from "@/features/money/components/use-money-text";
+import type { PeriodReport } from "@/features/money/services/reports";
+import { DIVISIONS } from "@/features/money/validators/option-codes";
+import { intlLocaleFor } from "@/i18n/config";
+import { cn } from "@/lib/utils";
+import { filePartHref } from "@/navigation/file-parts";
+
+/**
+ * The report of the period, top to bottom as the manager reads it: what is
+ * left, where it came from, how the work went, what the coming months look
+ * like, and each file's account.
+ *
+ * «عام» is a line of its own: the rent and the telephone belong to none of his
+ * four divisions, and spreading them would give each a result nobody decided.
+ * A loss is written with its minus sign and in the alert colour.
+ */
+export function ReportView({ report }: { report: PeriodReport }) {
+  const t = useTranslations("Reports");
+  const money = useMoneyText();
+  const dates = useDateText();
+  const divisionLabel = useDivisionLabel();
+  const count = new Intl.NumberFormat(intlLocaleFor(useLocale()));
+  const { result, counts, forecast } = report;
+
+  const signed = (amount: number, strong = false) => (
+    <span className={cn("whitespace-nowrap tabular-nums", strong && "font-bold", amount < 0 && "text-destructive")}>
+      <Ltr>{money(amount)}</Ltr>
+    </span>
+  );
+
+  return (
+    <div className="space-y-8 tall:space-y-10">
+      <section className="space-y-4 tall:space-y-5">
+        <SectionHeading>{t("Result")}</SectionHeading>
+        <div className="grid min-w-0 grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 tall:gap-6">
+          <StatCard
+            tone="money"
+            icon={CircleDollarSign}
+            label={t("Income")}
+            value={money(result.totalIncome)}
+            href="/dashboard/income"
+          />
+          <StatCard
+            tone="money"
+            icon={ReceiptText}
+            label={t("Expenses")}
+            value={money(result.totalExpenses)}
+            href="/dashboard/expenses"
+          />
+          <StatCard tone="money" icon={Scale} label={t("Profit")} value={<Ltr>{money(result.profit)}</Ltr>} />
+        </div>
+      </section>
+
+      <section className="space-y-4 tall:space-y-5">
+        <SectionHeading>{t("ByDivision")}</SectionHeading>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>{t("Table.Division")}</TableHead>
+              <TableHead>{t("Income")}</TableHead>
+              <TableHead>{t("Expenses")}</TableHead>
+              <TableHead>{t("Table.Result")}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {DIVISIONS.map((division) => (
+              <TableRow key={division}>
+                <TableCell className="font-bold">{divisionLabel(division)}</TableCell>
+                <TableCell>{signed(result.byDivision[division].income)}</TableCell>
+                <TableCell>{signed(result.byDivision[division].expenses)}</TableCell>
+                <TableCell>{signed(result.byDivision[division].result, true)}</TableCell>
+              </TableRow>
+            ))}
+            <TableRow>
+              <TableCell className="font-bold">{divisionLabel("COMMON")}</TableCell>
+              <TableCell className="text-muted-foreground">—</TableCell>
+              <TableCell>{signed(result.commonExpenses)}</TableCell>
+              <TableCell>{signed(-result.commonExpenses, true)}</TableCell>
+            </TableRow>
+            <TableRow className="bg-muted/50">
+              <TableCell className="font-bold">{t("Table.Total")}</TableCell>
+              <TableCell>{signed(result.totalIncome, true)}</TableCell>
+              <TableCell>{signed(result.totalExpenses, true)}</TableCell>
+              <TableCell>{signed(result.profit, true)}</TableCell>
+            </TableRow>
+          </TableBody>
+        </Table>
+      </section>
+
+      <section className="space-y-4 tall:space-y-5">
+        <SectionHeading>{t("Indicators")}</SectionHeading>
+        <FigureStrip
+          figures={[
+            { label: t("Figures.Invoiced", { count: counts.invoices }), value: money(report.invoiced) },
+            { label: t("Figures.Received", { count: counts.payments }), value: money(report.received) },
+            { label: t("Figures.Outstanding"), value: money(report.outstanding), muted: true },
+            { label: t("Figures.Overdue"), value: money(report.overdue), muted: true },
+          ]}
+        />
+        <FigureStrip
+          figures={[
+            { label: t("Figures.Visits"), value: count.format(counts.visits) },
+            { label: t("Figures.VisitsDone"), value: count.format(counts.visitsDone) },
+            { label: t("Figures.VisitsNotDone"), value: count.format(counts.visitsNotDone), muted: true },
+            { label: t("Figures.OrdersNotReturned"), value: count.format(counts.ordersNotReturned), muted: true },
+          ]}
+        />
+      </section>
+
+      <section className="space-y-4 tall:space-y-5">
+        <SectionHeading>{t("Forecast")}</SectionHeading>
+        <p className="text-muted-foreground">
+          {t("ForecastNote", {
+            overdue: money(forecast.overdue),
+            rest: money(forecast.restOfCurrentMonth),
+            monthly: money(forecast.monthlyExpenses),
+          })}
+        </p>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>{t("Table.Month")}</TableHead>
+              <TableHead>{t("Table.Receipts")}</TableHead>
+              <TableHead>{t("Table.ExpectedExpenses")}</TableHead>
+              <TableHead>{t("Table.Net")}</TableHead>
+              <TableHead>{t("Table.Running")}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {forecast.months.map((month) => (
+              <TableRow key={month.month}>
+                <TableCell className="font-bold whitespace-nowrap">{dates.month(`${month.month}-01`)}</TableCell>
+                <TableCell>{signed(month.receipts)}</TableCell>
+                <TableCell>{signed(month.expenses)}</TableCell>
+                <TableCell>{signed(month.net, true)}</TableCell>
+                <TableCell>{signed(month.running)}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </section>
+
+      <section className="space-y-4 tall:space-y-5">
+        <SectionHeading>{t("ByFile")}</SectionHeading>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>{t("Table.File")}</TableHead>
+              <TableHead>{t("Table.Division")}</TableHead>
+              <TableHead>{t("Table.Invoiced")}</TableHead>
+              <TableHead>{t("Table.Received")}</TableHead>
+              <TableHead>{t("Table.Outstanding")}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {report.contracts.length === 0 ? (
+              <TableEmpty colSpan={5}>{t("NoFiles")}</TableEmpty>
+            ) : (
+              report.contracts.map((line) => (
+                <TableRow key={line.fileId}>
+                  <TableCell>
+                    <Link
+                      to={filePartHref(line.fileId, "payments")}
+                      className="block max-w-64 min-w-0 rounded-sm outline-none hover:underline focus-visible:ring-[3px] focus-visible:ring-ring/30"
+                    >
+                      <span className="block truncate leading-tight font-bold">{line.clientName}</span>
+                      <span className="block truncate text-sm leading-tight text-muted-foreground">
+                        <Ltr>{line.fileNumber}</Ltr>
+                      </span>
+                    </Link>
+                  </TableCell>
+                  <TableCell>{divisionLabel(line.division)}</TableCell>
+                  <TableCell>{signed(line.invoiced)}</TableCell>
+                  <TableCell>{signed(line.received)}</TableCell>
+                  <TableCell>{signed(line.outstanding, true)}</TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </section>
+    </div>
+  );
+}

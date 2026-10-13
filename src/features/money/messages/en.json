@@ -4,8 +4,10 @@
     "StatementTitle": "Visit statement of invoice {number}",
     "ReceiptTitle": "Cash receipt {number}",
     "ReminderTitle": "Payment reminder",
-    "SampleNote": "Sample data, shown until invoices and payments can be recorded.",
-    "NoStatement": "This invoice has no visit statement: it bills a one-off job."
+    "NoStatement": "This invoice has no visit statement: it bills a one-off job.",
+    "PrintNotRecorded": "The print could not be recorded, so nothing was printed.",
+    "BatchTitle": "Blank receipts {first} to {last}",
+    "NoReminder": "There is no reminder to print for this file."
   },
   "MoneyPeriod": {
     "Label": "Period",
@@ -26,8 +28,9 @@
     "AreaChart": "Area chart",
     "NoDataForPeriod": "No data for the selected period.",
     "AllDivisions": "All",
-    "SampleTitle": "Sample data",
-    "SampleDescription": "These rows are examples, shown until the centre's own records can be read. Nothing typed here is kept."
+    "Reason": "Reason",
+    "VoidedInvoice": "Voided",
+    "DaysLate": "{state} · {days} d"
   },
   "MoneyCodes": {
     "Divisions": {
@@ -58,6 +61,26 @@
       "PURCHASE": "From purchases",
       "MAINTENANCE": "From maintenance",
       "PAYROLL": "From wages"
+    },
+    "PaymentStates": {
+      "PAID": "Paid in full",
+      "PARTIAL": "Partly paid",
+      "UNPAID": "Not paid"
+    },
+    "DueStates": {
+      "UPCOMING": "Not yet due",
+      "DUE_SOON": "Due soon",
+      "OVERDUE": "Overdue",
+      "PARTIAL": "Partly paid",
+      "PAID": "Paid",
+      "CANCELLED": "Cancelled"
+    },
+    "Readiness": {
+      "READY": "Ready to invoice",
+      "PERIOD_OPEN": "Period not ended",
+      "VISITS_OPEN": "Visits not closed",
+      "AWAITING_SIGNOFF": "Awaiting sign-off",
+      "NOTHING_DONE": "Nothing done"
     }
   },
   "Income": {
@@ -119,7 +142,12 @@
       "SpentBy": "Purchaser: {name}",
       "Amount": "Amount",
       "Actions": "Actions"
-    }
+    },
+    "Remove": "Remove",
+    "RemoveFailed": "The expense could not be removed.",
+    "Removed": "Expense removed.",
+    "RemoveTitle": "Remove this expense?",
+    "RemoveDescription": "It leaves the totals; the log keeps it with the reason you type."
   },
   "ExpenseForm": {
     "AddExpense": "Add an expense",
@@ -145,7 +173,9 @@
     "ReceiptImage": "Receipt image",
     "SaveChanges": "Save changes",
     "Record": "Record the expense",
-    "ShownNotSaved": "Shown on the screen only: nothing is kept until the database is connected."
+    "SaveFailed": "The expense could not be saved.",
+    "Updated": "Expense updated.",
+    "Recorded": "Expense recorded."
   },
   "Errors": {
     "ExpenseAfterToday": "An expense cannot be dated after today.",
@@ -176,7 +206,8 @@
     "NothingToInvoice": "There is nothing to invoice: the total is zero.",
     "ExpenseNotFound": "This expense does not exist.",
     "ExpenseFromProgram": "This expense was written by the program: it is changed where it came from.",
-    "AmountTooLarge": "This amount is too large."
+    "AmountTooLarge": "This amount is too large.",
+    "NoReminderOwed": "This file owes nothing: there is no reminder to print."
   },
   "Alerts": {
     "ContractEnding": {
@@ -190,6 +221,272 @@
     "PaymentOverdue": {
       "Title": "Overdue payments",
       "Hint": "Past their date and not paid"
+    }
+  },
+  "Invoices": {
+    "Issue": "Issue an invoice",
+    "Figures": {
+      "Invoiced": "Invoiced",
+      "Paid": "Paid",
+      "Remaining": "Remaining"
+    },
+    "InvoiceCount": "{count, plural, =0 {No invoices} one {# invoice} other {# invoices}}",
+    "SearchPlaceholder": "Search by number, client or file…",
+    "StateFilters": {
+      "ALL": "All states",
+      "UNPAID": "Not paid",
+      "PARTIAL": "Partly paid",
+      "PAID": "Paid in full",
+      "VOIDED": "Voided"
+    },
+    "NoInvoices": "No invoice in this period.",
+    "Table": {
+      "Number": "Invoice",
+      "Client": "Client",
+      "Amount": "Amount",
+      "Remaining": "Remaining",
+      "State": "Payment state",
+      "Actions": "Actions"
+    },
+    "DueOn": "Due {date}",
+    "Print": "Print",
+    "PrintStatement": "Visit statement",
+    "Void": "Void",
+    "VoidFailed": "The invoice could not be voided.",
+    "Voided": "Invoice {number} voided.",
+    "VoidTitle": "Void invoice {number}?",
+    "VoidDescription": "The invoice and its number stay, marked void; what it billed can be invoiced again."
+  },
+  "IssueInvoice": {
+    "Title": "Issue an invoice",
+    "Description": "Tick what to invoice for one file, check the invoice, then issue it.",
+    "WhatToInvoice": "What can be invoiced",
+    "TheInvoice": "The invoice",
+    "Issue": "Issue the invoice",
+    "ReadOnly": "Your account reads invoices and does not issue them.",
+    "ConfirmTitle": "Issue the invoice for {client}?",
+    "ConfirmDescription": "Net to pay: {amount}. An issued invoice takes the next number and cannot be changed, only voided.",
+    "ClockTitle": "Confirm the date of this PC",
+    "ClockConfirm": "The date is right",
+    "IssueFailed": "The invoice could not be issued.",
+    "Issued": "Invoice {number} issued.",
+    "Period": "{from} to {to}",
+    "Visit": "Visit of {date}",
+    "Job": "One-off job",
+    "Table": {
+      "Choose": "Choose",
+      "ChooseDue": "Invoice this for {client}",
+      "Client": "Client",
+      "What": "What",
+      "Visits": "Visits",
+      "Amount": "Amount",
+      "State": "State"
+    },
+    "NothingToInvoice": "Nothing is waiting to be invoiced.",
+    "DueOn": "Due {date}",
+    "VisitsBilled": "{billed} of {visits}",
+    "CannotIssue": "This invoice cannot be issued yet",
+    "Method": "Payment method",
+    "DueDate": "Payment date",
+    "Statement": "Visit statement",
+    "StatementVisits": "{billed} billed of {visits} visits",
+    "Lines": {
+      "Description": "Description",
+      "Quantity": "Quantity",
+      "UnitPrice": "Unit price",
+      "Amount": "Amount"
+    },
+    "NoLines": "No line.",
+    "Totals": {
+      "Gross": "Service value",
+      "Discount": "Deduction",
+      "HT": "Total before tax",
+      "Vat": "VAT",
+      "TTC": "Amount due",
+      "Stamp": "Stamp duty",
+      "Net": "Net to pay"
+    }
+  },
+  "PaymentForm": {
+    "Title": "Record a payment",
+    "Description": "Money received for a file. Cash gets a numbered receipt to print.",
+    "Loading": "Loading…",
+    "NothingOwed": "No file owes anything at the moment.",
+    "File": "File",
+    "ChooseFile": "Choose the file",
+    "FileOption": "{client} · {number} · owes {owed}",
+    "Dues": "What it settles",
+    "DuesHint": "None ticked: the oldest amounts first.",
+    "DuePeriod": "{from} to {to}",
+    "DueOn": "Due {date}",
+    "Invoice": "Invoice",
+    "Date": "Payment date",
+    "Method": "Payment method",
+    "Amount": "Amount (DA)",
+    "CashHint": "Stamp duty is added on top of a cash amount.",
+    "Payer": "Paid by",
+    "Reference": "Reference number",
+    "Note": "Note",
+    "Record": "Record the payment",
+    "SaveFailed": "The payment could not be recorded.",
+    "Recorded": "Payment recorded: {amount} received.",
+    "ClockTitle": "Confirm the date of this PC",
+    "ClockConfirm": "The date is right"
+  },
+  "Payments": {
+    "BlankReceipts": "Blank receipts",
+    "Record": "Record a payment",
+    "ViewSwitch": "Payments or debts",
+    "Views": {
+      "payments": "Payments",
+      "dues": "Debts"
+    },
+    "Table": {
+      "Date": "Date",
+      "Client": "Client",
+      "Payer": "Paid by",
+      "Amount": "Amount",
+      "Receipt": "Receipt",
+      "Actions": "Actions"
+    },
+    "WithStamp": "+ {stamp} stamp duty",
+    "VoidedChip": "Voided",
+    "PrintReceipt": "Receipt",
+    "Void": "Void the payment",
+    "VoidFailed": "The payment could not be voided.",
+    "Voided": "Payment voided.",
+    "VoidTitle": "Void this payment?",
+    "VoidDescription": "What it settled is owed again, and its receipt is marked void.",
+    "Figures": {
+      "Received": "Received",
+      "Cash": "Of which cash",
+      "Stamp": "Stamp duty"
+    },
+    "PaymentCount": "{count, plural, =0 {No payments} one {# payment} other {# payments}}",
+    "SearchPlaceholder": "Search by client, file, payer or receipt…",
+    "NoPayments": "No payment in this period."
+  },
+  "Dues": {
+    "Period": "{from} to {to}",
+    "Visit": "Visit of {date}",
+    "Job": "One-off job",
+    "Table": {
+      "Client": "Client",
+      "Payer": "Payer",
+      "What": "What",
+      "Remaining": "Remaining",
+      "State": "State",
+      "Actions": "Actions"
+    },
+    "DueOn": "Due {date}",
+    "PaidOf": "{paid} paid of {amount}",
+    "Reminder": "Reminder",
+    "RecordFor": "Record a payment for {client}",
+    "Figures": {
+      "Owed": "Owed in all",
+      "Overdue": "Overdue",
+      "DueSoon": "Due soon",
+      "Files": "{count, plural, one {# file owes} other {# files owe}}"
+    },
+    "DueCount": "{count, plural, =0 {Nothing owed} one {# amount owed} other {# amounts owed}}",
+    "SearchPlaceholder": "Search by client, file, payer or phone…",
+    "StateFilters": {
+      "ALL": "All states",
+      "OVERDUE": "Overdue",
+      "DUE_SOON": "Due soon",
+      "UPCOMING": "Not yet due",
+      "PARTIAL": "Partly paid"
+    },
+    "NoDues": "Nothing is owed."
+  },
+  "ReceiptBatch": {
+    "Title": "Blank receipts for a collector",
+    "Description": "Numbered receipts printed blank, for whoever is authorised to take cash at a client's. Each is filled in when its payment is typed.",
+    "Count": "How many",
+    "CountHint": "1 to {max} receipts.",
+    "Collector": "Handed to",
+    "Office": "The office",
+    "Worker": "{name} · worker {number}",
+    "Employee": "{name} · employee {number}",
+    "CollectorHint": "A worker takes money from a client only when officially authorised.",
+    "Issue": "Number and print",
+    "Failed": "The receipts could not be numbered.",
+    "Issued": "Receipts {first} to {last} are ready to print.",
+    "ClockTitle": "Confirm the date of this PC",
+    "ClockConfirm": "The date is right"
+  },
+  "Reports": {
+    "Result": "Result of the period",
+    "Income": "Income",
+    "Expenses": "Expenses",
+    "Profit": "Profit",
+    "ByDivision": "By division",
+    "Indicators": "Indicators",
+    "Forecast": "The coming months",
+    "ForecastNote": "Overdue today: {overdue}. Due before the end of this month: {rest}. Expected expenses of a month: {monthly}.",
+    "ByFile": "By file",
+    "NoFiles": "No file was invoiced, paid or owes anything in this period.",
+    "Table": {
+      "Division": "Division",
+      "Result": "Result",
+      "Total": "Total",
+      "Month": "Month",
+      "Receipts": "Expected receipts",
+      "ExpectedExpenses": "Expected expenses",
+      "Net": "Net",
+      "Running": "Running balance",
+      "File": "File",
+      "Invoiced": "Invoiced",
+      "Received": "Received",
+      "Outstanding": "Owed today"
+    },
+    "Figures": {
+      "Invoiced": "{count, plural, =0 {Invoiced} one {Invoiced (# invoice)} other {Invoiced (# invoices)}}",
+      "Received": "{count, plural, =0 {Received} one {Received (# payment)} other {Received (# payments)}}",
+      "Outstanding": "Owed today",
+      "Overdue": "Of which overdue",
+      "Visits": "Visits of the period",
+      "VisitsDone": "Done",
+      "VisitsNotDone": "Postponed, cancelled or with a problem",
+      "OrdersNotReturned": "Orders not returned yet"
+    }
+  },
+  "FileMoney": {
+    "Of": "{client} · file {number}",
+    "Reminder": "Reminder",
+    "Issue": "Issue an invoice",
+    "Record": "Record a payment",
+    "CouldNotLoad": "This file's payments could not be read.",
+    "State": "Payment state",
+    "Amount": "Amount",
+    "Paid": "Paid",
+    "Remaining": "Remaining",
+    "OverdueHint": "{amount} overdue",
+    "Dues": "What is due",
+    "Invoices": "Invoices",
+    "Payments": "Payments received",
+    "Period": "{from} to {to}",
+    "Visit": "Visit of {date}",
+    "Job": "One-off job",
+    "Invoice": "Invoice",
+    "NoDues": "Nothing is due on this file yet.",
+    "NoInvoices": "No invoice yet.",
+    "NoPayments": "No payment yet.",
+    "Print": "Print",
+    "PrintReceipt": "Receipt",
+    "WithStamp": "+ {stamp} stamp duty",
+    "Voided": "Voided",
+    "Table": {
+      "What": "What",
+      "DueDate": "Payment date",
+      "Amount": "Amount",
+      "Remaining": "Remaining",
+      "State": "State",
+      "Invoice": "Invoice",
+      "Actions": "Actions",
+      "Date": "Date",
+      "Payer": "Paid by",
+      "Receipt": "Receipt"
     }
   }
 }

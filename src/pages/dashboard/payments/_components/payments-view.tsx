@@ -11,7 +11,7 @@ import {
 import { Ban, Banknote, Printer, Stamp, Wallet } from "lucide-react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
-import { useLocale, useTranslations } from "use-intl";
+import { useTranslations } from "use-intl";
 
 import { DataTable, TablePager, TableSearch } from "@/components/data-table-shell";
 import { Ltr } from "@/components/ltr";
@@ -28,7 +28,6 @@ import { readPeriod } from "@/features/money/rules/period";
 import { PAYMENTS_PATH } from "@/features/money/services/paths";
 import { listPaymentsQuery, voidPaymentAction, type PaymentListRow } from "@/features/money/services/payments";
 import { useCan, useSectionLevel } from "@/hooks/use-session";
-import { intlLocaleFor } from "@/i18n/config";
 import { useErrorMessage } from "@/i18n/errors";
 import { pathKey } from "@/lib/compat/revalidate";
 import { useSearchParams } from "@/lib/compat/navigation";
@@ -47,7 +46,6 @@ export function PaymentsView({ today }: { today: IsoDate }) {
   const divisionLabel = useDivisionLabel();
   const methodLabel = usePaymentMethodLabel();
   const errorMessage = useErrorMessage();
-  const count = new Intl.NumberFormat(intlLocaleFor(useLocale()));
   const period = readPeriod(useSearchParams(), today);
   const level = useSectionLevel("MONEY");
   const voids = useCan("payment.void");
@@ -87,9 +85,9 @@ export function PaymentsView({ today }: { today: IsoDate }) {
         id: "client",
         header: t("Table.Client"),
         cell: ({ row }) => (
-          <div className="min-w-0">
-            <p className="font-bold">{row.original.clientName}</p>
-            <p className="text-sm text-muted-foreground">
+          <div className="max-w-36 min-w-0 xl:max-w-56">
+            <p className="truncate leading-tight font-bold">{row.original.clientName}</p>
+            <p className="truncate text-sm leading-tight text-muted-foreground">
               {divisionLabel(row.original.division)} · <Ltr>{row.original.fileNumber}</Ltr>
             </p>
           </div>
@@ -99,9 +97,9 @@ export function PaymentsView({ today }: { today: IsoDate }) {
         id: "payer",
         header: t("Table.Payer"),
         cell: ({ row }) => (
-          <div className="min-w-0">
-            <p>{row.original.payerName}</p>
-            <p className="text-sm text-muted-foreground">
+          <div className="max-w-36 min-w-0 xl:max-w-56">
+            <p className="truncate leading-tight">{row.original.payerName}</p>
+            <p className="truncate text-sm leading-tight text-muted-foreground">
               {methodLabel(row.original.method)}
               {row.original.reference && (
                 <>
@@ -117,18 +115,18 @@ export function PaymentsView({ today }: { today: IsoDate }) {
         id: "amount",
         header: t("Table.Amount"),
         cell: ({ row }) => (
-          <div className="min-w-0">
+          <div className="max-w-36 min-w-0 xl:max-w-56">
             <p
               className={
                 row.original.voided
-                  ? "font-bold whitespace-nowrap text-muted-foreground tabular-nums line-through"
-                  : "font-bold whitespace-nowrap tabular-nums"
+                  ? "leading-tight font-bold whitespace-nowrap text-muted-foreground tabular-nums line-through"
+                  : "leading-tight font-bold whitespace-nowrap tabular-nums"
               }
             >
               {money(row.original.amount)}
             </p>
             {row.original.stampDuty > 0 && (
-              <p className="text-sm whitespace-nowrap text-muted-foreground">
+              <p className="truncate text-sm leading-tight text-muted-foreground">
                 {t("WithStamp", { stamp: money(row.original.stampDuty) })}
               </p>
             )}
@@ -153,12 +151,15 @@ export function PaymentsView({ today }: { today: IsoDate }) {
         id: "actions",
         header: () => <span className="sr-only">{t("Table.Actions")}</span>,
         cell: ({ row }) => (
-          <div className="flex flex-wrap items-center justify-end gap-2">
+          <div className="flex items-center justify-end gap-2">
             {row.original.receiptId && (
-              <Button asChild variant="outline" size="sm">
-                <Link to={`/dashboard/payments/receipts/${row.original.receiptId}/print`}>
+              <Button asChild variant="outline" size="sm" title={t("PrintReceipt")}>
+                <Link
+                  to={`/dashboard/payments/receipts/${row.original.receiptId}/print`}
+                  aria-label={t("PrintReceipt")}
+                >
                   <Printer />
-                  {t("PrintReceipt")}
+                  <span className="hidden xl:inline">{t("PrintReceipt")}</span>
                 </Link>
               </Button>
             )}
@@ -212,11 +213,10 @@ export function PaymentsView({ today }: { today: IsoDate }) {
         <ScreenSkeleton />
       ) : (
         <>
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="grid min-w-0 grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 tall:gap-6">
             <StatCard tone="money" icon={Wallet} label={t("Figures.Received")} value={money(received)} />
-            <StatCard icon={Banknote} label={t("Figures.Cash")} value={money(cash)} />
-            <StatCard icon={Stamp} label={t("Figures.Stamp")} value={money(stamps)} />
-            <StatCard icon={Wallet} label={t("Figures.Count")} value={count.format(live.length)} />
+            <StatCard tone="money" icon={Banknote} label={t("Figures.Cash")} value={money(cash)} />
+            <StatCard tone="money" icon={Stamp} label={t("Figures.Stamp")} value={money(stamps)} />
           </div>
           <div className="space-y-5">
             <div className="flex flex-wrap items-center gap-3">

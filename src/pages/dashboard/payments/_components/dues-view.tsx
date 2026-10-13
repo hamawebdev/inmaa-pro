@@ -8,9 +8,9 @@ import {
   type ColumnDef,
   type PaginationState,
 } from "@tanstack/react-table";
-import { AlarmClock, CircleAlert, FileText, HandCoins, Mail, Wallet } from "lucide-react";
+import { AlarmClock, CircleAlert, HandCoins, Mail, Wallet } from "lucide-react";
 import { Link } from "react-router-dom";
-import { useLocale, useTranslations } from "use-intl";
+import { useTranslations } from "use-intl";
 
 import { DataTable, TablePager, TableSearch } from "@/components/data-table-shell";
 import { Ltr } from "@/components/ltr";
@@ -23,7 +23,6 @@ import { DueStateChip } from "@/features/money/components/state-chips";
 import { useDateText, useMoneyText } from "@/features/money/components/use-money-text";
 import { listOpenDuesQuery, type OpenDueRow } from "@/features/money/services/debts";
 import { PAYMENTS_PATH } from "@/features/money/services/paths";
-import { intlLocaleFor } from "@/i18n/config";
 import { pathKey } from "@/lib/compat/revalidate";
 import { useRouter, useSearchParams } from "@/lib/compat/navigation";
 
@@ -42,7 +41,6 @@ export function DuesView({ onRecord }: { onRecord?: (fileId: string) => void }) 
   const money = useMoneyText();
   const dates = useDateText();
   const divisionLabel = useDivisionLabel();
-  const count = new Intl.NumberFormat(intlLocaleFor(useLocale()));
   const params = useSearchParams();
   const router = useRouter();
   const stateParam = params.get("state") ?? "ALL";
@@ -52,7 +50,7 @@ export function DuesView({ onRecord }: { onRecord?: (fileId: string) => void }) 
 
   const { data: dues } = useQuery({
     queryKey: [...pathKey(PAYMENTS_PATH), "dues"],
-    queryFn: () => listOpenDuesQuery(),
+    queryFn: () => listOpenDuesQuery(undefined),
   });
 
   const [search, setSearch] = React.useState("");
@@ -84,9 +82,9 @@ export function DuesView({ onRecord }: { onRecord?: (fileId: string) => void }) 
         id: "client",
         header: t("Table.Client"),
         cell: ({ row }) => (
-          <div className="min-w-0">
-            <p className="font-bold">{row.original.clientName}</p>
-            <p className="text-sm text-muted-foreground">
+          <div className="max-w-36 min-w-0 xl:max-w-56">
+            <p className="truncate leading-tight font-bold">{row.original.clientName}</p>
+            <p className="truncate text-sm leading-tight text-muted-foreground">
               {divisionLabel(row.original.division)} · <Ltr>{row.original.fileNumber}</Ltr>
             </p>
           </div>
@@ -96,10 +94,10 @@ export function DuesView({ onRecord }: { onRecord?: (fileId: string) => void }) 
         id: "payer",
         header: t("Table.Payer"),
         cell: ({ row }) => (
-          <div className="min-w-0">
-            <p>{row.original.payerName ?? row.original.clientName}</p>
+          <div className="max-w-36 min-w-0 xl:max-w-56">
+            <p className="truncate leading-tight">{row.original.payerName ?? row.original.clientName}</p>
             {row.original.payerPhone && (
-              <p className="text-sm text-muted-foreground">
+              <p className="truncate text-sm leading-tight text-muted-foreground">
                 <Ltr>{row.original.payerPhone}</Ltr>
               </p>
             )}
@@ -110,9 +108,9 @@ export function DuesView({ onRecord }: { onRecord?: (fileId: string) => void }) 
         id: "what",
         header: t("Table.What"),
         cell: ({ row }) => (
-          <div className="min-w-0">
-            <p>{what(row.original)}</p>
-            <p className="text-sm whitespace-nowrap text-muted-foreground">
+          <div className="max-w-36 min-w-0 xl:max-w-56">
+            <p className="truncate leading-tight">{what(row.original)}</p>
+            <p className="truncate text-sm leading-tight text-muted-foreground">
               {t("DueOn", { date: dates.long(row.original.dueDate) })}
               {row.original.invoiceNumber && (
                 <>
@@ -128,10 +126,10 @@ export function DuesView({ onRecord }: { onRecord?: (fileId: string) => void }) 
         id: "remaining",
         header: t("Table.Remaining"),
         cell: ({ row }) => (
-          <div className="min-w-0">
-            <p className="font-bold whitespace-nowrap tabular-nums">{money(row.original.remaining)}</p>
+          <div className="max-w-36 min-w-0 xl:max-w-56">
+            <p className="leading-tight font-bold whitespace-nowrap tabular-nums">{money(row.original.remaining)}</p>
             {row.original.paidAmount > 0 && (
-              <p className="text-sm whitespace-nowrap text-muted-foreground">
+              <p className="truncate text-sm leading-tight text-muted-foreground">
                 {t("PaidOf", { paid: money(row.original.paidAmount), amount: money(row.original.amount) })}
               </p>
             )}
@@ -147,11 +145,11 @@ export function DuesView({ onRecord }: { onRecord?: (fileId: string) => void }) 
         id: "actions",
         header: () => <span className="sr-only">{t("Table.Actions")}</span>,
         cell: ({ row }) => (
-          <div className="flex flex-wrap items-center justify-end gap-2">
-            <Button asChild variant="outline" size="sm">
-              <Link to={`/dashboard/payments/reminders/${row.original.fileId}/print`}>
+          <div className="flex items-center justify-end gap-2">
+            <Button asChild variant="outline" size="sm" title={t("Reminder")}>
+              <Link to={`/dashboard/payments/reminders/${row.original.fileId}/print`} aria-label={t("Reminder")}>
                 <Mail />
-                {t("Reminder")}
+                <span className="hidden xl:inline">{t("Reminder")}</span>
               </Link>
             </Button>
             {onRecord && (
@@ -201,21 +199,28 @@ export function DuesView({ onRecord }: { onRecord?: (fileId: string) => void }) 
 
   return (
     <div className="space-y-6 tall:space-y-8">
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard tone="money" icon={Wallet} label={t("Figures.Owed")} value={money(owed)} />
+      <div className="grid min-w-0 grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 tall:gap-6">
         <StatCard
+          tone="money"
+          icon={Wallet}
+          label={t("Figures.Owed")}
+          value={money(owed)}
+          hint={t("Figures.Files", { count: files })}
+        />
+        <StatCard
+          tone="money"
           icon={CircleAlert}
           label={t("Figures.Overdue")}
           value={money(overdue)}
           href="/dashboard/payments?view=dues&state=OVERDUE"
         />
         <StatCard
+          tone="money"
           icon={AlarmClock}
           label={t("Figures.DueSoon")}
           value={money(soon)}
           href="/dashboard/payments?view=dues&state=DUE_SOON"
         />
-        <StatCard icon={FileText} label={t("Figures.Files")} value={count.format(files)} />
       </div>
       <div className="space-y-5">
         <div className="flex flex-wrap items-center gap-3">

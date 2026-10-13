@@ -8,9 +8,10 @@ import { centreReady, contractedFile, da, NOVEMBER_TUESDAYS, openDay, visitOn } 
 import type { Division } from "../validators/option-codes";
 
 import { syncDues } from "./dues";
+import { createExpense } from "./expenses";
 import { issueInvoice } from "./invoices";
 import { recordPayment, voidPayment } from "./payments";
-import { getIncomeData } from "./reports";
+import { getIncomeData, getPeriodReport } from "./reports";
 
 let test: TestDatabase;
 beforeEach(async () => {
@@ -142,6 +143,85 @@ it("reads as the flat tax until the regime is chosen, and is closed to those wit
   expect((await test.transact((ex, ctx) => getIncomeData(ex, ctx, december))).taxMode).toBe("VAT");
   const supervisor = await test.sessionFor("SUPERVISOR");
   await expect(test.transact((ex, ctx) => getIncomeData(ex, ctx, december), supervisor)).rejects.toThrow(
+    "You do not have permission to do this.",
+  );
+});
+
+it("reports a period: the result per division, the work done, the forecast and each file", async () => {
+  await centreReady(test);
+  const file = await novemberInvoiced("CASH");
+  await test.transact(async (ex, ctx) => {
+    await recordPayment(ex, ctx, { fileId: file.id, receivedDate: "2026-12-03", method: "CASH", amount: da(45_000) });
+    await createExpense(ex, ctx, {
+      values: {
+        division: "BUILDING",
+        category: "TRANSPORT",
+        date: "2026-12-02",
+        amount: 2_500,
+        method: "CASH",
+        recurrence: "NONE",
+      } as never,
+    });
+    await createExpense(ex, ctx, {
+      values: {
+        division: "COMMON",
+        category: "RENT",
+        date: "2026-12-01",
+        amount: 30_000,
+        method: "BANK_TRANSFER",
+        recurrence: "MONTHLY",
+      } as never,
+    });
+  });
+
+  const november = await test.transact((ex, ctx) =>
+    getPeriodReport(ex, ctx, { from: "2026-11-01", to: "2026-11-30" } as never),
+  );
+  expect(november.counts).toMatchObject({ visits: 4, visitsDone: 4, visitsNotDone: 0, invoices: 0, payments: 0 });
+  expect(november.result.profit).toBe(0);
+
+  const report = await test.transact((ex, ctx) => getPeriodReport(ex, ctx, december));
+  expect(report.result.byDivision.BUILDING).toEqual({
+    income: da(45_000),
+    expenses: da(2_500),
+    commonShare: 0,
+    result: da(42_500),
+  });
+  expect(report.result).toMatchObject({
+    commonExpenses: da(30_000),
+    totalIncome: da(45_000),
+    totalExpenses: da(32_500),
+    profit: da(12_500),
+  });
+  // With the stamp duty of a cash payment: what the cash box saw.
+  expect(report.received).toBe(da(45_675));
+  expect(report.invoiced).toBe(da(45_000));
+  // December and January are still to pay; neither is past its date on 3 December.
+  expect(report).toMatchObject({ outstanding: da(90_000), overdue: 0 });
+  expect(report.counts).toMatchObject({ invoices: 1, payments: 1 });
+  expect(report.contracts).toEqual([
+    {
+      fileId: file.id,
+      fileNumber: file.number,
+      clientName: expect.any(String),
+      division: "BUILDING",
+      invoiced: da(45_000),
+      received: da(45_000),
+      outstanding: da(90_000),
+    },
+  ]);
+  // Three months ahead by default; January's due comes in, the rent goes out every month.
+  expect(report.forecast.months.map((month) => [month.month, month.receipts, month.expenses])).toEqual([
+    ["2027-01", da(45_000), da(30_000)],
+    ["2027-02", 0, da(30_000)],
+    ["2027-03", 0, da(30_000)],
+  ]);
+  expect(report.forecast.restOfCurrentMonth).toBe(da(45_000));
+});
+
+it("is closed to who does not read the money", async () => {
+  const reception = await test.sessionFor("RECEPTION_SALES");
+  await expect(test.transact((ex, ctx) => getPeriodReport(ex, ctx, december), reception)).rejects.toThrow(
     "You do not have permission to do this.",
   );
 });

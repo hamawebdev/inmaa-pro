@@ -82,7 +82,7 @@ function PaymentLoader(props: DialogProps & { onDone: () => void }) {
   const t = useTranslations("PaymentForm");
   const { data: files } = useQuery({
     queryKey: [...pathKey(PAYMENTS_PATH), "payable"],
-    queryFn: () => listPayableFilesQuery(),
+    queryFn: () => listPayableFilesQuery(undefined),
   });
   return (
     <>
@@ -145,7 +145,7 @@ function PaymentForm({ today, fileId, files, onDone }: DialogProps & { files: Pa
     setValue("fileId", next, { shouldValidate: true });
     setValue("dueIds", values.dueIds ?? []);
     setValue("method", values.method ?? "CASH");
-    setValue("amount", values.amount);
+    if (values.amount !== undefined) setValue("amount", values.amount);
   }
   function tickDue(dueIds: string[]) {
     setValue("dueIds", dueIds);
@@ -223,7 +223,11 @@ function PaymentForm({ today, fileId, files, onDone }: DialogProps & { files: Pa
                 <SelectContent>
                   {files.map((file) => (
                     <SelectItem key={file.fileId} value={file.fileId}>
-                      {t("FileOption", { client: file.clientName, number: file.fileNumber, owed: money(file.remaining) })}
+                      {t("FileOption", {
+                        client: file.clientName,
+                        number: file.fileNumber,
+                        owed: money(file.remaining),
+                      })}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -392,7 +396,13 @@ function PaymentForm({ today, fileId, files, onDone }: DialogProps & { files: Pa
           render={({ field, fieldState }) => (
             <Field data-invalid={fieldState.invalid} className="sm:col-span-2">
               <FieldLabel htmlFor="payment-note">{t("Note")}</FieldLabel>
-              <Textarea id="payment-note" {...field} value={field.value ?? ""} rows={2} aria-invalid={fieldState.invalid} />
+              <Textarea
+                id="payment-note"
+                {...field}
+                value={field.value ?? ""}
+                rows={2}
+                aria-invalid={fieldState.invalid}
+              />
               <FieldError>{errorMessage(fieldState.error?.message)}</FieldError>
             </Field>
           )}

@@ -47,7 +47,7 @@ export default function InvoicesPage() {
   return (
     <SectionScreen
       section="money"
-      title={tNav("MoneyHeading")}
+      title={tNav("Invoices")}
       actions={
         mayIssue ? (
           <Button asChild variant="add">

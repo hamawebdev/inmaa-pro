@@ -5,8 +5,7 @@ import type { ExpenseRow, InvoiceRow, PaymentDueRow, PaymentRow } from "@/lib/db
  *
  * A screen lists a row with the names it points at (a payment's client and
  * file), so each view is the row's own columns plus those names. The services
- * that read the database return these shapes; until they exist, the pages are
- * fed sample objects of the same types (./samples).
+ * that read the database return these shapes.
  */
 
 /** A payment as «المداخيل حسب القسم» lists it. Voided payments are not income and are not listed. */

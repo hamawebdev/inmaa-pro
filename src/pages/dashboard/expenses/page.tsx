@@ -13,6 +13,7 @@ import { readPeriod } from "@/features/money/rules/period";
 import { listExpensesQuery } from "@/features/money/services/expenses";
 import { EXPENSES_PATH } from "@/features/money/services/paths";
 import { EXPENSE_DIVISIONS } from "@/features/money/validators/option-codes";
+import { useSectionLevel } from "@/hooks/use-session";
 import { pathKey } from "@/lib/compat/revalidate";
 import { useRouter, useSearchParams } from "@/lib/compat/navigation";
 import { AGGREGATE_QUERY_OPTIONS } from "@/lib/query-client";
@@ -41,6 +42,7 @@ export default function ExpensesPage() {
   const division = useDivisionParam(EXPENSE_DIVISIONS);
   const askedNew = params.get("new") === "1";
   const [adding, setAdding] = useState(false);
+  const mayWrite = useSectionLevel("MONEY") === "WRITE";
 
   const { data: expenses } = useQuery({
     ...AGGREGATE_QUERY_OPTIONS,
@@ -62,18 +64,20 @@ export default function ExpensesPage() {
       section="money"
       title={tNav("MoneyHeading")}
       actions={
-        <ExpenseFormDialog
-          open={adding || askedNew}
-          onOpenChange={changeAdding}
-          today={today}
-          defaultDivision={division === ALL ? undefined : division}
-          trigger={
-            <Button variant="add">
-              <Plus />
-              {t("AddExpense")}
-            </Button>
-          }
-        />
+        mayWrite ? (
+          <ExpenseFormDialog
+            open={adding || askedNew}
+            onOpenChange={changeAdding}
+            today={today}
+            defaultDivision={division === ALL ? undefined : division}
+            trigger={
+              <Button variant="add">
+                <Plus />
+                {t("AddExpense")}
+              </Button>
+            }
+          />
+        ) : undefined
       }
     >
       {expenses ? <ExpensesView expenses={expenses} today={today} /> : <ScreenSkeleton />}

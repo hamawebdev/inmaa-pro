@@ -60,7 +60,7 @@ function BatchForm({ onDone }: { onDone: () => void }) {
   const [confirm, confirmDialog] = useConfirm();
   const { data: collectors } = useQuery({
     queryKey: [...pathKey(PAYMENTS_PATH), "collectors"],
-    queryFn: () => listCollectorsQuery(),
+    queryFn: () => listCollectorsQuery(undefined),
   });
   const [count, setCount] = React.useState("10");
   const [collector, setCollector] = React.useState<string>(OFFICE);

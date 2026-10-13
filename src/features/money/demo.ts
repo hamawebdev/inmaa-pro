@@ -27,6 +27,12 @@ import type { ExpenseFormValues } from "./validators/expense";
  * at the desk, September is invoiced and still owed. A few expenses on each
  * line complete the month.
  *
+ * The same contract lights Money's three tiles on the demo's Monday, 12
+ * October 2026: it ends on 31 October (`contract.ending`, inside the 30 days
+ * of `alerts.contractEndLeadDays`), its September due of 15 September is not
+ * paid (`payment.overdue`), and its October due falls on Thursday 15
+ * (`payment.dueSoon`, inside the 7 days of `alerts.paymentDueLeadDays`).
+ *
  * Until Clients' demo holds a contract old enough to be invoiced, this is the
  * one; the numbers, the history and the log are what the program would hold.
  */
@@ -198,7 +204,8 @@ async function olderContract(ex: Executor, tools: DemoTools) {
       payerPhone: "0662 41 87 30",
       paymentMethods: ["CASH"],
       totalAmount: dinarsToMoney(12_000),
-      firstDueDate: "2026-08-31",
+      // Paid on the 15th of each month: September's is overdue on the demo's Monday, October's falls on Thursday.
+      firstDueDate: "2026-08-15",
       paymentFrequency: "MONTHLY",
       issuedDate: "2026-07-27",
     },
@@ -288,5 +295,8 @@ export async function seedDemo(ex: Executor, ctx: ServiceContext, tools: DemoToo
     paymentMethod: "CASH",
   });
   names.invoiceOutstanding = owed.id;
+  names.dueOverdue = september.id;
+  const october = dues.find((due) => due.periodStart === "2026-10-01");
+  if (october) names.dueSoon = october.id;
   return names;
 }

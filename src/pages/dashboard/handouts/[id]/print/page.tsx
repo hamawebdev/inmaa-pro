@@ -1,35 +1,49 @@
+import { useQuery } from "@tanstack/react-query";
 import { useParams } from "react-router-dom";
+import { toast } from "sonner";
 import { useTranslations } from "use-intl";
 
 import { DetailScreen } from "@/components/detail-screen";
 import { PrintButton } from "@/components/print";
+import { ScreenSkeleton } from "@/features/money/components/screen-skeleton";
+import { getHandOutQuery, recordHandOutPrintedAction } from "@/features/stock/services/handouts";
+import { HANDOUTS_PATH } from "@/features/stock/services/paths";
 import { HandoutSlipSheet } from "@/features/stock/sheets/handout-slip-sheet";
-import { sampleHandout } from "@/features/stock/sheets/samples";
+import { useErrorMessage } from "@/i18n/errors";
+import { pathKey } from "@/lib/compat/revalidate";
 
 /**
- * The slip for one hand-out, for the worker to sign.
+ * The slip for one hand-out, for the worker to sign, from the stored hand-out
+ * and its lines (services/handouts.ts).
  *
  * Closest academy screen: none hands anything out; the page follows the print
- * sample (settings/print-sample), below the hand-out it prints.
- *
- * Until hand-outs can be recorded, `:id` picks a sample: `sample` (equipment
- * and materials for a job) or `sample-kit` (a worker's own kit).
+ * sample (settings/print-sample), below the hand-out it prints. The slip names
+ * a worker: printing it is recorded first.
  */
 export default function HandoutPrintPage() {
   const { id = "" } = useParams();
   const t = useTranslations("StockPrint");
   const tNav = useTranslations("Nav");
-  const slip = sampleHandout(id);
+  const errorMessage = useErrorMessage();
+  const { data } = useQuery({
+    queryKey: [...pathKey(HANDOUTS_PATH), "slip", id],
+    queryFn: () => getHandOutQuery({ handOutId: id }),
+  });
+
+  async function record() {
+    const result = await recordHandOutPrintedAction({ handOutId: id });
+    if (!result.success) toast.error(errorMessage(result.error, t("PrintNotRecorded")));
+    return result.success;
+  }
 
   return (
     <DetailScreen
       section="stock"
-      title={t("HandoutTitle", { number: slip.number })}
-      description={t("SampleNote")}
+      title={data ? t("HandoutTitle", { number: data.slip.number }) : tNav("Handouts")}
       back={{ href: "/dashboard/handouts", label: tNav("Handouts") }}
-      actions={<PrintButton />}
+      actions={data ? <PrintButton onPrint={record} /> : undefined}
     >
-      <HandoutSlipSheet slip={slip} />
+      {data ? <HandoutSlipSheet slip={data.slip} /> : <ScreenSkeleton />}
     </DetailScreen>
   );
 }

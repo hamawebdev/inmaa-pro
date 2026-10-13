@@ -3,8 +3,7 @@ import type { StockItemRow } from "@/lib/db/models";
 /**
  * What Stock's screens show, typed against the generated rows.
  *
- * The services that read the database return these shapes; until they exist,
- * the pages are fed sample objects of the same types (./samples).
+ * The services that read the database return these shapes.
  */
 
 /**

@@ -101,7 +101,11 @@ export function registerAlerts(register: RegisterAlert) {
     count: async (ex, ctx, { days }) => {
       const ids = await findEndingContracts(ex, ctx, { leadDays: days ?? 30 });
       const route =
-        ids.length === 0 ? FILES_LIST : ids.length === 1 ? `${FILES_LIST}/${ids[0]}` : `${FILES_LIST}?ids=${ids.join(",")}`;
+        ids.length === 0
+          ? FILES_LIST
+          : ids.length === 1
+            ? `${FILES_LIST}/${ids[0]}`
+            : `${FILES_LIST}?ids=${ids.join(",")}`;
       return { count: ids.length, route };
     },
   });

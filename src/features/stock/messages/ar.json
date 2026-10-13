@@ -1,7 +1,7 @@
 {
   "StockPrint": {
     "HandoutTitle": "وصل تسليم رقم {number}",
-    "SampleNote": "بيانات نموذجية، تُعرض إلى أن يصبح تسجيل التسليم ممكنًا."
+    "PrintNotRecorded": "تعذر تسجيل الطباعة، فلم يُطبع شيء."
   },
   "Inventory": {
     "KindSwitch": "نوع المخزون",
@@ -17,7 +17,8 @@
       "Unit": "الوحدة",
       "OnHand": "المخزون",
       "Minimum": "الحد الأدنى",
-      "State": "الحالة"
+      "State": "الحالة",
+      "Actions": "إجراءات"
     },
     "States": {
       "OUT": "نفد",
@@ -30,7 +31,8 @@
       "TO_BUY": "يحتاج طلب شراء",
       "OK": "متوفر",
       "UNWATCHED": "بلا حد أدنى"
-    }
+    },
+    "Edit": "تعديل"
   },
   "StockCodes": {
     "Kinds": {
@@ -52,6 +54,29 @@
       "TOOL": "أدوات",
       "MACHINE": "آلات",
       "PPE": "معدات الوقاية"
+    },
+    "Trackings": {
+      "QUANTITY": "بالكمية",
+      "UNIT": "قطعة بقطعة"
+    },
+    "Conditions": {
+      "GOOD": "جيدة",
+      "NEEDS_MAINTENANCE": "تحتاج صيانة",
+      "OUT_OF_SERVICE": "خارج الخدمة"
+    },
+    "Purposes": {
+      "JOB": "لمهمة عمل",
+      "WORKER_KIT": "عدة العامل الشخصية"
+    },
+    "Locations": {
+      "STORE": "في المخزن",
+      "WITH_WORKER": "عند عامل",
+      "AT_SITE": "عند عميل",
+      "IN_MAINTENANCE": "في الصيانة"
+    },
+    "MaintenanceKinds": {
+      "PREVENTIVE": "صيانة دورية",
+      "REPAIR": "إصلاح"
     }
   },
   "Errors": {
@@ -91,7 +116,12 @@
     "ItemNotFound": "هذه المادة غير موجودة.",
     "PieceNotInStore": "هذه القطعة ليست في المخزن.",
     "VisitNotOfFile": "هذه الزيارة ليست من زيارات هذا الملف.",
-    "CountAllLines": "أدخل الكمية المجرودة في كل سطر قبل الإغلاق."
+    "CountAllLines": "أدخل الكمية المجرودة في كل سطر قبل الإغلاق.",
+    "UnitNotFound": "هذه المعدة غير موجودة.",
+    "MaintenanceInterval": "دورية الصيانة عدد من الأيام، من 1 إلى 3650.",
+    "MaintenanceAfterToday": "لا يمكن تأريخ صيانة بعد اليوم.",
+    "ConditionAfterMaintenance": "حدد حالة المعدة بعد الصيانة.",
+    "MaintenanceWhat": "اكتب ما أُنجز."
   },
   "Alerts": {
     "StockLow": {
@@ -102,5 +132,162 @@
       "Title": "صيانة مستحقة",
       "Hint": "خلال {days} أيام، أو مبلَّغ عنها"
     }
+  },
+  "ItemForm": {
+    "AddItem": "صنف جديد",
+    "NewTitle": "إضافة صنف إلى المخزون",
+    "EditTitle": "تعديل الصنف",
+    "Description": "اسمه ونوعه ووحدته وحده الأدنى. الكميات تتغير بالمشتريات والتسليم والجرد.",
+    "NameAr": "الاسم بالعربية",
+    "NameFr": "الاسم بالفرنسية",
+    "NameEn": "الاسم بالإنجليزية",
+    "Kind": "النوع",
+    "Category": "الصنف",
+    "NoCategory": "بدون",
+    "Unit": "الوحدة",
+    "Tracking": "طريقة المتابعة",
+    "TrackingHint": "قطعة بقطعة: لكل آلة رقمها وصيانتها.",
+    "Minimum": "الحد الأدنى",
+    "MinimumHint": "عند بلوغه أو دونه يُشترى الصنف. فارغ: غير مراقب.",
+    "Opening": "الموجود حاليًا",
+    "OpeningHint": "يُسجَّل كأول حركة للصنف.",
+    "SaveFailed": "تعذر حفظ الصنف.",
+    "Updated": "تم تعديل الصنف.",
+    "Added": "تمت إضافة الصنف.",
+    "SaveChanges": "حفظ التعديلات",
+    "Add": "إضافة الصنف"
+  },
+  "Handouts": {
+    "New": "تسليم جديد",
+    "Table": {
+      "Number": "التسليم",
+      "Worker": "المستلم",
+      "Job": "المهمة",
+      "Lines": "الأصناف",
+      "State": "الحالة",
+      "Actions": "إجراءات"
+    },
+    "LineCount": "{count, plural, one {صنف واحد} two {صنفان} few {# أصناف} many {# صنفًا} other {# صنف}}",
+    "States": {
+      "Cancelled": "ملغى",
+      "StillOut": "{count, plural, one {معدة واحدة لم تُسترجع} two {معدتان لم تُسترجعا} few {# معدات لم تُسترجع} many {# معدة لم تُسترجع} other {# معدة لم تُسترجع}}",
+      "Settled": "لا شيء في الخارج"
+    },
+    "Print": "وصل التسليم",
+    "Return": "استرجاع",
+    "Cancel": "إلغاء التسليم",
+    "CancelFailed": "تعذر إلغاء التسليم.",
+    "Cancelled": "تم إلغاء التسليم {number}.",
+    "CancelTitle": "إلغاء التسليم {number}؟",
+    "CancelDescription": "يعود كل ما أُخرج به إلى المخزون. خاص بتسليم أُدخل خطأً ولم يُسترجع منه شيء.",
+    "HandoutCount": "{count, plural, =0 {لا توجد عمليات تسليم} one {عملية تسليم واحدة} two {عمليتا تسليم} few {# عمليات تسليم} many {# عملية تسليم} other {# عملية تسليم}}",
+    "SearchPlaceholder": "بحث بالرقم أو العامل أو العميل أو الملف…",
+    "NoHandouts": "لم يُسجَّل أي تسليم بعد."
+  },
+  "HandoutReturn": {
+    "Title": "ما استُرجع من التسليم {number}",
+    "Description": "صنفًا بصنف: ما عاد إلى المخزون وما ضاع أو تلف.",
+    "Loading": "جارٍ التحميل…",
+    "NothingOut": "لم يبق شيء من هذا التسليم في الخارج.",
+    "Line": "الصنف",
+    "StillOut": "ما زال في الخارج:",
+    "Returned": "المسترجع",
+    "Lost": "الضائع",
+    "Damaged": "التالف",
+    "Condition": "الحالة عند الاستلام",
+    "Note": "ملاحظة",
+    "NoteHint": "إلزامية عند ضياع أو تلف.",
+    "Record": "تسجيل الاسترجاع",
+    "Failed": "تعذر تسجيل الاسترجاع.",
+    "Recorded": "تم تسجيل الاسترجاع."
+  },
+  "HandoutForm": {
+    "Title": "تسليم جديد",
+    "Description": "معدات ومواد تُسلَّم لعامل باسمه، لمهمة عمل أو كعدة شخصية.",
+    "Who": "لمن ولأي غرض",
+    "Purpose": "الغرض",
+    "Worker": "العامل المستلم",
+    "ChooseWorker": "اختر العامل",
+    "Date": "التاريخ",
+    "File": "المهمة (الملف)",
+    "ChooseFile": "اختر الملف",
+    "Visit": "الزيارة",
+    "NoVisit": "دون زيارة محددة",
+    "VisitHint": "يطبع أمر المهمة عندها ما سُلِّم.",
+    "What": "ما يُسلَّم",
+    "StoreEmpty": "لا يوجد في المخزون ما يُسلَّم.",
+    "Item": "الصنف {number}",
+    "ChooseItem": "اختر الصنف",
+    "InStore": "في المخزون:",
+    "Piece": "القطعة",
+    "ChoosePiece": "اختر القطعة",
+    "Quantity": "الكمية",
+    "Condition": "الحالة عند التسليم",
+    "StayAtSite": "تخزين عند العميل",
+    "RemoveLine": "حذف هذا السطر",
+    "AddLine": "إضافة صنف",
+    "Note": "ملاحظة",
+    "Save": "تسجيل وطباعة الوصل",
+    "SaveFailed": "تعذر تسجيل التسليم.",
+    "Saved": "تم تسجيل التسليم {number}.",
+    "ReadOnly": "حسابك يطّلع على المخزون ولا يسلِّم."
+  },
+  "FileHandouts": {
+    "New": "تسليم جديد",
+    "CouldNotLoad": "تعذر قراءة عمليات تسليم هذا الملف."
+  },
+  "Purchases": {
+    "PurchaseCount": "{count, plural, =0 {لا توجد مشتريات} one {عملية شراء واحدة} two {عمليتا شراء} few {# عمليات شراء} many {# عملية شراء} other {# عملية شراء}}",
+    "NoPurchases": "لم تُسجَّل أي مشتريات بعد.",
+    "LineCount": "{count, plural, one {صنف واحد} two {صنفان} few {# أصناف} many {# صنفًا} other {# صنف}}",
+    "Cancelled": "ملغاة",
+    "Table": {
+      "Number": "الشراء",
+      "Supplier": "المورد",
+      "Division": "القسم",
+      "Lines": "الأصناف",
+      "Total": "المبلغ"
+    }
+  },
+  "Maintenance": {
+    "UnitCount": "{count, plural, =0 {لا توجد معدات متابعة قطعة بقطعة} one {معدة واحدة} two {معدتان} few {# معدات} many {# معدة} other {# معدة}}",
+    "NoUnits": "لا توجد آلة متابعة قطعة بقطعة بعد: تُضاف عند شرائها في «المشتريات».",
+    "Record": "تسجيل صيانة",
+    "Plan": "برنامج الصيانة",
+    "States": {
+      "Overdue": "متأخرة",
+      "DueSoon": "قريبة",
+      "NotPlanned": "غير مبرمجة",
+      "Planned": "مبرمجة"
+    },
+    "Table": {
+      "Piece": "المعدة",
+      "Condition": "الحالة",
+      "Last": "آخر صيانة",
+      "Next": "الصيانة القادمة",
+      "State": "البرنامج",
+      "Actions": "إجراءات"
+    }
+  },
+  "MaintenanceForm": {
+    "SaveFailed": "تعذر الحفظ.",
+    "PlanSaved": "تم حفظ البرنامج.",
+    "PlanTitle": "برنامج صيانة {piece} {number}",
+    "PlanDescription": "دورية صيانة هذه المعدة. تنبه الشاشة الرئيسية قبل الموعد بأيام.",
+    "Interval": "كل (يوم)",
+    "IntervalHint": "فارغ: غير مبرمجة.",
+    "NextDate": "الصيانة القادمة",
+    "NextDateHint": "فارغ: بعد دورة واحدة من آخر صيانة.",
+    "Recorded": "تم تسجيل الصيانة.",
+    "RecordTitle": "صيانة {piece} {number}",
+    "RecordDescription": "ما أُنجز، ومن أنجزه، وبكم. التكلفة تُسجَّل في المصاريف.",
+    "Kind": "النوع",
+    "Date": "التاريخ",
+    "What": "ما أُنجز",
+    "Cost": "التكلفة (دج)",
+    "CostHint": "فارغ إذا أنجزها المركز بنفسه.",
+    "Provider": "المنجِز",
+    "ConditionAfter": "الحالة بعد الصيانة",
+    "Record": "تسجيل الصيانة"
   }
 }

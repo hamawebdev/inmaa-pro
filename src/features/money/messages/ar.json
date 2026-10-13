@@ -4,8 +4,10 @@
     "StatementTitle": "كشف الزيارات المنجزة للفاتورة رقم {number}",
     "ReceiptTitle": "سند قبض رقم {number}",
     "ReminderTitle": "تذكير بالتسديد",
-    "SampleNote": "بيانات نموذجية، تُعرض إلى أن يصبح تسجيل الفواتير والتسديدات ممكنًا.",
-    "NoStatement": "هذه الفاتورة بلا كشف زيارات: تخص خدمة عند الطلب."
+    "NoStatement": "هذه الفاتورة بلا كشف زيارات: تخص خدمة عند الطلب.",
+    "PrintNotRecorded": "تعذر تسجيل الطباعة، فلم يُطبع شيء.",
+    "BatchTitle": "سندات قبض فارغة من {first} إلى {last}",
+    "NoReminder": "لا يوجد تذكير للطباعة لهذا الملف."
   },
   "MoneyPeriod": {
     "Label": "الفترة",
@@ -26,8 +28,9 @@
     "AreaChart": "مخطط مساحي",
     "NoDataForPeriod": "لا توجد بيانات للفترة المحددة.",
     "AllDivisions": "الكل",
-    "SampleTitle": "بيانات تجريبية",
-    "SampleDescription": "هذه الأسطر أمثلة، تُعرض إلى أن تصبح سجلات المركز نفسها مقروءة. لا يُحفظ شيء مما يُكتب هنا."
+    "Reason": "السبب",
+    "VoidedInvoice": "ملغاة",
+    "DaysLate": "{state} · {days} يوم"
   },
   "MoneyCodes": {
     "Divisions": {
@@ -58,6 +61,26 @@
       "PURCHASE": "من المشتريات",
       "MAINTENANCE": "من الصيانة",
       "PAYROLL": "من الأجور"
+    },
+    "PaymentStates": {
+      "PAID": "مدفوع بالكامل",
+      "PARTIAL": "مدفوع جزئيًا",
+      "UNPAID": "غير مدفوع"
+    },
+    "DueStates": {
+      "UPCOMING": "لم يحن أجله",
+      "DUE_SOON": "يستحق قريبًا",
+      "OVERDUE": "متأخر",
+      "PARTIAL": "مدفوع جزئيًا",
+      "PAID": "مدفوع",
+      "CANCELLED": "ملغى"
+    },
+    "Readiness": {
+      "READY": "جاهز للفوترة",
+      "PERIOD_OPEN": "الفترة لم تنته",
+      "VISITS_OPEN": "زيارات غير مغلقة",
+      "AWAITING_SIGNOFF": "في انتظار استلام الخدمة",
+      "NOTHING_DONE": "لا شيء منجز"
     }
   },
   "Income": {
@@ -119,7 +142,12 @@
       "SpentBy": "المكلف بالشراء: {name}",
       "Amount": "المبلغ",
       "Actions": "إجراءات"
-    }
+    },
+    "Remove": "حذف",
+    "RemoveFailed": "تعذر حذف المصروف.",
+    "Removed": "تم حذف المصروف.",
+    "RemoveTitle": "حذف هذا المصروف؟",
+    "RemoveDescription": "يخرج من المجاميع، ويحتفظ السجل به مع السبب الذي تكتبه."
   },
   "ExpenseForm": {
     "AddExpense": "إضافة مصروف",
@@ -145,7 +173,9 @@
     "ReceiptImage": "صورة الإيصال",
     "SaveChanges": "حفظ التغييرات",
     "Record": "تسجيل المصروف",
-    "ShownNotSaved": "يظهر في الشاشة فقط: لا يُحفظ شيء قبل ربط قاعدة البيانات."
+    "SaveFailed": "تعذر حفظ المصروف.",
+    "Updated": "تم تعديل المصروف.",
+    "Recorded": "تم تسجيل المصروف."
   },
   "Errors": {
     "ExpenseAfterToday": "لا يمكن أن يكون تاريخ المصروف بعد اليوم.",
@@ -176,7 +206,8 @@
     "NothingToInvoice": "لا يوجد ما يُفوتر: المجموع صفر.",
     "ExpenseNotFound": "هذا المصروف غير موجود.",
     "ExpenseFromProgram": "هذا المصروف سجّله البرنامج: يُعدَّل من مصدره.",
-    "AmountTooLarge": "هذا المبلغ كبير جدًا."
+    "AmountTooLarge": "هذا المبلغ كبير جدًا.",
+    "NoReminderOwed": "هذا الملف ليس عليه أي مبلغ: لا يوجد تذكير للطباعة."
   },
   "Alerts": {
     "ContractEnding": {
@@ -190,6 +221,272 @@
     "PaymentOverdue": {
       "Title": "استحقاقات متأخرة",
       "Hint": "فات موعدها ولم تُسدد"
+    }
+  },
+  "Invoices": {
+    "Issue": "إصدار فاتورة",
+    "Figures": {
+      "Invoiced": "المبلغ المفوتر",
+      "Paid": "المدفوع",
+      "Remaining": "الباقي"
+    },
+    "InvoiceCount": "{count, plural, =0 {لا توجد فواتير} one {فاتورة واحدة} two {فاتورتان} few {# فواتير} many {# فاتورة} other {# فاتورة}}",
+    "SearchPlaceholder": "بحث برقم الفاتورة أو العميل أو الملف…",
+    "StateFilters": {
+      "ALL": "كل الحالات",
+      "UNPAID": "غير مدفوع",
+      "PARTIAL": "مدفوع جزئيًا",
+      "PAID": "مدفوع بالكامل",
+      "VOIDED": "ملغاة"
+    },
+    "NoInvoices": "لا توجد فواتير في هذه الفترة.",
+    "Table": {
+      "Number": "الفاتورة",
+      "Client": "العميل",
+      "Amount": "المبلغ",
+      "Remaining": "الباقي",
+      "State": "حالة الدفع",
+      "Actions": "إجراءات"
+    },
+    "DueOn": "تاريخ التسديد {date}",
+    "Print": "طباعة",
+    "PrintStatement": "كشف الزيارات",
+    "Void": "إلغاء الفاتورة",
+    "VoidFailed": "تعذر إلغاء الفاتورة.",
+    "Voided": "تم إلغاء الفاتورة {number}.",
+    "VoidTitle": "إلغاء الفاتورة {number}؟",
+    "VoidDescription": "تبقى الفاتورة ورقمها مع علامة «ملغاة»، ويمكن فوترة ما كانت تتضمنه من جديد."
+  },
+  "IssueInvoice": {
+    "Title": "إصدار فاتورة",
+    "Description": "اختر ما يُفوتر لملف واحد، راجع الفاتورة، ثم أصدرها.",
+    "WhatToInvoice": "ما يمكن فوترته",
+    "TheInvoice": "الفاتورة",
+    "Issue": "إصدار الفاتورة",
+    "ReadOnly": "حسابك يطّلع على الفواتير ولا يصدرها.",
+    "ConfirmTitle": "إصدار الفاتورة للعميل {client}؟",
+    "ConfirmDescription": "الصافي للدفع: {amount}. الفاتورة الصادرة تأخذ الرقم الموالي ولا تُعدَّل، بل تُلغى فقط.",
+    "ClockTitle": "تأكيد تاريخ هذا الحاسوب",
+    "ClockConfirm": "التاريخ صحيح",
+    "IssueFailed": "تعذر إصدار الفاتورة.",
+    "Issued": "تم إصدار الفاتورة {number}.",
+    "Period": "من {from} إلى {to}",
+    "Visit": "زيارة يوم {date}",
+    "Job": "خدمة عند الطلب",
+    "Table": {
+      "Choose": "اختيار",
+      "ChooseDue": "فوترة هذا للعميل {client}",
+      "Client": "العميل",
+      "What": "البيان",
+      "Visits": "الزيارات",
+      "Amount": "المبلغ",
+      "State": "الحالة"
+    },
+    "NothingToInvoice": "لا شيء في انتظار الفوترة.",
+    "DueOn": "تاريخ التسديد {date}",
+    "VisitsBilled": "{billed} من {visits}",
+    "CannotIssue": "لا يمكن إصدار هذه الفاتورة الآن",
+    "Method": "طريقة السداد",
+    "DueDate": "تاريخ التسديد",
+    "Statement": "كشف الزيارات",
+    "StatementVisits": "{billed} مفوترة من {visits} زيارات",
+    "Lines": {
+      "Description": "البيان",
+      "Quantity": "الكمية",
+      "UnitPrice": "سعر الوحدة",
+      "Amount": "المبلغ"
+    },
+    "NoLines": "لا توجد بنود.",
+    "Totals": {
+      "Gross": "قيمة الخدمة",
+      "Discount": "الخصم",
+      "HT": "المجموع خارج الرسم",
+      "Vat": "الرسم على القيمة المضافة",
+      "TTC": "المبلغ المستحق",
+      "Stamp": "حق الطابع",
+      "Net": "الصافي للدفع"
+    }
+  },
+  "PaymentForm": {
+    "Title": "تسجيل دفعة",
+    "Description": "مبلغ مستلم عن ملف. الدفع النقدي يُحرَّر له سند قبض مرقم للطباعة.",
+    "Loading": "جارٍ التحميل…",
+    "NothingOwed": "لا يوجد ملف عليه مبلغ مستحق حاليًا.",
+    "File": "الملف",
+    "ChooseFile": "اختر الملف",
+    "FileOption": "{client} · {number} · الباقي {owed}",
+    "Dues": "ما يسدده",
+    "DuesHint": "دون اختيار: الأقدم أولًا.",
+    "DuePeriod": "من {from} إلى {to}",
+    "DueOn": "تاريخ التسديد {date}",
+    "Invoice": "فاتورة",
+    "Date": "تاريخ الدفع",
+    "Method": "طريقة الدفع",
+    "Amount": "المبلغ (دج)",
+    "CashHint": "يضاف حق الطابع إلى المبلغ المدفوع نقدًا.",
+    "Payer": "مسدد أتعاب",
+    "Reference": "رقم المرجع",
+    "Note": "ملاحظة",
+    "Record": "تسجيل الدفعة",
+    "SaveFailed": "تعذر تسجيل الدفعة.",
+    "Recorded": "تم تسجيل الدفعة: المبلغ المستلم {amount}.",
+    "ClockTitle": "تأكيد تاريخ هذا الحاسوب",
+    "ClockConfirm": "التاريخ صحيح"
+  },
+  "Payments": {
+    "BlankReceipts": "سندات قبض فارغة",
+    "Record": "تسجيل دفعة",
+    "ViewSwitch": "المدفوعات أو الديون",
+    "Views": {
+      "payments": "المدفوعات",
+      "dues": "الديون"
+    },
+    "Table": {
+      "Date": "تاريخ الدفع",
+      "Client": "العميل",
+      "Payer": "مسدد أتعاب",
+      "Amount": "المبلغ",
+      "Receipt": "سند القبض",
+      "Actions": "إجراءات"
+    },
+    "WithStamp": "+ {stamp} حق الطابع",
+    "VoidedChip": "ملغى",
+    "PrintReceipt": "السند",
+    "Void": "إلغاء الدفعة",
+    "VoidFailed": "تعذر إلغاء الدفعة.",
+    "Voided": "تم إلغاء الدفعة.",
+    "VoidTitle": "إلغاء هذه الدفعة؟",
+    "VoidDescription": "ما سددته يعود مستحقًا، ويُعلَّم سند قبضها «ملغى».",
+    "Figures": {
+      "Received": "المبلغ المحصَّل",
+      "Cash": "منه نقدًا",
+      "Stamp": "حق الطابع"
+    },
+    "PaymentCount": "{count, plural, =0 {لا توجد دفعات} one {دفعة واحدة} two {دفعتان} few {# دفعات} many {# دفعة} other {# دفعة}}",
+    "SearchPlaceholder": "بحث بالعميل أو الملف أو المسدد أو السند…",
+    "NoPayments": "لا توجد دفعات في هذه الفترة."
+  },
+  "Dues": {
+    "Period": "من {from} إلى {to}",
+    "Visit": "زيارة يوم {date}",
+    "Job": "خدمة عند الطلب",
+    "Table": {
+      "Client": "العميل",
+      "Payer": "مسدد أتعاب",
+      "What": "البيان",
+      "Remaining": "الباقي",
+      "State": "الحالة",
+      "Actions": "إجراءات"
+    },
+    "DueOn": "تاريخ التسديد {date}",
+    "PaidOf": "المدفوع {paid} من {amount}",
+    "Reminder": "تذكير",
+    "RecordFor": "تسجيل دفعة للعميل {client}",
+    "Figures": {
+      "Owed": "مجموع الديون",
+      "Overdue": "المتأخر",
+      "DueSoon": "يستحق قريبًا",
+      "Files": "{count, plural, one {ملف واحد عليه دين} two {ملفان عليهما ديون} few {# ملفات عليها ديون} many {# ملفًا عليه ديون} other {# ملف عليه ديون}}"
+    },
+    "DueCount": "{count, plural, =0 {لا توجد مبالغ مستحقة} one {مبلغ مستحق واحد} two {مبلغان مستحقان} few {# مبالغ مستحقة} many {# مبلغًا مستحقًا} other {# مبلغ مستحق}}",
+    "SearchPlaceholder": "بحث بالعميل أو الملف أو المسدد أو الهاتف…",
+    "StateFilters": {
+      "ALL": "كل الحالات",
+      "OVERDUE": "متأخر",
+      "DUE_SOON": "يستحق قريبًا",
+      "UPCOMING": "لم يحن أجله",
+      "PARTIAL": "مدفوع جزئيًا"
+    },
+    "NoDues": "لا توجد مبالغ مستحقة."
+  },
+  "ReceiptBatch": {
+    "Title": "سندات قبض فارغة لمحصِّل",
+    "Description": "سندات قبض مرقمة تُطبع فارغة لمن يُرخَّص له باستلام النقد عند العميل، ويُملأ كل سند عند تسجيل دفعته.",
+    "Count": "العدد",
+    "CountHint": "من 1 إلى {max} سندًا.",
+    "Collector": "تُسلَّم إلى",
+    "Office": "المكتب",
+    "Worker": "{name} · عامل {number}",
+    "Employee": "{name} · موظف {number}",
+    "CollectorHint": "لا يستلم العامل مبلغًا من العميل إلا بترخيص رسمي.",
+    "Issue": "ترقيم وطباعة",
+    "Failed": "تعذر ترقيم السندات.",
+    "Issued": "السندات من {first} إلى {last} جاهزة للطباعة.",
+    "ClockTitle": "تأكيد تاريخ هذا الحاسوب",
+    "ClockConfirm": "التاريخ صحيح"
+  },
+  "Reports": {
+    "Result": "نتيجة الفترة",
+    "Income": "المداخيل",
+    "Expenses": "المصاريف",
+    "Profit": "الربح",
+    "ByDivision": "حسب القسم",
+    "Indicators": "المؤشرات",
+    "Forecast": "الأشهر القادمة",
+    "ForecastNote": "المتأخرات اليوم: {overdue}. المستحق قبل نهاية هذا الشهر: {rest}. المصاريف المتوقعة للشهر: {monthly}.",
+    "ByFile": "حسب الملف",
+    "NoFiles": "لا يوجد ملف مفوتر أو مسدد أو عليه مبلغ في هذه الفترة.",
+    "Table": {
+      "Division": "القسم",
+      "Result": "النتيجة",
+      "Total": "المجموع",
+      "Month": "الشهر",
+      "Receipts": "التحصيل المتوقع",
+      "ExpectedExpenses": "المصاريف المتوقعة",
+      "Net": "الصافي",
+      "Running": "الرصيد المتراكم",
+      "File": "الملف",
+      "Invoiced": "المفوتر",
+      "Received": "المحصَّل",
+      "Outstanding": "الباقي اليوم"
+    },
+    "Figures": {
+      "Invoiced": "{count, plural, =0 {المفوتر} one {المفوتر (فاتورة واحدة)} two {المفوتر (فاتورتان)} few {المفوتر (# فواتير)} many {المفوتر (# فاتورة)} other {المفوتر (# فاتورة)}}",
+      "Received": "{count, plural, =0 {المحصَّل} one {المحصَّل (دفعة واحدة)} two {المحصَّل (دفعتان)} few {المحصَّل (# دفعات)} many {المحصَّل (# دفعة)} other {المحصَّل (# دفعة)}}",
+      "Outstanding": "الديون اليوم",
+      "Overdue": "منها المتأخر",
+      "Visits": "زيارات الفترة",
+      "VisitsDone": "المنفذة",
+      "VisitsNotDone": "مؤجلة أو ملغاة أو بها مشكلة",
+      "OrdersNotReturned": "أوامر مهمة لم تُسترجع"
+    }
+  },
+  "FileMoney": {
+    "Of": "{client} · الملف {number}",
+    "Reminder": "تذكير",
+    "Issue": "إصدار فاتورة",
+    "Record": "تسجيل دفعة",
+    "CouldNotLoad": "تعذر قراءة تسديدات هذا الملف.",
+    "State": "حالة الدفع",
+    "Amount": "المبلغ",
+    "Paid": "المدفوع",
+    "Remaining": "الباقي",
+    "OverdueHint": "منها {amount} متأخرة",
+    "Dues": "المستحقات",
+    "Invoices": "الفواتير",
+    "Payments": "المدفوعات",
+    "Period": "من {from} إلى {to}",
+    "Visit": "زيارة يوم {date}",
+    "Job": "خدمة عند الطلب",
+    "Invoice": "فاتورة",
+    "NoDues": "لا توجد مستحقات على هذا الملف بعد.",
+    "NoInvoices": "لا توجد فواتير بعد.",
+    "NoPayments": "لا توجد مدفوعات بعد.",
+    "Print": "طباعة",
+    "PrintReceipt": "السند",
+    "WithStamp": "+ {stamp} حق الطابع",
+    "Voided": "ملغى",
+    "Table": {
+      "What": "البيان",
+      "DueDate": "تاريخ التسديد",
+      "Amount": "المبلغ",
+      "Remaining": "الباقي",
+      "State": "الحالة",
+      "Invoice": "الفاتورة",
+      "Actions": "إجراءات",
+      "Date": "تاريخ الدفع",
+      "Payer": "مسدد أتعاب",
+      "Receipt": "سند القبض"
     }
   }
 }

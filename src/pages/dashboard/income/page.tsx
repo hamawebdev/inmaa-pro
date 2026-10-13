@@ -31,7 +31,7 @@ export default function IncomePage() {
   });
 
   return (
-    <SectionScreen section="money" title={tNav("MoneyHeading")}>
+    <SectionScreen section="money" title={tNav("Income")}>
       {data ? <IncomeView {...data} today={today} /> : <ScreenSkeleton />}
     </SectionScreen>
   );

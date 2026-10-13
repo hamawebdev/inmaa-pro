@@ -1,7 +1,13 @@
 import type { CodeLabelCase } from "@/i18n/code-labels";
 
 import { DUE_READINESS } from "./services/invoices";
-import { DUE_STATES, EXPENSE_CATEGORIES, EXPENSE_SOURCES, PAYMENT_STATES, RECURRENCES } from "./validators/option-codes";
+import {
+  DUE_STATES,
+  EXPENSE_CATEGORIES,
+  EXPENSE_SOURCES,
+  PAYMENT_STATES,
+  RECURRENCES,
+} from "./validators/option-codes";
 
 /**
  * The stored codes this folder shows through `useCodeLabel`, each paired with

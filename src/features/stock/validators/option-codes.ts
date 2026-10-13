@@ -49,3 +49,7 @@ export { PPE, type Ppe } from "@/lib/options";
 export function isStockKind(code: string): code is StockKind {
   return (STOCK_KINDS as readonly string[]).includes(code);
 }
+
+/** What was done to a piece of equipment: its periodic service, or a repair. */
+export const MAINTENANCE_KINDS = ["PREVENTIVE", "REPAIR"] as const;
+export type MaintenanceKind = (typeof MAINTENANCE_KINDS)[number];

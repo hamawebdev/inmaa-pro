@@ -7,12 +7,14 @@ import {
   type ColumnDef,
   type PaginationState,
 } from "@tanstack/react-table";
+import { Pencil } from "lucide-react";
 import { useLocale, useTranslations } from "use-intl";
 
 import { DataTable, TablePager, TableSearch } from "@/components/data-table-shell";
 import { Ltr } from "@/components/ltr";
 import { StatusChip, type StatusTone } from "@/components/status-chip";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { formatQuantity } from "@/features/money/rules/quantities";
@@ -24,6 +26,8 @@ import { useCodeLabel } from "@/i18n/use-code-label";
 import { useRouter, useSearchParams } from "@/lib/compat/navigation";
 import { cn } from "@/lib/utils";
 import { SECTION_ACCENT } from "@/navigation/sections";
+
+import { ItemFormDialog } from "./item-form-dialog";
 
 /** The state filter: every state, the ones to buy (out or at the minimum), or one state. */
 const STATE_FILTERS = ["ALL", "TO_BUY", "OK", "UNWATCHED"] as const;
@@ -63,7 +67,7 @@ function nameOf(item: StockItemView, locale: Locale): string {
  * unit beside it, the minimum in its own column. Costs are not shown: the
  * count is what the store holds, what it cost belongs to the purchases.
  */
-export function InventoryView({ items }: { items: readonly StockItemView[] }) {
+export function InventoryView({ items, canWrite = false }: { items: readonly StockItemView[]; canWrite?: boolean }) {
   const t = useTranslations("Inventory");
   const kindLabel = useCodeLabel("StockCodes.Kinds");
   const categoryLabel = useCodeLabel("StockCodes.Categories");
@@ -159,8 +163,31 @@ export function InventoryView({ items }: { items: readonly StockItemView[] }) {
           return <StatusChip tone={STATE_TONE[state]} label={t(`States.${state}`)} />;
         },
       },
+      // Whoever only reads the store has no row action: the column is left out.
+      ...(canWrite
+        ? ([
+            {
+              id: "actions",
+              header: () => <span className="sr-only">{t("Table.Actions")}</span>,
+              cell: ({ row }) => (
+                <div className="flex justify-end">
+                  <ItemFormDialog
+                    item={row.original}
+                    kind={kind}
+                    trigger={
+                      <Button variant="outline" size="sm">
+                        <Pencil />
+                        {t("Edit")}
+                      </Button>
+                    }
+                  />
+                </div>
+              ),
+            },
+          ] satisfies ColumnDef<StockItemView>[])
+        : []),
     ],
-    [categoryLabel, locale, t, unitLabel],
+    [canWrite, categoryLabel, kind, locale, t, unitLabel],
   );
 
   const table = useReactTable({

@@ -107,7 +107,11 @@ export async function listOpenDues(ex: Executor, ctx: ServiceContext): Promise<O
       remaining,
       invoiceId: row.invoiceId,
       invoiceNumber: row.invoiceNumber,
-      state: dueState({ amount: row.amount, paidAmount: row.paidAmount, dueDate: row.dueDate, cancelled: false }, ctx.today, leadDays),
+      state: dueState(
+        { amount: row.amount, paidAmount: row.paidAmount, dueDate: row.dueDate, cancelled: false },
+        ctx.today,
+        leadDays,
+      ),
       daysLate: Math.max(0, diffDays(row.dueDate, ctx.today)),
     };
   });

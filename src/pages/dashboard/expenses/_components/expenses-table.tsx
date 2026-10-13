@@ -22,6 +22,7 @@ import { EXPENSE_CATEGORIES, type ExpenseDivision } from "@/features/money/valid
 import { ReasonDialog } from "@/features/money/components/reason-dialog";
 import { deleteExpenseAction } from "@/features/money/services/expenses";
 import type { ExpenseView } from "@/features/money/views";
+import { useSectionLevel } from "@/hooks/use-session";
 import { useErrorMessage } from "@/i18n/errors";
 import { useCodeLabel } from "@/i18n/use-code-label";
 
@@ -66,6 +67,8 @@ export function ExpensesTable({
   const [removing, setRemoving] = React.useState<ExpenseView | null>(null);
   const [busy, setBusy] = React.useState(false);
   const errorMessage = useErrorMessage();
+  // Whoever only reads the money sees the list, not the buttons that change it.
+  const mayWrite = useSectionLevel("MONEY") === "WRITE";
 
   async function remove(reason: string) {
     if (!removing) return;
@@ -91,11 +94,11 @@ export function ExpensesTable({
         id: "category",
         header: t("Table.Category"),
         cell: ({ row }) => (
-          <div className="flex flex-col items-start gap-1">
-            <Badge variant="secondary">{categoryLabel(row.original.category)}</Badge>
+          <div className="flex max-w-36 min-w-0 flex-col items-start gap-0.5 xl:max-w-56">
+            <p className="max-w-full truncate leading-tight font-bold">{categoryLabel(row.original.category)}</p>
             {/* On «الكل» the line it was spent on is said under it, and a monthly expense says so. */}
             {(showDivision || row.original.recurrence === "MONTHLY") && (
-              <span className="inline-flex flex-wrap items-center gap-x-2 text-sm text-muted-foreground">
+              <span className="inline-flex max-w-full items-center gap-x-2 truncate text-sm leading-tight text-muted-foreground">
                 {showDivision && <span>{divisionLabel(row.original.division)}</span>}
                 {row.original.recurrence === "MONTHLY" && (
                   <span className="inline-flex items-center gap-1">
@@ -111,31 +114,39 @@ export function ExpensesTable({
       {
         id: "paidTo",
         header: t("Table.PaidTo"),
-        cell: ({ row }) => (
-          <div className="min-w-0">
-            {row.original.paidTo ? (
-              <p className="font-bold">{row.original.paidTo}</p>
-            ) : (
-              <p className="text-muted-foreground">—</p>
-            )}
-            {row.original.spentByName && (
-              <p className="text-sm text-muted-foreground">{t("Table.SpentBy", { name: row.original.spentByName })}</p>
-            )}
-            {row.original.note && (
-              <p className="max-w-64 truncate text-sm text-muted-foreground" title={row.original.note}>
-                {row.original.note}
-              </p>
-            )}
-          </div>
-        ),
+        cell: ({ row }) => {
+          // One line under the name: who spent it, then the note, cut where the column ends.
+          const under = [
+            row.original.spentByName ? t("Table.SpentBy", { name: row.original.spentByName }) : null,
+            row.original.note,
+          ]
+            .filter(Boolean)
+            .join(" · ");
+          return (
+            <div className="max-w-36 min-w-0 xl:max-w-56">
+              {row.original.paidTo ? (
+                <p className="truncate leading-tight font-bold">{row.original.paidTo}</p>
+              ) : (
+                <p className="leading-tight text-muted-foreground">—</p>
+              )}
+              {under && (
+                <p className="truncate text-sm leading-tight text-muted-foreground" title={under}>
+                  {under}
+                </p>
+              )}
+            </div>
+          );
+        },
       },
       {
         id: "amount",
         header: t("Table.Amount"),
         cell: ({ row }) => (
-          <div className="min-w-0">
-            <p className="font-bold whitespace-nowrap tabular-nums">{money(row.original.amount)}</p>
-            {row.original.method && <p className="text-sm text-muted-foreground">{methodLabel(row.original.method)}</p>}
+          <div className="max-w-36 min-w-0 xl:max-w-56">
+            <p className="leading-tight font-bold whitespace-nowrap tabular-nums">{money(row.original.amount)}</p>
+            {row.original.method && (
+              <p className="truncate text-sm leading-tight text-muted-foreground">{methodLabel(row.original.method)}</p>
+            )}
           </div>
         ),
       },
@@ -143,9 +154,14 @@ export function ExpensesTable({
         id: "actions",
         header: () => <span className="sr-only">{t("Table.Actions")}</span>,
         cell: ({ row }) => (
-          <div className="flex flex-wrap items-center justify-end gap-2">
+          <div className="flex items-center justify-end gap-2">
             <ReceiptButton url={row.original.receiptUrl} />
-            {row.original.source === "MANUAL" ? (
+            {row.original.source !== "MANUAL" ? (
+              <Badge variant="muted" title={t("ChangedAtSource")}>
+                <Lock aria-hidden />
+                {sourceLabel(row.original.source)}
+              </Badge>
+            ) : mayWrite ? (
               <>
                 <ExpenseFormDialog
                   today={today}
@@ -168,12 +184,7 @@ export function ExpensesTable({
                   <Trash2 />
                 </Button>
               </>
-            ) : (
-              <Badge variant="muted" title={t("ChangedAtSource")}>
-                <Lock aria-hidden />
-                {sourceLabel(row.original.source)}
-              </Badge>
-            )}
+            ) : null}
           </div>
         ),
       },
@@ -183,6 +194,7 @@ export function ExpensesTable({
       dates,
       defaultDivision,
       divisionLabel,
+      mayWrite,
       methodLabel,
       money,
       recurrenceLabel,

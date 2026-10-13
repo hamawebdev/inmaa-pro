@@ -1,7 +1,7 @@
 {
   "StockPrint": {
     "HandoutTitle": "Bon de remise {number}",
-    "SampleNote": "Données d'exemple, affichées en attendant l'enregistrement des remises."
+    "PrintNotRecorded": "L'impression n'a pas pu être enregistrée : rien n'a été imprimé."
   },
   "Inventory": {
     "KindSwitch": "Type de stock",
@@ -17,7 +17,8 @@
       "Unit": "Unité",
       "OnHand": "En stock",
       "Minimum": "Minimum",
-      "State": "État"
+      "State": "État",
+      "Actions": "Actions"
     },
     "States": {
       "OUT": "Épuisé",
@@ -30,7 +31,8 @@
       "TO_BUY": "À acheter",
       "OK": "En stock",
       "UNWATCHED": "Sans minimum"
-    }
+    },
+    "Edit": "Modifier"
   },
   "StockCodes": {
     "Kinds": {
@@ -52,6 +54,29 @@
       "TOOL": "Outils",
       "MACHINE": "Machines",
       "PPE": "Équipements de protection"
+    },
+    "Trackings": {
+      "QUANTITY": "Par quantité",
+      "UNIT": "Pièce par pièce"
+    },
+    "Conditions": {
+      "GOOD": "Bon état",
+      "NEEDS_MAINTENANCE": "À entretenir",
+      "OUT_OF_SERVICE": "Hors service"
+    },
+    "Purposes": {
+      "JOB": "Pour une mission",
+      "WORKER_KIT": "Dotation de l'agent"
+    },
+    "Locations": {
+      "STORE": "Au magasin",
+      "WITH_WORKER": "Chez un agent",
+      "AT_SITE": "Chez un client",
+      "IN_MAINTENANCE": "En entretien"
+    },
+    "MaintenanceKinds": {
+      "PREVENTIVE": "Entretien périodique",
+      "REPAIR": "Réparation"
     }
   },
   "Errors": {
@@ -91,7 +116,12 @@
     "ItemNotFound": "Cet article n'existe pas.",
     "PieceNotInStore": "Cette pièce n'est pas au magasin.",
     "VisitNotOfFile": "Cette visite ne fait pas partie des visites de ce dossier.",
-    "CountAllLines": "Saisissez la quantité comptée de chaque ligne avant de clôturer."
+    "CountAllLines": "Saisissez la quantité comptée de chaque ligne avant de clôturer.",
+    "UnitNotFound": "Cet équipement n'existe pas.",
+    "MaintenanceInterval": "Un intervalle d'entretien est un nombre de jours, de 1 à 3650.",
+    "MaintenanceAfterToday": "Un entretien ne peut pas être daté après aujourd'hui.",
+    "ConditionAfterMaintenance": "Indiquez l'état de l'équipement après l'entretien.",
+    "MaintenanceWhat": "Écrivez ce qui a été fait."
   },
   "Alerts": {
     "StockLow": {
@@ -102,5 +132,162 @@
       "Title": "Maintenance à faire",
       "Hint": "Dans les {days} jours, ou signalée"
     }
+  },
+  "ItemForm": {
+    "AddItem": "Nouvel article",
+    "NewTitle": "Ajouter un article au stock",
+    "EditTitle": "Modifier l'article",
+    "Description": "Son nom, son type, son unité et son minimum. Les quantités bougent par les achats, les remises et les inventaires.",
+    "NameAr": "Nom (arabe)",
+    "NameFr": "Nom (français)",
+    "NameEn": "Nom (anglais)",
+    "Kind": "Type",
+    "Category": "Catégorie",
+    "NoCategory": "Aucune",
+    "Unit": "Unité",
+    "Tracking": "Suivi",
+    "TrackingHint": "Pièce par pièce : chaque machine a son numéro et son entretien.",
+    "Minimum": "Minimum",
+    "MinimumHint": "À ce niveau ou en dessous, l'article est à acheter. Vide : non surveillé.",
+    "Opening": "En rayon aujourd'hui",
+    "OpeningHint": "Enregistré comme premier mouvement de l'article.",
+    "SaveFailed": "L'article n'a pas pu être enregistré.",
+    "Updated": "Article modifié.",
+    "Added": "Article ajouté.",
+    "SaveChanges": "Enregistrer",
+    "Add": "Ajouter l'article"
+  },
+  "Handouts": {
+    "New": "Nouvelle remise",
+    "Table": {
+      "Number": "Remise",
+      "Worker": "Reçu par",
+      "Job": "Mission",
+      "Lines": "Articles",
+      "State": "État",
+      "Actions": "Actions"
+    },
+    "LineCount": "{count, plural, one {# article} other {# articles}}",
+    "States": {
+      "Cancelled": "Annulée",
+      "StillOut": "{count, plural, one {# équipement dehors} other {# équipements dehors}}",
+      "Settled": "Rien dehors"
+    },
+    "Print": "Bon",
+    "Return": "Retour",
+    "Cancel": "Annuler la remise",
+    "CancelFailed": "La remise n'a pas pu être annulée.",
+    "Cancelled": "Remise {number} annulée.",
+    "CancelTitle": "Annuler la remise {number} ?",
+    "CancelDescription": "Tout ce qu'elle a sorti revient au stock. Réservé à une remise saisie par erreur, sans retour enregistré.",
+    "HandoutCount": "{count, plural, =0 {Aucune remise} one {# remise} other {# remises}}",
+    "SearchPlaceholder": "Rechercher par numéro, agent, client ou dossier…",
+    "NoHandouts": "Aucune remise enregistrée."
+  },
+  "HandoutReturn": {
+    "Title": "Retour de la remise {number}",
+    "Description": "Ligne par ligne : ce qui revient au stock, ce qui est perdu ou abîmé.",
+    "Loading": "Chargement…",
+    "NothingOut": "Plus rien de cette remise n'est dehors.",
+    "Line": "Article",
+    "StillOut": "Encore dehors :",
+    "Returned": "Rendu",
+    "Lost": "Perdu",
+    "Damaged": "Abîmé",
+    "Condition": "État au retour",
+    "Note": "Remarque",
+    "NoteHint": "Obligatoire en cas de perte ou de dégât.",
+    "Record": "Enregistrer le retour",
+    "Failed": "Le retour n'a pas pu être enregistré.",
+    "Recorded": "Retour enregistré."
+  },
+  "HandoutForm": {
+    "Title": "Nouvelle remise",
+    "Description": "Équipements et produits remis à un agent nommé, pour une mission ou comme dotation.",
+    "Who": "À qui et pour quoi",
+    "Purpose": "Objet",
+    "Worker": "Agent qui reçoit",
+    "ChooseWorker": "Choisir l'agent",
+    "Date": "Date",
+    "File": "Mission (dossier)",
+    "ChooseFile": "Choisir le dossier",
+    "Visit": "Visite",
+    "NoVisit": "Aucune visite précise",
+    "VisitHint": "Son ordre de mission imprime alors ce qui a été remis.",
+    "What": "Ce qui est remis",
+    "StoreEmpty": "Le stock n'a rien à remettre.",
+    "Item": "Article {number}",
+    "ChooseItem": "Choisir l'article",
+    "InStore": "En stock :",
+    "Piece": "Pièce",
+    "ChoosePiece": "Choisir la pièce",
+    "Quantity": "Quantité",
+    "Condition": "État à la remise",
+    "StayAtSite": "Reste chez le client",
+    "RemoveLine": "Supprimer cette ligne",
+    "AddLine": "Ajouter un article",
+    "Note": "Remarque",
+    "Save": "Enregistrer et imprimer le bon",
+    "SaveFailed": "La remise n'a pas pu être enregistrée.",
+    "Saved": "Remise {number} enregistrée.",
+    "ReadOnly": "Votre compte consulte le stock sans effectuer de remise."
+  },
+  "FileHandouts": {
+    "New": "Nouvelle remise",
+    "CouldNotLoad": "Les remises de ce dossier n'ont pas pu être lues."
+  },
+  "Purchases": {
+    "PurchaseCount": "{count, plural, =0 {Aucun achat} one {# achat} other {# achats}}",
+    "NoPurchases": "Aucun achat enregistré.",
+    "LineCount": "{count, plural, one {# article} other {# articles}}",
+    "Cancelled": "Annulé",
+    "Table": {
+      "Number": "Achat",
+      "Supplier": "Fournisseur",
+      "Division": "Division",
+      "Lines": "Articles",
+      "Total": "Montant"
+    }
+  },
+  "Maintenance": {
+    "UnitCount": "{count, plural, =0 {Aucun équipement suivi pièce par pièce} one {# équipement} other {# équipements}}",
+    "NoUnits": "Aucune machine suivie pièce par pièce : elle s'ajoute à son achat, sous « Achats ».",
+    "Record": "Enregistrer un entretien",
+    "Plan": "Calendrier d'entretien",
+    "States": {
+      "Overdue": "En retard",
+      "DueSoon": "Proche",
+      "NotPlanned": "Non planifié",
+      "Planned": "Planifié"
+    },
+    "Table": {
+      "Piece": "Équipement",
+      "Condition": "État",
+      "Last": "Dernier entretien",
+      "Next": "Prochain entretien",
+      "State": "Calendrier",
+      "Actions": "Actions"
+    }
+  },
+  "MaintenanceForm": {
+    "SaveFailed": "L'enregistrement a échoué.",
+    "PlanSaved": "Calendrier enregistré.",
+    "PlanTitle": "Calendrier d'entretien de {piece} {number}",
+    "PlanDescription": "La fréquence d'entretien de cet équipement. L'accueil prévient quelques jours avant.",
+    "Interval": "Tous les (jours)",
+    "IntervalHint": "Vide : hors calendrier.",
+    "NextDate": "Prochain entretien",
+    "NextDateHint": "Vide : un intervalle après le dernier.",
+    "Recorded": "Entretien enregistré.",
+    "RecordTitle": "Entretien de {piece} {number}",
+    "RecordDescription": "Ce qui a été fait, par qui et pour combien. Le coût passe en dépenses.",
+    "Kind": "Type",
+    "Date": "Date",
+    "What": "Travaux effectués",
+    "Cost": "Coût (DA)",
+    "CostHint": "Vide si le centre l'a fait lui-même.",
+    "Provider": "Réalisé par",
+    "ConditionAfter": "État après entretien",
+    "Record": "Enregistrer l'entretien"
   }
 }

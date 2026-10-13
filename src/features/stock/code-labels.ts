@@ -1,8 +1,10 @@
 import type { CodeLabelCase } from "@/i18n/code-labels";
 
 import {
+  EQUIPMENT_LOCATIONS,
   HANDOUT_PURPOSES,
   ITEM_CONDITIONS,
+  MAINTENANCE_KINDS,
   STOCK_CATEGORIES,
   STOCK_KINDS,
   STOCK_TRACKINGS,
@@ -25,4 +27,6 @@ export const codeLabelCases: readonly CodeLabelCase[] = [
   // «الحالة عند الاستلام» of a hand-out line.
   ["StockCodes.Conditions", ITEM_CONDITIONS],
   ["StockCodes.Purposes", HANDOUT_PURPOSES],
+  ["StockCodes.Locations", EQUIPMENT_LOCATIONS],
+  ["StockCodes.MaintenanceKinds", MAINTENANCE_KINDS],
 ];

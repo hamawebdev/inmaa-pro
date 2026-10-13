@@ -111,24 +111,29 @@ export function VisitStatementBody({ data }: { data: VisitStatementData }) {
       />
       <Gap mm={4} />
 
-      <SheetTable columns={[12, 27, 16, 15, 15, 15, 27, 28, 32.3]}>
-        <SheetRow heightMm={9}>
-          {[
-            "الرقم",
-            "التاريخ",
-            "اليوم",
-            "وقت الوصول",
-            "المغادرة",
-            "عدد العمال",
-            "حالة الإنجاز",
-            "استلام الخدمة",
-            "ملاحظات",
-          ].map((label) => (
-            <SheetCell key={label} shaded align="center" style={{ ...TYPE.label, fontSize: "10.5pt" }}>
-              {label}
-            </SheetCell>
-          ))}
-        </SheetRow>
+      <SheetTable
+        columns={[12, 27, 16, 15, 15, 15, 27, 28, 32.3]}
+        // The title row is printed again at the top of every page a long statement runs onto.
+        head={
+          <SheetRow heightMm={9}>
+            {[
+              "الرقم",
+              "التاريخ",
+              "اليوم",
+              "وقت الوصول",
+              "المغادرة",
+              "عدد العمال",
+              "حالة الإنجاز",
+              "استلام الخدمة",
+              "ملاحظات",
+            ].map((label) => (
+              <SheetCell key={label} shaded align="center" style={{ ...TYPE.label, fontSize: "10.5pt" }}>
+                {label}
+              </SheetCell>
+            ))}
+          </SheetRow>
+        }
+      >
         {data.rows.map((row) => (
           <SheetRow key={row.seq} heightMm={7}>
             <SheetCell align="center" style={CELL}>

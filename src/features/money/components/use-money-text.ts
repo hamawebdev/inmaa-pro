@@ -4,7 +4,6 @@ import { useLocale } from "use-intl";
 
 import { intlLocaleFor } from "@/i18n/config";
 
-
 /** Amounts as every screen writes them: «195.650,00 دج». Foundation's, in src/hooks. */
 export { useMoneyText } from "@/hooks/use-money-text";
 

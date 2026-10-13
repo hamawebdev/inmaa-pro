@@ -2,13 +2,13 @@ import * as React from "react";
 
 import { useQuery } from "@tanstack/react-query";
 import { CircleAlert, FileCheck2 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useTranslations } from "use-intl";
 
 import { useConfirm } from "@/components/confirm-dialog";
 import { Ltr } from "@/components/ltr";
-import { SectionHeading } from "@/components/screen";
+import { PageActions, SectionHeading } from "@/components/screen";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -52,6 +52,7 @@ interface Selection {
  */
 export function IssueInvoice() {
   const t = useTranslations("IssueInvoice");
+  const tCommon = useTranslations("Common");
   const errorMessage = useErrorMessage();
   const navigate = useNavigate();
   const session = useSession();
@@ -67,7 +68,7 @@ export function IssueInvoice() {
 
   const { data: candidates } = useQuery({
     queryKey: [...pathKey(INVOICES_PATH), "candidates"],
-    queryFn: () => listInvoiceCandidatesQuery(),
+    queryFn: () => listInvoiceCandidatesQuery(undefined),
   });
   const { data: proposal } = useQuery({
     queryKey: [...pathKey(INVOICES_PATH), "proposal", selection?.fileId ?? "", ...(selection?.dueIds ?? []), method],
@@ -128,25 +129,24 @@ export function IssueInvoice() {
       {selection && proposal && (
         <section className="space-y-4">
           <SectionHeading>{t("TheInvoice")}</SectionHeading>
-          <ProposalCard
-            proposal={proposal}
-            method={method ?? proposal.paymentMethod}
-            onMethod={setMethod}
-            footer={
-              mayIssue ? (
-                <Button
-                  variant="success"
-                  disabled={busy || proposal.blockers.length > 0}
-                  onClick={() => void issue(proposal)}
-                >
-                  <FileCheck2 />
-                  {t("Issue")}
-                </Button>
-              ) : (
-                <p className="text-muted-foreground">{t("ReadOnly")}</p>
-              )
-            }
-          />
+          <ProposalCard proposal={proposal} method={method ?? proposal.paymentMethod} onMethod={setMethod} />
+          {mayIssue ? (
+            <PageActions>
+              <Button asChild variant="outline">
+                <Link to="/dashboard/invoices">{tCommon("Cancel")}</Link>
+              </Button>
+              <Button
+                variant="success"
+                disabled={busy || proposal.blockers.length > 0}
+                onClick={() => void issue(proposal)}
+              >
+                <FileCheck2 />
+                {t("Issue")}
+              </Button>
+            </PageActions>
+          ) : (
+            <PageActions note={<p className="text-muted-foreground">{t("ReadOnly")}</p>}>{null}</PageActions>
+          )}
         </section>
       )}
       {confirmDialog}
@@ -172,7 +172,8 @@ function CandidatesTable({
     if (candidate.kind === "SCHEDULE" && candidate.periodStart && candidate.periodEnd) {
       return t("Period", { from: dates.short(candidate.periodStart), to: dates.long(candidate.periodEnd) });
     }
-    if (candidate.kind === "VISIT" && candidate.periodStart) return t("Visit", { date: dates.long(candidate.periodStart) });
+    if (candidate.kind === "VISIT" && candidate.periodStart)
+      return t("Visit", { date: dates.long(candidate.periodStart) });
     return t("Job");
   };
 
@@ -243,12 +244,10 @@ function ProposalCard({
   proposal,
   method,
   onMethod,
-  footer,
 }: {
   proposal: InvoiceProposal;
   method: PaymentMethod;
   onMethod: (method: PaymentMethod) => void;
-  footer: React.ReactNode;
 }) {
   const t = useTranslations("IssueInvoice");
   const errorMessage = useErrorMessage();
@@ -378,8 +377,6 @@ function ProposalCard({
             )}
           </dl>
         )}
-
-        <div className="flex flex-wrap items-center justify-end gap-3 border-t pt-4">{footer}</div>
       </CardContent>
     </Card>
   );

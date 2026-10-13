@@ -2,6 +2,7 @@ import type { OnEvent } from "@/lib/events";
 import type { Executor } from "@/lib/service/context";
 
 import { syncDues } from "./services/dues";
+import { postPayoutExpenses, removePayoutExpenses } from "./services/wages";
 
 /**
  * What Money does when another owner's record changes
@@ -16,9 +17,9 @@ import { syncDues } from "./services/dues";
  *  - `visit.signedOff`, `visit.statusChanged`: a contract paid «بعد كل زيارة»
  *    has one due per visit, so its dues follow its visits; a signed-off visit
  *    is then ready to invoice (services/invoices.ts reads it as billable).
- *
- * Not here yet: `payout.recorded` and `payout.voided` (the wage expense of a
- * payout) wait for People's payout service.
+ *  - **A payout is recorded or voided** (People): its wage goes into the
+ *    expenses on its day, split by the payslip's minutes per division, and
+ *    comes out again when the payout is voided (services/wages.ts).
  */
 async function fileOfVisit(ex: Executor, visitId: string): Promise<string | null> {
   const visit = await ex.selectFrom("Visit").select("fileId").where("id", "=", visitId).executeTakeFirst();
@@ -42,5 +43,11 @@ export function registerEvents(on: OnEvent) {
   on("visit.statusChanged", async (ex, ctx, { visitId }) => {
     const fileId = await fileOfVisit(ex, visitId);
     if (fileId) await syncDues(ex, ctx, { fileId });
+  });
+  on("payout.recorded", async (ex, ctx, { staffPayoutId }) => {
+    await postPayoutExpenses(ex, ctx, { staffPayoutId });
+  });
+  on("payout.voided", async (ex, ctx, { staffPayoutId }) => {
+    await removePayoutExpenses(ex, ctx, { staffPayoutId });
   });
 }
