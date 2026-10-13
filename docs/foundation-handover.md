@@ -1,8 +1,8 @@
 # Foundation: handover
 
 For a teammate who continues Foundation's work. Read CLAUDE.md first (its last section is Foundation's and is the
-manual for builders), then this page. Updated at the end of every round. **Last update: start of F3b**
-(F3 items 1 to 3 accepted and committed in d114590).
+manual for builders), then this page. Updated at the end of every round. **Last update: end of F3b**
+(on top of the checkpoint 6ab2d78 and the coordinator's 8bca553; what changed since is not committed yet).
 
 ## What exists, and where
 
@@ -21,6 +21,12 @@ manual for builders), then this page. Updated at the end of every round. **Last 
 | Harness sign-in (F3) | Every page the harness opens signs in through the window (`--user`, default manager; password `inmaa-demo`); `--signed-out`, `--before` | `scripts/harness/lib/sign-in.mjs` |
 | Print kit additions (F3) | `PrintButton onPrint` (record before the dialog; false or a throw stops it; Ctrl+P follows the button when there is a hook), `SHEET_FONT_STAND_IN` exported from the index; asked by Operations | `src/components/print/{print-sheet.tsx,print-flow.ts,index.ts}` |
 | Money format (F3) | `formatMoney`, `formatMoneyAr`, `useMoneyText()`: «195.650,00 دج» | `src/lib/units`, `src/hooks/use-money-text.ts` |
+| Settings, four tabs (F3b) | «عام»: name and logo, the centre on its papers, tax and registration numbers, bank, my account, language and appearance, the program (default language, QR on orders, idle lock), backup, licence, system. «قواعد العمل»: every work rule of DESIGN.md section 11, one card per family, and the zones of communes. «المستخدمون والصلاحيات»: accounts (create, name and role, give a password, switch off and on, link to a centre employee) and each role's level per section and capabilities. «السجل»: the log with filters (person, operation, kind of record, dates), the details of an entry, an export logged as a disclosure | `src/pages/dashboard/settings/**`; forms described in `src/features/core/validators/settings-form.ts`; services `settings-form.ts`, `users.ts`, `log-screen.ts` |
+| Backup and restore (F3b) | The daily copy after the day-start job into the chosen folder (`inmaa-auto-YYYY-MM-DD.db` + manifest + uploads), rotation by name, a synchronised folder refused, every copy in `BackupRun` and the log; a copy by hand from the card or the lock menu (`backup.run`); the guarded restore (what it would cost, a protected copy first, the manager's reason, a note for the next start); the anchor screen for everybody until the manager answers | `src/features/core/services/{backups,anchor-answer}.ts`, `src/server/backup.ts`, `src-tauri/src/backup.rs`, `src/components/security/{anchor-screen,program-gate}.tsx` |
+| Notifications (F3b) | Each alert said once a day on the desktop, again that day only if it concerns more; kept in `system.alertsNotified` | `src/lib/alerts/announce.ts`, `src/components/alert-notifier.tsx` |
+| Idle lock (F3b) | `security.idleLockMinutes` (15; 0 off), signs out to the sign-in window, LOCK with cause IDLE, said once on the window | `src/components/security/idle-lock.tsx`, `src/lib/access/idle.ts` |
+| Smaller items (F3b) | `CommunePicker` and `ZonePicker`; `logConsultOnce` (ruling 29); `staffName` (surname then first name); the save-text command for exports; tab pages headed with their tab's label and given a line, record pages none (S-13, S-14); today's tiles three to a row (S-15); the sign-in names scroll inside their box (S-17) | `src/components/{commune,zone}-picker.tsx`, `src/lib/log`, `src/lib/text/names.ts`, `src/components/{section,detail}-screen.tsx` |
+| Harness (F3b) | A queue of a few runs at once (`HARNESS_SLOTS`), a longer settle time (`HARNESS_SETTLE_MS`), `pdf --routes <file>` and `--before`, `shot --anchor <file>` | `scripts/harness/lib/slots.mjs`, `pdf.mjs`, README |
 | Data-model documents | DESIGN (section 19: what changed while building), CONTRACTS, OPTION-CODES, RULINGS, BUILD-NOTES | `docs/data-model` (mine to keep in step) |
 
 ## Rulings I was given (beyond docs/data-model/RULINGS.md)
@@ -36,6 +42,11 @@ manual for builders), then this page. Updated at the end of every round. **Last 
 - F3: the manager answers sanction decisions while signed in. My reading was accepted: no dialog takes his password
   inside another user's session, `requestManagerApproval` is not built (DESIGN.md sections 12 and 19 say so). No
   lockout on wrong passwords; the recovery code and the demo password `inmaa-demo` are accepted.
+- F3b: S-12 (save: `success`, default size, in `PageActions`), S-13 (a tab page is headed with its tab's label, the
+  first tab keeps the section's heading), S-14 (the line under the heading on tab pages, none on record pages), S-15
+  (home tiles three to a row), S-17 (the sign-in window never grows past the window; its list scrolls inside), one
+  rule for a staff name (surname then first name, `staffName`). `src/testing/scenarios/acceptance/**` is the
+  Checker's.
 - F3b: an idle lock. Setting `security.idleLockMinutes` (default 15; 0 switches it off), the manager's to change;
   after that many minutes without input the program signs out to the sign-in window (a form in progress is lost, as
   with «قفل الآن»), logged as LOCK with cause IDLE.
@@ -48,34 +59,23 @@ manual for builders), then this page. Updated at the end of every round. **Last 
 The service shape `(ex, ctx, input)` and `action`/`query`; `createTestDatabase` and its options; the demo convention
 (`seedDemo` in `demo.ts`, names, owner order); `src/lib/options` names; `SHEET_BODY`, `SheetTable head`,
 `SHEET_FONT`; numbering, log, settings and access functions; the events in `src/lib/events/index.ts`; the generated
-types. Contracts between owners: `docs/data-model/CONTRACTS.md`. Since F3 also: the file names `alerts.ts`,
+types. Contracts between owners: `docs/data-model/CONTRACTS.md`. Since F3b also: `CommunePicker`, `ZonePicker`,
+`logConsultOnce`, `staffName`, `linkAccountToStaff`, the `TabLines` messages under every tab, the harness's `--routes`
+and `--anchor`. Since F3 also: the file names `alerts.ts`,
 `daily.ts` and `home.tsx` in a feature folder (found by name); `useSession`, `useCan`, `useSectionLevel`,
 `useCentreClock`, `useMoneyText`; the harness's `--user` names and the demo password; the sign-in window's
 `data-signin…` attributes, which the harness drives.
 
 ## Open items
 
-**F3b (this round), in the coordinator's order:**
-
-1. Settings in four tabs. «عام»: the centre's identity and tax identifiers, my account, system. «قواعد العمل»: every
-   setting of DESIGN.md section 11 with a form, grouped as the document groups them. «المستخدمون والصلاحيات»:
-   accounts (create, give a password, switch off, link to a centre employee with `linkAccountToStaff`) and role grants
-   by section and capability. «السجل»: filters by person, entity, operation and date; an export is itself logged as
-   a disclosure.
-2. Backup and restore: the daily automatic copy to a folder or USB the manager chooses (refuse a folder a cloud client
-   synchronises, where that can be told), the guarded restore of DESIGN.md section 8 with the screen that asks the
-   manager when the anchor disagrees (`startupAnchor()`), and who sees `backup.stale` (to settle here: today only a
-   role that opens Settings and holds `backup.run`, so the manager alone by default).
-3. Desktop notifications for new alerts (`system.alertsNotified`; the notification plugin is already in the build).
-4. The commune picker (any wilaya, with an add action) and the zone picker; the once-a-day CONSULT helper (ruling 29:
-   a person's file page once per user, record and day; restricted data at every read); `--before` and `--routes
-   <file>` on `pdf.mjs`; the harness under several teammates printing at once ("never settled", EMFILE at 20 to 50
-   runs); the `hash-chain.ts` mention in `src/lib/chain/canonical.ts` once Money removes its file.
-5. The idle lock (rulings above).
-
-Still open from before:
-
-- Sign-in has no idle lock until item 5; no lockout (accepted).
+- Settings: the lists that are other owners' tables (training days and skills, inspection criteria, clause text) have
+  no editor yet; a slot for them in قواعد العمل is to build when an owner asks. No branch editor. The letterhead
+  pictures have no upload field.
+- The log screen names a record by its table (`StaffMember`) beside its label: the tables have no words yet.
+- `backup.stale` (settled in F3b): seen by whoever opens Settings and holds `backup.run`, the manager by default. A
+  role that holds `backup.run` without Settings (الإدارة) backs up from the lock menu.
+- The restore was proven by tests and on the harness up to its dialog; a real restore and restart can only be seen in
+  the desktop program, by the coordinator.
 - Arabic Typesetting's stand-in scale (62%) is an estimate: measure it with the print sample's calibration panel on a
   PC that has his fonts.
 - Each builder folder's `uploads.ts` is no longer read (F2); their owners may delete them.

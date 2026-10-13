@@ -58,7 +58,7 @@ describe("the log screen", () => {
     const exported = await test.transact((ex, ctx) => exportLog(ex, ctx, { filters: { operation: "CHANGE" } }));
     expect(exported.count).toBe(1);
     expect(exported.fileName).toBe("inmaa-log-2026-10-12.csv");
-    expect(exported.text.startsWith("﻿seq;date;time;user")).toBe(true);
+    expect(exported.text.startsWith("\uFEFFseq;date;time;user")).toBe(true);
     const [, line] = exported.text.trim().split("\r\n");
     expect(line.startsWith("3;2026-10-12;09:00;المدير;MANAGER;CHANGE;SETTINGS_CHANGE;")).toBe(true);
     // A value holding the separator and quotes stays one cell: quoted, its own quotes doubled.

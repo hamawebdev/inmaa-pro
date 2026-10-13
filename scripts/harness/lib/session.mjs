@@ -129,6 +129,8 @@ function buildUrl(origin, view) {
  * @param {boolean} [options.keep]     leave the run's folder behind for inspection
  * @param {{ db: string, anchor: string, manifest?: { password?: string } }} [options.demo] start from the demo
  *   database (lib/demo.mjs); its manifest names the password its accounts sign in with
+ * @param {string} [options.anchor] an anchor record to start from instead of the demo's (a database that
+ *   does not agree with its anchor opens on the screen that asks the manager)
  */
 export async function openHarness({
   root = PROJECT_ROOT,
@@ -139,6 +141,7 @@ export async function openHarness({
   timezone = DEFAULT_TIMEZONE,
   keep = false,
   demo,
+  anchor,
 } = {}) {
   root = path.resolve(root);
   if (!fs.existsSync(path.join(root, "index.html"))) {
@@ -197,7 +200,11 @@ export async function openHarness({
   }
 
   function onSignal() {
-    close().finally(() => process.exit(130));
+    // The teardown gets a few seconds; then the run ends anyway, and its place in the queue is given back.
+    Promise.race([close(), sleep(5_000)]).finally(() => {
+      releaseSlot();
+      process.exit(130);
+    });
   }
   // The last line of defence, for an exit nobody awaited: synchronous, so it
   // can only delete. Chrome has its own hook of the same kind in browser.mjs.
@@ -220,7 +227,7 @@ export async function openHarness({
       seeds: seeds.map((seed) => path.resolve(seed)),
       license,
       database: demo?.db,
-      anchor: demo?.anchor,
+      anchor: anchor ?? demo?.anchor,
     });
     server = builtWithPolicy
       ? await startDistServer({ root, backend, policy: builtWithPolicy })
@@ -383,7 +390,11 @@ export async function openHarness({
 /** Prints what a run saw besides the picture. Returns true when nothing needs attention. */
 export function printReport(label, result, log = console.log) {
   let clean = true;
-  if (!result.settled) {
+  if (!result.settled && result.state?.broken) {
+    clean = false;
+    const thrown = result.problems.find((problem) => problem.kind === "exception");
+    log(`  ! ${label}: the page did not start: ${String(thrown?.text ?? "").split("\n")[0].slice(0, 300)}`);
+  } else if (!result.settled) {
     clean = false;
     log(`  ! ${label}: the screen never settled (${JSON.stringify(result.state)})`);
   }

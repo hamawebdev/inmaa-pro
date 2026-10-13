@@ -39,6 +39,8 @@ const USAGE = `Usage: node scripts/harness/shot.mjs --route <path> [options]
                       hr, admin, supervisor, reception, operations, accountant)
   --signed-out        stay on the sign-in window instead of signing in
   --before <js>       evaluate this once the screen has settled, then let it settle again, before shooting
+  --anchor <file>     start from this anchor record instead of the demo's (a JSON file): a database that
+                      does not agree with it opens on the screen that asks the manager
   --license <state>   unlocked | trial | expired (default unlocked)
   --page <file>       index.html (default) or lock.html
   --wait <selector>   wait for this CSS selector before shooting
@@ -91,6 +93,7 @@ async function main() {
     license: args.license,
     keep: Boolean(args.keep),
     demo: demo ?? undefined,
+    anchor: args.anchor ? path.resolve(args.anchor) : undefined,
   });
   let clean = false;
   try {

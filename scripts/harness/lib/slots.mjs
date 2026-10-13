@@ -8,8 +8,13 @@
  * it starts anything, and waits its turn when they are all taken.
  *
  * A slot is a file under `.harness/slots/`, created exclusively and holding the
- * pid of the run that has it. A run that died without giving its slot back
- * (a crash, kill -9) is found by its pid and its slot is taken over.
+ * pid of the run that has it, which touches it every 20 seconds. A run that
+ * died without giving its slot back (a crash, kill -9) is found by its pid, and
+ * one that stopped touching it for five minutes is taken as stuck: either way
+ * its slot is taken over. A page that cannot start (a module that does not
+ * compile) fails within seconds instead of waiting the whole settle time
+ * (lib/browser.mjs), and no call to Chrome waits for ever: a broken screen does
+ * not keep everybody else waiting.
  *
  * `HARNESS_SLOTS` sets how many runs may go at once (default: half the
  * processors, between 2 and 6). `HARNESS_SLOTS=0` switches the queue off.
@@ -37,7 +42,19 @@ function isAlive(pid) {
   }
 }
 
-/** Takes slot `file` if it is free, or held by a run that is gone. */
+/** A run touches its slot this often; one whose slot has not been touched for STALE_MS is stuck. */
+const HEARTBEAT_MS = 20_000;
+const STALE_MS = 5 * 60_000;
+
+function isStale(file) {
+  try {
+    return Date.now() - fs.statSync(file).mtimeMs > STALE_MS;
+  } catch {
+    return false;
+  }
+}
+
+/** Takes slot `file` if it is free, held by a run that is gone, or held by one that stopped beating. */
 function tryTake(file) {
   for (let attempt = 0; attempt < 2; attempt += 1) {
     try {
@@ -52,7 +69,7 @@ function tryTake(file) {
     } catch {
       continue; // Given back between the two looks: try once more.
     }
-    if (Number.isInteger(holder) && isAlive(holder)) return false;
+    if (Number.isInteger(holder) && isAlive(holder) && !isStale(file)) return false;
     // Its run is gone. Removing and taking are two steps, so another waiting run may win: that is fine.
     fs.rmSync(file, { force: true });
   }
@@ -80,10 +97,21 @@ export async function acquireSlot(harnessDir, { log = (line) => console.error(li
       const file = path.join(dir, `slot-${index}`);
       if (!tryTake(file)) continue;
       if (said) log(`harness: started after ${Math.round((Date.now() - started) / 1000)} s in the queue`);
+      // Alive and working: the slot's time says so. A run stuck for minutes stops saying it.
+      const heartbeat = setInterval(() => {
+        try {
+          const now = new Date();
+          if (Number(fs.readFileSync(file, "utf8")) === process.pid) fs.utimesSync(file, now, now);
+        } catch {
+          // Taken over or removed: nothing to keep alive.
+        }
+      }, HEARTBEAT_MS);
+      heartbeat.unref();
       let released = false;
       const release = () => {
         if (released) return;
         released = true;
+        clearInterval(heartbeat);
         try {
           // Only our own: a slot taken over after a long stall is somebody else's now.
           if (Number(fs.readFileSync(file, "utf8")) === process.pid) fs.rmSync(file, { force: true });

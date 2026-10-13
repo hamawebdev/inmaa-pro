@@ -190,7 +190,7 @@ export async function exportLog(
     context: { filters: input.filters, entries: rows.length },
   });
   // A byte order mark first: without it a spreadsheet reads Arabic as noise.
-  return { text: `﻿${lines.join("\r\n")}\r\n`, count: rows.length, fileName: `inmaa-log-${ctx.today}.csv` };
+  return { text: `\uFEFF${lines.join("\r\n")}\r\n`, count: rows.length, fileName: `inmaa-log-${ctx.today}.csv` };
 }
 
 export const listLogEntriesQuery = query(listLogEntries);

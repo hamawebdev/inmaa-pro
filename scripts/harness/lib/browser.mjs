@@ -14,6 +14,17 @@ import { setTimeout as sleep } from "node:timers/promises";
  */
 const SETTLE_TIMEOUT_MS = Number(process.env.HARNESS_SETTLE_MS) > 0 ? Number(process.env.HARNESS_SETTLE_MS) : 75_000;
 
+/** The longest any one call to Chrome may take (a screenshot, a PDF of a long sheet). */
+const CDP_TIMEOUT_MS = 90_000;
+
+/**
+ * How long a page that threw before drawing anything is given before the run
+ * stops waiting for it. A module that does not compile (somebody's half-written
+ * file) never draws: waiting the full settle time on it only keeps others in
+ * the queue.
+ */
+const BROKEN_PAGE_MS = 4_000;
+
 const CHROME_CANDIDATES = ["/usr/bin/google-chrome", "/usr/bin/google-chrome-stable", "/opt/google/chrome/chrome"];
 
 function findChrome() {
@@ -65,7 +76,18 @@ class Connection {
   send(method, params = {}, sessionId) {
     const id = this.#nextId++;
     return new Promise((resolve, reject) => {
-      this.#waiting.set(id, { resolve, reject, method });
+      // No call to Chrome waits for ever: a hung renderer would otherwise hold the run, and its place in
+      // the harness's queue, until somebody killed it.
+      const timer = setTimeout(() => {
+        if (!this.#waiting.delete(id)) return;
+        reject(new Error(`${method}: Chrome did not answer within ${CDP_TIMEOUT_MS / 1000} s`));
+      }, CDP_TIMEOUT_MS);
+      timer.unref?.();
+      const settle = (done) => (value) => {
+        clearTimeout(timer);
+        done(value);
+      };
+      this.#waiting.set(id, { resolve: settle(resolve), reject: settle(reject), method });
       this.#socket.send(JSON.stringify(sessionId ? { id, method, params, sessionId } : { id, method, params }));
     });
   }
@@ -194,6 +216,7 @@ class Page {
     const deadline = Date.now() + timeoutMs;
     let state = {};
     let streak = 0;
+    let brokenSince = null;
     while (Date.now() < deadline) {
       try {
         state = await this.evaluate(probe);
@@ -209,6 +232,14 @@ class Page {
         state.quietFor >= quietMs &&
         state.images &&
         state.selector;
+      // Nothing drawn, and the page threw: it is not going to start.
+      const broken = !state.rendered && this.problems.some((problem) => problem.kind === "exception");
+      if (broken) {
+        brokenSince ??= Date.now();
+        if (Date.now() - brokenSince >= BROKEN_PAGE_MS) return { settled: false, state: { ...state, broken: true } };
+      } else {
+        brokenSince = null;
+      }
       streak = settled ? streak + 1 : 0;
       if (streak >= 2) {
         // Two frames, so the last render has been painted.
