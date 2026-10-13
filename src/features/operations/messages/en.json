@@ -718,5 +718,15 @@
       "LeaveWaits": "It waits for HR's decision. No visit changes before it is approved.",
       "Replace": "Replace"
     }
+  },
+  "Quality": {
+    "ViewsLabel": "Quality lists",
+    "Views": {
+      "inspections": "Inspections",
+      "complaints": "Complaints",
+      "corrective": "Corrective tasks",
+      "problems": "Problem reports",
+      "ratings": "Clients' ratings"
+    }
   }
 }

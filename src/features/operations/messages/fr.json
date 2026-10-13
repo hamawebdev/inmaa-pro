@@ -718,5 +718,15 @@
       "LeaveWaits": "La demande attend la décision des RH. Aucune visite ne change avant l'accord.",
       "Replace": "Remplacer"
     }
+  },
+  "Quality": {
+    "ViewsLabel": "Listes qualité",
+    "Views": {
+      "inspections": "Inspections",
+      "complaints": "Réclamations",
+      "corrective": "Tâches correctives",
+      "problems": "Signalements",
+      "ratings": "Évaluations des clients"
+    }
   }
 }
