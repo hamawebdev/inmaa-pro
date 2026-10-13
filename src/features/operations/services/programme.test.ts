@@ -139,6 +139,45 @@ describe("file.contracted", () => {
     ]);
   });
 
+  it("leaves the seat of a suspended or departed member open", async () => {
+    const { file } = await contractFile();
+    const suspended = await test.rows.insert("StaffMember", { role: "CLEANER", engagementStatus: "ACCEPTED" });
+    const departed = await test.rows.insert("StaffMember", { role: "CLEANER", engagementStatus: "LEFT" });
+    for (const [sortOrder, workerId] of [suspended.id, departed.id].entries()) {
+      await test.rows.insert("FileAssignment", {
+        fileId: file.id,
+        workerId,
+        role: "MEMBER",
+        validFrom: localDate("2026-11-01"),
+        sortOrder,
+      });
+    }
+    await test.rows.insert("Sanction", {
+      subjectKind: "WORKER",
+      staffId: suspended.id,
+      state: "SUSPENDED",
+      reason: "غياب متكرر",
+      startDate: localDate("2026-10-01"),
+      endDate: localDate("2026-11-10"),
+    } as never);
+
+    await test.transact((ex, ctx) => emit(ex, ctx, "file.contracted", { fileId: file.id }));
+
+    const visits = await visitsOf(file.id);
+    const seated = async (date: string) => {
+      const visit = visits.find((each) => each.visitDate === date)!;
+      const seats = await test.db
+        .selectFrom("VisitWorker")
+        .select("workerId")
+        .where("visitId", "=", visit.id)
+        .execute();
+      return { status: visit.status, workers: seats.map((seat) => seat.workerId) };
+    };
+    // During the suspension, nobody; after it, the suspended worker comes back; the departed one never.
+    expect(await seated("2026-11-04")).toEqual({ status: "AWAITING_CONFIRMATION", workers: [] });
+    expect(await seated("2026-11-16")).toEqual({ status: "AWAITING_CONFIRMATION", workers: [suspended.id] });
+  });
+
   it("numbers a visit in its own year", async () => {
     const { file } = await contractFile({
       startDate: localDate("2026-12-26"),

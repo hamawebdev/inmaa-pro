@@ -22,7 +22,7 @@ import {
   type WeeklySlot,
 } from "../rules/visit-dates";
 import type { DayPeriod, DurationUnit, ProgrammeWarning, VisitStatus } from "../validators/option-codes";
-import { readFileForScheduling, readSiteForOrder, type FileForScheduling } from "./upstream";
+import { readFileForScheduling, readSiteForOrder, readWorkers, type FileForScheduling } from "./upstream";
 import { seedTasksFromServices } from "./tasks";
 
 /**
@@ -392,6 +392,22 @@ export async function generateFileVisits(
   const supervisors = await zoneSupervisors(ex, site?.zoneId ?? null);
   const origin = file.serviceType === "CONTRACT" ? "CONTRACT" : "ON_DEMAND";
 
+  // People's word on each member (RULINGS item 11): one who has left, or is not in post, is given no seat;
+  // one suspended or penalised is given none while the sanction lasts. Her seat stays open.
+  const people = await readWorkers(ex, ctx, { ids: team.map((seat) => seat.workerId), date: ctx.today });
+  const blocking = (await getSettings(ex, ["sanction.blockingStates"]))["sanction.blockingStates"].WORKER ?? [];
+  const unavailable = (workerId: string, date: string) => {
+    const worker = people.find((person) => person.id === workerId);
+    if (!worker || !worker.activeOnDate) return true;
+    const sanction = worker.sanction;
+    return (
+      sanction !== null &&
+      blocking.includes(sanction.state) &&
+      sanction.since <= date &&
+      (!sanction.until || sanction.until >= date)
+    );
+  };
+
   // One block of numbers per calendar year: the visit number's year is its date's (A6).
   const byYear = new Map<string, PlannedVisit[]>();
   for (const visit of [...toCreate].sort((a, b) =>
@@ -410,6 +426,7 @@ export async function generateFileVisits(
             (seat.fileSlotId === null || seat.fileSlotId === visit.slotId) &&
             seat.validFrom <= visit.date &&
             (!seat.validTo || seat.validTo >= visit.date) &&
+            !unavailable(seat.workerId, visit.date) &&
             !absences.some(
               (absence) =>
                 absence.workerId === seat.workerId && absence.startDate <= visit.date && absence.endDate >= visit.date,

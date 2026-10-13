@@ -22,6 +22,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useErrorMessage } from "@/i18n/errors";
 import { useCodeLabel } from "@/i18n/use-code-label";
 import { pathKey } from "@/lib/compat/revalidate";
+import { staffName } from "@/lib/text/names";
 
 import { assignVisitWorkerAction, listSeatCandidatesQuery, type SeatCandidate } from "../../services/assignment";
 import { VISITS_PATH } from "../../services/programme";
@@ -68,8 +69,7 @@ export function SeatPickerDialog({
 
   const wanted = searchKey(search);
   const shown = (candidates.data ?? []).filter(
-    (candidate) =>
-      !wanted || searchKey(`${candidate.firstName} ${candidate.lastName} ${candidate.number}`).includes(wanted),
+    (candidate) => !wanted || searchKey(`${staffName(candidate)} ${candidate.number}`).includes(wanted),
   );
   const selected = candidates.data?.find((candidate) => candidate.id === chosen) ?? null;
   const manager = selected ? needsManager(selected.findings) : false;
@@ -181,7 +181,7 @@ function CandidateRow({ candidate, role }: { candidate: SeatCandidate; role: str
       <div className="min-w-0 flex-1 space-y-1.5">
         <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
           <span className="font-bold">
-            <bdi>{`${candidate.firstName} ${candidate.lastName}`}</bdi>
+            <bdi>{staffName(candidate)}</bdi>
           </span>
           <LoadAgainstCapacity loadMin={candidate.loadMin} capacityMin={candidate.capacityMin} />
         </div>

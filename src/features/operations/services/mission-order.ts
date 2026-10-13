@@ -5,6 +5,7 @@ import { logDisclose } from "@/lib/log";
 import { action, query } from "@/lib/service/action";
 import type { Executor, ServiceContext } from "@/lib/service/context";
 import { ServiceError } from "@/lib/service/errors";
+import { staffName } from "@/lib/text/names";
 
 import { endTimeOf } from "../rules/visit-dates";
 import type { MissionOrderData, OrderHandout, OrderReturn, OrderTaskGroup, OrderWorker } from "../sheets/sheet-data";
@@ -174,7 +175,7 @@ async function buildOrder(
   );
 
   const workers: OrderWorker[] = team.map((seat) => ({
-    name: `${seat.firstName} ${seat.lastName}`,
+    name: staffName(seat),
     number: seat.number,
     role: (seat.role as WorkerRole | null) ?? null,
     sex: (seat.sex as Sex | null) ?? null,
@@ -227,7 +228,7 @@ async function buildOrder(
     },
     team: workers,
     supervisor: {
-      name: supervisor ? `${supervisor.firstName} ${supervisor.lastName}` : null,
+      name: supervisor ? staffName(supervisor) : null,
       phone: supervisor?.phone ?? null,
     },
     taskGroups: groupsOf(lines),

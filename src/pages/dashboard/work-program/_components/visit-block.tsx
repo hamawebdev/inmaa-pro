@@ -6,6 +6,7 @@ import { Ltr } from "@/components/ltr";
 import type { WeekVisit } from "@/features/operations/services/week-programme";
 import { useCodeLabel } from "@/i18n/use-code-label";
 import { cn } from "@/lib/utils";
+import { staffName } from "@/lib/text/names";
 
 import { visitLook } from "./visit-look";
 import { endTimeOf, type Lane } from "./week-layout";
@@ -134,7 +135,7 @@ function useBlockTitle(visit: WeekVisit): string {
   const t = useTranslations("WeekProgramme");
   const statusLabel = useCodeLabel("VisitStatuses");
   const separator = useLocale() === "ar" ? "، " : ", ";
-  const team = visit.team.map((member) => `${member.firstName} ${member.lastName}`.trim()).join(separator);
+  const team = visit.team.map((member) => staffName(member)).join(separator);
   const openSeats = Math.max(0, visit.workersNeeded - visit.team.length);
   return [
     visit.siteLabel,

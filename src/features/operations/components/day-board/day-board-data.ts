@@ -1,4 +1,5 @@
 import type { FileRow, SiteRow, StaffMemberRow, VisitRow, ZoneRow } from "@/lib/db/models";
+import { staffName } from "@/lib/text/names";
 
 import { noArrivalReported } from "../../rules/arrival-flag";
 import { minutesOf, type ClockTime, type IsoDate } from "../../rules/calendar";
@@ -130,7 +131,7 @@ export function rowMatches(
     visit.zone?.name,
     visit.visit.number,
     ...visit.services.map(serviceText),
-    ...visit.team.map((worker) => `${worker.firstName} ${worker.lastName}`),
+    ...visit.team.map((worker) => staffName(worker)),
   ]
     .filter(Boolean)
     .map((part) => searchKey(String(part)))

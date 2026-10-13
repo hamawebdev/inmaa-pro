@@ -13,6 +13,7 @@ import type {
 import type { Seat } from "../../rules/working-time";
 import type { ProblemKind } from "../../validators/option-codes";
 import type { ReturnedOrderValues } from "../../validators/returned-order";
+import { staffName } from "@/lib/text/names";
 
 /**
  * What the visit page reads to type a returned order: the visit, its site, its
@@ -117,7 +118,7 @@ export type VisitEntryReport = Pick<
 
 /** The worker's name as the office reads it. */
 export function workerName(worker: Pick<StaffMemberRow, "firstName" | "lastName">): string {
-  return `${worker.firstName} ${worker.lastName}`.trim();
+  return staffName(worker);
 }
 
 /** The form's starting values: what was typed before, else a blank sheet. */

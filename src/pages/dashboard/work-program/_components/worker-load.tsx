@@ -9,6 +9,7 @@ import type { WeekFinding, WeekProgramme, WeekWorker } from "@/features/operatio
 import type { WorkRuleCode, WorkRuleLevel } from "@/features/operations/validators/option-codes";
 import { intlLocaleFor } from "@/i18n/config";
 import { cn } from "@/lib/utils";
+import { staffName } from "@/lib/text/names";
 
 import { LEVEL_LOOK } from "./visit-look";
 
@@ -95,7 +96,7 @@ function WorkerLine({
   onFocus: () => void;
 }) {
   const t = useTranslations("WeekProgramme");
-  const name = `${worker.firstName} ${worker.lastName}`.trim();
+  const name = staffName(worker);
   const fill =
     worker.loadMin > rules.weeklyCapMin
       ? "bg-destructive"

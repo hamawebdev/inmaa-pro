@@ -6,6 +6,7 @@ import type { AbsenceStatus } from "@/features/operations/services/absences";
 import type { AttendanceWorker } from "@/features/operations/services/worker-attendance";
 import { intlLocaleFor } from "@/i18n/config";
 import { currentSession, hasSession, sectionLevel } from "@/lib/access/session";
+import { staffName } from "@/lib/text/names";
 
 /** What the views of «الحضور والغياب» share that is not drawn: rights, names, dates. */
 
@@ -19,8 +20,7 @@ export function mayRecordAbsence(): boolean {
 /** An absence that still counts can be cancelled; a leave asked for is withdrawn the same way. */
 export const CANCELLABLE: readonly AbsenceStatus[] = ["RECORDED", "APPROVED", "REQUESTED"];
 
-export const workerName = (worker: Pick<AttendanceWorker, "firstName" | "lastName">) =>
-  `${worker.lastName} ${worker.firstName}`;
+export const workerName = (worker: Pick<AttendanceWorker, "firstName" | "lastName">) => staffName(worker);
 
 const atMidnight = (date: string) => new Date(`${date}T00:00:00Z`);
 

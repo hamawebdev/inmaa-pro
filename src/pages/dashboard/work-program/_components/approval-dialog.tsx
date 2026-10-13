@@ -27,6 +27,7 @@ import {
 } from "@/features/operations/services/week-programme";
 import { useCodeLabel } from "@/i18n/use-code-label";
 import { pathKey } from "@/lib/compat/revalidate";
+import { staffName } from "@/lib/text/names";
 
 import { LEVEL_LOOK } from "./visit-look";
 
@@ -141,7 +142,7 @@ function ApprovalForm({
               .map((check) => (
                 <li key={check.workerId} className="grid min-w-0 gap-1.5 rounded-lg border border-border p-3">
                   <span className="font-bold">
-                    <bdi>{`${check.firstName} ${check.lastName}`.trim()}</bdi>{" "}
+                    <bdi>{staffName(check)}</bdi>{" "}
                     <Ltr className="text-sm font-normal text-muted-foreground">{check.number}</Ltr>
                   </span>
                   <span className="flex min-w-0 flex-wrap gap-1.5">

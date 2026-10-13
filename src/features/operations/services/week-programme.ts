@@ -6,6 +6,7 @@ import { changedColumns } from "@/lib/service/changes";
 import type { Executor, ServiceContext } from "@/lib/service/context";
 import { ServiceError } from "@/lib/service/errors";
 import { localDate, localTime, type LocalDate, type LocalTime } from "@/lib/units";
+import { staffName } from "@/lib/text/names";
 
 import {
   MINUTES_PER_DAY,
@@ -606,7 +607,7 @@ export async function moveVisit(ex: Executor, ctx: ServiceContext, input: MoveVi
           code: finding.code,
           level: finding.level,
           workerId: worker.id,
-          workerName: `${worker.firstName} ${worker.lastName}`,
+          workerName: staffName(worker),
           valueMin: finding.valueMin ?? null,
         }),
       ),

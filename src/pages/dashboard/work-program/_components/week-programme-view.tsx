@@ -27,6 +27,7 @@ import { intlLocaleFor } from "@/i18n/config";
 import { matchErrorMessage, useErrorMessage } from "@/i18n/errors";
 import { useCodeLabel } from "@/i18n/use-code-label";
 import { pathKey } from "@/lib/compat/revalidate";
+import { staffName } from "@/lib/text/names";
 
 import { ApprovalDialog, type ApprovalRequest } from "./approval-dialog";
 import { WeekCalendar } from "./week-calendar";
@@ -200,7 +201,7 @@ export function WeekProgrammeView() {
         {focused && (
           <Button variant="secondary" size="xs" onClick={() => setFocusWorkerId(null)}>
             <X />
-            {t("Focused", { name: isolate(`${focused.firstName} ${focused.lastName}`.trim()) })}
+            {t("Focused", { name: isolate(staffName(focused)) })}
           </Button>
         )}
       </div>

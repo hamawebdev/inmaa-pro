@@ -6,7 +6,7 @@ import { useTranslations } from "use-intl";
 
 import { ErrorState } from "@/components/error-state";
 import { SectionScreen } from "@/components/section-screen";
-import { DayBoard } from "@/features/operations/components/day-board/day-board";
+import { DayBoard, DayBoardCounts } from "@/features/operations/components/day-board/day-board";
 import type { ArrivalVia } from "@/features/operations/components/day-board/day-board-data";
 import { useCentreClock } from "@/features/operations/components/use-centre-clock";
 import { listDayBoardQuery } from "@/features/operations/services/board";
@@ -44,7 +44,11 @@ export default function VisitsPage() {
   };
 
   return (
-    <SectionScreen section="requests" title={tNav("Visits")}>
+    <SectionScreen
+      section="requests"
+      title={tNav("Visits")}
+      actions={board.data ? <DayBoardCounts visits={board.data} clock={clock} /> : undefined}
+    >
       {board.isError ? (
         <ErrorState onRetry={() => void board.refetch()} />
       ) : (
@@ -55,6 +59,7 @@ export default function VisitsPage() {
           loading={board.isPending}
           clock={clock}
           onReportArrival={mayWrite ? reportArrival : undefined}
+          showCounts={false}
         />
       )}
     </SectionScreen>

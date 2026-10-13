@@ -35,7 +35,7 @@ export default function QualityPage() {
   const t = useTranslations("Quality");
   const view = readQualityView(useSearchParams());
   const { View, Actions } = VIEW[view];
-  const items = QUALITY_VIEWS.map((each) => ({ value: each, label: t(`Views.${each}`), href: qualityHref(each) }));
+  const items = QUALITY_VIEWS.map((each) => ({ id: each, label: t(`Views.${each}`), href: qualityHref(each) }));
 
   return (
     <SectionScreen section="requests" title={tNav("Quality")} actions={<Actions />}>

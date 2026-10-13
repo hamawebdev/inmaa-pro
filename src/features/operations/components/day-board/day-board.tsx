@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { intlLocaleFor } from "@/i18n/config";
 import { useCodeLabel } from "@/i18n/use-code-label";
+import { staffName } from "@/lib/text/names";
 
 import { addDays } from "../../rules/calendar";
 import type { VisitStatus } from "../../validators/option-codes";
@@ -58,6 +59,7 @@ export function DayBoard({
   graceMin,
   loading = false,
   onReportArrival,
+  showCounts = true,
 }: {
   /** The day shown, "YYYY-MM-DD". */
   date: string;
@@ -71,6 +73,8 @@ export function DayBoard({
   loading?: boolean;
   /** The team's arrival phoned in (#27). Left out, the board offers no such button. */
   onReportArrival?: (visitId: string, via: ArrivalVia) => void;
+  /** False when the page shows `DayBoardCounts` in its heading row instead (the visits tab, to keep four visits in view). */
+  showCounts?: boolean;
 }) {
   const t = useTranslations("DayBoard");
   const tNotes = useTranslations("VisitEntry.Notes");
@@ -129,7 +133,7 @@ export function DayBoard({
               <span className="block truncate font-bold" title={name}>
                 <bdi>{name}</bdi>
               </span>
-              <span className="block truncate text-sm text-muted-foreground">
+              <span className="block truncate text-xs leading-4 text-muted-foreground">
                 <Ltr>{visit.number}</Ltr>
                 {zone && (
                   <>
@@ -146,7 +150,7 @@ export function DayBoard({
         id: "team",
         header: t("Team"),
         cell: ({ row }) => {
-          const names = row.original.visit.team.map((worker) => `${worker.firstName} ${worker.lastName}`);
+          const names = row.original.visit.team.map((worker) => staffName(worker));
           return (
             <div className="max-w-36 min-w-0 xl:max-w-48">
               <span className="block truncate" title={names.join(listSeparator)}>
@@ -160,7 +164,7 @@ export function DayBoard({
                     ))}
               </span>
               {row.original.openSeats > 0 && (
-                <span className="block truncate text-sm font-semibold text-warning-ink">
+                <span className="block truncate text-xs leading-4 font-semibold text-warning-ink">
                   {t("OpenSeats", { count: row.original.openSeats })}
                 </span>
               )}
@@ -257,7 +261,7 @@ export function DayBoard({
   };
 
   return (
-    <div className="space-y-4 tall:space-y-5">
+    <div className="space-y-3 tall:space-y-5">
       <div className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-3">
         <div className="flex min-w-0 flex-wrap items-center gap-2">
           <Button variant="outline" size="sm" onClick={() => goTo(addDays(date, -1))} title={t("PreviousDay")}>
@@ -287,21 +291,7 @@ export function DayBoard({
         />
       </div>
 
-      <div className="flex min-w-0 flex-wrap items-center gap-2" aria-label={t("Counts")}>
-        <span className="me-1 text-base font-bold">{t("Total", { count: counts.total })}</span>
-        {counts.byStatus.map(({ status, count }) => (
-          <span key={status} className="inline-flex items-center gap-1.5">
-            <VisitStatusChip status={status} />
-            <span className="font-bold tabular-nums">{count}</span>
-          </span>
-        ))}
-        {counts.noArrival > 0 && (
-          <span className="inline-flex items-center gap-1.5">
-            <NoArrivalFlag />
-            <span className="font-bold tabular-nums">{counts.noArrival}</span>
-          </span>
-        )}
-      </div>
+      {showCounts && <Counts counts={counts} />}
 
       <DataTable
         table={table}
@@ -309,6 +299,41 @@ export function DayBoard({
         emptyMessage={t(loading ? "Loading" : rows.length === 0 ? "NoVisits" : "NoMatch")}
       />
       <TablePager table={table} />
+    </div>
+  );
+}
+
+/** The day's visits counted by status, and the flag: under the controls, or in a page's heading row. */
+export function DayBoardCounts({
+  visits,
+  clock,
+  graceMin,
+}: {
+  visits: readonly DayBoardVisit[];
+  clock: { today: string; nowTime: string };
+  graceMin?: number;
+}) {
+  const counts = boardCounts(boardRows(visits, clock, graceMin));
+  return <Counts counts={counts} />;
+}
+
+function Counts({ counts }: { counts: ReturnType<typeof boardCounts> }) {
+  const t = useTranslations("DayBoard");
+  return (
+    <div className="flex min-w-0 flex-wrap items-center gap-2" aria-label={t("Counts")}>
+      <span className="me-1 text-base font-bold">{t("Total", { count: counts.total })}</span>
+      {counts.byStatus.map(({ status, count }) => (
+        <span key={status} className="inline-flex items-center gap-1.5">
+          <VisitStatusChip status={status} />
+          <span className="font-bold tabular-nums">{count}</span>
+        </span>
+      ))}
+      {counts.noArrival > 0 && (
+        <span className="inline-flex items-center gap-1.5">
+          <NoArrivalFlag />
+          <span className="font-bold tabular-nums">{counts.noArrival}</span>
+        </span>
+      )}
     </div>
   );
 }

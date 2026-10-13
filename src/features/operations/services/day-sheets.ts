@@ -5,6 +5,7 @@ import type { Executor, ServiceContext } from "@/lib/service/context";
 import { ServiceError } from "@/lib/service/errors";
 import { getSettings } from "@/lib/settings";
 import { localDate, type LocalDate } from "@/lib/units";
+import { staffName } from "@/lib/text/names";
 
 import { addDays, weekdayOf, weekdaysOfCodes } from "../rules/calendar";
 import { endTimeOf } from "../rules/visit-dates";
@@ -18,7 +19,7 @@ import { readSiteForOrder } from "./upstream";
  * supervisor's day (#36) and the client call list (#16).
  */
 
-const fullName = (person: { firstName: string; lastName: string }) => `${person.firstName} ${person.lastName}`.trim();
+const fullName = staffName;
 
 /** The visits of a day that still exist for anyone: not cancelled, not dropped by a programme change. */
 function dayVisits(ex: Executor, date: LocalDate) {

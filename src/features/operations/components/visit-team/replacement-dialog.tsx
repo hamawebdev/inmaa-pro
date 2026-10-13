@@ -24,6 +24,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useErrorMessage } from "@/i18n/errors";
 import { useCodeLabel } from "@/i18n/use-code-label";
 import { pathKey } from "@/lib/compat/revalidate";
+import { staffName } from "@/lib/text/names";
 
 import {
   REPLACEMENT_REASONS,
@@ -198,7 +199,7 @@ function RankedRow({ candidate }: { candidate: Ranked }) {
       <div className="min-w-0 flex-1 space-y-1.5">
         <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
           <span className="font-bold">
-            <bdi>{`${candidate.firstName} ${candidate.lastName}`}</bdi>
+            <bdi>{staffName(candidate)}</bdi>
           </span>
           <span className={candidate.overtime ? "font-semibold text-warning-ink" : "text-muted-foreground"}>
             {t("WeekHours")}{" "}
@@ -237,7 +238,7 @@ function Excluded({ excluded }: { excluded: ReplacementSuggestions["excluded"] }
           {excluded.map((entry) => (
             <li key={entry.workerId} className="flex flex-wrap gap-x-2">
               <span className="font-semibold">
-                <bdi>{`${entry.firstName} ${entry.lastName}`}</bdi>
+                <bdi>{staffName(entry)}</bdi>
               </span>
               <span className="text-muted-foreground">{entry.reasons.map(exclusionLabel).join(separator)}</span>
             </li>
