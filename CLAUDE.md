@@ -52,7 +52,7 @@ Every file has one owner. Edit only your own. If you need a change in someone el
 | `src/features/clients/**`; pages `files/` (except the four sub-folders that Operations and Money own), `clients/`, `rep-visits/` | Clients and contracts |
 | `src/features/operations/**`; pages `supervisors/`, `work-program/`, `worker-attendance/`, `visits/`, `quality/`, `files/[id]/tasks/`, `files/[id]/visits/` | Operations |
 | `src/features/money/**`, `src/features/stock/**`; pages `expenses/`, `income/`, `invoices/`, `payments/`, `reports/`, `inventory/`, `handouts/`, `purchases/`, `maintenance/`, `files/[id]/handouts/`, `files/[id]/payments/` | Money and stock |
-| `docs/checker-table.md`, `docs/checker/**` | Checker |
+| `docs/checker-table.md`, `docs/checker/**`, `src/testing/scenarios/acceptance/**` (the end-to-end scenario tests of `docs/checker/acceptance.md`; they go through the owners' services and change none) | Checker |
 | Anything not listed | Foundation |
 | `CLAUDE.md`, `docs/scope.md` | Coordinator (Foundation maintains the last section of this file) |
 
