@@ -1,23 +1,32 @@
 import * as React from "react";
 
 import { useQuery } from "@tanstack/react-query";
+import { useSearchParams } from "react-router-dom";
+import { toast } from "sonner";
 import { useTranslations } from "use-intl";
 
 import { DetailScreen } from "@/components/detail-screen";
+import { Ltr } from "@/components/ltr";
+import { StatusChip } from "@/components/status-chip";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { getNewFileDefaultsQuery } from "@/features/clients/services/file-reads";
+import type { ReturningFillResult } from "@/features/clients/services/returning";
 import { screenStateOf, type FileScreenState } from "@/features/clients/validators/file-screen";
 import {
   DIVISIONS_WITH_REQUESTS,
+  FORM_KIND_OF,
   formKindFor,
   type Division,
   type FormKind,
   type ServiceType,
 } from "@/features/clients/validators/option-lists";
-import { useCan } from "@/hooks/use-session";
+import { DECISION_TONE } from "@/features/people/components/status-tones";
+import { getDecisionQuery } from "@/features/people/services/sanction-decisions";
+import { SANCTIONS_PATH } from "@/features/people/services/sanctions";
 import { useCodeLabel } from "@/i18n/use-code-label";
 import { pathKey } from "@/lib/compat/revalidate";
 import { DIVISIONS, SERVICE_TYPES } from "@/lib/options";
@@ -25,18 +34,36 @@ import { cn } from "@/lib/utils";
 import { FILES_PATH } from "@/navigation/file-parts";
 import { SECTION_ACCENT } from "@/navigation/sections";
 
-import { FileForm } from "../_components/file-form";
+import { FileForm, type FileDraft } from "../_components/file-form";
 import { filesHref, useFilesFilter } from "../_components/files-filter";
+import { ReturningDialog, type ReturningLink } from "../_components/returning-dialog";
 
 /**
  * «ملف جديد»: the division and the kind of service choose which of his six
  * forms is filled in; then the form, card by card, in his order.
  *
  * Closest academy screen: the new employee page (employees/new/page.tsx) with
- * its stacked-card form; the two choices above it are the groups' level switch
+ * its stacked-card form; the choices above it are the groups' level switch
  * (groups/_components/groups-tabs.tsx). What was typed is carried over when
  * the choice changes.
+ *
+ * «حالة الملف»: «جديد», or «قديم» (plan feature 40), which finds a client the
+ * centre already knows and fills the form from his last file. `?decision=<id>`
+ * brings back a file the manager was asked about, because its client matches
+ * somebody suspended or penalised: what was typed is on the screen again and
+ * his yes travels with the save.
  */
+
+const FILE_STATUSES = ["NEW", "OLD"] as const;
+
+/** What a question to the manager kept of the file, if it is one of ours. */
+function draftOf(payload: unknown): FileDraft | null {
+  if (!payload || typeof payload !== "object") return null;
+  const draft = payload as Partial<FileDraft>;
+  if (typeof draft.kind !== "string" || !(draft.kind in FORM_KIND_OF)) return null;
+  if (!draft.state || typeof draft.state !== "object") return null;
+  return { kind: draft.kind, state: draft.state, returning: draft.returning ?? null };
+}
 
 function Switch<T extends string>({
   label,
@@ -83,17 +110,87 @@ function Switch<T extends string>({
 export default function NewFilePage() {
   const t = useTranslations("FileForm");
   const tNav = useTranslations("Nav");
+  const tSanctions = useTranslations("Sanctions");
+  const filter = useFilesFilter();
+  const [params] = useSearchParams();
+  const decisionId = params.get("decision");
+
+  const { data: decision, isPending } = useQuery({
+    queryKey: [...pathKey(SANCTIONS_PATH), "decision", decisionId],
+    queryFn: () => getDecisionQuery({ decisionId: decisionId ?? "" }),
+    enabled: decisionId !== null,
+  });
+  const waiting = decisionId !== null && isPending;
+  const used = decision?.consumedAt != null;
+  // His no, a withdrawn question or a yes already spent leave nothing to resume.
+  const resumable = !decision || (!used && (decision.status === "ALLOWED" || decision.status === "PENDING"));
+  const notice = decision ? (
+    <div className="mb-6 flex flex-wrap items-center gap-3">
+      <StatusChip
+        tone={used ? "neutral" : DECISION_TONE[decision.status]}
+        label={used ? tSanctions("Page.Used") : tSanctions(`DecisionStatuses.${decision.status}`)}
+      />
+      <p className="text-base text-muted-foreground">
+        {t(`Resume.${used ? "USED" : decision.status}`, { name: decision.sanction.displayName })}
+      </p>
+    </div>
+  ) : null;
+
+  if (waiting || !resumable) {
+    return (
+      <DetailScreen
+        section="requests"
+        title={t("NewTitle")}
+        description={t("NewDescription")}
+        back={{ href: filesHref(filter.division), label: tNav("Files") }}
+      >
+        {waiting ? <Skeleton className="h-96 w-full" /> : notice}
+      </DetailScreen>
+    );
+  }
+  return (
+    <NewFile
+      key={decisionId ?? "new"}
+      draft={draftOf(decision?.draftPayload)}
+      decisionId={decision?.status === "ALLOWED" ? decision.id : null}
+      notice={notice}
+    />
+  );
+}
+
+function NewFile({
+  draft,
+  decisionId,
+  notice,
+}: {
+  draft: FileDraft | null;
+  decisionId: string | null;
+  notice: React.ReactNode;
+}) {
+  const t = useTranslations("FileForm");
+  const tNav = useTranslations("Nav");
   const divisionLabel = useCodeLabel("Options.Division");
   const serviceLabel = useCodeLabel("Options.ServiceType");
+  const statusLabel = useCodeLabel("FileOptions.StatusTick");
   const filter = useFilesFilter();
-  const readsResidents = useCan("residents.read");
-  const [division, setDivision] = React.useState<Division>(filter.division);
+  const drafted = draft ? FORM_KIND_OF[draft.kind] : null;
+  const [division, setDivision] = React.useState<Division>(drafted?.division ?? filter.division);
   const [service, setService] = React.useState<ServiceType | "">(
-    DIVISIONS_WITH_REQUESTS.includes(filter.division) ? (filter.service === "ALL" ? "" : filter.service) : "CONTRACT",
+    drafted
+      ? drafted.serviceType
+      : DIVISIONS_WITH_REQUESTS.includes(filter.division)
+        ? filter.service === "ALL"
+          ? ""
+          : filter.service
+        : "CONTRACT",
   );
   const kind: FormKind | null = service === "" ? null : formKindFor(division, service);
   const carried = React.useRef<(() => FileScreenState) | null>(null);
-  const [initial, setInitial] = React.useState<FileScreenState | null>(null);
+  const [initial, setInitial] = React.useState<FileScreenState | null>(draft?.state ?? null);
+  const [returning, setReturning] = React.useState<ReturningLink | null>(draft?.returning ?? null);
+  // A fill replaces what the form shows: the form is mounted again on it.
+  const [fills, setFills] = React.useState(0);
+  const [finding, setFinding] = React.useState(false);
 
   const defaults = useQuery({
     queryKey: [...pathKey(FILES_PATH), "new-defaults"],
@@ -103,6 +200,8 @@ export default function NewFilePage() {
   const choose = (nextDivision: Division, nextService: ServiceType | "") => {
     // What was typed so far goes over to the other form: most of his answers are on all six.
     if (carried.current) setInitial(carried.current());
+    // A site belongs to one division: in another, the client is known and the site is new.
+    if (returning && nextDivision !== division) setReturning({ ...returning, siteId: null, copiedFromFileId: null });
     setDivision(nextDivision);
     setService(DIVISIONS_WITH_REQUESTS.includes(nextDivision) ? nextService : "CONTRACT");
   };
@@ -124,6 +223,33 @@ export default function NewFilePage() {
     };
   }, [kind, defaults.data, initial]);
 
+  /** «قديم»: his answers replace what the form shows; what he has no answer for stays as typed. */
+  const fillFrom = (fill: ReturningFillResult) => {
+    if (!kind || !start) return;
+    const typed = carried.current?.() ?? start;
+    const filled = screenStateOf(kind, fill.values, undefined, fill.siteOffice ?? undefined);
+    const answers = { ...typed.answers };
+    for (const key of Object.keys(fill.values)) {
+      if (key !== "dossierNumber" && key in filled.answers) answers[key] = filled.answers[key];
+    }
+    setInitial({
+      answers,
+      office: typed.office,
+      site: fill.siteOffice ? filled.site : typed.site,
+      residents: fill.siteId ? [] : typed.residents,
+    });
+    setReturning({
+      clientId: fill.clientId,
+      clientNumber: fill.clientNumber,
+      clientName: fill.clientName,
+      siteId: fill.siteId,
+      copiedFromFileId: fill.copiedFromFileId,
+    });
+    setFills((count) => count + 1);
+    toast.success(t("Returning.Filled", { name: fill.clientName }));
+  };
+
+  const building = kind === "BUILDING_CONTRACT" || kind === "COMPLEX_CONTRACT";
   return (
     <DetailScreen
       section="requests"
@@ -131,46 +257,76 @@ export default function NewFilePage() {
       description={t("NewDescription")}
       back={{ href: filesHref(division), label: tNav("Files") }}
     >
+      {notice}
       <div className="space-y-6">
         <Card>
           <CardHeader>
             <CardTitle className="text-base">{t("ChooseForm")}</CardTitle>
             {!DIVISIONS_WITH_REQUESTS.includes(division) && <CardDescription>{t("ContractOnly")}</CardDescription>}
           </CardHeader>
-          <CardContent className="flex flex-wrap items-start gap-x-10 gap-y-5">
-            <Switch
-              label={t("Division")}
-              value={division}
-              options={DIVISIONS}
-              labelOf={divisionLabel}
-              onChange={(code) => choose(code, service)}
-            />
-            {DIVISIONS_WITH_REQUESTS.includes(division) && (
+          <CardContent className="space-y-5">
+            <div className="flex flex-wrap items-start gap-x-10 gap-y-5">
               <Switch
-                label={t("ServiceType")}
-                value={service}
-                options={SERVICE_TYPES}
-                labelOf={serviceLabel}
-                onChange={(code) => choose(division, code)}
+                label={t("Division")}
+                value={division}
+                options={DIVISIONS}
+                labelOf={divisionLabel}
+                onChange={(code) => choose(code, service)}
               />
-            )}
+              {DIVISIONS_WITH_REQUESTS.includes(division) && (
+                <Switch
+                  label={t("ServiceType")}
+                  value={service}
+                  options={SERVICE_TYPES}
+                  labelOf={serviceLabel}
+                  onChange={(code) => choose(division, code)}
+                />
+              )}
+              {kind && (
+                <Switch
+                  label={t("Labels.statusTicks")}
+                  value={returning ? "OLD" : "NEW"}
+                  options={FILE_STATUSES}
+                  labelOf={statusLabel}
+                  onChange={(code) => {
+                    if (code === "OLD") setFinding(true);
+                    else setReturning(null);
+                  }}
+                />
+              )}
+            </div>
+            {kind &&
+              (returning ? (
+                <div className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border border-dashed px-4 py-3">
+                  <span className="min-w-0 font-semibold break-words">{returning.clientName}</span>
+                  <span className="text-muted-foreground">
+                    {t("Returning.ClientNumber")} <Ltr className="tabular-nums">{returning.clientNumber}</Ltr>
+                  </span>
+                  <span className="text-muted-foreground">
+                    {t(returning.siteId ? "Returning.OnHisSite" : "Returning.OnNewSite")}
+                  </span>
+                  <Button type="button" variant="outline" className="ms-auto" onClick={() => setFinding(true)}>
+                    {t("Returning.Change")}
+                  </Button>
+                </div>
+              ) : (
+                <p className="text-muted-foreground">{t("Returning.Hint")}</p>
+              ))}
           </CardContent>
         </Card>
 
         {kind && start ? (
           <FileForm
-            key={kind}
+            key={`${kind}:${fills}`}
             formKind={kind}
-            mode={{ kind: "new" }}
+            mode={{ kind: "new", returning, decisionId }}
             initial={start}
-            statusTicks={["NEW"]}
-            dossierNumber={null}
+            statusTicks={[returning ? "OLD" : "NEW"]}
+            dossierNumber={returning?.clientNumber ?? null}
             residents={
-              kind === "BUILDING_CONTRACT" || kind === "COMPLEX_CONTRACT"
-                ? readsResidents
-                  ? "ALLOWED"
-                  : "RESTRICTED"
-                : "NONE"
+              // A new file brings its list with it, whoever registers it; a site he already has keeps its own
+              // list, which is on the file's form once the file exists.
+              building && !returning?.siteId ? "ALLOWED" : "NONE"
             }
             stateRef={carried}
           />
@@ -178,6 +334,7 @@ export default function NewFilePage() {
           <Skeleton className="h-96 w-full" />
         ) : null}
       </div>
+      {kind && <ReturningDialog open={finding} kind={kind} onOpenChange={setFinding} onPick={fillFrom} />}
     </DetailScreen>
   );
 }

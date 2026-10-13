@@ -19,6 +19,8 @@ For whoever continues this folder. Features 1, 2, 3, 4, 5, 6, 26, 29, 40. Read `
 | Reads: `listFiles`, `getFileHub`, `getFileForm`, `openResidentList`, `openFileSheet`, `recordFileOpened`, `recordFilePrint`                                                                                                                        | `services/file-reads.ts`                                            |
 | The handler of `zone.remapped`                                                                                                                                                                                                                     | `events.ts`, `services/sites.ts`                                    |
 | One renderer for the six sheets and the residents page                                                                                                                                                                                             | `sheets/file-form-sheet.tsx`                                        |
+| What a day's start does: a live contract past «تاريخ النهاية» reaches «انتهاء التعاقد» (EXPIRED, or RENEWED when its successor is signed)                                                                                                          | `daily.ts`, `services/files.ts` (`endExpiredContracts`)             |
+| The home tile «عروض أسعار تنتظر المتابعة» (feature 29, `quote.followUp`)                                                                                                                                                                           | `alerts.ts`, `services/alerts.ts`                                   |
 | Demo data: five files through the services, on their own dates                                                                                                                                                                                     | `demo.ts`                                                           |
 | Screens: the list, the new file, the hub, the form, the two print pages, the empty forms                                                                                                                                                           | `src/pages/dashboard/files/`                                        |
 
@@ -47,20 +49,30 @@ Placeholders still: the parts `inspection`, `financial-study`, `quote`, `contrac
 - A contract becomes «متعاقد» once his sheet's terms and the office's amount basis are filled; an on-demand file once its quote is accepted too.
 - Name, phone, address and commune are required to register a file (the columns are NOT NULL).
 
-## Open (end of round 1)
+## Round 1: done (files end to end)
+
+A file is registered from any of his six forms, saved again, moved through its stages, read for the list, the hub, the form and the printed sheet, and printed from what is stored. Checked at the end of the round: `npx tsc --noEmit` (no error in these paths), `npx eslint` and `npx prettier --check` on these paths (clean), `npx vitest run src/features/clients` (17 files, 159 tests), the whole suite, 97 screenshots in `.harness/shots/clients-r1/` (Arabic and French, light and dark, both sizes; two as the accountant), 12 PDFs in `.harness/pdf/clients-r1/` (stored files 2, 2, 2, 3, 3 pages; residents 1; empty forms 2, 2, 2, 2, 3, 3).
+
+What a reader should know about it:
+
+- Screens follow the reader's level: a role that only reads «طلبات الخدمة» sees no «ملف جديد», no stage move and no save; the services refuse them anyway.
+- «متوقف» and «معاقب» are ticked from People's `getSanctionStates` on the sheet and on the form.
+- The print pages use the kit's `<PrintButton onPrint>`: the disclosure is logged first, and nothing prints if it cannot be.
+- The list reads `?ids=a,b` (exactly those files, for a home tile) and `?stage=QUOTE`.
+- Table positions on paper follow the Checker's corrected facts (leading-edge tables −2.7 mm, centred ones −2.6 mm from the right margin): right edges print 7.3 mm from the paper edge, left edges about 10.0 mm (the target is 10.1 to 10.2; the difference is the border's own width).
+- Page 1 of the building contract is the fullest page of all: it ends 6 mm above the end of the text area when every answer is one line long.
+
+## Open
 
 Not built yet, in the order planned:
 
-1. Round 2: «العملاء» list and the client card (contacts, sites, tax identifiers, sanction chip); the «قديم» dialog (`rules/returning-client.ts` has the copy rules) with People's `checkSanction` / `SanctionGate` before a registration; the part «القاطنون» (office columns: apartment, building, left date); the list's `?ids=` view for Money's contract-ending tile.
-2. Then: «الزيارة الأولية», «الدراسة المالية», «عرض السعر» (an on-demand file cannot reach «متعاقد» before its quote is accepted), «العقد وتجديده» (the office's own closing and ending screens, `endContract`, `renewFile`, the day-start ending at `endDate`), «زيارات المندوب التجاري».
+1. Round 2: the «قديم» dialog (`rules/returning-client.ts` has the copy rules) with People's `useSanctionGate` (context `CLIENT_FILE`) before a registration; «العملاء» list and the client card (contacts, sites, tax identifiers, `<SanctionChip>`, set and lift through People's `setSanction` / `liftSanction`); the part «القاطنون» (office columns: apartment, building, left date).
+2. Then: «الزيارة الأولية», «الدراسة المالية», «عرض السعر» (an on-demand file cannot reach «متعاقد» before its quote is accepted), «العقد وتجديده» (the office's own closing and ending screens, `endContract`, `renewFile`), «زيارات المندوب التجاري».
 3. The other functions CONTRACTS.md section 3 names (`getFileBillingTerms`, `getClientForInvoice`, `getFileEstimate`, `getAcceptedQuote`, `endContract`, `renewFile`): Money reads the tables directly for now.
 
 Known gaps in what is built:
 
-- «متوقف» and «معاقب» are never ticked: they wait for People's `getSanctionStates` (`services/file-reads.ts`, `openFileSheet`; the form page passes "NONE").
-- The print pages use their own button (`pages/dashboard/files/_components/logged-print-button.tsx`) because the kit's `PrintButton` has no hook to log the disclosure first.
-- A ticked radio button is given its look in `sheet-fields.tsx` (`RADIO_CHECKED`): the shared `RadioGroupItem` and `Checkbox` style their ticked state with `data-checked:`, which matches nothing.
+- A ticked radio button is given its look in `pages/dashboard/files/_components/sheet-fields.tsx` (`RADIO_CHECKED`): the shared `RadioGroupItem` and `Checkbox` style their ticked state with `data-checked:`, which matches nothing (asked of Foundation).
 - The client's number («رقم الملف») is always given by the program; a number already on paper (`claimNumber`, capability `file.setNumber`) has no field yet.
 - A site's zone is set to its commune's zone at every save of an unsigned file; once a site can be put in another zone by hand, the form must stop doing that.
-
-Needed from others: see the last report to the coordinator.
+- `closeFile` closes a file not yet signed, or ends a signed on-demand job (JOB_DONE). A signed contract is ended by `moveFileStage` to «انتهاء التعاقد» with its kind of ending; no screen offers that yet.

@@ -395,7 +395,8 @@ export interface FileForm {
   statusTicks: FileStatusTick[];
 }
 
-function siteOfficeOf(site: FileRecord["site"]): SiteOfficeInput {
+/** The office block of a site as the form shows it: sets as lists, rules as yes or no. */
+export function siteOfficeOf(site: FileRecord["site"]): SiteOfficeInput {
   const office: Record<string, unknown> = {};
   const columns = [
     "district",

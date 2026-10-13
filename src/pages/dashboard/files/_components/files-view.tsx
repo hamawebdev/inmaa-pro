@@ -8,7 +8,7 @@ import {
   type ColumnDef,
   type PaginationState,
 } from "@tanstack/react-table";
-import { FileText, FolderOpen } from "lucide-react";
+import { FolderOpen } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useTranslations } from "use-intl";
 
@@ -29,7 +29,7 @@ import {
 import { useCodeLabel } from "@/i18n/use-code-label";
 import { pathKey } from "@/lib/compat/revalidate";
 import { DIVISIONS, SERVICE_TYPES } from "@/lib/options";
-import { fileHubHref, filePartHref, FILES_PATH } from "@/navigation/file-parts";
+import { fileHubHref, FILES_PATH } from "@/navigation/file-parts";
 
 import { ALL, filesHref, useFilesFilter } from "./files-filter";
 import { stageTone } from "./stage-tone";
@@ -88,8 +88,8 @@ export function FilesView() {
         id: "client",
         header: t("Columns.Client"),
         cell: ({ row }) => (
-          <div className="min-w-0">
-            <p className="truncate font-bold">{row.original.clientName}</p>
+          <div className="min-w-36">
+            <p className="font-bold">{row.original.clientName}</p>
             <p className="text-sm text-muted-foreground">
               <Ltr>{row.original.phone}</Ltr>
             </p>
@@ -100,8 +100,8 @@ export function FilesView() {
         id: "site",
         header: t("Columns.Site"),
         cell: ({ row }) => (
-          <div className="min-w-0">
-            <p className="truncate">{row.original.siteName}</p>
+          <div className="min-w-40">
+            <p>{row.original.siteName}</p>
             {row.original.communeName && <p className="text-sm text-muted-foreground">{row.original.communeName}</p>}
           </div>
         ),
@@ -111,7 +111,7 @@ export function FilesView() {
             {
               id: "service",
               header: t("Columns.ServiceType"),
-              cell: ({ row }) => serviceLabel(row.original.serviceType),
+              cell: ({ row }) => <span className="whitespace-nowrap">{serviceLabel(row.original.serviceType)}</span>,
             } satisfies ColumnDef<FileListRow>,
           ]
         : []),
@@ -135,10 +135,13 @@ export function FilesView() {
         header: t("Columns.Period"),
         cell: ({ row }) =>
           row.original.startDate ? (
-            <Ltr className="whitespace-nowrap">
-              {formatSheetDate(row.original.startDate)}
-              {row.original.endDate ? ` – ${formatSheetDate(row.original.endDate)}` : ""}
-            </Ltr>
+            // One date above the other: side by side they would push the row's button out of the window.
+            <div className="leading-snug whitespace-nowrap">
+              <Ltr className="block">{formatSheetDate(row.original.startDate)}</Ltr>
+              {row.original.endDate && (
+                <Ltr className="block text-muted-foreground">{formatSheetDate(row.original.endDate)}</Ltr>
+              )}
+            </div>
           ) : (
             <span className="text-muted-foreground">—</span>
           ),
@@ -152,12 +155,6 @@ export function FilesView() {
               <Link to={fileHubHref(row.original.id)}>
                 <FolderOpen />
                 {t("Open")}
-              </Link>
-            </Button>
-            <Button variant="outline" size="sm" asChild>
-              <Link to={filePartHref(row.original.id, "form")}>
-                <FileText />
-                {t("Form")}
               </Link>
             </Button>
           </div>

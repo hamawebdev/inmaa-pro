@@ -14,8 +14,18 @@ it("registers one file per division through the services, each at its stage", as
   const files = await test.db
     .selectFrom("File as f")
     .innerJoin("Client as c", "c.id", "f.clientId")
-    .select(["f.id", "f.formKind", "f.number", "f.stage", "f.registrationDate", "f.lockedAt", "c.number as client"])
-    .orderBy("f.registrationDate")
+    .select([
+      "f.id",
+      "f.formKind",
+      "f.number",
+      "f.stage",
+      "f.registrationDate",
+      "f.lockedAt",
+      "f.totalAmount",
+      "f.amountBasis",
+      "c.number as client",
+    ])
+    .orderBy("f.createdAt")
     .execute();
   expect(files).toEqual([
     expect.objectContaining({
@@ -59,8 +69,39 @@ it("registers one file per division through the services, each at its stage", as
       lockedAt: null,
       client: "5",
     }),
+    // The two jobs on demand whose quote was accepted.
+    expect.objectContaining({
+      id: names.housingJob,
+      formKind: "HOUSING_REQUEST",
+      number: "2",
+      stage: "CONTRACTED",
+      totalAmount: 950000,
+      amountBasis: "WHOLE_CONTRACT",
+      client: "6",
+    }),
+    expect.objectContaining({
+      id: names.orgJob,
+      formKind: "ORG_REQUEST",
+      number: "1",
+      stage: "CONTRACTED",
+      totalAmount: 3400000,
+      client: "7",
+    }),
   ]);
-  expect(files.filter((file) => file.lockedAt !== null)).toHaveLength(4);
+  expect(files.filter((file) => file.lockedAt !== null)).toHaveLength(6);
+
+  // Each on-demand file has its study and its quote, approved by the manager and issued.
+  const quotes = await test.db
+    .selectFrom("Quote")
+    .select(["id", "number", "status", "result", "total"])
+    .orderBy("numberSeq")
+    .execute();
+  expect(quotes).toEqual([
+    { id: names.housingJobQuote, number: "0001/2026", status: "ISSUED", result: "ACCEPTED", total: 950000 },
+    { id: names.orgJobQuote, number: "0002/2026", status: "ISSUED", result: "ACCEPTED", total: 3400000 },
+    { id: names.housingRequestQuote, number: "0003/2026", status: "ISSUED", result: "PENDING", total: 1800000 },
+  ]);
+  expect(await test.db.selectFrom("CostStudy").select("id").execute()).toHaveLength(3);
 
   // Each step on its own day, by the account that would have taken it.
   const history = await test.db

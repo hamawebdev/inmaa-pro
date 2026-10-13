@@ -2,11 +2,12 @@ import type { Insertable, Updateable } from "kysely";
 import type { z } from "zod";
 
 import { ensureCommune, ensureZoneForCommune } from "@/features/core/services/places";
+import { checkSanction, consumeDecision } from "@/features/people/services/sanctions";
 import { can, requireCapability, requireSection } from "@/lib/access/session";
 import { newId } from "@/lib/db/rows";
 import type { DB } from "@/lib/db/schema";
 import { emit } from "@/lib/events";
-import { logChange, logCollect, logErase } from "@/lib/log";
+import { logChange, logCollect, logConsult, logErase } from "@/lib/log";
 import { fileSequenceKey, nextNumber } from "@/lib/numbering";
 import { action } from "@/lib/service/action";
 import { changedColumns } from "@/lib/service/changes";
@@ -23,6 +24,7 @@ import {
   printedKeys,
   storedAnswersOf,
   textOrNull,
+  type ClientRow,
   type PartySnapshot,
   type ServiceDraft,
   type ServiceRow,
@@ -210,6 +212,11 @@ async function insertResident(
  * Brings the residents of a site in line with the list typed: new lines are
  * added, changed lines updated, lines left out removed (a soft delete, with the
  * reason the user typed).
+ *
+ * The list is third-party data, read and changed only with `residents.read`.
+ * The one exception is the first registration of a file (the coordinator's
+ * ruling): the clerk is copying the paper in front of her, so the list comes
+ * in with the right to write the requests alone, each line logged as a COLLECT.
  */
 async function saveResidents(
   ex: Executor,
@@ -218,8 +225,9 @@ async function saveResidents(
   lines: readonly ResidentInput[],
   reason: string | undefined,
   context: Record<string, unknown>,
+  firstRegistration = false,
 ): Promise<boolean> {
-  requireCapability(ctx, "residents.read");
+  if (!firstRegistration) requireCapability(ctx, "residents.read");
   const before = await ex
     .selectFrom("Resident")
     .selectAll()
@@ -286,6 +294,96 @@ async function saveResidents(
   return changed;
 }
 
+// ── Who the client is, where the site is: changed from a form ────────────────
+
+/** The search keys are derived from the name and the phones: the log names what was typed, not them. */
+function withoutKeys(changes: Record<string, readonly [unknown, unknown]>) {
+  const derived = new Set(["nameKey", "managerNameKey", "phoneKeys", "commonNameKey"]);
+  return Object.fromEntries(Object.entries(changes).filter(([column]) => !derived.has(column)));
+}
+
+/** Brings a client's record in line with what a form says about him: only what that form prints, only what changed. */
+async function updateClientFromSheet(
+  ex: Executor,
+  ctx: ServiceContext,
+  client: ClientRow,
+  kind: FormKind,
+  values: FormValues,
+  answers: Updateable<DB["Client"]>,
+  context: Record<string, unknown>,
+): Promise<boolean> {
+  const name = textOrNull(values.clientName)!;
+  const managerName = textOrNull(values.managerName);
+  const patch = changedColumns(client, {
+    ...answers,
+    nameKey: normaliseName(name),
+    ...(printedKeys(kind).has("managerName")
+      ? { managerNameKey: managerName ? normaliseName(managerName) : null }
+      : {}),
+    phoneKeys: phoneKeys([textOrNull(values.phone), client.phone2]),
+  } as Partial<ClientRow>);
+  if (!patch.changes) return false;
+  await ex
+    .updateTable("Client")
+    .set({ ...patch.set, updatedAt: ctx.now, updatedByUserId: ctx.userId })
+    .where("id", "=", client.id)
+    .execute();
+  await logChange(ex, ctx, {
+    owner: "CLIENTS",
+    action: "UPDATE",
+    entity: "Client",
+    entityId: client.id,
+    entityLabel: client.number,
+    subject: clientSubject({ id: client.id, name }),
+    changes: withoutKeys(patch.changes),
+    context,
+  });
+  return true;
+}
+
+/**
+ * Brings a site's record in line with a patch (his answers, the office block),
+ * its commune and its zone with the address typed when `values` is given.
+ */
+async function updateSiteFromSheet(
+  ex: Executor,
+  ctx: ServiceContext,
+  site: SiteRow,
+  client: { id: string; name: string },
+  values: FormValues | null,
+  columns: Updateable<DB["Site"]>,
+  context: Record<string, unknown>,
+): Promise<{ changed: boolean; zoneChanged: boolean; profileChanged: boolean }> {
+  const wanted: Record<string, unknown> = { ...columns };
+  if (values) {
+    const { communeId, zoneId } = await placeOf(ex, ctx, values);
+    const commonName = textOrNull(values.commonName);
+    Object.assign(wanted, { communeId, zoneId, commonNameKey: commonName ? normaliseName(commonName) : null });
+  }
+  const patch = changedColumns(site, wanted as Partial<SiteRow>);
+  if (!patch.changes) return { changed: false, zoneChanged: false, profileChanged: false };
+  await ex
+    .updateTable("Site")
+    .set({ ...patch.set, updatedAt: ctx.now, updatedByUserId: ctx.userId })
+    .where("id", "=", site.id)
+    .execute();
+  await logChange(ex, ctx, {
+    owner: "CLIENTS",
+    action: "UPDATE",
+    entity: "Site",
+    entityId: site.id,
+    entityLabel: site.commonName ?? site.address,
+    subject: clientSubject(client),
+    changes: withoutKeys(patch.changes),
+    context,
+  });
+  return {
+    changed: true,
+    zoneChanged: "zoneId" in patch.changes,
+    profileChanged: Object.keys(patch.changes).some((column) => column !== "zoneId"),
+  };
+}
+
 // ── Registering a file ───────────────────────────────────────────────────────
 
 export interface RegisterFileInput {
@@ -296,6 +394,15 @@ export interface RegisterFileInput {
   siteOffice?: SiteOfficeInput;
   /** «قائمة القاطنين بالعمارة», buildings and complexes only. */
   residents?: ResidentInput[];
+  /**
+   * «قديم»: the client already has a record, and perhaps this site. The file is
+   * registered under that client (who keeps his number) and on that site, or
+   * on a new site of his; `copiedFromFileId` is the file the form was filled from.
+   */
+  returning?: { clientId: string; siteId?: string | null; copiedFromFileId?: string | null };
+  /** What the suspended-or-penalised gate handed back (People's `useSanctionGate`). */
+  notTheSamePerson?: boolean;
+  decisionId?: string | null;
 }
 
 export interface RegisteredFile {
@@ -306,8 +413,13 @@ export interface RegisteredFile {
 }
 
 /**
- * Registers a file from one of his six forms: a new client, its site and the
- * file, numbered from the form's own counter («31/BLC»), at «جديد».
+ * Registers a file from one of his six forms, numbered from the form's own
+ * counter («31/BLC»), at «جديد»: for a new client and his site, or with
+ * `returning` («قديم») for a client the centre already knows.
+ *
+ * The client is checked against the suspended and the penalised first
+ * (People's `checkSanction`, plan feature 40): a match stops the registration
+ * until the manager has said yes to it, and his yes is spent by this file.
  */
 export async function registerFile(
   ex: Executor,
@@ -332,73 +444,147 @@ export async function registerFile(
   const answers = storedAnswersOf(kind, values);
   const audit = { formKind: kind };
 
-  // ── The client ──
-  const dossier = await nextNumber(ex, ctx, "CLIENT_DOSSIER", { date: registrationDate });
-  const clientId = newId();
-  const name = textOrNull(values.clientName)!;
-  const phone1 = textOrNull(values.phone)!;
-  const managerName = textOrNull(values.managerName);
-  await ex
-    .insertInto("Client")
-    .values({
-      ...answers.client,
-      id: clientId,
-      numberSeq: dossier.seq,
-      number: dossier.display,
-      clientType: CLIENT_TYPE_OF[division],
-      name,
-      nameKey: normaliseName(name),
-      managerNameKey: managerName ? normaliseName(managerName) : null,
-      phone1,
-      phoneKeys: phoneKeys([phone1]),
-      branchId: ctx.branchId,
-      createdAt: ctx.now,
-      updatedAt: ctx.now,
-      createdByUserId: ctx.userId,
-      updatedByUserId: ctx.userId,
-    })
-    .execute();
-  await logCollect(ex, ctx, {
-    owner: "CLIENTS",
-    action: "CREATE",
-    entity: "Client",
-    entityId: clientId,
-    entityLabel: dossier.display,
-    subject: clientSubject({ id: clientId, name }),
-    context: audit,
+  // ── Suspended or penalised? ──
+  const returning = input.returning ?? null;
+  const known = returning
+    ? await ex
+        .selectFrom("Client")
+        .selectAll()
+        .where("id", "=", returning.clientId)
+        .where("deletedAt", "is", null)
+        .executeTakeFirst()
+    : undefined;
+  if (returning && !known) throw new ServiceError("This client does not exist.");
+  const decisionId = input.decisionId ?? null;
+  const check = await checkSanction(ex, ctx, {
+    context: "CLIENT_FILE",
+    subjectKind: "CLIENT",
+    subjectId: known?.id ?? null,
+    identity: {
+      name: textOrNull(values.clientName),
+      phones: [textOrNull(values.phone), known?.phone2],
+      taxNumbers: [known?.rcNumber, known?.nis, known?.nif],
+    },
+    decisionId,
   });
+  if (check.outcome === "BLOCKED") {
+    throw new ServiceError("This person is suspended or penalised. The manager must allow the registration first.");
+  }
+  if (check.outcome === "REFUSED") throw new ServiceError("The manager did not allow this person to be registered.");
+  if (check.outcome === "POSSIBLE" && input.notTheSamePerson !== true) {
+    throw new ServiceError(
+      "Someone with this name is suspended or penalised. Confirm that this is another person before saving.",
+    );
+  }
 
-  // ── The site ──
-  const { communeId, zoneId } = await placeOf(ex, ctx, values);
-  const siteId = newId();
-  const commonName = textOrNull(values.commonName);
-  await ex
-    .insertInto("Site")
-    .values({
-      ...siteOfficeColumns(siteOffice),
-      ...answers.site,
-      id: siteId,
-      clientId,
-      division,
-      address: textOrNull(values.address)!,
-      communeId,
-      zoneId,
-      commonNameKey: commonName ? normaliseName(commonName) : null,
-      createdAt: ctx.now,
-      updatedAt: ctx.now,
-      createdByUserId: ctx.userId,
-      updatedByUserId: ctx.userId,
-    } as Insertable<DB["Site"]>)
-    .execute();
-  await logCollect(ex, ctx, {
-    owner: "CLIENTS",
-    action: "CREATE",
-    entity: "Site",
-    entityId: siteId,
-    entityLabel: commonName ?? textOrNull(values.address) ?? undefined,
-    subject: clientSubject({ id: clientId, name }),
-    context: audit,
-  });
+  // ── The client ──
+  const name = textOrNull(values.clientName)!;
+  let clientId: string;
+  if (known) {
+    clientId = known.id;
+    await updateClientFromSheet(ex, ctx, known, kind, values, answers.client, audit);
+  } else {
+    const dossier = await nextNumber(ex, ctx, "CLIENT_DOSSIER", { date: registrationDate });
+    clientId = newId();
+    const phone1 = textOrNull(values.phone)!;
+    const managerName = textOrNull(values.managerName);
+    await ex
+      .insertInto("Client")
+      .values({
+        ...answers.client,
+        id: clientId,
+        numberSeq: dossier.seq,
+        number: dossier.display,
+        clientType: CLIENT_TYPE_OF[division],
+        name,
+        nameKey: normaliseName(name),
+        managerNameKey: managerName ? normaliseName(managerName) : null,
+        phone1,
+        phoneKeys: phoneKeys([phone1]),
+        branchId: ctx.branchId,
+        createdAt: ctx.now,
+        updatedAt: ctx.now,
+        createdByUserId: ctx.userId,
+        updatedByUserId: ctx.userId,
+      })
+      .execute();
+    await logCollect(ex, ctx, {
+      owner: "CLIENTS",
+      action: "CREATE",
+      entity: "Client",
+      entityId: clientId,
+      entityLabel: dossier.display,
+      subject: clientSubject({ id: clientId, name }),
+      context: audit,
+    });
+  }
+
+  // ── The site: one he has, or a new one ──
+  const knownSite = returning?.siteId
+    ? await ex
+        .selectFrom("Site")
+        .selectAll()
+        .where("id", "=", returning.siteId)
+        .where("deletedAt", "is", null)
+        .executeTakeFirst()
+    : undefined;
+  if (returning?.siteId && (!knownSite || knownSite.clientId !== clientId || knownSite.division !== division)) {
+    throw new ServiceError("This site is not one of this client's sites in this division.");
+  }
+  let siteId: string;
+  if (knownSite) {
+    siteId = knownSite.id;
+    const moved = await updateSiteFromSheet(
+      ex,
+      ctx,
+      knownSite,
+      { id: clientId, name },
+      values,
+      {
+        ...siteOfficeColumns(siteOffice),
+        ...answers.site,
+      },
+      audit,
+    );
+    if (moved.zoneChanged || moved.profileChanged) {
+      await emit(ex, ctx, "site.changed", {
+        siteId,
+        zoneChanged: moved.zoneChanged,
+        profileChanged: moved.profileChanged,
+      });
+    }
+  } else {
+    const { communeId, zoneId } = await placeOf(ex, ctx, values);
+    siteId = newId();
+    const commonName = textOrNull(values.commonName);
+    await ex
+      .insertInto("Site")
+      .values({
+        ...siteOfficeColumns(siteOffice),
+        ...answers.site,
+        id: siteId,
+        clientId,
+        division,
+        address: textOrNull(values.address)!,
+        communeId,
+        zoneId,
+        commonNameKey: commonName ? normaliseName(commonName) : null,
+        createdAt: ctx.now,
+        updatedAt: ctx.now,
+        createdByUserId: ctx.userId,
+        updatedByUserId: ctx.userId,
+      } as Insertable<DB["Site"]>)
+      .execute();
+    await logCollect(ex, ctx, {
+      owner: "CLIENTS",
+      action: "CREATE",
+      entity: "Site",
+      entityId: siteId,
+      entityLabel: commonName ?? textOrNull(values.address) ?? undefined,
+      subject: clientSubject({ id: clientId, name }),
+      context: audit,
+    });
+  }
 
   // ── The file ──
   const number = await nextNumber(ex, ctx, fileSequenceKey(kind), { date: registrationDate });
@@ -420,7 +606,9 @@ export async function registerFile(
       clientId,
       siteId,
       branchId: ctx.branchId,
-      isReturning: 0,
+      isReturning: returning ? 1 : 0,
+      copiedFromFileId: returning?.copiedFromFileId ?? null,
+      sanctionDecisionId: check.outcome === "ALLOWED" ? decisionId : null,
       stage: "NEW",
       stageChangedAt: ctx.now,
       createdAt: ctx.now,
@@ -459,9 +647,28 @@ export async function registerFile(
     context: audit,
   });
 
+  // ── The manager's yes is spent by this file; the clerk's "another person" is kept ──
+  if (check.outcome === "ALLOWED" && decisionId) {
+    await consumeDecision(ex, ctx, { decisionId, entityKind: "FILE", entityId: fileId });
+  }
+  if (check.outcome === "POSSIBLE") {
+    for (const match of check.matches) {
+      await logConsult(ex, ctx, {
+        owner: "CLIENTS",
+        action: "SANCTION_CHECK",
+        entity: "Sanction",
+        entityId: match.sanctionId,
+        entityLabel: match.displayName,
+        subject: { kind: match.subjectKind, id: match.subjectId, label: match.displayName },
+        context: { context: "CLIENT_FILE", foundBy: match.foundBy, answer: "NOT_THE_SAME_PERSON", fileId },
+      });
+    }
+  }
+
   // ── Page 3 of a building form ──
-  if (residents.length > 0) {
-    await saveResidents(ex, ctx, { id: siteId }, residents, undefined, { fileId, formKind: kind });
+  // On a site he already has, the residents are the site's: the list is left as it is unless one is typed.
+  if (residents.length > 0 && !knownSite) {
+    await saveResidents(ex, ctx, { id: siteId }, residents, undefined, { fileId, formKind: kind }, true);
   }
 
   return { fileId, clientId, siteId, number: number.display };
@@ -613,72 +820,20 @@ export async function saveFileForm(
   }
 
   let changed = false;
-  let zoneChanged = false;
-  let profileChanged = false;
 
   // ── Who the client is, where the site is ──
-  if (!locked) {
-    const name = textOrNull(values.clientName)!;
-    const managerName = textOrNull(values.managerName);
-    const clientPatch = changedColumns(client, {
-      ...answers.client,
-      nameKey: normaliseName(name),
-      ...(printedKeys(kind).has("managerName")
-        ? { managerNameKey: managerName ? normaliseName(managerName) : null }
-        : {}),
-      phoneKeys: phoneKeys([textOrNull(values.phone), client.phone2]),
-    } as Partial<typeof client>);
-    if (clientPatch.changes) {
-      await ex
-        .updateTable("Client")
-        .set({ ...clientPatch.set, updatedAt: ctx.now, updatedByUserId: ctx.userId })
-        .where("id", "=", client.id)
-        .execute();
-      await logChange(ex, ctx, {
-        owner: "CLIENTS",
-        action: "UPDATE",
-        entity: "Client",
-        entityId: client.id,
-        entityLabel: client.number,
-        subject: clientSubject({ id: client.id, name }),
-        changes: withoutKeys(clientPatch.changes),
-        context,
-      });
-      changed = true;
-    }
-  }
-
-  const sitePatchValues: Record<string, unknown> = { ...siteOfficeColumns(siteOffice) };
-  if (!locked) {
-    const { communeId, zoneId } = await placeOf(ex, ctx, values);
-    const commonName = textOrNull(values.commonName);
-    Object.assign(sitePatchValues, answers.site, {
-      communeId,
-      zoneId,
-      commonNameKey: commonName ? normaliseName(commonName) : null,
-    });
-  }
-  const sitePatch = changedColumns(site, sitePatchValues as Partial<typeof site>);
-  if (sitePatch.changes) {
-    await ex
-      .updateTable("Site")
-      .set({ ...sitePatch.set, updatedAt: ctx.now, updatedByUserId: ctx.userId })
-      .where("id", "=", site.id)
-      .execute();
-    await logChange(ex, ctx, {
-      owner: "CLIENTS",
-      action: "UPDATE",
-      entity: "Site",
-      entityId: site.id,
-      entityLabel: site.commonName ?? site.address,
-      subject: clientSubject(client),
-      changes: withoutKeys(sitePatch.changes),
-      context,
-    });
-    zoneChanged = "zoneId" in sitePatch.changes;
-    profileChanged = Object.keys(sitePatch.changes).some((column) => column !== "zoneId");
-    changed = true;
-  }
+  if (!locked && (await updateClientFromSheet(ex, ctx, client, kind, values, answers.client, context))) changed = true;
+  const moved = await updateSiteFromSheet(
+    ex,
+    ctx,
+    site,
+    client,
+    locked ? null : values,
+    { ...siteOfficeColumns(siteOffice), ...(locked ? {} : answers.site) },
+    context,
+  );
+  if (moved.changed) changed = true;
+  const { zoneChanged, profileChanged } = moved;
 
   // ── The file's own answers ──
   if (filePatch.changes || snapshot) {
@@ -759,12 +914,6 @@ export async function saveFileForm(
   if (isLive(file) && termsChanged) await emit(ex, ctx, "file.termsChanged", { fileId: file.id });
 
   return { fileId: file.id, changed };
-}
-
-/** The search keys are derived from the name and the phones: the log names what was typed, not them. */
-function withoutKeys(changes: Record<string, readonly [unknown, unknown]>) {
-  const derived = new Set(["nameKey", "managerNameKey", "phoneKeys", "commonNameKey"]);
-  return Object.fromEntries(Object.entries(changes).filter(([column]) => !derived.has(column)));
 }
 
 // ── The stages ───────────────────────────────────────────────────────────────

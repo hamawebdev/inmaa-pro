@@ -9,6 +9,7 @@ import {
   REQUEST_SOURCES,
   type OptionListName,
 } from "./validators/option-lists";
+import { COST_LINES, QUOTE_LINE_KINDS, QUOTE_RESULTS, QUOTE_STATUSES } from "./validators/pricing";
 
 /**
  * The stored codes this folder shows through `useCodeLabel`, each paired with
@@ -44,4 +45,8 @@ export const codeLabelCases: readonly CodeLabelCase[] = [
   ["FileOptions.Priority", PRIORITIES],
   ["FileOptions.CloseReason", CLOSE_REASONS],
   ["FileOptions.EndKind", END_KINDS],
+  ["FileOptions.CostLine", COST_LINES],
+  ["FileOptions.QuoteStatus", QUOTE_STATUSES],
+  ["FileOptions.QuoteResult", QUOTE_RESULTS],
+  ["FileOptions.QuoteLineKind", QUOTE_LINE_KINDS],
 ];

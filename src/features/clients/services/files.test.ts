@@ -270,16 +270,28 @@ describe("registering a file", () => {
     ).rejects.toThrow("You do not have permission to do this.");
   });
 
-  it("needs the capability to read residents to type them in", async () => {
+  it("takes the residents list with a new file from whoever registers it; after that it needs the capability", async () => {
+    // The coordinator's ruling: the clerk copies the paper in front of her.
     const reception = await test.sessionFor("RECEPTION_SALES");
-    await expect(
-      test.transact((ex, ctx) => registerFile(ex, ctx, demoInput("buildingContract")), reception),
-    ).rejects.toThrow("You do not have permission to do this.");
     const input = demoInput("buildingContract");
-    delete input.residents;
-    await expect(test.transact((ex, ctx) => registerFile(ex, ctx, input), reception)).resolves.toMatchObject({
-      number: "1/BLC",
-    });
+    const { fileId, siteId } = await test.transact((ex, ctx) => registerFile(ex, ctx, input), reception);
+    const residents = await test.db.selectFrom("Resident").select("id").where("siteId", "=", siteId).execute();
+    expect(residents).toHaveLength(input.residents!.length);
+    const collected = await test.db
+      .selectFrom("AuditLog")
+      .select("id")
+      .where("operation", "=", "COLLECT")
+      .where("entity", "=", "Resident")
+      .execute();
+    expect(collected).toHaveLength(residents.length);
+
+    // The same list sent again with the form is a change of the list: refused without `residents.read`.
+    await expect(
+      test.transact(
+        (ex, ctx) => saveFileForm(ex, ctx, { fileId, values: input.values, residents: input.residents }),
+        reception,
+      ),
+    ).rejects.toThrow("You do not have permission to do this.");
   });
 });
 

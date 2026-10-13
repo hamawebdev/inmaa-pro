@@ -7,6 +7,7 @@ import { useTranslations } from "use-intl";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { PageActions } from "@/components/screen";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatSheetDate } from "@/features/clients/forms/answers";
 import { formTitleOf, screenCardsOf, type ScreenCard } from "@/features/clients/forms/screen-labels";
@@ -17,14 +18,16 @@ import {
   type ParsedFileScreen,
 } from "@/features/clients/validators/file-screen";
 import { FORM_KIND_OF, type FileStatusTick, type FormKind } from "@/features/clients/validators/option-lists";
+import { useSanctionGate } from "@/features/people/components/sanction-gate";
 import { useSectionLevel } from "@/hooks/use-session";
 import { matchErrorMessage, useErrorMessage } from "@/i18n/errors";
 import { useRouter } from "@/lib/compat/navigation";
-import { fileHubHref } from "@/navigation/file-parts";
+import { fileHubHref, FILES_PATH } from "@/navigation/file-parts";
 
 import { FileOfficeCard, SitePlaceCard, SiteWorkCard } from "./office-cards";
 import { ReasonDialog } from "./reason-dialog";
 import { ResidentsCard } from "./residents-card";
+import type { ReturningLink } from "./returning-dialog";
 import { GivenValue, SheetRowField, StatusTicksField } from "./sheet-fields";
 
 /**
@@ -36,10 +39,26 @@ import { GivenValue, SheetRowField, StatusTicksField } from "./sheet-fields";
  * labelled fields in two columns, Cancel and Save at the foot. What is new: his
  * options as ticks, his blank lines as places to write, and the reason a signed
  * file asks for before its sheet changes.
+ *
+ * A new file passes the suspended-or-penalised gate before it is saved
+ * (People's `useSanctionGate`, plan feature 40); the service checks again.
  */
 
+/** What a question to the manager keeps of a new file, so that nothing is typed twice. */
+export interface FileDraft {
+  kind: FormKind;
+  state: FileScreenState;
+  returning: ReturningLink | null;
+}
+
 export type FileFormMode =
-  | { kind: "new" }
+  | {
+      kind: "new";
+      /** «قديم»: the client, and perhaps the site, the file is registered on. */
+      returning?: ReturningLink | null;
+      /** The manager's yes this registration came back with. */
+      decisionId?: string | null;
+    }
   | {
       kind: "edit";
       fileId: string;
@@ -108,6 +127,7 @@ export function FileForm({
   const router = useRouter();
   const [pending, setPending] = React.useState<ParsedFileScreen | null>(null);
   const [busy, setBusy] = React.useState(false);
+  const [passGate, gateDialogs] = useSanctionGate();
 
   const resolver = React.useCallback<Resolver<FileScreenState>>(
     async (state) => {
@@ -170,6 +190,20 @@ export function FileForm({
       await save(parsed, undefined);
       return;
     }
+    const returning = mode.kind === "new" ? (mode.returning ?? null) : null;
+    const text = (value: unknown) => (typeof value === "string" && value.trim() !== "" ? value.trim() : null);
+    // The list of residents is not kept on a question to the manager: it is typed again.
+    const draft: FileDraft = { kind: formKind, state: { ...state, residents: [] }, returning };
+    const passage = await passGate({
+      context: "CLIENT_FILE",
+      subjectKind: "CLIENT",
+      subjectId: returning?.clientId ?? null,
+      identity: { name: text(parsed.values.clientName), phones: [text(parsed.values.phone)] },
+      decisionId: mode.kind === "new" ? mode.decisionId : null,
+      draftPayload: draft,
+      resumeRoute: `${FILES_PATH}/new`,
+    });
+    if (!passage) return;
     setBusy(true);
     const result = await registerFileAction({
       kind: formKind,
@@ -177,6 +211,10 @@ export function FileForm({
       office: parsed.office,
       siteOffice: parsed.siteOffice,
       residents: residents === "ALLOWED" ? parsed.residents : undefined,
+      returning: returning
+        ? { clientId: returning.clientId, siteId: returning.siteId, copiedFromFileId: returning.copiedFromFileId }
+        : undefined,
+      ...passage,
     });
     setBusy(false);
     if (!result.success) {
@@ -277,16 +315,17 @@ export function FileForm({
         <SiteWorkCard control={control} />
       </fieldset>
 
-      <div className="flex flex-col-reverse items-stretch justify-end gap-3 sm:flex-row sm:items-center">
+      <PageActions>
         <Button type="button" variant="outline" onClick={() => router.back()}>
           {t("Actions.Cancel")}
         </Button>
         {!readOnly && (
-          <Button type="submit" disabled={busy || formState.isSubmitting || closed}>
+          <Button type="submit" variant="success" disabled={busy || formState.isSubmitting || closed}>
             {busy || formState.isSubmitting ? t("Actions.Saving") : edit ? t("Actions.Save") : t("Actions.Create")}
           </Button>
         )}
-      </div>
+      </PageActions>
+      {gateDialogs}
 
       <ReasonDialog
         open={pending !== null}

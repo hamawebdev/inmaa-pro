@@ -4,23 +4,31 @@ import { dinarsToMoney, toQty } from "@/lib/units";
 import type { DemoNames, DemoTools } from "@/testing/demo";
 
 import type { FormValues } from "./forms/values";
+import { saveCostStudy } from "./services/cost-study";
 import { moveFileStage, registerFile, type RegisterFileInput } from "./services/files";
+import { decideQuote, issueQuote, recordQuoteResult, saveQuote, submitQuote } from "./services/quotes";
 import type { FileStage } from "./validators/option-lists";
+import type { CostStudyInput, QuoteInput } from "./validators/pricing";
 
 /**
  * Clients and contracts' demo data: one file per division, registered and
  * moved through the services, on the dates an office would have done it.
  *
- *  - `housingRequest`: a home on demand, priced after its first visit, waiting
- *    at «عرض سعر» (an on-demand file needs an accepted quote to go further);
+ *  - `housingRequest`: a home on demand, priced after its first visit, its
+ *    quote issued and waiting for the client's answer at «عرض سعر»;
+ *  - `housingJob`: a home on demand whose quote was accepted: «متعاقد», its
+ *    one visit to come;
+ *  - `orgJob`: a clinic on demand whose quote was accepted, two days to come;
  *  - `housingContract`: a home under a one-month contract, priced by phone
  *    (it skips «الزيارة»);
  *  - `orgContract`: a company under a three-month contract;
  *  - `buildingContract`: a building under a one-year contract, with residents;
  *  - `complexContract`: a residential complex under a six-month contract.
  *
- * The four contracts reach «متعاقد», which tells Operations and Money
- * (`file.contracted`). Invented people, places and numbers.
+ * The four contracts and the two accepted jobs reach «متعاقد», which tells
+ * Operations and Money (`file.contracted`). The three on-demand files have
+ * their cost study and their quote, prepared, approved by the manager and
+ * issued through the services. Invented people, places and numbers.
  */
 
 /** Monday 12 October 2026, 09:00 at the centre, is the demo's present; every step below is before it. */
@@ -95,6 +103,114 @@ const HOUSING_REQUEST: FormValues = {
   hasGuard: false,
   securityInstructions: false,
   issuedDate: "2026-10-12",
+};
+
+const HOUSING_JOB: FormValues = {
+  siteNumber: "14",
+  propertyType: "APARTMENT",
+  clientName: "مرابط فاطمة",
+  ownership: "RENTED",
+  address: "حي 5 جويلية، عمارة ب",
+  commune: "أم البواقي",
+  wilaya: "04",
+  commonName: "شقة مرابط قرب البريد",
+  phone: "0772 31 40 55",
+  firstVisitDate: "2026-10-10",
+  cleanliness: "AVERAGE",
+  equipmentStorage: false,
+  wasteDisposal: ["CONTAINERS"],
+  buildArea: toQty(85),
+  floors: 1,
+  rooms: 3,
+  salons: 1,
+  kitchens: 1,
+  bathrooms: 1,
+  balconies: 1,
+  windows: 6,
+  floorType: "بلاط",
+  providedServices: ["FLOORS", "KITCHEN", "WINDOWS", "BATHROOMS"],
+  programmedServices: ["DEEP"],
+  requestKinds: ["DEEP"],
+  executionDurationValue: toQty(6),
+  executionDurationUnit: "HOURS",
+  executionDays: ["TUE"],
+  period: "MORNING",
+  periodFrom: "08:00",
+  periodTo: "14:00",
+  startDate: "2026-10-13",
+  endDate: "2026-10-13",
+  arrivalTime: "08:00",
+  departureTime: "14:00",
+  workersCount: 2,
+  payerName: "مرابط فاطمة",
+  payerPhone: "0772 31 40 55",
+  materialsBearer: "CENTRE",
+  materialsAmount: dinarsToMoney(1500),
+  transportBearer: "CENTRE",
+  transportAmount: dinarsToMoney(500),
+  paymentMethods: ["CASH"],
+  firstDueDate: "2026-10-13",
+  paymentPlace: "عند نهاية الأشغال",
+  teamAccess: ["OPEN_DOOR"],
+  hasGuard: false,
+  securityInstructions: false,
+  issuedDate: "2026-10-11",
+};
+
+const ORG_JOB: FormValues = {
+  siteNumber: "8",
+  propertyType: "COMPANY",
+  managerName: "حمدي رشيد",
+  hasTradeRegister: true,
+  address: "شارع أول نوفمبر، رقم 22",
+  commune: "أم البواقي",
+  wilaya: "04",
+  commonName: "عيادة الشفاء",
+  clientName: "عيادة الشفاء الطبية",
+  sector: "PRIVATE",
+  phone: "032 47 61 12",
+  firstVisitDate: "2026-10-11",
+  cleanliness: "POOR",
+  cleanlinessNote: "بعد أشغال التهيئة",
+  equipmentStorage: false,
+  wasteDisposal: ["CONTAINERS"],
+  buildArea: toQty(220),
+  buildings: 1,
+  offices: 6,
+  halls: 1,
+  toilets: 2,
+  windows: 14,
+  doors: 10,
+  floorArea: toQty(200),
+  floorType: "بلاط",
+  entrances: 1,
+  exits: 1,
+  providedServices: ["FLOORS", "TOILETS", "WINDOWS", "GLASS", "OFFICES"],
+  requestKinds: ["COMPREHENSIVE"],
+  executionDurationValue: toQty(2),
+  executionDurationUnit: "DAYS",
+  executionDays: ["WED", "THU"],
+  period: "MORNING",
+  periodFrom: "08:00",
+  periodTo: "14:00",
+  startDate: "2026-10-14",
+  endDate: "2026-10-15",
+  arrivalTime: "08:00",
+  departureTime: "14:00",
+  workersCount: 3,
+  payerName: "حمدي رشيد",
+  payerPhone: "032 47 61 12",
+  materialsBearer: "CENTRE",
+  materialsAmount: dinarsToMoney(4000),
+  transportBearer: "CENTRE",
+  transportAmount: dinarsToMoney(1000),
+  paymentMethods: ["BANK_TRANSFER"],
+  firstDueDate: "2026-10-15",
+  paymentPlace: "مقر العيادة",
+  teamAccess: ["VIA_GUARD"],
+  hasGuard: false,
+  securityInstructions: false,
+  issuedDate: "2026-10-11",
 };
 
 const HOUSING_CONTRACT: FormValues = {
@@ -474,37 +590,233 @@ export const DEMO_FILES: readonly DemoFile[] = [
       office: { source: "PHONE", priority: "URGENT" },
       siteOffice: { landmark: "قرب الملعب البلدي", floorAndDoor: "الطابق الأول، الباب الأيمن" },
     },
-    // Waits at «عرض سعر»: an on-demand file needs its quote accepted to go further.
-    moves: [
-      { at: at("2026-10-11", "10:00"), to: "VISIT" },
-      { at: at("2026-10-12", "08:30"), to: "QUOTE" },
-    ],
+    // Its quote takes it to «عرض سعر» (DEMO_QUOTES), where it waits for the client's answer.
+    moves: [{ at: at("2026-10-11", "10:00"), to: "VISIT" }],
+  },
+  {
+    name: "housingJob",
+    by: "RECEPTION_SALES",
+    registeredAt: at("2026-10-10", "11:00"),
+    input: {
+      kind: "HOUSING_REQUEST",
+      values: HOUSING_JOB,
+      office: { source: "PHONE", priority: "NORMAL" },
+      siteOffice: { landmark: "قرب مكتب البريد", floorAndDoor: "الطابق الثالث" },
+    },
+    moves: [{ at: at("2026-10-10", "16:00"), to: "VISIT" }],
+  },
+  {
+    name: "orgJob",
+    by: "RECEPTION_SALES",
+    registeredAt: at("2026-10-10", "14:30"),
+    input: {
+      kind: "ORG_REQUEST",
+      values: ORG_JOB,
+      office: { source: "VISIT", priority: "NORMAL" },
+      siteOffice: { landmark: "مقابل الصيدلية المركزية" },
+    },
+    moves: [{ at: at("2026-10-11", "09:00"), to: "VISIT" }],
+  },
+];
+
+const jobLine = (label: string, dinars: number): QuoteInput["lines"][number] => ({
+  kind: "INITIAL_JOB",
+  label,
+  description: null,
+  quantity: toQty(1),
+  unit: null,
+  unitPrice: dinarsToMoney(dinars),
+});
+
+const quoteOf = (date: string, lines: QuoteInput["lines"], more: Partial<QuoteInput>): QuoteInput => ({
+  date,
+  validUntil: null,
+  includedText: null,
+  excludedText: null,
+  materialsIncluded: true,
+  equipmentIncluded: true,
+  workers: null,
+  duration: null,
+  visits: null,
+  discount: 0,
+  amountBasis: null,
+  lines,
+  ...more,
+});
+
+const studyOf = (workers: number, hours: number, materials: number, transport: number): CostStudyInput => ({
+  workers,
+  perVisitMin: hours * 60,
+  visitsPerWeek: null,
+  weeks: null,
+  hourlyRate: dinarsToMoney(400),
+  lines: [
+    { code: "LABOUR", label: null, amount: 0, rateBp: null },
+    { code: "MATERIALS", label: null, amount: dinarsToMoney(materials), rateBp: null },
+    { code: "TRANSPORT", label: null, amount: dinarsToMoney(transport), rateBp: null },
+    { code: "RESERVE", label: null, amount: 0, rateBp: 500 },
+  ],
+  marginPercent: 3000,
+  discount: 0,
+});
+
+/**
+ * The on-demand files' way to the client: the study, the quote prepared by
+ * reception, approved by the manager, issued, and for two of them accepted,
+ * which takes the file to «متعاقد».
+ */
+export const DEMO_QUOTES: ReadonlyArray<{
+  file: string;
+  study: CostStudyInput;
+  quote: QuoteInput;
+  preparedAt: string;
+  approvedAt: string;
+  issuedAt: string;
+  accepted?: { at: string; date: string; note: string };
+}> = [
+  {
+    file: "housingJob",
+    study: studyOf(2, 6, 1500, 500),
+    quote: quoteOf("2026-10-10", [jobLine("تنظيف عميق لشقة من ثلاث غرف", 9500)], {
+      validUntil: "2026-10-25",
+      includedText: "الأرضيات، المطبخ، الحمام، النوافذ",
+      workers: 2,
+      duration: "6 ساعات",
+      visits: "1",
+    }),
+    preparedAt: at("2026-10-10", "16:30"),
+    approvedAt: at("2026-10-10", "17:00"),
+    issuedAt: at("2026-10-10", "17:10"),
+    accepted: { at: at("2026-10-11", "10:30"), date: "2026-10-11", note: "وافقت بالهاتف" },
+  },
+  {
+    file: "orgJob",
+    study: studyOf(3, 12, 4000, 1000),
+    quote: quoteOf(
+      "2026-10-11",
+      [
+        jobLine("تنظيف شامل بعد أشغال التهيئة", 32000),
+        {
+          kind: "EXTRA",
+          label: "تلميع الزجاج والواجهة الداخلية",
+          description: null,
+          quantity: toQty(14),
+          unit: "نافذة",
+          unitPrice: dinarsToMoney(250),
+        },
+      ],
+      {
+        validUntil: "2026-10-26",
+        discount: dinarsToMoney(1500),
+        includedText: "المكاتب، قاعة الانتظار، دورات المياه، الزجاج",
+        excludedText: "الواجهة الخارجية",
+        workers: 3,
+        duration: "يومان",
+        visits: "2",
+      },
+    ),
+    preparedAt: at("2026-10-11", "10:00"),
+    approvedAt: at("2026-10-11", "11:15"),
+    issuedAt: at("2026-10-11", "11:30"),
+    accepted: { at: at("2026-10-12", "08:40"), date: "2026-10-12", note: "وصل سند الطلب موقّعا" },
+  },
+  {
+    file: "housingRequest",
+    study: studyOf(3, 10, 3500, 1000),
+    quote: quoteOf("2026-10-12", [jobLine("تنظيف شامل وعميق بعد الترميم", 18000)], {
+      validUntil: "2026-10-27",
+      includedText: "كل الغرف، المطبخ، الحمام، النوافذ، إزالة بقع الطلاء",
+      workers: 3,
+      duration: "يوم ونصف",
+      visits: "2",
+    }),
+    preparedAt: at("2026-10-12", "08:10"),
+    approvedAt: at("2026-10-12", "08:25"),
+    issuedAt: at("2026-10-12", "08:30"),
   },
 ];
 
 /**
- * Registers the five files and moves each through its stages, every step on its
- * own date, in the order the office took them.
+ * Registers the files and takes each through its stages and its quote, every
+ * step at its own time, in the order the office took them.
  */
 export async function seedDemo(ex: Executor, _ctx: ServiceContext, tools: DemoTools): Promise<DemoNames> {
   const names: DemoNames = {};
   const fileIds = new Map<string, string>();
-  const steps = DEMO_FILES.flatMap((file) => [
-    { at: file.registeredAt, file, to: null as FileStage | null },
-    ...file.moves.map((move) => ({ at: move.at, file, to: move.to as FileStage | null })),
-  ]).sort((a, b) => (a.at < b.at ? -1 : a.at > b.at ? 1 : 0));
+  const quoteIds = new Map<string, string>();
+  const reception = await tools.sessionOf("RECEPTION_SALES");
+  const steps: Array<{ at: string; run: () => Promise<void> }> = [];
 
-  for (const step of steps) {
-    if (step.to === null) {
-      const session = await tools.sessionOf(step.file.by);
-      const registered = await registerFile(ex, tools.at(step.at, session), step.file.input);
-      fileIds.set(step.file.name, registered.fileId);
-      names[step.file.name] = registered.fileId;
-      names[`${step.file.name}Client`] = registered.clientId;
-      names[`${step.file.name}Site`] = registered.siteId;
-    } else {
-      await moveFileStage(ex, tools.at(step.at), { fileId: fileIds.get(step.file.name)!, to: step.to });
+  for (const file of DEMO_FILES) {
+    steps.push({
+      at: file.registeredAt,
+      run: async () => {
+        const session = await tools.sessionOf(file.by);
+        const registered = await registerFile(ex, tools.at(file.registeredAt, session), file.input);
+        fileIds.set(file.name, registered.fileId);
+        names[file.name] = registered.fileId;
+        names[`${file.name}Client`] = registered.clientId;
+        names[`${file.name}Site`] = registered.siteId;
+      },
+    });
+    for (const move of file.moves) {
+      steps.push({
+        at: move.at,
+        run: async () => {
+          await moveFileStage(ex, tools.at(move.at), { fileId: fileIds.get(file.name)!, to: move.to as FileStage });
+        },
+      });
     }
   }
+
+  for (const entry of DEMO_QUOTES) {
+    const fileId = () => fileIds.get(entry.file)!;
+    steps.push({
+      at: entry.preparedAt,
+      run: async () => {
+        // The manager costs the job; reception prepares the quote and sends it to him.
+        await saveCostStudy(ex, tools.at(entry.preparedAt), { fileId: fileId(), terms: entry.study });
+        const ctx = tools.at(entry.preparedAt, reception);
+        const saved = await saveQuote(ex, ctx, { fileId: fileId(), quote: entry.quote });
+        quoteIds.set(entry.file, saved.quoteId);
+        names[`${entry.file}Quote`] = saved.quoteId;
+        await submitQuote(ex, ctx, { quoteId: saved.quoteId });
+      },
+    });
+    steps.push({
+      at: entry.approvedAt,
+      run: async () => {
+        await decideQuote(ex, tools.at(entry.approvedAt), {
+          quoteId: quoteIds.get(entry.file)!,
+          approve: true,
+          note: "السعر مطابق للدراسة المالية",
+        });
+      },
+    });
+    steps.push({
+      at: entry.issuedAt,
+      run: async () => {
+        await issueQuote(ex, tools.at(entry.issuedAt, reception), { quoteId: quoteIds.get(entry.file)! });
+      },
+    });
+    const { accepted } = entry;
+    if (accepted) {
+      steps.push({
+        at: accepted.at,
+        run: async () => {
+          await recordQuoteResult(ex, tools.at(accepted.at, reception), {
+            quoteId: quoteIds.get(entry.file)!,
+            result: "ACCEPTED",
+            resultDate: accepted.date,
+            note: accepted.note,
+            contract: true,
+          });
+        },
+      });
+    }
+  }
+
+  steps.sort((a, b) => (a.at < b.at ? -1 : a.at > b.at ? 1 : 0));
+  for (const step of steps) await step.run();
   return names;
 }
