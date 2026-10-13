@@ -9,6 +9,7 @@ import {
   REQUEST_SOURCES,
   type OptionListName,
 } from "./validators/option-lists";
+import { CONDITION_FACTORS, FIRST_VISIT_RECOMMENDATIONS, FIRST_VISIT_RESULTS } from "./validators/first-visit";
 import { COST_LINES, QUOTE_LINE_KINDS, QUOTE_RESULTS, QUOTE_STATUSES } from "./validators/pricing";
 
 /**
@@ -49,4 +50,7 @@ export const codeLabelCases: readonly CodeLabelCase[] = [
   ["FileOptions.QuoteStatus", QUOTE_STATUSES],
   ["FileOptions.QuoteResult", QUOTE_RESULTS],
   ["FileOptions.QuoteLineKind", QUOTE_LINE_KINDS],
+  ["FileOptions.FirstVisitResult", FIRST_VISIT_RESULTS],
+  ["FileOptions.ConditionFactor", CONDITION_FACTORS],
+  ["FileOptions.FirstVisitRecommendation", FIRST_VISIT_RECOMMENDATIONS],
 ];

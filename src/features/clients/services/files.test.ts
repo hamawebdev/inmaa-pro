@@ -579,5 +579,6 @@ describe("a zone given to another commune", () => {
 
 it("knows every form kind's division and service type", () => {
   const kinds: FormKind[] = DEMO_FILES.map((file) => file.input.kind);
-  expect(new Set(kinds).size).toBe(5);
+  // The demo has a file of every kind: his five client forms and the complexes' copy.
+  expect(new Set(kinds).size).toBe(6);
 });

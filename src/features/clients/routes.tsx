@@ -6,6 +6,7 @@ import FileFinancialStudyPage from "@/pages/dashboard/files/[id]/financial-study
 import FileFormPage from "@/pages/dashboard/files/[id]/form/page";
 import FileFormPrintPage from "@/pages/dashboard/files/[id]/form/print/page";
 import FileHubPage from "@/pages/dashboard/files/[id]/page";
+import InspectionPrintPage from "@/pages/dashboard/files/[id]/inspection/[visitId]/print/page";
 import FileInspectionPage from "@/pages/dashboard/files/[id]/inspection/page";
 import QuotePrintPage from "@/pages/dashboard/files/[id]/quote/[quoteId]/print/page";
 import FileQuotePage from "@/pages/dashboard/files/[id]/quote/page";
@@ -47,6 +48,7 @@ export const clientsRoutes: RouteObject[] = [
   { path: "files/:id/form/print", element: <FileFormPrintPage /> },
   { path: "files/:id/residents/print", element: <FileResidentsPrintPage /> },
   { path: "files/:id/quote/:quoteId/print", element: <QuotePrintPage /> },
+  { path: "files/:id/inspection/:visitId/print", element: <InspectionPrintPage /> },
   // …and the same forms empty, to fill in by hand.
   { path: "files/empty-forms", element: <EmptyFormsPage /> },
   { path: "files/empty-forms/:kind/print", element: <EmptyFormPrintPage /> },

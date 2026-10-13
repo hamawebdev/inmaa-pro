@@ -186,6 +186,7 @@ const ORG_JOB: FormValues = {
   entrances: 1,
   exits: 1,
   providedServices: ["FLOORS", "TOILETS", "WINDOWS", "GLASS", "OFFICES"],
+  programmedServices: [],
   requestKinds: ["COMPREHENSIVE"],
   executionDurationValue: toQty(2),
   executionDurationUnit: "DAYS",

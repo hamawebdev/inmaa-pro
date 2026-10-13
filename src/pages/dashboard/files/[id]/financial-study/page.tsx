@@ -108,6 +108,7 @@ function StudyForm({
   cancelLabel: string;
 }) {
   const t = useTranslations("CostStudy");
+  const tCommon = useTranslations("Common");
   const lineLabel = useCodeLabel("FileOptions.CostLine");
   const money = useMoneyText();
   const errorMessage = useErrorMessage();
@@ -193,7 +194,7 @@ function StudyForm({
               <NumberField
                 label={t("HourlyRate")}
                 kind="money"
-                suffix={money(0).replace(/^[\d.,\s]+/, "")}
+                suffix={tCommon("Currency")}
                 value={terms.hourlyRate}
                 onChange={(hourlyRate) => set({ hourlyRate })}
               />
@@ -215,6 +216,14 @@ function StudyForm({
               const given = (line.code === "LABOUR" && labourWorkedOut) || (rated && line.rateBp !== null);
               return (
                 <div key={line.code} className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2">
+                  <NumberField
+                    label={lineLabel(line.code)}
+                    kind="money"
+                    value={given ? worked : line.amount}
+                    disabled={given}
+                    hint={given ? t("WorkedOut") : undefined}
+                    onChange={(amount) => setLine(line.code, { amount: amount ?? 0 })}
+                  />
                   {rated ? (
                     <NumberField
                       label={t("RateOf", { line: lineLabel(line.code) })}
@@ -229,17 +238,7 @@ function StudyForm({
                       value={line.label ?? ""}
                       onChange={(label) => setLine(line.code, { label: label === "" ? null : label })}
                     />
-                  ) : (
-                    <div className="hidden sm:block" />
-                  )}
-                  <NumberField
-                    label={lineLabel(line.code)}
-                    kind="money"
-                    value={given ? worked : line.amount}
-                    disabled={given}
-                    hint={given ? t("WorkedOut") : undefined}
-                    onChange={(amount) => setLine(line.code, { amount: amount ?? 0 })}
-                  />
+                  ) : null}
                 </div>
               );
             })}
