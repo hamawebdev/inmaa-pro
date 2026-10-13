@@ -247,7 +247,8 @@
       "Division": "Division",
       "Lines": "Items",
       "Total": "Total"
-    }
+    },
+    "New": "New purchase"
   },
   "Maintenance": {
     "UnitCount": "{count, plural, =0 {No equipment followed piece by piece} one {# piece of equipment} other {# pieces of equipment}}",
@@ -289,5 +290,31 @@
     "Provider": "Done by",
     "ConditionAfter": "Condition afterwards",
     "Record": "Record the maintenance"
+  },
+  "PurchaseForm": {
+    "Title": "New purchase",
+    "Description": "Typed from the supplier's invoice: it fills the store and goes into the expenses.",
+    "From": "From whom and how",
+    "Supplier": "Supplier",
+    "NewSupplier": "A new supplier…",
+    "SupplierName": "Supplier's name",
+    "Date": "Date",
+    "InvoiceNo": "Supplier's invoice number",
+    "Division": "Bought for",
+    "Method": "Payment method",
+    "What": "What was bought",
+    "Item": "Item {number}",
+    "ChooseItem": "Choose the item",
+    "Quantity": "Quantity",
+    "QuantityIn": "Quantity ({unit})",
+    "UnitPrice": "Unit price (DA)",
+    "Amount": "Amount",
+    "RemoveLine": "Remove this line",
+    "AddLine": "Add an item",
+    "Total": "Total:",
+    "Save": "Record the purchase",
+    "SaveFailed": "The purchase could not be recorded.",
+    "Saved": "Purchase {number} recorded.",
+    "ReadOnly": "Your account reads the store and does not record purchases."
   }
 }

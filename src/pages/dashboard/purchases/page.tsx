@@ -1,15 +1,19 @@
 import { useQuery } from "@tanstack/react-query";
+import { Plus } from "lucide-react";
+import { Link } from "react-router-dom";
 import { useTranslations } from "use-intl";
 
 import { Ltr } from "@/components/ltr";
 import { SectionScreen } from "@/components/section-screen";
 import { StatusChip } from "@/components/status-chip";
+import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useDivisionLabel, usePaymentMethodLabel } from "@/features/money/components/labels";
 import { ScreenSkeleton } from "@/features/money/components/screen-skeleton";
 import { useDateText, useMoneyText } from "@/features/money/components/use-money-text";
 import { PURCHASES_PATH } from "@/features/stock/services/paths";
 import { listPurchasesQuery } from "@/features/stock/services/purchases";
+import { useCan, useSectionLevel } from "@/hooks/use-session";
 import { pathKey } from "@/lib/compat/revalidate";
 
 /**
@@ -17,9 +21,9 @@ import { pathKey } from "@/lib/compat/revalidate";
  * how much. Each purchase put its lines in the store and its total in the
  * expenses (services/purchases.ts).
  *
- * Closest academy screen: the expenses list (`/dashboard/expenses`). The list
- * reads the stored purchases; the form that types a new one is not built yet
- * (src/features/money/HANDOVER.md).
+ * Closest academy screen: the expenses list (`/dashboard/expenses`): an "add"
+ * button in the header, then the list. A purchase is typed on a page of its
+ * own, by the storekeeper (`stock.manage`).
  */
 export default function PurchasesPage() {
   const tNav = useTranslations("Nav");
@@ -28,13 +32,29 @@ export default function PurchasesPage() {
   const dates = useDateText();
   const divisionLabel = useDivisionLabel();
   const methodLabel = usePaymentMethodLabel();
+  const level = useSectionLevel("STOCK");
+  const manages = useCan("stock.manage");
+  const mayBuy = level === "WRITE" && manages;
   const { data: purchases } = useQuery({
     queryKey: pathKey(PURCHASES_PATH),
     queryFn: () => listPurchasesQuery(undefined),
   });
 
   return (
-    <SectionScreen section="stock" title={tNav("Purchases")}>
+    <SectionScreen
+      section="stock"
+      title={tNav("Purchases")}
+      actions={
+        mayBuy ? (
+          <Button asChild variant="add">
+            <Link to="/dashboard/purchases/new">
+              <Plus />
+              {t("New")}
+            </Link>
+          </Button>
+        ) : undefined
+      }
+    >
       {!purchases ? (
         <ScreenSkeleton />
       ) : (

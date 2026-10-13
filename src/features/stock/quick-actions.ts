@@ -1,4 +1,4 @@
-import { PackageOpen, PackagePlus } from "lucide-react";
+import { PackageOpen, PackagePlus, ShoppingCart } from "lucide-react";
 
 import type { QuickAction } from "@/navigation/quick-actions";
 
@@ -12,4 +12,5 @@ import type { QuickAction } from "@/navigation/quick-actions";
 export const quickActions: readonly QuickAction[] = [
   { labelKey: "Handouts.New", href: "/dashboard/handouts/new", icon: PackageOpen },
   { labelKey: "ItemForm.AddItem", href: "/dashboard/inventory?new=1", icon: PackagePlus },
+  { labelKey: "Purchases.New", href: "/dashboard/purchases/new", icon: ShoppingCart },
 ];

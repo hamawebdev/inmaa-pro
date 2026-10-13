@@ -247,7 +247,8 @@
       "Division": "Division",
       "Lines": "Articles",
       "Total": "Montant"
-    }
+    },
+    "New": "Nouvel achat"
   },
   "Maintenance": {
     "UnitCount": "{count, plural, =0 {Aucun équipement suivi pièce par pièce} one {# équipement} other {# équipements}}",
@@ -289,5 +290,31 @@
     "Provider": "Réalisé par",
     "ConditionAfter": "État après entretien",
     "Record": "Enregistrer l'entretien"
+  },
+  "PurchaseForm": {
+    "Title": "Nouvel achat",
+    "Description": "Saisi d'après la facture du fournisseur : il alimente le stock et passe en dépenses.",
+    "From": "Chez qui et comment",
+    "Supplier": "Fournisseur",
+    "NewSupplier": "Un nouveau fournisseur…",
+    "SupplierName": "Nom du fournisseur",
+    "Date": "Date",
+    "InvoiceNo": "N° de facture du fournisseur",
+    "Division": "Acheté pour",
+    "Method": "Mode de paiement",
+    "What": "Ce qui a été acheté",
+    "Item": "Article {number}",
+    "ChooseItem": "Choisir l'article",
+    "Quantity": "Quantité",
+    "QuantityIn": "Quantité ({unit})",
+    "UnitPrice": "Prix unitaire (DA)",
+    "Amount": "Montant",
+    "RemoveLine": "Supprimer cette ligne",
+    "AddLine": "Ajouter un article",
+    "Total": "Total :",
+    "Save": "Enregistrer l'achat",
+    "SaveFailed": "L'achat n'a pas pu être enregistré.",
+    "Saved": "Achat {number} enregistré.",
+    "ReadOnly": "Votre compte consulte le stock sans enregistrer d'achats."
   }
 }

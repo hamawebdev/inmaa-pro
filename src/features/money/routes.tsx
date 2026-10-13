@@ -17,6 +17,7 @@ import PaymentsPage from "@/pages/dashboard/payments/page";
 import ReceiptPrintPage from "@/pages/dashboard/payments/receipts/[id]/print/page";
 import ReceiptBatchPrintPage from "@/pages/dashboard/payments/receipts/batch/[id]/print/page";
 import ReminderPrintPage from "@/pages/dashboard/payments/reminders/[fileId]/print/page";
+import NewPurchasePage from "@/pages/dashboard/purchases/new/page";
 import PurchasesPage from "@/pages/dashboard/purchases/page";
 import ReportsPage from "@/pages/dashboard/reports/page";
 
@@ -42,6 +43,7 @@ export const moneyRoutes: RouteObject[] = [
   // Entry pages below a list.
   { path: "invoices/new", element: <NewInvoicePage /> },
   { path: "handouts/new", element: <NewHandoutPage /> },
+  { path: "purchases/new", element: <NewPurchasePage /> },
 
   // Printed sheets. Each is a page below the record it prints.
   { path: "invoices/:id/print", element: <InvoicePrintPage /> },

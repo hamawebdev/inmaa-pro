@@ -247,7 +247,8 @@
       "Division": "القسم",
       "Lines": "الأصناف",
       "Total": "المبلغ"
-    }
+    },
+    "New": "شراء جديد"
   },
   "Maintenance": {
     "UnitCount": "{count, plural, =0 {لا توجد معدات متابعة قطعة بقطعة} one {معدة واحدة} two {معدتان} few {# معدات} many {# معدة} other {# معدة}}",
@@ -289,5 +290,31 @@
     "Provider": "المنجِز",
     "ConditionAfter": "الحالة بعد الصيانة",
     "Record": "تسجيل الصيانة"
+  },
+  "PurchaseForm": {
+    "Title": "شراء جديد",
+    "Description": "يُدخل من فاتورة المورد: يملأ المخزون ويُسجَّل في المصاريف.",
+    "From": "ممن وكيف",
+    "Supplier": "المورد",
+    "NewSupplier": "مورد جديد…",
+    "SupplierName": "اسم المورد",
+    "Date": "التاريخ",
+    "InvoiceNo": "رقم فاتورة المورد",
+    "Division": "القسم",
+    "Method": "طريقة الدفع",
+    "What": "ما تم شراؤه",
+    "Item": "الصنف {number}",
+    "ChooseItem": "اختر الصنف",
+    "Quantity": "الكمية",
+    "QuantityIn": "الكمية ({unit})",
+    "UnitPrice": "سعر الوحدة (دج)",
+    "Amount": "المبلغ",
+    "RemoveLine": "حذف هذا السطر",
+    "AddLine": "إضافة صنف",
+    "Total": "المجموع:",
+    "Save": "تسجيل الشراء",
+    "SaveFailed": "تعذر تسجيل الشراء.",
+    "Saved": "تم تسجيل الشراء {number}.",
+    "ReadOnly": "حسابك يطّلع على المخزون ولا يسجل المشتريات."
   }
 }
