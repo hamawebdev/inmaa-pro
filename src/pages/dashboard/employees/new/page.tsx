@@ -43,7 +43,6 @@ export default function NewEmployeePage() {
     <DetailScreen
       section="employees"
       title={t("NewTitle")}
-      description={t("NewDescription")}
       back={{ href: "/dashboard/employees", label: tNav("EmployeesList") }}
     >
       {decision && (

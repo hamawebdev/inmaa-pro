@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useMay } from "@/features/people/components/may";
 import { useReasonDialog } from "@/features/people/components/reason-dialog";
+import { useSubjectLabel } from "@/features/people/components/subject-label";
 import { SanctionChip } from "@/features/people/components/sanction-chip";
 import { DECISION_TONE } from "@/features/people/components/status-tones";
 import {
@@ -44,6 +45,7 @@ import { pathKey } from "@/lib/compat/revalidate";
 
 export default function SanctionsPage() {
   const t = useTranslations("Sanctions");
+  const subjectLabel = useSubjectLabel();
   const tNav = useTranslations("Nav");
   const errorMessage = useErrorMessage();
   const [askReason, reasonDialog] = useReasonDialog();
@@ -107,7 +109,6 @@ export default function SanctionsPage() {
     <DetailScreen
       section="workers"
       title={t("Page.Title")}
-      description={t("Page.Description")}
       back={{ href: "/dashboard/workers", label: tNav("WorkersList") }}
     >
       <div className="space-y-6">
@@ -199,7 +200,11 @@ export default function SanctionsPage() {
                           <Ltr className="font-normal text-muted-foreground">{sanction.displayNumber}</Ltr>
                         )}
                         <span className="font-normal text-muted-foreground">
-                          {t(`Subjects.${sanction.subjectKind}`)}
+                          {subjectLabel(sanction.subjectKind, {
+                            sex: sanction.subjectSex,
+                            role: sanction.subjectRole,
+                            number: sanction.displayNumber,
+                          })}
                         </span>
                         {sanction.upcoming ? (
                           <StatusChip
@@ -243,10 +248,13 @@ export default function SanctionsPage() {
 /** The sanction a question is about, and what the match rests on. */
 function DecisionFacts({ decision }: { decision: DecisionRow }) {
   const t = useTranslations("Sanctions");
+  const subjectLabel = useSubjectLabel();
   const { sanction } = decision;
   return (
     <dl className="border-app grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1 rounded-lg border-border bg-muted/40 px-4 py-3 text-base">
-      <dt className="text-muted-foreground">{t(`Subjects.${sanction.subjectKind}`)}</dt>
+      <dt className="text-muted-foreground">
+        {subjectLabel(sanction.subjectKind, { number: sanction.displayNumber })}
+      </dt>
       <dd className="flex flex-wrap items-center gap-2 font-bold">
         {sanction.displayName}
         {sanction.displayNumber && <Ltr className="font-normal text-muted-foreground">{sanction.displayNumber}</Ltr>}

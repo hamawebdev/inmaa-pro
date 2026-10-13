@@ -4,6 +4,7 @@ import {
   ABILITIES,
   HIRING_CRITERIA,
   HIRING_DECISIONS,
+  HOME_WILAYA_CODE,
   MARITAL_STATUSES,
   PAY_BASES,
   PAY_PERIODS,
@@ -45,6 +46,8 @@ export function emptyWorkerValues(today: string): WorkerFormValues {
     birthWilayaCode: "",
     address: "",
     residenceCommuneId: "",
+    residenceWilayaCode: HOME_WILAYA_CODE,
+    residenceCommuneName: "",
     maritalStatus: undefined,
     phone: "",
     emergencyName: "",
@@ -201,6 +204,23 @@ export function hoursText(minutes: number): string {
   return Number.isInteger(hours) ? String(hours) : hours.toFixed(1);
 }
 
+export interface StoredCommune {
+  wilayaCode: string;
+  nameAr: string;
+}
+
+/**
+ * The three values of «بلدية/ولاية إقامة» for a stored commune: picked from the
+ * list when it is in the centre's wilaya, typed when it is in another.
+ */
+export function residenceValues(communeId: string | null, commune?: StoredCommune | null) {
+  if (!communeId) return { residenceCommuneId: "", residenceWilayaCode: HOME_WILAYA_CODE, residenceCommuneName: "" };
+  if (commune && commune.wilayaCode !== HOME_WILAYA_CODE) {
+    return { residenceCommuneId: "", residenceWilayaCode: commune.wilayaCode, residenceCommuneName: commune.nameAr };
+  }
+  return { residenceCommuneId: communeId, residenceWilayaCode: HOME_WILAYA_CODE, residenceCommuneName: "" };
+}
+
 /**
  * The screen's values for a stored worker. Her health answers and her score are
  * left empty: they are shown only when someone allowed asks, and that is logged.
@@ -209,6 +229,8 @@ export function valuesFromRecord(
   worker: StoredWorker,
   documents: readonly StoredDocument[],
   decision: string | null,
+  /** The commune she lives in, as stored: its wilaya decides whether it is shown picked or typed. */
+  commune?: StoredCommune | null,
 ): WorkerFormValues {
   const empty = emptyWorkerValues(worker.registrationDate);
   const text = (value: string | null) => value ?? "";
@@ -224,7 +246,7 @@ export function valuesFromRecord(
     birthPlace: text(worker.birthPlace),
     birthWilayaCode: text(worker.birthWilayaCode),
     address: text(worker.address),
-    residenceCommuneId: text(worker.residenceCommuneId),
+    ...residenceValues(worker.residenceCommuneId, commune),
     maritalStatus: of(worker.maritalStatus, MARITAL_STATUSES),
     phone: worker.phone,
     emergencyName: text(worker.emergencyName),
@@ -272,7 +294,12 @@ export function printDataFromValues(
   values: WorkerFormValues,
   { regNumber, commune }: { regNumber: string | null; commune: (id: string) => CommuneName | undefined },
 ): WorkerFormData {
-  const residence = values.residenceCommuneId ? commune(values.residenceCommuneId) : undefined;
+  // His two blanks: a commune of the centre's wilaya is looked up by its id, another is as typed.
+  const wilayaCode = values.residenceWilayaCode || HOME_WILAYA_CODE;
+  const picked =
+    wilayaCode === HOME_WILAYA_CODE && values.residenceCommuneId ? commune(values.residenceCommuneId) : undefined;
+  const typedCommune = wilayaCode === HOME_WILAYA_CODE ? "" : values.residenceCommuneName.trim();
+  const residence = picked ?? (typedCommune ? { nameAr: typedCommune, wilayaCode } : undefined);
   const orNull = (text: string) => (text.trim() === "" ? null : text.trim());
   const scores = scoresAsNumbers(values.hiringScores);
   const computed = hiringTotal(scores);

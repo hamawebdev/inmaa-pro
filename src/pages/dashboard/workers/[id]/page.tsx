@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { LogOut, Printer, RotateCcw } from "lucide-react";
+import { Clock, LogOut, Printer, RotateCcw, Wallet } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import { useTranslations } from "use-intl";
@@ -61,6 +61,7 @@ export default function WorkerPage() {
   });
   const back = { href: "/dashboard/workers", label: tNav("WorkersList") };
   const keepsFiles = useMay("staff.write");
+  const readsPay = useMay("pay.read");
   const printsFilledForm = useMay("staff.printFilledForm");
 
   if (!file) {
@@ -115,7 +116,6 @@ export default function WorkerPage() {
     <DetailScreen
       section="workers"
       title={name}
-      description={t("File.Description")}
       back={back}
       actions={
         <div className="flex flex-wrap gap-3">
@@ -155,6 +155,23 @@ export default function WorkerPage() {
             {file.leftReason ? ` · ${file.leftReason}` : ""}
           </span>
         )}
+        {/* Her hours, and her payslips, advances and payments: the pages of «الساعات والأجور» about her. */}
+        <div className="ms-auto flex flex-wrap items-center gap-2">
+          <Button asChild variant="outline" size="sm">
+            <Link to={`/dashboard/hours-pay/workers/${id}`}>
+              <Clock />
+              {t("File.Hours")}
+            </Link>
+          </Button>
+          {readsPay && (
+            <Button asChild variant="outline" size="sm">
+              <Link to={`/dashboard/hours-pay/people/${id}`}>
+                <Wallet />
+                {t("File.Pay")}
+              </Link>
+            </Button>
+          )}
+        </div>
       </div>
 
       <div className="space-y-6">

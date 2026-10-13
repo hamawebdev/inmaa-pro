@@ -14,13 +14,5 @@ import { WorkerPrintScreen } from "../_components/worker-print-screen";
 export default function WorkerBlankFormPage({ part = "all" }: { part?: WorkerSheetPart }) {
   const t = useTranslations("WorkerPrint");
 
-  return (
-    <WorkerPrintScreen
-      base="/dashboard/workers"
-      part={part}
-      data={EMPTY_WORKER_FORM}
-      title={t("BlankTitle")}
-      description={t("BlankDescription")}
-    />
-  );
+  return <WorkerPrintScreen base="/dashboard/workers" part={part} data={EMPTY_WORKER_FORM} title={t("BlankTitle")} />;
 }

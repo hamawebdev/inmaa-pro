@@ -138,7 +138,8 @@ export function computePayslip(input: PayslipFigures, rates: PayslipRates): Pays
       overtime = atHourly(overtimeMin, premium);
       leavePay = mulDivRound(paidAbsenceMin, rate, 60);
       earnedLine({ type: "BASE", quantity: paidMin, amount: money(base) });
-      if (overtime > 0) earnedLine({ type: "OVERTIME_50", detail: "PREMIUM_ONLY", quantity: overtimeMin, amount: money(overtime) });
+      if (overtime > 0)
+        earnedLine({ type: "OVERTIME_50", detail: "PREMIUM_ONLY", quantity: overtimeMin, amount: money(overtime) });
       break;
     }
     case "DAILY": {

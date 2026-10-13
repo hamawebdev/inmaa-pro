@@ -103,7 +103,12 @@ describe("workerHours", () => {
     expect(september.totals).toMatchObject({ workedMin: 2400, overtimeMin: 0 });
     const october = await hoursOf("2026-10-01", "2026-10-31");
     expect(october.totals.workedMin).toBe(480);
-    expect(october.weeks[0]).toMatchObject({ start: "2026-09-26", end: "2026-10-02", workedMin: 2880, overtimeMin: 480 });
+    expect(october.weeks[0]).toMatchObject({
+      start: "2026-09-26",
+      end: "2026-10-02",
+      workedMin: 2880,
+      overtimeMin: 480,
+    });
     expect(october.totals.overtimeMin).toBe(480);
   });
 
@@ -169,7 +174,13 @@ describe("workerHours", () => {
     const id = await aWorker();
     await seat(id, "2026-10-06", 480);
     const { id: lineId } = await test.transact((ex, ctx) =>
-      addHoursAdjustment(ex, ctx, { staffId: id, date: "2026-10-06", adjustMin: 90, kind: "TRAINING", reason: "تكوين السلامة" }),
+      addHoursAdjustment(ex, ctx, {
+        staffId: id,
+        date: "2026-10-06",
+        adjustMin: 90,
+        kind: "TRAINING",
+        reason: "تكوين السلامة",
+      }),
     );
     let hours = await hoursOf("2026-10-03", "2026-10-09");
     expect(hours.totals).toMatchObject({ workedMin: 570, adjustMin: 90, divisionMin: { HOUSING: 480, COMMON: 90 } });

@@ -1,15 +1,15 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useQuery } from "@tanstack/react-query";
 import { useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 import { useLocale, useTranslations } from "use-intl";
 
 import { Ltr } from "@/components/ltr";
+import { PageActions } from "@/components/screen";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Field, FieldLabel } from "@/components/ui/field";
-import { listCommunesQuery, PLACES_PATH } from "@/features/core/services/places";
 import { ChoiceField, DateField, TextField, TickField } from "@/features/people/components/form-fields";
+import { ResidenceFields } from "@/features/people/components/residence-fields";
 import { isolate, useMay } from "@/features/people/components/may";
 import { useSanctionGate } from "@/features/people/components/sanction-gate";
 import { employeeIdentity, registerEmployeeAction, updateEmployeeAction } from "@/features/people/services/employees";
@@ -25,9 +25,7 @@ import {
 } from "@/features/people/validators/staff-codes";
 import { useErrorMessage } from "@/i18n/errors";
 import { useRouter } from "@/lib/compat/navigation";
-import { pathKey } from "@/lib/compat/revalidate";
 import { WILAYAS } from "@/lib/geo/wilayas";
-import { cn } from "@/lib/utils";
 
 /**
  * The screen of a centre employee (scope A2), to register and to change.
@@ -43,8 +41,6 @@ import { cn } from "@/lib/utils";
 
 type Mode = { kind: "new"; decisionId?: string | null } | { kind: "edit"; id: string; number: string };
 
-/** The wilaya whose communes are offered, until Foundation's commune picker covers the others. */
-const RESIDENCE_WILAYA = "04";
 const SPAN_BOTH = "sm:col-span-2";
 const identityKey = (values: EmployeeFormValues) => JSON.stringify(employeeIdentity(values));
 
@@ -59,11 +55,6 @@ export function EmployeeForm({ mode, defaultValues }: { mode: Mode; defaultValue
   const form = useForm<EmployeeFormValues>({ resolver: zodResolver(employeeFormSchema), defaultValues });
   const { control, formState } = form;
   const declared = useWatch({ control, name: "cnasDeclared" });
-
-  const { data: communes = [] } = useQuery({
-    queryKey: [...pathKey(PLACES_PATH), "communes", RESIDENCE_WILAYA],
-    queryFn: () => listCommunesQuery({ wilayaCode: RESIDENCE_WILAYA }),
-  });
 
   const onSubmit = async (values: EmployeeFormValues) => {
     if (mode.kind === "edit") {
@@ -160,14 +151,10 @@ export function EmployeeForm({ mode, defaultValues }: { mode: Mode; defaultValue
               options={MARITAL_STATUSES.map((code) => ({ value: code, label: tWorker(`MaritalStatuses.${code}`) }))}
             />
             <TextField control={control} name="address" label={tWorker("Labels.address")} className={SPAN_BOTH} />
-            <ChoiceField
+            <ResidenceFields
               control={control}
-              name="residenceCommuneId"
-              label={tWorker("Labels.residence")}
-              options={communes.map((c) => ({
-                value: c.id,
-                label: locale === "ar" ? c.nameAr : (c.nameFr ?? c.nameAr),
-              }))}
+              communeLabel={tWorker("Fields.residenceCommune")}
+              wilayaLabel={tWorker("Fields.residenceWilaya")}
             />
             <TextField
               control={control}
@@ -287,25 +274,21 @@ export function EmployeeForm({ mode, defaultValues }: { mode: Mode; defaultValue
         </Card>
       </fieldset>
 
-      <div
-        className={cn(
-          "flex flex-col-reverse items-stretch justify-end gap-3 sm:flex-row sm:items-center",
-          readOnly && "hidden",
-        )}
-      >
-        {mode.kind === "new" && (
-          <Button type="button" variant="outline" onClick={() => router.back()}>
+      {/* The foot of the form, as the academy's: the way out beside the save, which is the screen's one green button. */}
+      {!readOnly && (
+        <PageActions>
+          <Button type="button" variant="outline" onClick={() => router.push("/dashboard/employees")}>
             {tWorker("Actions.Cancel")}
           </Button>
-        )}
-        <Button type="submit" variant={mode.kind === "new" ? "default" : "success"} disabled={formState.isSubmitting}>
-          {formState.isSubmitting
-            ? tWorker("Actions.Saving")
-            : mode.kind === "new"
-              ? t("Form.Create")
-              : tWorker("Actions.Save")}
-        </Button>
-      </div>
+          <Button type="submit" variant="success" disabled={formState.isSubmitting}>
+            {formState.isSubmitting
+              ? tWorker("Actions.Saving")
+              : mode.kind === "new"
+                ? t("Form.Create")
+                : tWorker("Actions.Save")}
+          </Button>
+        </PageActions>
+      )}
       {gateDialogs}
     </form>
   );

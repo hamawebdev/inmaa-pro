@@ -71,7 +71,13 @@ describe("checks in and out", () => {
 
     await test.transact((ex, ctx) => deleteCheck(ex, ctx, { id: wrong.id, reason: "ضغطة خاطئة" }));
     await test.transact((ex, ctx) =>
-      editCheck(ex, ctx, { id: out.id, type: "CHECK_OUT", date: "2026-10-11", time: "16:30", reason: "نسيت تسجيل الخروج" }),
+      editCheck(ex, ctx, {
+        id: out.id,
+        type: "CHECK_OUT",
+        date: "2026-10-11",
+        time: "16:30",
+        reason: "نسيت تسجيل الخروج",
+      }),
     );
     seen = await attendance("2026-10-01", "2026-10-31");
     expect(seen.days[0]).toMatchObject({ minutes: 500, complete: true });
@@ -92,10 +98,15 @@ describe("checks in and out", () => {
     // The HR officer may change what was recorded; somebody who only reads the section may record nothing.
     const accountant = await test.sessionFor("ACCOUNTANT");
     await expect(
-      test.transact((ex, ctx) => recordCheck(ex, ctx, { staffId: id, type: "CHECK_IN", date: "2026-10-12", time: "08:00" }), accountant),
+      test.transact(
+        (ex, ctx) => recordCheck(ex, ctx, { staffId: id, type: "CHECK_IN", date: "2026-10-12", time: "08:00" }),
+        accountant,
+      ),
     ).rejects.toThrow("You do not have permission to do this.");
     await expect(
-      test.transact((ex, ctx) => editCheck(ex, ctx, { id: out.id, type: "CHECK_OUT", date: "2026-10-11", time: "16:00", reason: " " })),
+      test.transact((ex, ctx) =>
+        editCheck(ex, ctx, { id: out.id, type: "CHECK_OUT", date: "2026-10-11", time: "16:00", reason: " " }),
+      ),
     ).rejects.toThrow("Write the reason for the change.");
   });
 });
@@ -104,7 +115,13 @@ describe("absences", () => {
   it("records a day, a half day or some hours, changes and takes them off with a reason", async () => {
     const id = await anEmployee();
     const full = await test.transact((ex, ctx) =>
-      recordEmployeeAbsence(ex, ctx, { staffId: id, date: "2026-10-05", type: "FULL_DAY", justified: false, paid: false }),
+      recordEmployeeAbsence(ex, ctx, {
+        staffId: id,
+        date: "2026-10-05",
+        type: "FULL_DAY",
+        justified: false,
+        paid: false,
+      }),
     );
     await test.transact((ex, ctx) =>
       recordEmployeeAbsence(ex, ctx, {
@@ -141,7 +158,15 @@ describe("absences", () => {
     expect(seen.absences.map((a) => a.date)).toEqual(["2026-10-06"]);
     await expect(
       test.transact((ex, ctx) =>
-        recordEmployeeAbsence(ex, ctx, { staffId: id, date: "2026-10-07", type: "HOURS", startTime: "11:00", endTime: "10:00", justified: false, paid: false }),
+        recordEmployeeAbsence(ex, ctx, {
+          staffId: id,
+          date: "2026-10-07",
+          type: "HOURS",
+          startTime: "11:00",
+          endTime: "10:00",
+          justified: false,
+          paid: false,
+        }),
       ),
     ).rejects.toThrow("The end must be after the start.");
   });
@@ -195,7 +220,13 @@ describe("leave", () => {
   it("needs a reason to refuse, and never pays unpaid leave", async () => {
     const id = await anEmployee();
     const { ids } = await test.transact((ex, ctx) =>
-      requestEmployeeLeave(ex, ctx, { staffId: id, type: "UNPAID", startDate: "2026-10-19", endDate: "2026-10-20", paid: true }),
+      requestEmployeeLeave(ex, ctx, {
+        staffId: id,
+        type: "UNPAID",
+        startDate: "2026-10-19",
+        endDate: "2026-10-20",
+        paid: true,
+      }),
     );
     const row = await test.db.selectFrom("EmployeeLeave").selectAll().executeTakeFirstOrThrow();
     expect(row.paid).toBe(0);

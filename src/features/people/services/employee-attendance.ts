@@ -18,7 +18,7 @@ import { changedColumns } from "@/lib/service/changes";
 import type { Executor, ServiceContext } from "@/lib/service/context";
 import { ServiceError } from "@/lib/service/errors";
 import { getSettings } from "@/lib/settings";
-import { localDate, localTime, minutes, qty, type LocalDate } from "@/lib/units";
+import { localDate, localTime, minutes, qty } from "@/lib/units";
 
 /**
  * Centre employees' attendance (his section 1; the academy's employee
@@ -38,10 +38,21 @@ const isTime = (text: string) => /^([01]\d|2[0-3]):[0-5]\d$/.test(text);
 async function employeeOf(ex: Executor, staffId: string) {
   const person = await ex
     .selectFrom("StaffMember")
-    .select(["id", "number", "lastName", "firstName", "kind", "startDate", "registrationDate", "leaveOpeningDays", "deletedAt"])
+    .select([
+      "id",
+      "number",
+      "lastName",
+      "firstName",
+      "kind",
+      "startDate",
+      "registrationDate",
+      "leaveOpeningDays",
+      "deletedAt",
+    ])
     .where("id", "=", staffId)
     .executeTakeFirst();
-  if (!person || person.deletedAt || person.kind !== "EMPLOYEE") throw new ServiceError("This employee does not exist.");
+  if (!person || person.deletedAt || person.kind !== "EMPLOYEE")
+    throw new ServiceError("This employee does not exist.");
   return {
     ...person,
     subject: { kind: "EMPLOYEE" as const, id: person.id, label: `${person.lastName} ${person.firstName}` },
@@ -150,7 +161,11 @@ export async function editCheck(
 }
 
 /** Takes a check off, with the reason. Kept, marked deleted. */
-export async function deleteCheck(ex: Executor, ctx: ServiceContext, input: { id: string; reason: string }): Promise<void> {
+export async function deleteCheck(
+  ex: Executor,
+  ctx: ServiceContext,
+  input: { id: string; reason: string },
+): Promise<void> {
   const reason = requireEdit(ctx, input.reason);
   const before = await ex
     .selectFrom("EmployeeCheckRecord")
@@ -217,8 +232,8 @@ export async function employeeDays(
     .selectFrom("EmployeeCheckRecord")
     .select(["staffId", "type", "localDate", "localTime"])
     .where("staffId", "in", [...input.staffIds])
-    .where("localDate", ">=", input.from)
-    .where("localDate", "<=", input.to)
+    .where("localDate", ">=", localDate(input.from))
+    .where("localDate", "<=", localDate(input.to))
     .where("deletedAt", "is", null)
     .execute();
   const grouped = new Map<string, Array<{ type: string; localTime: string }>>();
@@ -261,7 +276,9 @@ async function absenceColumns(ex: Executor, input: Omit<EmployeeAbsenceInput, "s
     if (!input.startTime || !input.endTime || !isTime(input.startTime) || !isTime(input.endTime)) {
       throw new ServiceError("Enter the hours of the absence.");
     }
-    const span = (Number(input.endTime.slice(0, 2)) * 60 + Number(input.endTime.slice(3, 5))) -
+    const span =
+      Number(input.endTime.slice(0, 2)) * 60 +
+      Number(input.endTime.slice(3, 5)) -
       (Number(input.startTime.slice(0, 2)) * 60 + Number(input.startTime.slice(3, 5)));
     if (span <= 0) throw new ServiceError("The end must be after the start.");
     absenceMin = span;
@@ -432,8 +449,8 @@ export async function requestEmployeeLeave(
     .where("staffId", "=", person.id)
     .where("deletedAt", "is", null)
     .where("status", "in", ["REQUESTED", "APPROVED"])
-    .where("startDate", "<=", input.endDate)
-    .where("endDate", ">=", input.startDate)
+    .where("startDate", "<=", localDate(input.endDate))
+    .where("endDate", ">=", localDate(input.startDate))
     .executeTakeFirst();
   if (overlapping) throw new ServiceError("This employee already has a leave on these days.");
   const { "work.restDay": restDay } = await getSettings(ex, ["work.restDay"]);
@@ -510,7 +527,13 @@ export async function decideEmployeeLeave(
   for (const part of parts) {
     await ex
       .updateTable("EmployeeLeave")
-      .set({ status: input.status, decidedByUserId: ctx.userId, decidedAt: ctx.now, updatedAt: ctx.now, updatedByUserId: ctx.userId })
+      .set({
+        status: input.status,
+        decidedByUserId: ctx.userId,
+        decidedAt: ctx.now,
+        updatedAt: ctx.now,
+        updatedByUserId: ctx.userId,
+      })
       .where("id", "=", part.id)
       .execute();
   }
@@ -598,7 +621,13 @@ export interface EmployeeAttendance {
   }>;
   /** Thousandths of a day: earned this year of reference, taken, and what is left. */
   leave: { earned: number; taken: number; balance: number; from: string };
-  totals: { workedMin: number; daysPresent: number; incompleteDays: number; absenceMin: number; unpaidAbsenceMin: number };
+  totals: {
+    workedMin: number;
+    daysPresent: number;
+    incompleteDays: number;
+    absenceMin: number;
+    unpaidAbsenceMin: number;
+  };
 }
 
 /** The attendance of one employee, or of every employee, in a period. */
@@ -626,8 +655,8 @@ export async function listEmployeeAttendance(
       .selectFrom("EmployeeCheckRecord")
       .select(["id", "staffId", "type", "localDate", "localTime", "note"])
       .where("staffId", "in", ids)
-      .where("localDate", ">=", input.from)
-      .where("localDate", "<=", input.to)
+      .where("localDate", ">=", localDate(input.from))
+      .where("localDate", "<=", localDate(input.to))
       .where("deletedAt", "is", null)
       .orderBy("localDate")
       .orderBy("localTime")
@@ -636,8 +665,8 @@ export async function listEmployeeAttendance(
       .selectFrom("EmployeeAbsence")
       .selectAll()
       .where("staffId", "in", ids)
-      .where("date", ">=", input.from)
-      .where("date", "<=", input.to)
+      .where("date", ">=", localDate(input.from))
+      .where("date", "<=", localDate(input.to))
       .where("deletedAt", "is", null)
       .orderBy("date")
       .execute(),
@@ -657,7 +686,12 @@ export async function listEmployeeAttendance(
     for (const check of own) byDay.set(check.localDate, [...(byDay.get(check.localDate) ?? []), check]);
     const days: AttendanceDay[] = [...byDay.entries()].map(([date, list]) => ({
       date,
-      checks: list.map((check) => ({ id: check.id, type: check.type as CheckType, time: check.localTime, note: check.note })),
+      checks: list.map((check) => ({
+        id: check.id,
+        type: check.type as CheckType,
+        time: check.localTime,
+        note: check.note,
+      })),
       ...minutesFromChecks(list),
     }));
     const ownAbsences = absences.filter((absence) => absence.staffId === person.id);
@@ -665,12 +699,18 @@ export async function listEmployeeAttendance(
     const start = person.startDate ?? person.registrationDate;
     const accrual = leaveEarned(
       { startDate: start, asOf: ctx.today },
-      { perMonth: rules["pay.leaveDaysPerMonth"], cap: rules["pay.leaveCapDays"], yearStart: rules["pay.leaveYearStart"] },
+      {
+        perMonth: rules["pay.leaveDaysPerMonth"],
+        cap: rules["pay.leaveCapDays"],
+        yearStart: rules["pay.leaveYearStart"],
+      },
     );
     const taken = ownLeaves
       .filter((leave) => leave.status === "APPROVED" && leave.paid === 1 && leave.startDate >= accrual.from)
       .reduce((sum, leave) => sum + leave.days, 0);
-    const absenceMin = ownAbsences.filter((absence) => absence.employeeLeaveId === null).reduce((sum, a) => sum + a.absenceMin, 0);
+    const absenceMin = ownAbsences
+      .filter((absence) => absence.employeeLeaveId === null)
+      .reduce((sum, a) => sum + a.absenceMin, 0);
     return {
       staffId: person.id,
       number: person.number,
@@ -704,7 +744,7 @@ export async function listEmployeeAttendance(
       leave: {
         earned: accrual.earned,
         taken,
-        balance: leaveBalance({ broughtForward: (person.leaveOpeningDays ?? 0), earned: accrual.earned, taken }),
+        balance: leaveBalance({ broughtForward: person.leaveOpeningDays ?? 0, earned: accrual.earned, taken }),
         from: accrual.from,
       },
       totals: {

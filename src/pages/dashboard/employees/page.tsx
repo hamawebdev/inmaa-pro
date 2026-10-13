@@ -32,6 +32,7 @@ export default function EmployeesPage() {
     <SectionScreen
       section="employees"
       title={tNav("EmployeesHeading")}
+      description={t("Description")}
       actions={
         canRegister && (
           <Button asChild variant="add">

@@ -51,7 +51,6 @@ export default function NewWorkerPage() {
     <DetailScreen
       section="workers"
       title={tForm("Labels.formTitle")}
-      description={t("NewDescription")}
       back={{ href: "/dashboard/workers", label: tNav("WorkersList") }}
     >
       {decision && (

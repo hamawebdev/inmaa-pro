@@ -1,11 +1,17 @@
 import type { RouteObject } from "react-router-dom";
 
+import EmployeeAttendanceDetailPage from "@/pages/dashboard/employee-attendance/[id]/page";
 import EmployeeAttendancePage from "@/pages/dashboard/employee-attendance/page";
 import EmployeePage from "@/pages/dashboard/employees/[id]/page";
 import NewEmployeePage from "@/pages/dashboard/employees/new/page";
 import EmployeesPage from "@/pages/dashboard/employees/page";
 import HiringPage from "@/pages/dashboard/hiring/page";
 import HoursPayPage from "@/pages/dashboard/hours-pay/page";
+import PayslipPage from "@/pages/dashboard/hours-pay/payslips/[id]/page";
+import PayslipPrintPage from "@/pages/dashboard/hours-pay/payslips/[id]/print/page";
+import StaffPayPage from "@/pages/dashboard/hours-pay/people/[id]/page";
+import PayRunPage from "@/pages/dashboard/hours-pay/runs/[id]/page";
+import WorkerHoursPage from "@/pages/dashboard/hours-pay/workers/[id]/page";
 import WorkerPage from "@/pages/dashboard/workers/[id]/page";
 import WorkerFormPrintPage from "@/pages/dashboard/workers/[id]/print/page";
 import NewWorkerPage from "@/pages/dashboard/workers/new/page";
@@ -30,6 +36,8 @@ export const peopleRoutes: RouteObject[] = [
   { path: "employees/new", element: <NewEmployeePage /> },
   { path: "employees/:id", element: <EmployeePage /> },
   { path: "employee-attendance", element: <EmployeeAttendancePage /> },
+  // One employee's month: times in and out, absences, leave.
+  { path: "employee-attendance/:id", element: <EmployeeAttendanceDetailPage /> },
   { path: "workers", element: <WorkersPage /> },
   // Registering a worker on his form, and one worker's file.
   { path: "workers/new", element: <NewWorkerPage /> },
@@ -47,4 +55,10 @@ export const peopleRoutes: RouteObject[] = [
   { path: "workers/:id/print-regulations", element: <WorkerFormPrintPage part="regulations" /> },
   { path: "hiring", element: <HiringPage /> },
   { path: "hours-pay", element: <HoursPayPage /> },
+  // One worker's hours of a month; a pay run; a payslip and its printed sheet; one person's advances and payments.
+  { path: "hours-pay/workers/:id", element: <WorkerHoursPage /> },
+  { path: "hours-pay/runs/:id", element: <PayRunPage /> },
+  { path: "hours-pay/payslips/:id", element: <PayslipPage /> },
+  { path: "hours-pay/payslips/:id/print", element: <PayslipPrintPage /> },
+  { path: "hours-pay/people/:id", element: <StaffPayPage /> },
 ];

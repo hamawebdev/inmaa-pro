@@ -73,7 +73,6 @@ export default function WorkerFormPrintPage({ part = "all" }: { part?: WorkerShe
       part={part}
       data={ready?.data ?? null}
       title={ready ? t("RecordTitle", { name: ready.name }) : t("RecordTitlePending")}
-      description={t("RecordDescription")}
       back={{ href: `/dashboard/workers/${id}`, label: t("BackToFile") }}
     >
       <Card className="max-w-2xl">

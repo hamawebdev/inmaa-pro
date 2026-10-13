@@ -234,7 +234,7 @@ export async function openWorkerFile(ex: Executor, ctx: ServiceContext, input: {
     registrationDate: worker.registrationDate,
     leftDate: worker.leftDate,
     leftReason: worker.leftReason,
-    values: valuesFromRecord(worker, documents, decisions[0]?.decision ?? null),
+    values: valuesFromRecord(worker, documents, decisions[0]?.decision ?? null, commune),
     zone: zone ?? null,
     commune: commune ?? null,
     photoUrl: worker.photoUrl,
@@ -371,7 +371,7 @@ export async function workerFormForPrint(
   const health = await readWorkerRestricted(ex, ctx, { id: worker.id, part: "HEALTH", reason });
   const score = await readWorkerRestricted(ex, ctx, { id: worker.id, part: "SCORE", reason });
   const values: WorkerFormValues = {
-    ...valuesFromRecord(worker, documents, decision?.decision ?? null),
+    ...valuesFromRecord(worker, documents, decision?.decision ?? null, commune),
     ...health.health,
     hiringScores: score.score?.hiringScores ?? valuesFromRecord(worker, [], null).hiringScores,
     hiringTotal: score.score?.hiringTotal ?? "",

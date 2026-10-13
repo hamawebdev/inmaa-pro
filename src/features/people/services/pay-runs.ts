@@ -1,4 +1,5 @@
 import { addDays, isDate } from "@/features/people/rules/dates";
+import { leaveBalance, leaveEarned, type LeaveRules } from "@/features/people/rules/leave";
 import type { IrgTable } from "@/features/people/rules/pay";
 import { computePayslip, type PayslipLine, type PayslipRates } from "@/features/people/rules/payslip";
 import {
@@ -7,22 +8,20 @@ import {
   type PayslipItemType,
   type StaffKind,
 } from "@/features/people/validators/staff-codes";
-import { can, requireCapability, requireSection } from "@/lib/access/session";
 import { newId } from "@/lib/db/rows";
 import { emit } from "@/lib/events";
-import { logChange } from "@/lib/log";
+import { logChange, logDisclose } from "@/lib/log";
 import { nextNumber } from "@/lib/numbering";
 import { workerRoleAr, type WorkerRole } from "@/lib/options";
 import { action, query } from "@/lib/service/action";
 import type { Executor, ServiceContext } from "@/lib/service/context";
 import { ServiceError } from "@/lib/service/errors";
 import { getSettings } from "@/lib/settings";
-import { basisPoints, localDate, minutes, money, qty, type LocalDate, type Money } from "@/lib/units";
+import { basisPoints, localDate, minutes, money, qty, type LocalDate } from "@/lib/units";
 
 import { employeeDays } from "./employee-attendance";
 import { HOURS_PATH, weekStart, workerHours } from "./hours";
-import { addDebtEntry, debtBalanceOf } from "./payouts";
-import { SECTION_OF_KIND } from "./staff-shared";
+import { addDebtEntry, debtAt, debtBalanceOf, requirePay } from "./payouts";
 
 /**
  * Pay runs (feature 38): a month of pay for the cleaning workers, or for the
@@ -101,11 +100,6 @@ function monthOf(month: string): { start: LocalDate; end: LocalDate } {
   return { start: localDate(`${month}-01`), end: localDate(end) };
 }
 
-function requirePay(ctx: ServiceContext, kind: StaffKind, level: "READ" | "WRITE"): void {
-  requireSection(ctx, SECTION_OF_KIND[kind], "READ");
-  requireCapability(ctx, level === "WRITE" ? "pay.write" : "pay.read");
-}
-
 async function rates(ex: Executor): Promise<{ rates: PayslipRates; snapshot: Record<string, unknown> }> {
   const settings = await getSettings(ex, [
     "work.weekMin",
@@ -119,6 +113,8 @@ async function rates(ex: Executor): Promise<{ rates: PayslipRates; snapshot: Rec
     "pay.cnasEmployerRate",
     "pay.irgTable",
     "pay.leaveDaysPerMonth",
+    "pay.leaveCapDays",
+    "pay.leaveYearStart",
   ]);
   return {
     rates: {
@@ -135,6 +131,26 @@ async function rates(ex: Executor): Promise<{ rates: PayslipRates; snapshot: Rec
     snapshot: settings,
   };
 }
+
+interface Setup {
+  rates: PayslipRates;
+  dayMin: number;
+  weekMin: number;
+  restDay: string;
+  leave: LeaveRules;
+}
+
+const setupFrom = (payRates: PayslipRates, snapshot: Record<string, unknown>): Setup => ({
+  rates: payRates,
+  dayMin: snapshot["work.dayMin"] as number,
+  weekMin: snapshot["work.weekMin"] as number,
+  restDay: snapshot["work.restDay"] as string,
+  leave: {
+    perMonth: snapshot["pay.leaveDaysPerMonth"] as number,
+    cap: snapshot["pay.leaveCapDays"] as number,
+    yearStart: snapshot["pay.leaveYearStart"] as string,
+  },
+});
 
 interface Person {
   id: string;
@@ -153,6 +169,7 @@ interface Person {
   engagementStatus: string;
   payBasis: string | null;
   payRate: number | null;
+  leaveOpeningDays: number | null;
 }
 
 /** The people a run of this kind pays: registered by its end, not gone before its start, with pay terms. */
@@ -176,6 +193,7 @@ async function peopleOf(ex: Executor, kind: StaffKind, start: LocalDate, end: Lo
       "engagementStatus",
       "payBasis",
       "payRate",
+      "leaveOpeningDays",
       "numberSeq",
     ])
     .where("kind", "=", kind)
@@ -190,7 +208,11 @@ async function peopleOf(ex: Executor, kind: StaffKind, start: LocalDate, end: Lo
         .selectFrom("StaffEvent")
         .select(["staffId", "payBasis", "payRate", "date", "createdAt"])
         .where("kind", "=", "PAY_TERMS")
-        .where("staffId", "in", people.map((person) => person.id))
+        .where(
+          "staffId",
+          "in",
+          people.map((person) => person.id),
+        )
         .where("date", "<=", end)
         .orderBy("staffId")
         .orderBy("date")
@@ -247,7 +269,12 @@ async function seatsToPay(ex: Executor, workerId: string, end: LocalDate, runId:
     )
     .orderBy("v.visitDate")
     .execute();
-  return rows.map((row) => ({ id: row.id, date: row.visitDate, workedMin: row.workedMin ?? 0, division: row.division }));
+  return rows.map((row) => ({
+    id: row.id,
+    date: row.visitDate,
+    workedMin: row.workedMin ?? 0,
+    division: row.division,
+  }));
 }
 
 interface Figures {
@@ -383,20 +410,74 @@ function monthShare(person: Person, period: { start: LocalDate; end: LocalDate }
   return days >= all ? undefined : { days, of: all };
 }
 
+/** A line's quantity as stored, in thousandths: hours for minutes, or the days or tasks of the base. */
+function lineQuantity(line: PayslipLine, basis: PayBasis) {
+  const counted = line.type === "BASE" && (basis === "DAILY" || basis === "PER_TASK");
+  return qty(counted ? (line.quantity ?? 0) * 1000 : Math.round(((line.quantity ?? 0) * 1000) / 60));
+}
+
+/** Paid leave taken in the month, and what is left at its end, in thousandths of a day. */
+async function leaveFigures(
+  ex: Executor,
+  person: Person,
+  period: { start: LocalDate; end: LocalDate },
+  rules: LeaveRules,
+): Promise<{ taken: number; balance: number }> {
+  const accrual = leaveEarned({ startDate: person.startDate ?? person.registrationDate, asOf: period.end }, rules);
+  const since = localDate(accrual.from < period.start ? accrual.from : period.start);
+  const taken: Array<{ startDate: string; days: number | null }> =
+    person.kind === "WORKER"
+      ? await ex
+          .selectFrom("WorkerAbsence")
+          .select(["startDate", "days"])
+          .where("workerId", "=", person.id)
+          .where("category", "=", "LEAVE")
+          .where("status", "=", "APPROVED")
+          .where("paid", "=", 1)
+          .where("startDate", ">=", since)
+          .where("startDate", "<=", period.end)
+          .execute()
+      : await ex
+          .selectFrom("EmployeeLeave")
+          .select(["startDate", "days"])
+          .where("staffId", "=", person.id)
+          .where("status", "=", "APPROVED")
+          .where("paid", "=", 1)
+          .where("deletedAt", "is", null)
+          .where("startDate", ">=", since)
+          .where("startDate", "<=", period.end)
+          .execute();
+  const sum = (from: string) =>
+    taken.filter((row) => row.startDate >= from).reduce((all, row) => all + (row.days ?? 0), 0);
+  return {
+    taken: sum(period.start),
+    balance: leaveBalance({
+      broughtForward: person.leaveOpeningDays ?? 0,
+      earned: accrual.earned,
+      taken: sum(accrual.from),
+    }),
+  };
+}
+
 /** Computes and writes one person's payslip in a draft run, with its lines and the seats it pays. */
 async function writePayslip(
   ex: Executor,
   ctx: ServiceContext,
   run: { id: string; staffKind: string; periodStart: LocalDate; periodEnd: LocalDate },
   person: Person,
-  setup: { rates: PayslipRates; dayMin: number; weekMin: number; restDay: string; leavePerMonth: number },
+  setup: Setup,
   typed: PayslipOverrides,
+  keepId?: string,
 ): Promise<boolean> {
   const period = { start: run.periodStart, end: run.periodEnd };
   const figures =
     person.kind === "WORKER"
       ? await workerFigures(ex, ctx, person, period, run.id)
-      : await employeeFigures(ex, person, period, { dayMin: setup.dayMin, weekMin: setup.weekMin, restDay: setup.restDay });
+      : await employeeFigures(ex, person, period, {
+          dayMin: setup.dayMin,
+          weekMin: setup.weekMin,
+          restDay: setup.restDay,
+        });
   const basis = person.payBasis as PayBasis;
   const paidMin = [...figures.days.values()].reduce((sum, value) => sum + value, 0);
   // Nothing to pay a worker paid by the hour, day or task who worked nothing and was paid no leave.
@@ -440,13 +521,15 @@ async function writePayslip(
       irg: typed.irg === undefined ? undefined : money(typed.irg),
     },
   };
-  // Advances and other debts are repaid from what is left, unless a repayment was typed.
+  // Advances and other debts are taken back from what is left: those of this month and of the months before
+  // it, unless the office typed another amount (never more than is owed now).
   const owed = await debtBalanceOf(ex, person.id);
+  const owedThen = await debtAt(ex, person.id, run.periodEnd);
   const before = computePayslip({ ...figuresIn, advanceRepayment: money(0) }, setup.rates);
   const repay =
     typed.advanceRepayment !== undefined
       ? Math.min(typed.advanceRepayment, owed)
-      : Math.max(0, Math.min(owed, before.net ?? 0));
+      : Math.max(0, Math.min(owed, owedThen, before.net ?? 0));
   const result = computePayslip({ ...figuresIn, advanceRepayment: money(repay) }, setup.rates);
 
   const positionOrRole =
@@ -457,8 +540,10 @@ async function writePayslip(
       : person.jobPosition
         ? (JOB_POSITION_AR[person.jobPosition as keyof typeof JOB_POSITION_AR] ?? null)
         : null;
-  const payslipId = newId();
-  const leaveAccrued = share ? Math.round((setup.leavePerMonth * share.days) / share.of) : setup.leavePerMonth;
+  // A payslip computed again keeps its id: the page open on it stays the same record.
+  const payslipId = keepId ?? newId();
+  const leaveAccrued = share ? Math.round((setup.leave.perMonth * share.days) / share.of) : setup.leave.perMonth;
+  const leave = await leaveFigures(ex, person, period, setup.leave);
   await ex
     .insertInto("Payslip")
     .values({
@@ -471,7 +556,7 @@ async function writePayslip(
       cnasNumber: person.cnasNumber,
       payBasis: basis,
       payRate: money(person.payRate ?? 0),
-      daysWorked: qty(figuresIn.daysWorked),
+      daysWorked: qty(figuresIn.daysWorked * 1000),
       visitsDone: figures.seats.length,
       ordersNotTypedCount: figures.ordersNotTyped,
       normalMin: minutes(Math.max(0, paidMin - figures.overtimeMin)),
@@ -495,6 +580,8 @@ async function writePayslip(
       employerCnasRate: person.cnasDeclared === 1 ? setup.rates.cnasEmployerBp : basisPoints(0),
       employerCnasAmount: result.employerCnas,
       leaveAccruedDays: qty(leaveAccrued),
+      leaveTakenDays: qty(leave.taken),
+      leaveBalanceDays: qty(leave.balance),
       manualOverrides: JSON.stringify({
         typed,
         missing: result.irg === null ? ["IRG"] : [],
@@ -521,7 +608,7 @@ async function writePayslip(
         sortOrder: index,
         type: line.type,
         label: lineLabel(line),
-        quantity: line.quantity === undefined ? null : qty(line.quantity),
+        quantity: line.quantity === undefined ? null : lineQuantity(line, basis),
         rate: line.type === "BASE" ? money(person.payRate ?? 0) : null,
         amount: line.amount,
         contributable: line.contributable ? 1 : 0,
@@ -555,7 +642,7 @@ async function fillRun(
   ex: Executor,
   ctx: ServiceContext,
   run: { id: string; staffKind: string; periodStart: LocalDate; periodEnd: LocalDate },
-  typed: Map<string, PayslipOverrides>,
+  kept: Map<string, { id: string; typed: PayslipOverrides }>,
 ): Promise<number> {
   const { rates: payRates, snapshot } = await rates(ex);
   const people = await peopleOf(ex, run.staffKind as StaffKind, run.periodStart, run.periodEnd);
@@ -566,35 +653,32 @@ async function fillRun(
       ctx,
       run,
       person,
-      {
-        rates: payRates,
-        dayMin: snapshot["work.dayMin"] as number,
-        weekMin: snapshot["work.weekMin"] as number,
-        restDay: snapshot["work.restDay"] as string,
-        leavePerMonth: snapshot["pay.leaveDaysPerMonth"] as number,
-      },
-      typed.get(person.id) ?? {},
+      setupFrom(payRates, snapshot),
+      kept.get(person.id)?.typed ?? {},
+      kept.get(person.id)?.id,
     );
     if (wrote) written += 1;
   }
   return written;
 }
 
-/** Empties a draft run: its seats, lines and payslips. Returns what was typed on each, to keep. */
-async function emptyRun(ex: Executor, runId: string): Promise<Map<string, PayslipOverrides>> {
+/** Empties a draft run: its seats, lines and payslips. Returns each person's payslip id and what was typed on it, to keep. */
+async function emptyRun(ex: Executor, runId: string): Promise<Map<string, { id: string; typed: PayslipOverrides }>> {
   const payslips = await ex
     .selectFrom("Payslip")
     .select(["id", "staffId", "manualOverrides"])
     .where("payRunId", "=", runId)
     .execute();
-  const typed = new Map(payslips.map((slip) => [slip.staffId, parseOverrides(slip.manualOverrides).typed]));
+  const kept = new Map(
+    payslips.map((slip) => [slip.staffId, { id: slip.id, typed: parseOverrides(slip.manualOverrides).typed }]),
+  );
   const ids = payslips.map((slip) => slip.id);
   if (ids.length) {
     await ex.deleteFrom("PayslipSeat").where("payslipId", "in", ids).execute();
     await ex.deleteFrom("PayslipItem").where("payslipId", "in", ids).execute();
     await ex.deleteFrom("Payslip").where("id", "in", ids).execute();
   }
-  return typed;
+  return kept;
 }
 
 async function runOf(ex: Executor, payRunId: string) {
@@ -613,7 +697,7 @@ export async function preparePayRun(
   input: { staffKind: StaffKind; month: string },
 ): Promise<{ payRunId: string; payslips: number }> {
   if (!RUN_KINDS.includes(input.staffKind)) throw new Error(`people: no pay run for ${input.staffKind}`);
-  requirePay(ctx, input.staffKind, "WRITE");
+  requirePay(ctx, "WRITE");
   const { start, end } = monthOf(input.month);
   if (start > ctx.today) throw new ServiceError("A month still to come cannot be paid yet.");
   const live = await ex
@@ -656,7 +740,12 @@ export async function preparePayRun(
       updatedByUserId: ctx.userId,
     })
     .execute();
-  const payslips = await fillRun(ex, ctx, { id: payRunId, staffKind: input.staffKind, periodStart: start, periodEnd: end }, new Map());
+  const payslips = await fillRun(
+    ex,
+    ctx,
+    { id: payRunId, staffKind: input.staffKind, periodStart: start, periodEnd: end },
+    new Map(),
+  );
   await logChange(ex, ctx, {
     owner: "PEOPLE",
     action: "CREATE",
@@ -676,13 +765,15 @@ export async function refreshPayRun(
   input: { payRunId: string },
 ): Promise<{ payRunId: string; payslips: number }> {
   const run = await runOf(ex, input.payRunId);
-  requirePay(ctx, run.staffKind as StaffKind, "WRITE");
+  requirePay(ctx, "WRITE");
   if (run.status !== "DRAFT") throw new ServiceError("Only a draft pay run can be computed again.");
-  const typed = await emptyRun(ex, run.id);
-  const payslips = await fillRun(ex, ctx, run, typed);
+  const kept = await emptyRun(ex, run.id);
+  const payslips = await fillRun(ex, ctx, run, kept);
+  // A draft follows the rates in Settings; they are fixed when it closes.
+  const { snapshot } = await rates(ex);
   await ex
     .updateTable("PayRun")
-    .set({ updatedAt: ctx.now, updatedByUserId: ctx.userId })
+    .set({ ratesSnapshot: JSON.stringify(snapshot), updatedAt: ctx.now, updatedByUserId: ctx.userId })
     .where("id", "=", run.id)
     .execute();
   return { payRunId: run.id, payslips };
@@ -701,7 +792,7 @@ export async function updatePayslip(
     .where("p.id", "=", input.payslipId)
     .executeTakeFirst();
   if (!slip) throw new ServiceError("This payslip does not exist.");
-  requirePay(ctx, slip.staffKind as StaffKind, "WRITE");
+  requirePay(ctx, "WRITE");
   if (slip.status !== "DRAFT") throw new ServiceError("A closed payslip can no longer be changed.");
   const typed: PayslipOverrides = { ...parseOverrides(slip.manualOverrides).typed };
   for (const key of ["cnas", "irg", "advanceRepayment", "deduction"] as const) {
@@ -725,20 +816,7 @@ export async function updatePayslip(
     (each) => each.id === slip.staffId,
   );
   if (!person) throw new ServiceError("This person has no pay terms for this month.");
-  await writePayslip(
-    ex,
-    ctx,
-    run,
-    person,
-    {
-      rates: payRates,
-      dayMin: snapshot["work.dayMin"] as number,
-      weekMin: snapshot["work.weekMin"] as number,
-      restDay: snapshot["work.restDay"] as string,
-      leavePerMonth: snapshot["pay.leaveDaysPerMonth"] as number,
-    },
-    typed,
-  );
+  await writePayslip(ex, ctx, run, person, setupFrom(payRates, snapshot), typed, slip.id);
   await logChange(ex, ctx, {
     owner: "PEOPLE",
     action: "UPDATE",
@@ -751,9 +829,13 @@ export async function updatePayslip(
 }
 
 /** Closes a draft run: numbers it and its payslips, freezes them, writes the repayments in the ledger. */
-export async function closePayRun(ex: Executor, ctx: ServiceContext, input: { payRunId: string }): Promise<{ number: string }> {
+export async function closePayRun(
+  ex: Executor,
+  ctx: ServiceContext,
+  input: { payRunId: string },
+): Promise<{ number: string }> {
   const run = await runOf(ex, input.payRunId);
-  requirePay(ctx, run.staffKind as StaffKind, "WRITE");
+  requirePay(ctx, "WRITE");
   if (run.status !== "DRAFT") throw new ServiceError("Only a draft pay run can be closed.");
   if (run.periodEnd >= ctx.today) throw new ServiceError("A month is closed once it is over.");
   const payslips = await ex
@@ -765,6 +847,12 @@ export async function closePayRun(ex: Executor, ctx: ServiceContext, input: { pa
   if (payslips.length === 0) throw new ServiceError("This pay run has no payslip.");
   if (payslips.some((slip) => parseOverrides(slip.manualOverrides).missing.includes("IRG"))) {
     throw new ServiceError("Type the IRG of every payslip first: its scale is not in Settings.");
+  }
+  for (const slip of payslips) {
+    if (slip.netAmount < 0) throw new ServiceError("A payslip takes off more than it pays: correct it first.");
+    if (slip.advanceRepayment > (await debtBalanceOf(ex, slip.staffId))) {
+      throw new ServiceError("The advances changed since this run was computed: compute it again.");
+    }
   }
 
   // The payslips' numbers while the run is still a draft; then the run's, with its closing, in one statement.
@@ -819,7 +907,7 @@ export async function closePayRun(ex: Executor, ctx: ServiceContext, input: { pa
 /** Takes a draft away. A closed run is voided instead. */
 export async function deletePayRun(ex: Executor, ctx: ServiceContext, input: { payRunId: string }): Promise<void> {
   const run = await runOf(ex, input.payRunId);
-  requirePay(ctx, run.staffKind as StaffKind, "WRITE");
+  requirePay(ctx, "WRITE");
   if (run.status !== "DRAFT") throw new ServiceError("Only a draft pay run can be taken away; a closed one is voided.");
   await emptyRun(ex, run.id);
   await ex.deleteFrom("PayRun").where("id", "=", run.id).execute();
@@ -844,7 +932,7 @@ export async function voidPayRun(
   input: { payRunId: string; reason: string },
 ): Promise<void> {
   const run = await runOf(ex, input.payRunId);
-  requirePay(ctx, run.staffKind as StaffKind, "WRITE");
+  requirePay(ctx, "WRITE");
   const reason = input.reason.trim();
   if (reason === "") throw new ServiceError("Write the reason for voiding.");
   if (run.status !== "CLOSED") throw new ServiceError("Only a closed pay run can be voided.");
@@ -858,7 +946,14 @@ export async function voidPayRun(
   if (paid) throw new ServiceError("Void the wages paid on this run first.");
   await ex
     .updateTable("PayRun")
-    .set({ status: "VOID", voidedAt: ctx.now, voidedByUserId: ctx.userId, voidReason: reason, updatedAt: ctx.now, updatedByUserId: ctx.userId })
+    .set({
+      status: "VOID",
+      voidedAt: ctx.now,
+      voidedByUserId: ctx.userId,
+      voidReason: reason,
+      updatedAt: ctx.now,
+      updatedByUserId: ctx.userId,
+    })
     .where("id", "=", run.id)
     .execute();
   const repaid = await ex
@@ -913,7 +1008,7 @@ export async function listPayRuns(
   ctx: ServiceContext,
   input: { staffKind?: StaffKind } = {},
 ): Promise<PayRunRow[]> {
-  requireCapability(ctx, "pay.read");
+  requirePay(ctx, "READ");
   let runs = ex
     .selectFrom("PayRun as r")
     .leftJoin("Payslip as p", "p.payRunId", "r.id")
@@ -933,31 +1028,20 @@ export async function listPayRuns(
     .groupBy("r.id");
   if (input.staffKind) runs = runs.where("r.staffKind", "=", input.staffKind);
   const found = await runs.orderBy("r.periodStart", "desc").orderBy("r.createdAt", "desc").execute();
-  return found
-    .filter((run) => can(ctx, "pay.read") && requireSectionQuietly(ctx, run.staffKind as StaffKind))
-    .map((run) => ({
-      id: run.id,
-      number: run.number,
-      staffKind: run.staffKind as StaffKind,
-      month: run.periodStart.slice(0, 7),
-      periodStart: run.periodStart,
-      periodEnd: run.periodEnd,
-      status: run.status,
-      payslips: Number(run.payslips),
-      gross: Number(run.gross),
-      net: Number(run.net),
-      paid: Number(run.paid),
-      closedAt: run.closedAt,
-    }));
-}
-
-function requireSectionQuietly(ctx: ServiceContext, kind: StaffKind): boolean {
-  try {
-    requireSection(ctx, SECTION_OF_KIND[kind], "READ");
-    return true;
-  } catch {
-    return false;
-  }
+  return found.map((run) => ({
+    id: run.id,
+    number: run.number,
+    staffKind: run.staffKind as StaffKind,
+    month: run.periodStart.slice(0, 7),
+    periodStart: run.periodStart,
+    periodEnd: run.periodEnd,
+    status: run.status,
+    payslips: Number(run.payslips),
+    gross: Number(run.gross),
+    net: Number(run.net),
+    paid: Number(run.paid),
+    closedAt: run.closedAt,
+  }));
 }
 
 export interface PayslipRow {
@@ -989,11 +1073,6 @@ export interface PayslipRow {
   /** The IRG still to type. */
   missing: string[];
   typed: PayslipOverrides;
-}
-
-export interface PayRunFile extends PayRunRow {
-  voidReason: string | null;
-  payslips: PayslipRow[] & { length: number };
 }
 
 const payslipRow = (slip: Record<string, unknown> & { manualOverrides: string | null }): PayslipRow => {
@@ -1031,8 +1110,13 @@ const payslipRow = (slip: Record<string, unknown> & { manualOverrides: string | 
 
 export async function getPayRun(ex: Executor, ctx: ServiceContext, input: { payRunId: string }) {
   const run = await runOf(ex, input.payRunId);
-  requirePay(ctx, run.staffKind as StaffKind, "READ");
-  const payslips = await ex.selectFrom("Payslip").selectAll().where("payRunId", "=", run.id).orderBy("staffNumber").execute();
+  requirePay(ctx, "READ");
+  const payslips = await ex
+    .selectFrom("Payslip")
+    .selectAll()
+    .where("payRunId", "=", run.id)
+    .orderBy("staffNumber")
+    .execute();
   const rows = payslips.map(payslipRow);
   return {
     id: run.id,
@@ -1055,36 +1139,74 @@ export async function getPayRun(ex: Executor, ctx: ServiceContext, input: { payR
 }
 
 export interface PayslipFile extends PayslipRow {
-  run: { id: string; number: string | null; month: string; periodStart: string; periodEnd: string; status: string; staffKind: StaffKind };
+  run: {
+    id: string;
+    number: string | null;
+    month: string;
+    periodStart: string;
+    periodEnd: string;
+    status: string;
+    staffKind: StaffKind;
+  };
   cnasNumber: string | null;
+  /** MALE or FEMALE: the printed payslip words itself by it. */
+  sex: string;
+  /** The centre as the employer, for the printed payslip. */
+  employer: { nameAr: string; city: string; cnasEmployerNumber: string };
   contributableBase: number;
   taxableBase: number;
   cnasRate: number;
   employerCnasRate: number;
   leaveAccruedDays: number;
+  leaveTakenDays: number;
+  leaveBalanceDays: number;
   divisionMin: Record<string, number>;
-  items: Array<{ id: string; type: PayslipItemType; label: string; quantity: number | null; rate: number | null; amount: number }>;
+  items: Array<{
+    id: string;
+    type: PayslipItemType;
+    label: string;
+    quantity: number | null;
+    rate: number | null;
+    amount: number;
+  }>;
   seats: Array<{ visitWorkerId: string; visitDate: string; countedMin: number; isArrears: boolean }>;
-  payouts: Array<{ id: string; number: string; date: string; amount: number; kind: string; wageMethod: string; voidedAt: string | null }>;
+  payouts: Array<{
+    id: string;
+    number: string;
+    date: string;
+    amount: number;
+    kind: string;
+    wageMethod: string;
+    voidedAt: string | null;
+  }>;
+}
+
+function parseDivisionMinutes(text: string | null): Record<string, number> {
+  try {
+    return text ? (JSON.parse(text) as Record<string, number>) : {};
+  } catch {
+    return {};
+  }
 }
 
 /** One payslip with its lines, the seats it pays and its payouts. */
-export async function getPayslip(ex: Executor, ctx: ServiceContext, input: { payslipId: string }): Promise<PayslipFile> {
+export async function getPayslip(
+  ex: Executor,
+  ctx: ServiceContext,
+  input: { payslipId: string },
+): Promise<PayslipFile> {
   const slip = await ex.selectFrom("Payslip").selectAll().where("id", "=", input.payslipId).executeTakeFirst();
   if (!slip) throw new ServiceError("This payslip does not exist.");
   const run = await runOf(ex, slip.payRunId);
-  requirePay(ctx, run.staffKind as StaffKind, "READ");
+  requirePay(ctx, "READ");
+  const centre = await getSettings(ex, ["centre.nameAr", "centre.city", "centre.cnasEmployerNumber"]);
+  const person = await ex.selectFrom("StaffMember").select("sex").where("id", "=", slip.staffId).executeTakeFirst();
   const [items, seats, payouts] = await Promise.all([
     ex.selectFrom("PayslipItem").selectAll().where("payslipId", "=", slip.id).orderBy("sortOrder").execute(),
     ex.selectFrom("PayslipSeat").selectAll().where("payslipId", "=", slip.id).orderBy("visitDate").execute(),
     ex.selectFrom("StaffPayout").selectAll().where("payslipId", "=", slip.id).orderBy("date").execute(),
   ]);
-  let divisionMin: Record<string, number> = {};
-  try {
-    divisionMin = slip.divisionMin ? (JSON.parse(slip.divisionMin) as Record<string, number>) : {};
-  } catch {
-    divisionMin = {};
-  }
+  const divisionMin = parseDivisionMinutes(slip.divisionMin);
   return {
     ...payslipRow(slip),
     run: {
@@ -1097,11 +1219,19 @@ export async function getPayslip(ex: Executor, ctx: ServiceContext, input: { pay
       staffKind: run.staffKind as StaffKind,
     },
     cnasNumber: slip.cnasNumber,
+    sex: person?.sex ?? "MALE",
+    employer: {
+      nameAr: centre["centre.nameAr"],
+      city: centre["centre.city"],
+      cnasEmployerNumber: centre["centre.cnasEmployerNumber"],
+    },
     contributableBase: slip.contributableBase,
     taxableBase: slip.taxableBase,
     cnasRate: slip.cnasRate,
     employerCnasRate: slip.employerCnasRate,
     leaveAccruedDays: slip.leaveAccruedDays,
+    leaveTakenDays: slip.leaveTakenDays,
+    leaveBalanceDays: slip.leaveBalanceDays,
     divisionMin,
     items: items.map((item) => ({
       id: item.id,
@@ -1129,6 +1259,66 @@ export async function getPayslip(ex: Executor, ctx: ServiceContext, input: { pay
   };
 }
 
+/** A payslip handed to its owner is a disclosure of personal data: the print is logged before the dialog opens. */
+export async function recordPayslipPrint(
+  ex: Executor,
+  ctx: ServiceContext,
+  input: { payslipId: string },
+): Promise<void> {
+  requirePay(ctx, "READ");
+  const slip = await ex
+    .selectFrom("Payslip as p")
+    .innerJoin("PayRun as r", "r.id", "p.payRunId")
+    .select(["p.id", "p.number", "p.staffId", "p.staffName", "r.staffKind", "r.periodStart"])
+    .where("p.id", "=", input.payslipId)
+    .executeTakeFirst();
+  if (!slip) throw new ServiceError("This payslip does not exist.");
+  await logDisclose(ex, ctx, {
+    owner: "PEOPLE",
+    action: "PRINT",
+    entity: "Payslip",
+    entityId: slip.id,
+    entityLabel: slip.number ?? slip.periodStart.slice(0, 7),
+    subject: { kind: slip.staffKind === "EMPLOYEE" ? "EMPLOYEE" : "WORKER", id: slip.staffId, label: slip.staffName },
+  });
+}
+
+export interface StaffPayslipRow {
+  id: string;
+  number: string | null;
+  month: string;
+  status: string;
+  grossAmount: number;
+  netAmount: number;
+  paidAmount: number;
+}
+
+/** One person's payslips, the last month first: for the person's pay page. */
+export async function listPayslipsOf(
+  ex: Executor,
+  ctx: ServiceContext,
+  input: { staffId: string },
+): Promise<StaffPayslipRow[]> {
+  requirePay(ctx, "READ");
+  const rows = await ex
+    .selectFrom("Payslip as p")
+    .innerJoin("PayRun as r", "r.id", "p.payRunId")
+    .select(["p.id", "p.number", "r.periodStart", "r.status", "p.grossAmount", "p.netAmount", "p.paidAmount"])
+    .where("p.staffId", "=", input.staffId)
+    .where("r.status", "<>", "VOID")
+    .orderBy("r.periodStart", "desc")
+    .execute();
+  return rows.map((row) => ({
+    id: row.id,
+    number: row.number,
+    month: row.periodStart.slice(0, 7),
+    status: row.status,
+    grossAmount: row.grossAmount,
+    netAmount: row.netAmount,
+    paidAmount: row.paidAmount,
+  }));
+}
+
 /** The month a date is in, `YYYY-MM`, for the screens. */
 export const monthOfDate = (date: string) => (isDate(date) ? date.slice(0, 7) : "");
 
@@ -1143,4 +1333,5 @@ export const voidPayRunAction = action(voidPayRun, { revalidate: RUN_REFRESHES }
 export const listPayRunsQuery = query(listPayRuns);
 export const getPayRunQuery = query(getPayRun);
 export const getPayslipQuery = query(getPayslip);
-export type Amount = Money;
+export const listPayslipsOfQuery = query(listPayslipsOf);
+export const recordPayslipPrintAction = action(recordPayslipPrint, { revalidate: [] });

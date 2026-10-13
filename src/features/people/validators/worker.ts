@@ -84,6 +84,11 @@ export const workerFormSchema = z
       .refine((value) => value === "" || isWilayaCode(value), "Choose a wilaya from the list."),
     address: text,
     residenceCommuneId: z.string(),
+    // «بلدية/ولاية إقامة»: his two blanks. The commune is picked in the centre's wilaya, typed in another.
+    residenceWilayaCode: z
+      .string()
+      .refine((value) => value === "" || isWilayaCode(value), "Choose a wilaya from the list."),
+    residenceCommuneName: text,
     maritalStatus: z.enum(MARITAL_STATUSES).optional(),
     phone: z.string().trim().min(1, "This field is required.").refine(phoneOk, "The phone number has 9 or 10 digits."),
 
@@ -165,7 +170,10 @@ export const workerFormSchema = z
     cnasNumber: z
       .string()
       .trim()
-      .refine((value) => value === "" || /^\d{6,20}$/.test(value.replace(/\s/g, "")), "A social security number is 6 to 20 digits."),
+      .refine(
+        (value) => value === "" || /^\d{6,20}$/.test(value.replace(/\s/g, "")),
+        "A social security number is 6 to 20 digits.",
+      ),
   })
   .superRefine((data, ctx) => {
     if (data.healthConditions.includes("NONE") && data.healthConditions.length > 1) {

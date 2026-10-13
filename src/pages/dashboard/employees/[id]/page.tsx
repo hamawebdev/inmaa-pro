@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import { LogOut, RotateCcw } from "lucide-react";
-import { useParams } from "react-router-dom";
+import { CalendarCheck, LogOut, RotateCcw, Wallet } from "lucide-react";
+import { Link, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import { useTranslations } from "use-intl";
 
@@ -10,7 +10,7 @@ import { Ltr } from "@/components/ltr";
 import { StatusChip } from "@/components/status-chip";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { todayAtTheCentre, useMay } from "@/features/people/components/may";
+import { todayAtTheCentre, useMay, useMayIn } from "@/features/people/components/may";
 import { useReasonDialog } from "@/features/people/components/reason-dialog";
 import { SanctionCard } from "@/features/people/components/sanction-card";
 import { SanctionChip } from "@/features/people/components/sanction-chip";
@@ -63,6 +63,9 @@ export default function EmployeePage() {
   });
   const back = { href: "/dashboard/employees", label: tNav("EmployeesList") };
   const keepsFiles = useMay("staff.write");
+  // Pay is a tab of the workers' section: an account that does not reach it is not sent there.
+  const holdsPay = useMay("pay.read");
+  const reachesPay = useMayIn("WORKERS", "READ");
 
   if (!file) {
     return (
@@ -113,7 +116,6 @@ export default function EmployeePage() {
     <DetailScreen
       section="employees"
       title={name}
-      description={t("File.Description")}
       back={back}
       actions={
         keepsFiles &&
@@ -146,6 +148,23 @@ export default function EmployeePage() {
             {file.leftReason ? ` · ${file.leftReason}` : ""}
           </span>
         )}
+        {/* The employee's attendance, and payslips, advances and payments (feature 38: "employee file"). */}
+        <div className="ms-auto flex flex-wrap items-center gap-2">
+          <Button asChild variant="outline" size="sm">
+            <Link to={`/dashboard/employee-attendance/${id}`}>
+              <CalendarCheck />
+              {t("File.Attendance")}
+            </Link>
+          </Button>
+          {holdsPay && reachesPay && (
+            <Button asChild variant="outline" size="sm">
+              <Link to={`/dashboard/hours-pay/people/${id}`}>
+                <Wallet />
+                {t("File.Pay")}
+              </Link>
+            </Button>
+          )}
+        </div>
       </div>
 
       <div className="space-y-6">

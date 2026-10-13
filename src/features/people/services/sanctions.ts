@@ -506,6 +506,9 @@ export interface SanctionRow {
   endDate: string | null;
   displayName: string;
   displayNumber: string | null;
+  /** A worker's or an employee's sex and a worker's role, to word «عاملة نظافة» as the workers list does. */
+  subjectSex: string | null;
+  subjectRole: string | null;
   setAt: string;
   setBy: string | null;
   liftedAt: string | null;
@@ -530,6 +533,8 @@ export async function listSanctions(
     .selectFrom("Sanction as s")
     .leftJoin("User as setter", "setter.id", "s.setByUserId")
     .leftJoin("User as lifter", "lifter.id", "s.liftedByUserId")
+    .leftJoin("StaffMember as member", "member.id", "s.staffId")
+    .select(["member.sex as subjectSex", "member.role as subjectRole"])
     .select([
       "s.id",
       "s.subjectKind",
@@ -570,6 +575,8 @@ export async function listSanctions(
       endDate: row.endDate,
       displayName: row.displayName,
       displayNumber: row.displayNumber,
+      subjectSex: row.subjectSex,
+      subjectRole: row.subjectRole,
       setAt: row.setAt,
       setBy: row.setBy,
       liftedAt: row.liftedAt,

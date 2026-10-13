@@ -20,6 +20,8 @@ export interface WorkerScreenCard {
   id: string;
   /** A heading row of his form that titles the card, when he has one. */
   heading?: string;
+  /** A title of the screen's own (`WorkerForm.Fields`), for the one card his form leaves without a heading. */
+  ownTitle?: string;
   /** The card is titled by its first row's label instead (his label of a list). */
   titledByFirstRow?: boolean;
   /** His rows shown in the card, in his order. */
@@ -31,9 +33,9 @@ export interface WorkerScreenCard {
 export const WORKER_SCREEN_TITLE_ROW = "formTitle";
 
 export const WORKER_SCREEN_CARDS: readonly WorkerScreenCard[] = [
-  // The number and the date stand above his first table, before its heading:
-  // a card of their own, without a title.
-  { id: "number", rows: ["regNumber", "registrationDate"] },
+  // The number and the date stand above his first table, before its heading: a card of their own. His form
+  // has no heading there; the screen gives the card one, as every card of the academy's form has.
+  { id: "number", ownTitle: "registrationCard", rows: ["regNumber", "registrationDate"] },
   {
     id: "personal",
     heading: "personalHeading",

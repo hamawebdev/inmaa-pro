@@ -9,6 +9,7 @@ import { useLocale, useTranslations } from "use-intl";
 
 import { Ltr } from "@/components/ltr";
 import { StatusChip } from "@/components/status-chip";
+import { PageActions } from "@/components/screen";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -17,7 +18,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { listCommunesQuery, listZonesQuery, PLACES_PATH } from "@/features/core/services/places";
+import { listZonesQuery, PLACES_PATH } from "@/features/core/services/places";
+import { ResidenceFields } from "@/features/people/components/residence-fields";
 import { isolate, useMay } from "@/features/people/components/may";
 import { useSanctionGate } from "@/features/people/components/sanction-gate";
 import { workerFormRowByKey, YES_NO } from "@/features/people/forms/worker-form";
@@ -81,12 +83,8 @@ type Props = {
   defaultValues: WorkerFormValues;
 };
 
-type Commune = { id: string; nameAr: string; nameFr: string | null };
 type Zone = { id: string; name: string };
 type Opened = Record<RestrictedPart, boolean>;
-
-/** The wilaya whose communes «بلدية/ولاية إقامة» offers: the centre's. Another wilaya comes with Foundation's commune picker. */
-const RESIDENCE_WILAYA = "04";
 
 type FormControl = Control<WorkerFormValues>;
 type Name = FieldPath<WorkerFormValues>;
@@ -106,10 +104,6 @@ export function WorkerForm({ mode, defaultValues }: Props) {
   // A new worker's restricted cards are open, to fill. A registered worker's are opened on demand.
   const [opened, setOpened] = React.useState<Opened>({ HEALTH: mode.kind === "new", SCORE: mode.kind === "new" });
 
-  const communes = useQuery({
-    queryKey: [...pathKey(PLACES_PATH), "communes", RESIDENCE_WILAYA],
-    queryFn: () => listCommunesQuery({ wilayaCode: RESIDENCE_WILAYA }),
-  });
   const zones = useQuery({ queryKey: [...pathKey(PLACES_PATH), "zones"], queryFn: () => listZonesQuery(undefined) });
 
   const open = async (part: RestrictedPart) => {
@@ -190,14 +184,7 @@ export function WorkerForm({ mode, defaultValues }: Props) {
             onOpen={card.restricted ? () => open(card.restricted as RestrictedPart) : undefined}
           >
             {card.rows.map((key) => (
-              <RowField
-                key={key}
-                rowKey={key}
-                control={control}
-                mode={mode}
-                communes={communes.data ?? []}
-                form={form}
-              />
+              <RowField key={key} rowKey={key} control={control} mode={mode} form={form} />
             ))}
           </ScreenCard>
         ))}
@@ -205,21 +192,21 @@ export function WorkerForm({ mode, defaultValues }: Props) {
         <OfficeCard control={control} zones={zones.data ?? []} />
       </fieldset>
 
-      <div
-        className={cn(
-          "flex flex-col-reverse items-stretch justify-end gap-3 sm:flex-row sm:items-center",
-          readOnly && "hidden",
-        )}
-      >
-        {mode.kind === "new" && (
-          <Button type="button" variant="outline" onClick={() => router.back()}>
+      {/* The foot of the form, as the academy's: the way out beside the save, which is the screen's one green button. */}
+      {!readOnly && (
+        <PageActions>
+          <Button type="button" variant="outline" onClick={() => router.push("/dashboard/workers")}>
             {t("Actions.Cancel")}
           </Button>
-        )}
-        <Button type="submit" variant={mode.kind === "new" ? "default" : "success"} disabled={formState.isSubmitting}>
-          {formState.isSubmitting ? t("Actions.Saving") : mode.kind === "new" ? t("Actions.Create") : t("Actions.Save")}
-        </Button>
-      </div>
+          <Button type="submit" variant="success" disabled={formState.isSubmitting}>
+            {formState.isSubmitting
+              ? t("Actions.Saving")
+              : mode.kind === "new"
+                ? t("Actions.Create")
+                : t("Actions.Save")}
+          </Button>
+        </PageActions>
+      )}
       {gateDialogs}
     </form>
   );
@@ -253,10 +240,12 @@ function ScreenCard({
   const locked = card.restricted !== undefined && !holdsIt;
   return (
     <Card id={`worker-card-${card.id}`}>
-      {titleKey && (
+      {(titleKey ?? card.ownTitle) && (
         <CardHeader>
           <div className="flex flex-wrap items-center gap-3">
-            <CardTitle className="text-base">{t(`Labels.${titleKey}`)}</CardTitle>
+            <CardTitle className="text-base">
+              {titleKey ? t(`Labels.${titleKey}`) : t(`Fields.${card.ownTitle}`)}
+            </CardTitle>
             {card.restricted && <StatusChip tone="pending" icon={Lock} label={t("Restricted.Badge")} />}
           </div>
           {card.restricted && (
@@ -292,13 +281,11 @@ function RowField({
   rowKey,
   control,
   mode,
-  communes,
   form,
 }: {
   rowKey: string;
   control: FormControl;
   mode: Mode;
-  communes: readonly Commune[];
   form: UseFormReturn<WorkerFormValues>;
 }) {
   const t = useTranslations("WorkerForm");
@@ -365,12 +352,16 @@ function RowField({
       );
     case "residence":
       return (
-        <ChoiceField
-          control={control}
-          name="residenceCommuneId"
-          label={label}
-          options={communes.map((c) => ({ value: c.id, label: locale === "ar" ? c.nameAr : (c.nameFr ?? c.nameAr) }))}
-        />
+        <Field>
+          <FieldLabel>{label}</FieldLabel>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <ResidenceFields
+              control={control}
+              communeLabel={t("Fields.birthCommune")}
+              wilayaLabel={t("Fields.birthWilaya")}
+            />
+          </div>
+        </Field>
       );
     case "maritalStatus":
       return (
@@ -958,13 +949,7 @@ function OfficeCard({ control, zones }: { control: FormControl; zones: readonly 
           )}
         />
         {declared && (
-          <TextField
-            control={control}
-            name="cnasNumber"
-            label={t("Fields.cnasNumber")}
-            dir="ltr"
-            inputMode="numeric"
-          />
+          <TextField control={control} name="cnasNumber" label={t("Fields.cnasNumber")} dir="ltr" inputMode="numeric" />
         )}
       </CardContent>
     </Card>

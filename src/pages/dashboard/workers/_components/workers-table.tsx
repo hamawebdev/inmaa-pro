@@ -66,7 +66,7 @@ export function WorkersTable({
         id: "name",
         header: t("Table.Name"),
         cell: ({ row }) => (
-          <Link to={`/dashboard/workers/${row.original.id}`} className="font-bold hover:underline">
+          <Link to={`/dashboard/workers/${row.original.id}`} className="font-bold whitespace-nowrap hover:underline">
             {row.original.lastName} {row.original.firstName}
           </Link>
         ),
@@ -74,12 +74,19 @@ export function WorkersTable({
       {
         id: "role",
         header: t("Table.Role"),
-        cell: ({ row }) =>
-          row.original.role
-            ? tOptions(`${row.original.sex === "FEMALE" ? "WorkerRoleFeminine" : "WorkerRole"}.${row.original.role}`)
-            : "—",
+        cell: ({ row }) => (
+          <span className="whitespace-nowrap">
+            {row.original.role
+              ? tOptions(`${row.original.sex === "FEMALE" ? "WorkerRoleFeminine" : "WorkerRole"}.${row.original.role}`)
+              : "—"}
+          </span>
+        ),
       },
-      { id: "zone", header: t("Table.Zone"), cell: ({ row }) => row.original.zoneName ?? "—" },
+      {
+        id: "zone",
+        header: t("Table.Zone"),
+        cell: ({ row }) => <span className="whitespace-nowrap">{row.original.zoneName ?? "—"}</span>,
+      },
       {
         id: "phone",
         header: t("Table.Phone"),
@@ -92,18 +99,15 @@ export function WorkersTable({
           <div className="flex flex-wrap items-center gap-2">
             <StatusChip tone={STATUS_TONE[row.original.status]} label={t(`Statuses.${row.original.status}`)} />
             <SanctionChip kind="WORKER" state={row.original.sanction?.state} />
+            {/* Documents to renew stand with her state: a column of their own made a French row wrap. */}
+            {row.original.documentsToRenew > 0 && (
+              <StatusChip
+                tone="warning"
+                label={t("Table.DocumentsToRenew", { count: row.original.documentsToRenew })}
+              />
+            )}
           </div>
         ),
-      },
-      {
-        id: "documents",
-        header: t("Table.Documents"),
-        cell: ({ row }) =>
-          row.original.documentsToRenew > 0 ? (
-            <StatusChip tone="warning" label={t("Table.DocumentsToRenew", { count: row.original.documentsToRenew })} />
-          ) : (
-            <span className="text-muted-foreground">—</span>
-          ),
       },
       {
         id: "actions",

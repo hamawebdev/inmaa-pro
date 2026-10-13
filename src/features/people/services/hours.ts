@@ -234,7 +234,16 @@ export async function workerHours(
   const people = await ex
     .selectFrom("StaffMember as w")
     .leftJoin("Zone as z", "z.id", "w.zoneId")
-    .select(["w.id", "w.number", "w.firstName", "w.lastName", "w.sex", "w.payBasis", "w.numberSeq", "z.name as zoneName"])
+    .select([
+      "w.id",
+      "w.number",
+      "w.firstName",
+      "w.lastName",
+      "w.sex",
+      "w.payBasis",
+      "w.numberSeq",
+      "z.name as zoneName",
+    ])
     .where("w.id", "in", ids)
     .where("w.kind", "=", "WORKER")
     .orderBy("w.numberSeq")
@@ -391,7 +400,8 @@ export async function addHoursAdjustment(
   if (!Number.isInteger(input.adjustMin) || input.adjustMin === 0 || Math.abs(input.adjustMin) > 24 * 60) {
     throw new ServiceError("A correction is a whole number of minutes, at most a day either way.");
   }
-  if (!(HOURS_ADJUSTMENT_KINDS as readonly string[]).includes(input.kind)) throw new ServiceError("Choose the kind of correction.");
+  if (!(HOURS_ADJUSTMENT_KINDS as readonly string[]).includes(input.kind))
+    throw new ServiceError("Choose the kind of correction.");
   const reason = input.reason.trim();
   if (reason === "") throw new ServiceError("Write the reason for the correction.");
   const person = await ex
@@ -445,7 +455,17 @@ export async function removeHoursAdjustment(
   const line = await ex
     .selectFrom("HoursAdjustment as h")
     .innerJoin("StaffMember as s", "s.id", "h.staffId")
-    .select(["h.id", "h.staffId", "h.date", "h.adjustMin", "h.deletedAt", "s.kind", "s.number", "s.lastName", "s.firstName"])
+    .select([
+      "h.id",
+      "h.staffId",
+      "h.date",
+      "h.adjustMin",
+      "h.deletedAt",
+      "s.kind",
+      "s.number",
+      "s.lastName",
+      "s.firstName",
+    ])
     .where("h.id", "=", input.id)
     .executeTakeFirst();
   if (!line || line.deletedAt) throw new ServiceError("This correction does not exist.");
@@ -476,8 +496,8 @@ async function refuseClosedDay(ex: Executor, staffId: string, date: string): Pro
     .select("r.id")
     .where("p.staffId", "=", staffId)
     .where("r.status", "=", "CLOSED")
-    .where("r.periodStart", "<=", date)
-    .where("r.periodEnd", ">=", date)
+    .where("r.periodStart", "<=", localDate(date))
+    .where("r.periodEnd", ">=", localDate(date))
     .executeTakeFirst();
   if (closed) throw new ServiceError("This day is in a closed pay run: it can no longer be corrected.");
 }

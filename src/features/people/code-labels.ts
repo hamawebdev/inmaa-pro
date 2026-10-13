@@ -1,19 +1,26 @@
 import {
+  CHECK_TYPES,
+  DEBT_REASONS,
   DECISION_STATUSES,
   EMPLOYMENT_CONTRACTS,
   ENGAGEMENT_STATUSES,
   HEALTH_CONDITIONS,
   HIRING_CRITERIA,
   HIRING_DECISIONS,
+  HOURS_ADJUSTMENT_KINDS,
   JOB_POSITIONS,
+  LEAVE_STATUSES,
   MARITAL_STATUSES,
   MATCH_BASES,
   PAY_BASES,
   PAY_PERIODS,
+  PAY_RUN_STATUSES,
+  PAYOUT_KINDS,
   SANCTION_CONTEXTS,
   SANCTION_STATES,
   SANCTION_SUBJECTS,
   STAFF_DOCUMENT_TYPES,
+  STAFF_KINDS,
   WORK_TIMES,
 } from "@/features/people/validators/staff-codes";
 import type { CodeLabelCase } from "@/i18n/code-labels";
@@ -48,6 +55,17 @@ export const codeLabelCases: readonly CodeLabelCase[] = [
   ["Employees.Positions", JOB_POSITIONS],
   ["Employees.Contracts", EMPLOYMENT_CONTRACTS],
   ["Employees.WorkTimes", WORK_TIMES],
+  // Hours and pay.
+  ["Hours.Corrections.Kinds", HOURS_ADJUSTMENT_KINDS],
+  ["Pay.Kinds", STAFF_KINDS],
+  ["Pay.KindsShort", STAFF_KINDS],
+  ["Pay.PersonKinds", STAFF_KINDS],
+  ["Pay.RunStatuses", PAY_RUN_STATUSES],
+  ["Pay.PayoutKinds", PAYOUT_KINDS],
+  ["Pay.DebtReasons", DEBT_REASONS],
+  // Centre employees' attendance.
+  ["EmployeeAttendance.CheckTypes", CHECK_TYPES],
+  ["EmployeeAttendance.LeaveStatuses", LEAVE_STATUSES],
   // The ten criteria of the confidential evaluation are labelled as rows of the form.
   ["WorkerForm.Labels", HIRING_CRITERIA],
 ];

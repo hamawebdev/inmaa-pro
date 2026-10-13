@@ -46,6 +46,7 @@ export default function WorkersPage() {
     <SectionScreen
       section="workers"
       title={tNav("WorkersHeading")}
+      description={t("Description")}
       actions={
         <div className="flex flex-wrap gap-3">
           <Button asChild variant={pending > 0 ? "warning" : "outline"}>

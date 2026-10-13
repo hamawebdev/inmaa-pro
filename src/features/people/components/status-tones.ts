@@ -22,3 +22,14 @@ export const DECISION_TONE: Record<DecisionStatus, StatusTone> = {
   REFUSED: "danger",
   CANCELLED: "neutral",
 };
+
+/** A pay run: a draft waits, a closed one is done, a voided one no longer counts. */
+export const RUN_TONE: Record<string, StatusTone> = { DRAFT: "pending", CLOSED: "success", VOID: "neutral" };
+
+/** An employee's leave. */
+export const LEAVE_TONE: Record<string, StatusTone> = {
+  REQUESTED: "pending",
+  APPROVED: "success",
+  REFUSED: "danger",
+  CANCELLED: "neutral",
+};

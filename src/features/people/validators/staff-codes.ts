@@ -37,6 +37,13 @@ export {
 } from "@/lib/options";
 
 /** A centre employee or a cleaning worker: one table for both (A2). */
+/**
+ * The centre's wilaya, أم البواقي: the one whose 29 communes the program is
+ * delivered with, so «بلدية/ولاية إقامة» offers them as a list. A commune of
+ * another wilaya is typed, and kept the first time it is used.
+ */
+export const HOME_WILAYA_CODE = "04";
+
 export const STAFF_KINDS = ["WORKER", "EMPLOYEE"] as const;
 export type StaffKind = (typeof STAFF_KINDS)[number];
 
@@ -58,6 +65,19 @@ export const JOB_POSITIONS = [
   "OTHER",
 ] as const;
 export type JobPosition = (typeof JOB_POSITIONS)[number];
+/** The posts in Arabic, for paper (a payslip): the words of the screens' Arabic labels. */
+export const JOB_POSITION_AR: Readonly<Record<JobPosition, string>> = {
+  MANAGER: "المدير",
+  ADMINISTRATION: "الإدارة",
+  SUPERVISOR: "المشرف",
+  HR_OFFICER: "مسئول الموارد البشرية",
+  OPERATIONS: "مسؤول العمليات",
+  RECEPTION_SALES: "مسؤول تجاري / استقبال",
+  SALES_REP: "المندوب التجاري",
+  ACCOUNTANT: "المحاسب",
+  STOREKEEPER: "أمين المخزن",
+  OTHER: "أخرى",
+};
 
 /** «نوع العقد» (#25). */
 export const EMPLOYMENT_CONTRACTS = ["NONE", "CDD", "CDI"] as const;

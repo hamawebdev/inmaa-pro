@@ -2,7 +2,11 @@ import type { Executor, ServiceContext } from "@/lib/service/context";
 import type { DemoNames, DemoTools } from "@/testing/demo";
 
 import { emptyWorkerValues, NO_DOCUMENTS, SAMPLE_WORKER_VALUES } from "./forms/worker-values";
+import { recordCheck, recordEmployeeAbsence, requestEmployeeLeave } from "./services/employee-attendance";
 import { registerEmployee } from "./services/employees";
+import { addHoursAdjustment } from "./services/hours";
+import { closePayRun, getPayRun, preparePayRun, updatePayslip } from "./services/pay-runs";
+import { recordPayout } from "./services/payouts";
 import { setSanction } from "./services/sanctions";
 import { registerWorker, type RegisterWorkerInput } from "./services/workers";
 import { emptyEmployeeValues } from "./validators/employee";
@@ -69,6 +73,8 @@ const WORKERS: readonly DemoWorker[] = [
       documents: documents({ ...BASIC_DOCUMENTS, MEDICAL_CERT: "2026-10-30" }),
       payBasis: "MONTHLY",
       payRate: "36000",
+      cnasDeclared: true,
+      cnasNumber: "870821004417",
       payPeriod: "MONTHLY",
     },
   },
@@ -118,6 +124,8 @@ const WORKERS: readonly DemoWorker[] = [
       collectAuthNote: "تفويض كتابي من المدير",
       payBasis: "MONTHLY",
       payRate: "40000",
+      cnasDeclared: true,
+      cnasNumber: "830215007752",
       payPeriod: "MONTHLY",
     },
   },
@@ -271,5 +279,123 @@ export async function seedDemo(ex: Executor, _ctx: ServiceContext, tools: DemoTo
   });
   names.employeeSupervisor = supervisor.id;
 
+  await seedAttendanceAndPay(ex, tools, names);
   return names;
+}
+
+/** The office's working days in a period: Sunday to Thursday. */
+function workingDays(from: string, to: string): string[] {
+  const days: string[] = [];
+  for (
+    let day = new Date(`${from}T00:00:00Z`);
+    day.toISOString().slice(0, 10) <= to;
+    day.setUTCDate(day.getUTCDate() + 1)
+  ) {
+    if (day.getUTCDay() !== 5 && day.getUTCDay() !== 6) days.push(day.toISOString().slice(0, 10));
+  }
+  return days;
+}
+
+/**
+ * Round 2's part: the two employees' times in and out since 1 September, an
+ * absence and two leaves; September's pay closed for the employees, with one
+ * wage paid and one paid in part; September's pay still a draft for the
+ * workers, from two training days; and an advance.
+ *
+ * The amounts typed as IRG are invented, like everything here: the scale is
+ * not in Settings, so each payslip's is typed, as the office would.
+ */
+async function seedAttendanceAndPay(ex: Executor, tools: DemoTools, names: DemoNames): Promise<void> {
+  const employees = [
+    { id: names.employeeHr, comesIn: "08:00", leaves: "16:00" },
+    { id: names.employeeSupervisor, comesIn: "07:30", leaves: "15:30" },
+  ];
+  for (const day of workingDays("2026-09-01", "2026-10-11")) {
+    const evening = tools.at(`${day}T16:10:00.000Z`);
+    for (const employee of employees) {
+      // The supervisor was away on the morning of 6 October, and stayed late on two evenings in September.
+      if (employee.id === names.employeeSupervisor && day === "2026-10-06") continue;
+      const late = employee.id === names.employeeSupervisor && (day === "2026-09-08" || day === "2026-09-09");
+      await recordCheck(ex, evening, { staffId: employee.id, type: "CHECK_IN", date: day, time: employee.comesIn });
+      await recordCheck(ex, evening, {
+        staffId: employee.id,
+        type: "CHECK_OUT",
+        date: day,
+        time: late ? "19:00" : employee.leaves,
+      });
+    }
+  }
+  await recordEmployeeAbsence(ex, tools.at(at("2026-10-07")), {
+    staffId: names.employeeSupervisor,
+    date: "2026-10-06",
+    type: "FULL_DAY",
+    justified: false,
+    paid: false,
+    reason: "لم يحضر ولم يُعلم",
+  });
+  await requestEmployeeLeave(ex, tools.at(at("2026-10-08")), {
+    staffId: names.employeeHr,
+    type: "ANNUAL",
+    startDate: "2026-10-18",
+    endDate: "2026-10-22",
+    approved: true,
+    reason: "عطلة سنوية",
+  });
+  await requestEmployeeLeave(ex, tools.at(at("2026-10-11")), {
+    staffId: names.employeeSupervisor,
+    type: "FAMILY_EVENT",
+    startDate: "2026-10-25",
+    endDate: "2026-10-27",
+    reason: "زواج أخيه",
+  });
+
+  // September, the centre's employees: prepared, the IRG typed, closed, paid.
+  const closing = tools.at(at("2026-10-04"));
+  const employeesRun = await preparePayRun(ex, closing, { staffKind: "EMPLOYEE", month: "2026-09" });
+  const typedIrg: Record<string, number> = { [names.employeeHr]: 550_000, [names.employeeSupervisor]: 370_000 };
+  for (const slip of (await getPayRun(ex, closing, { payRunId: employeesRun.payRunId })).payslips) {
+    await updatePayslip(ex, closing, { payslipId: slip.id, irg: typedIrg[slip.staffId] ?? 0 });
+  }
+  await closePayRun(ex, closing, { payRunId: employeesRun.payRunId });
+  names.payRunEmployees = employeesRun.payRunId;
+  const paying = tools.at(at("2026-10-05"));
+  for (const slip of (await getPayRun(ex, paying, { payRunId: employeesRun.payRunId })).payslips) {
+    const all = slip.staffId === names.employeeHr;
+    if (all) names.payslipHr = slip.id;
+    else names.payslipSupervisor = slip.id;
+    await recordPayout(ex, paying, {
+      staffId: slip.staffId,
+      date: "2026-10-05",
+      amount: all ? slip.netAmount : 2_000_000,
+      kind: "WAGE",
+      wageMethod: all ? "BANK_TRANSFER" : "CASH",
+      payslipId: slip.id,
+    });
+  }
+
+  // September, the cleaning workers: two training days typed as corrections, and the month left as a draft.
+  for (const worker of [names.workerSamira, names.workerSenior, names.workerDaily]) {
+    for (const day of ["2026-09-14", "2026-09-15"]) {
+      await addHoursAdjustment(ex, tools.at(at("2026-09-16")), {
+        staffId: worker,
+        date: day,
+        adjustMin: 480,
+        kind: "TRAINING",
+        reason: "تكوين حول قواعد السلامة واستعمال مواد التنظيف",
+      });
+    }
+  }
+  // An advance, taken back on her payslip of the month.
+  const advance = await recordPayout(ex, tools.at(at("2026-09-24")), {
+    staffId: names.workerAinBeida,
+    date: "2026-09-24",
+    amount: 500_000,
+    kind: "ADVANCE",
+    wageMethod: "CASH",
+    note: "تسبيق على أجر شهر سبتمبر",
+  });
+  names.advance = advance.id;
+
+  const drafted = await preparePayRun(ex, tools.at(at("2026-10-10")), { staffKind: "WORKER", month: "2026-09" });
+  names.payRunWorkersDraft = drafted.payRunId;
 }

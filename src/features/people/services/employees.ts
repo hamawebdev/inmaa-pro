@@ -15,6 +15,7 @@ import {
   type JobPosition,
   type Sex,
 } from "@/features/people/validators/staff-codes";
+import { residenceValues } from "@/features/people/forms/worker-values";
 import { phoneDigits } from "@/features/people/validators/worker";
 import { requireCapability, requireSection } from "@/lib/access/session";
 import { newId } from "@/lib/db/rows";
@@ -42,6 +43,7 @@ import {
   readmit,
   recordLeaving,
   refuseSecondRecord,
+  residenceCommuneOf,
   settleSanctionCheck,
   staffOf,
   staffSubject,
@@ -156,6 +158,7 @@ export async function registerEmployee(
       numberSuffix: number.display.includes("/") ? number.display.slice(number.display.indexOf("/") + 1) : "",
       number: number.display,
       ...columns,
+      residenceCommuneId: await residenceCommuneOf(ex, ctx, values),
       // An employee is taken on when registered; «غادر» ends it.
       engagementStatus: "ACCEPTED",
       branchId: ctx.branchId,
@@ -229,7 +232,10 @@ export async function updateEmployee(
       })
     : null;
 
-  const { set, changes } = changedColumns(before, columns);
+  const { set, changes } = changedColumns(before, {
+    ...columns,
+    residenceCommuneId: await residenceCommuneOf(ex, ctx, values),
+  });
   if (!changes) return { id: before.id, number: before.number };
   await ex
     .updateTable("StaffMember")
@@ -380,13 +386,20 @@ export async function openEmployeeFile(
 ): Promise<EmployeeFile> {
   requireSection(ctx, "EMPLOYEES", "READ");
   const employee = await staffOf(ex, "EMPLOYEE", input.id);
-  const [account, states] = await Promise.all([
+  const [account, states, commune] = await Promise.all([
     ex
       .selectFrom("User")
       .select(["username", "displayName", "roleId", "isActive"])
       .where("staffMemberId", "=", employee.id)
       .executeTakeFirst(),
     getSanctionStates(ex, ctx, { kind: "EMPLOYEE", ids: [employee.id] }),
+    employee.residenceCommuneId
+      ? ex
+          .selectFrom("Commune")
+          .select(["nameAr", "wilayaCode"])
+          .where("id", "=", employee.residenceCommuneId)
+          .executeTakeFirst()
+      : Promise.resolve(undefined),
   ]);
   const subject = { kind: "EMPLOYEE" as const, id: employee.id, label: `${employee.lastName} ${employee.firstName}` };
   await logConsult(ex, ctx, {
@@ -413,7 +426,7 @@ export async function openEmployeeFile(
       birthPlace: text(employee.birthPlace),
       birthWilayaCode: text(employee.birthWilayaCode),
       address: text(employee.address),
-      residenceCommuneId: text(employee.residenceCommuneId),
+      ...residenceValues(employee.residenceCommuneId, commune),
       maritalStatus: oneOf(employee.maritalStatus, MARITAL_STATUSES),
       phone: employee.phone,
       phone2: text(employee.phone2),

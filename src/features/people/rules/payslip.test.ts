@@ -56,21 +56,18 @@ const WEEKS = [
 ];
 
 describe("computePayslip", () => {
-  it.each(["HOURLY", "DAILY", "MONTHLY"] as const)(
-    "pays a month of whole weeks as computePay does (%s)",
-    (basis) => {
-      const rate = basis === "HOURLY" ? 25_000 : basis === "DAILY" ? 180_000 : 4_160_000;
-      const slip = computePayslip(figuresOf(WEEKS, basis, rate), RATES);
-      const pay = computePay(
-        { basis, rate: money(rate), weeks: WEEKS, declared: true, overrides: { irg: money(0) } },
-        RATES as PayRates,
-      );
-      expect(slip.gross).toBe(pay.gross);
-      expect(slip.cnas).toBe(pay.cnas);
-      expect(slip.net).toBe(pay.net);
-      expect(slip.employerCnas).toBe(pay.employerCnas);
-    },
-  );
+  it.each(["HOURLY", "DAILY", "MONTHLY"] as const)("pays a month of whole weeks as computePay does (%s)", (basis) => {
+    const rate = basis === "HOURLY" ? 25_000 : basis === "DAILY" ? 180_000 : 4_160_000;
+    const slip = computePayslip(figuresOf(WEEKS, basis, rate), RATES);
+    const pay = computePay(
+      { basis, rate: money(rate), weeks: WEEKS, declared: true, overrides: { irg: money(0) } },
+      RATES as PayRates,
+    );
+    expect(slip.gross).toBe(pay.gross);
+    expect(slip.cnas).toBe(pay.cnas);
+    expect(slip.net).toBe(pay.net);
+    expect(slip.employerCnas).toBe(pay.employerCnas);
+  });
 
   it("adds the rest-day premium on the hourly value, and pays paid leave as worked", () => {
     const hourly = computePayslip(
