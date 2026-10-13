@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, expect, it } from "vitest";
 
+import { openResidentList } from "@/features/clients/services/file-reads";
 import { moveFileStage, registerFile } from "@/features/clients/services/files";
 import type { FormKind } from "@/features/clients/validators/option-lists";
 import { issueInvoice } from "@/features/money/services/invoices";
@@ -29,20 +30,19 @@ beforeEach(async () => {
 });
 afterEach(() => test?.close());
 
-type Registrar = "RECEPTION_SALES" | "ADMINISTRATION";
-const DIVISIONS: Array<{ kind: FormKind; division: string; name: string; registrar: Registrar }> = [
-  { kind: "HOUSING_CONTRACT", division: "HOUSING", name: "المنازل", registrar: "RECEPTION_SALES" },
-  { kind: "ORG_CONTRACT", division: "ORGANISATION", name: "المؤسسات", registrar: "RECEPTION_SALES" },
-  // A building's or a complex's form carries «قائمة القاطنين», which needs `residents.read`: reception does not hold
-  // it (the last test of this file), so these two are registered by the administration, as in Clients' demo data.
-  { kind: "BUILDING_CONTRACT", division: "BUILDING", name: "العمارات", registrar: "ADMINISTRATION" },
-  { kind: "COMPLEX_CONTRACT", division: "COMPLEX", name: "التجمعات السكنية", registrar: "ADMINISTRATION" },
+const DIVISIONS: Array<{ kind: FormKind; division: string; name: string }> = [
+  { kind: "HOUSING_CONTRACT", division: "HOUSING", name: "المنازل" },
+  { kind: "ORG_CONTRACT", division: "ORGANISATION", name: "المؤسسات" },
+  // A building's or a complex's form carries «قائمة القاطنين». Reception registers it all the same (the ruling
+  // tested at the foot of this file): at the first registration the list comes in with the right to write requests.
+  { kind: "BUILDING_CONTRACT", division: "BUILDING", name: "العمارات" },
+  { kind: "COMPLEX_CONTRACT", division: "COMPLEX", name: "التجمعات السكنية" },
 ];
 
 it.each(DIVISIONS)(
   "$name: a contract runs from its form to a paid invoice and shows in income",
-  async ({ kind, division, registrar }) => {
-    const reception = await test.sessionFor(registrar);
+  async ({ kind, division }) => {
+    const reception = await test.sessionFor("RECEPTION_SALES");
     const operations = await test.sessionFor("OPERATIONS");
     const accountant = await test.sessionFor("ACCOUNTANT");
     const input = contractInput(kind);
@@ -183,11 +183,39 @@ it("المؤسسات: without the client's trade register number the invoice is 
 // number. Until then the path of المؤسسات above goes on only because the test writes `Client.rcNumber` by hand.
 it.todo("المؤسسات: the office types the organisation's RC, NIS and NIF through a service before its first invoice");
 
-it("العمارات: reception cannot register a contract that carries the residents list", async () => {
-  // Foundation's grants give `residents.read` to the administration, the supervisor and operations, not to
-  // reception: is a building's contract registered by the administration only? A question for the coordinator.
-  const reception = await test.sessionFor("RECEPTION_SALES");
-  await expect(
-    test.transact((ex, ctx) => registerFile(ex, ctx, contractInput("BUILDING_CONTRACT")), reception),
-  ).rejects.toThrow("You do not have permission to do this.");
-});
+it.each([
+  { kind: "BUILDING_CONTRACT" as const, name: "العمارات" },
+  { kind: "COMPLEX_CONTRACT" as const, name: "التجمعات السكنية" },
+])(
+  "$name: reception registers the contract with its residents list, and cannot read the list back",
+  async ({ kind }) => {
+    // The coordinator's ruling: the first registration of a file carries «قائمة القاطنين» with the section's WRITE level
+    // alone, because the clerk copies the paper in front of her, each line logged as a COLLECT. After that the list is
+    // read, printed and changed only with `residents.read`, which reception does not hold.
+    const reception = await test.sessionFor("RECEPTION_SALES");
+    const administration = await test.sessionFor("ADMINISTRATION");
+    const input = contractInput(kind);
+    const file = await test.transact((ex, ctx) => registerFile(ex, ctx, input), reception);
+
+    const stored = await test.db.selectFrom("Resident").select("id").where("siteId", "=", file.siteId).execute();
+    expect(stored.length).toBe(input.residents!.length);
+    const collected = await test.db
+      .selectFrom("AuditLog")
+      .select(["operation", "userId"])
+      .where("entity", "=", "Resident")
+      .where(
+        "entityId",
+        "in",
+        stored.map((resident) => resident.id),
+      )
+      .execute();
+    expect(collected.length).toBe(stored.length);
+    expect(collected.every((entry) => entry.operation === "COLLECT" && entry.userId === reception.userId)).toBe(true);
+
+    await expect(
+      test.transact((ex, ctx) => openResidentList(ex, ctx, { fileId: file.fileId }), reception),
+    ).rejects.toThrow("You do not have permission to do this.");
+    const read = await test.transact((ex, ctx) => openResidentList(ex, ctx, { fileId: file.fileId }), administration);
+    expect(read.length).toBe(stored.length);
+  },
+);
