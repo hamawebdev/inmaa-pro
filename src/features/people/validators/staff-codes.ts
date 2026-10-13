@@ -247,3 +247,73 @@ export type CheckType = (typeof CHECK_TYPES)[number];
 
 export const LEAVE_STATUSES = ["REQUESTED", "APPROVED", "REFUSED", "CANCELLED"] as const;
 export type LeaveStatus = (typeof LEAVE_STATUSES)[number];
+
+// ── Hiring and training (feature 37), violations (article 17), evaluation (article 16) ─────
+
+export const INTERVIEW_STATUSES = ["SCHEDULED", "DONE", "NO_SHOW", "CANCELLED"] as const;
+export type InterviewStatus = (typeof INTERVIEW_STATUSES)[number];
+
+export const TRAINING_ATTENDANCES = ["ATTENDED", "ABSENT", "EXCUSED"] as const;
+export type TrainingAttendanceStatus = (typeof TRAINING_ATTENDANCES)[number];
+
+/** His eight training days (D1), the rows of `TrainingModule`, in his words. */
+export const TRAINING_MODULES = [
+  { code: "DAY_1", titleAr: "التعريف بالمؤسسة" },
+  { code: "DAY_2", titleAr: "معدات التنظيف" },
+  { code: "DAY_3", titleAr: "طرق تنظيف الأرضيات" },
+  { code: "DAY_4", titleAr: "الحمامات والمطابخ" },
+  { code: "DAY_5", titleAr: "النوافذ" },
+  { code: "DAY_6", titleAr: "السلامة" },
+  { code: "DAY_7", titleAr: "تطبيق عملي" },
+  { code: "CONDUCT", titleAr: "سلوك العاملة داخل منزل العميل" },
+] as const;
+export const TRAINING_MODULE_CODES = TRAINING_MODULES.map((module) => module.code);
+export type TrainingModuleCode = (typeof TRAINING_MODULES)[number]["code"];
+
+export const VIOLATION_SEVERITIES = ["SERIOUS", "MINOR"] as const;
+export type ViolationSeverity = (typeof VIOLATION_SEVERITIES)[number];
+export const VIOLATION_SOURCES = ["OFFICE", "COMPLAINT", "INSPECTION", "VISIT", "PROBLEM_REPORT"] as const;
+export type ViolationSource = (typeof VIOLATION_SOURCES)[number];
+export const VIOLATION_ACTIONS = [
+  "NONE",
+  "VERBAL_WARNING",
+  "WRITTEN_WARNING",
+  "DEDUCTION",
+  "SUSPENSION",
+  "PENALTY",
+  "END_REGISTRATION",
+] as const;
+export type ViolationAction = (typeof VIOLATION_ACTIONS)[number];
+export const VIOLATION_STATUSES = ["OPEN", "DECIDED", "CANCELLED"] as const;
+export type ViolationStatus = (typeof VIOLATION_STATUSES)[number];
+/** The titles of articles 1 to 15 of his internal regulations. */
+export const REGULATION_ARTICLES = [
+  "ART_1",
+  "ART_2",
+  "ART_3",
+  "ART_4",
+  "ART_5",
+  "ART_6",
+  "ART_7",
+  "ART_8",
+  "ART_9",
+  "ART_10",
+  "ART_11",
+  "ART_12",
+  "ART_13",
+  "ART_14",
+  "ART_15",
+] as const;
+export type RegulationArticle = (typeof REGULATION_ARTICLES)[number];
+/** The forbidden acts of article 14. */
+export const ARTICLE_14_ITEMS = [
+  "THEFT",
+  "WILFUL_DAMAGE",
+  "FALSIFIED_RECORDS",
+  "DISCLOSED_SECRETS",
+  "LEFT_WITHOUT_LEAVE",
+  "PERSONAL_WORK",
+] as const;
+export type Article14Item = (typeof ARTICLE_14_ITEMS)[number];
+
+export { EVALUATION_RECOMMENDATIONS, type EvaluationRecommendation } from "@/lib/options";

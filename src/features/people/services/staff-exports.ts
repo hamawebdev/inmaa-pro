@@ -20,6 +20,7 @@ import { getSettings } from "@/lib/settings";
 import { localDate, money, type LocalDate, type Money } from "@/lib/units";
 
 import { getSanctionStates, type SanctionStateOf } from "./sanctions";
+import { staffName } from "@/lib/text/names";
 
 /**
  * What People gives other owners to read about its people (CONTRACTS section
@@ -46,6 +47,8 @@ export const ACTIVE_STATUSES: ReadonlySet<string> = new Set<EngagementStatus>(["
 export interface SchedulableWorker {
   id: string;
   number: string;
+  /** «اللقب والاسم»: surname, then first name (`staffName`). Write a worker's name with this. */
+  name: string;
   firstName: string;
   lastName: string;
   fullNameLatin: string | null;
@@ -197,6 +200,7 @@ export async function listSchedulableWorkers(
     return {
       id: row.id,
       number: row.number,
+      name: staffName(row),
       firstName: row.firstName,
       lastName: row.lastName,
       fullNameLatin: row.fullNameLatin,
@@ -283,7 +287,7 @@ export async function getStaffSummary(
         number: row.number,
         firstName: row.firstName,
         lastName: row.lastName,
-        name: `${row.lastName} ${row.firstName}`,
+        name: staffName(row),
         jobPosition: row.jobPosition as JobPosition | null,
         role: row.role as WorkerRole | null,
         sex: row.sex as Sex,
@@ -325,7 +329,7 @@ export async function setWorkerZone(
     .set({ ...set, updatedAt: ctx.now, updatedByUserId: ctx.userId })
     .where("id", "=", before.id)
     .execute();
-  const label = `${before.lastName} ${before.firstName}`;
+  const label = staffName(before);
   await logChange(ex, ctx, {
     owner: "PEOPLE",
     action: "UPDATE",

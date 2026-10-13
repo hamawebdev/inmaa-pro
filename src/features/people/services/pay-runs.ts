@@ -22,6 +22,7 @@ import { basisPoints, localDate, minutes, money, qty, type LocalDate } from "@/l
 import { employeeDays } from "./employee-attendance";
 import { HOURS_PATH, weekStart, workerHours } from "./hours";
 import { addDebtEntry, debtAt, debtBalanceOf, requirePay } from "./payouts";
+import { staffName } from "@/lib/text/names";
 
 /**
  * Pay runs (feature 38): a month of pay for the cleaning workers, or for the
@@ -550,7 +551,7 @@ async function writePayslip(
       id: payslipId,
       payRunId: run.id,
       staffId: person.id,
-      staffName: `${person.lastName} ${person.firstName}`,
+      staffName: staffName(person),
       staffNumber: person.number,
       positionOrRole,
       cnasNumber: person.cnasNumber,

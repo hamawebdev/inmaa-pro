@@ -47,7 +47,6 @@ export function emptyWorkerValues(today: string): WorkerFormValues {
     address: "",
     residenceCommuneId: "",
     residenceWilayaCode: HOME_WILAYA_CODE,
-    residenceCommuneName: "",
     maritalStatus: undefined,
     phone: "",
     emergencyName: "",
@@ -209,16 +208,9 @@ export interface StoredCommune {
   nameAr: string;
 }
 
-/**
- * The three values of «بلدية/ولاية إقامة» for a stored commune: picked from the
- * list when it is in the centre's wilaya, typed when it is in another.
- */
+/** The two values of «بلدية/ولاية إقامة» for a stored commune: its wilaya, and the commune itself. */
 export function residenceValues(communeId: string | null, commune?: StoredCommune | null) {
-  if (!communeId) return { residenceCommuneId: "", residenceWilayaCode: HOME_WILAYA_CODE, residenceCommuneName: "" };
-  if (commune && commune.wilayaCode !== HOME_WILAYA_CODE) {
-    return { residenceCommuneId: "", residenceWilayaCode: commune.wilayaCode, residenceCommuneName: commune.nameAr };
-  }
-  return { residenceCommuneId: communeId, residenceWilayaCode: HOME_WILAYA_CODE, residenceCommuneName: "" };
+  return { residenceCommuneId: communeId ?? "", residenceWilayaCode: commune?.wilayaCode ?? HOME_WILAYA_CODE };
 }
 
 /**
@@ -294,12 +286,7 @@ export function printDataFromValues(
   values: WorkerFormValues,
   { regNumber, commune }: { regNumber: string | null; commune: (id: string) => CommuneName | undefined },
 ): WorkerFormData {
-  // His two blanks: a commune of the centre's wilaya is looked up by its id, another is as typed.
-  const wilayaCode = values.residenceWilayaCode || HOME_WILAYA_CODE;
-  const picked =
-    wilayaCode === HOME_WILAYA_CODE && values.residenceCommuneId ? commune(values.residenceCommuneId) : undefined;
-  const typedCommune = wilayaCode === HOME_WILAYA_CODE ? "" : values.residenceCommuneName.trim();
-  const residence = picked ?? (typedCommune ? { nameAr: typedCommune, wilayaCode } : undefined);
+  const residence = values.residenceCommuneId ? commune(values.residenceCommuneId) : undefined;
   const orNull = (text: string) => (text.trim() === "" ? null : text.trim());
   const scores = scoresAsNumbers(values.hiringScores);
   const computed = hiringTotal(scores);

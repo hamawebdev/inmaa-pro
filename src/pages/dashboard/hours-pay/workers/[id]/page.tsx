@@ -26,6 +26,7 @@ import { HOURS_ADJUSTMENT_KINDS, type HoursAdjustmentKind } from "@/features/peo
 import { useCentreClock } from "@/hooks/use-centre-clock";
 import { useErrorMessage } from "@/i18n/errors";
 import { pathKey } from "@/lib/compat/revalidate";
+import { staffName } from "@/lib/text/names";
 
 /**
  * One worker's hours of a month, week by week (feature 21), with People's
@@ -125,7 +126,7 @@ export default function WorkerHoursPage() {
   return (
     <DetailScreen
       section="workers"
-      title={hours ? `${hours.lastName} ${hours.firstName}` : t("WorkerTitle")}
+      title={hours ? staffName(hours) : t("WorkerTitle")}
       back={back}
       actions={
         corrects && (

@@ -34,6 +34,7 @@ import { useCodeLabel } from "@/i18n/use-code-label";
 import { pathKey } from "@/lib/compat/revalidate";
 
 import { useAttendanceEntries } from "../_components/use-attendance-entries";
+import { staffName } from "@/lib/text/names";
 
 /**
  * One employee's month: every day with its times in and out, the absences,
@@ -73,7 +74,7 @@ export default function EmployeeAttendanceDetailPage() {
   return (
     <DetailScreen
       section="employees"
-      title={person ? `${person.lastName} ${person.firstName}` : t("DetailTitle")}
+      title={person ? staffName(person) : t("DetailTitle")}
       back={back}
       actions={
         writes && (

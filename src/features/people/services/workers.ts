@@ -40,11 +40,11 @@ import {
   readmit,
   recordLeaving,
   refuseSecondRecord,
-  residenceCommuneOf,
   settleSanctionCheck,
   staffOf,
   type SanctionPassage,
 } from "./staff-shared";
+import { staffName } from "@/lib/text/names";
 
 export type { SanctionPassage } from "./staff-shared";
 
@@ -132,7 +132,7 @@ function memberColumns(values: WorkerFormValues) {
     availableDays: JSON.stringify(values.availableDays),
     issuedDate: dateOrNull(values.issuedDate),
     nationalIdNumber: orNull(nationalId),
-    nameKey: normaliseName(`${values.lastName} ${values.firstName}`),
+    nameKey: normaliseName(staffName(values)),
     nameLatinKey: orNull(normaliseName(values.fullNameLatin)),
     phoneKeys: phoneKeys([phone]),
     role: values.role,
@@ -199,7 +199,7 @@ function requireWhatIsRecorded(
 const workerSubject = (id: string, number: string, values: { lastName: string; firstName: string }) => ({
   kind: "WORKER" as const,
   id,
-  label: `${number} ${values.lastName} ${values.firstName}`,
+  label: `${number} ${staffName(values)}`,
 });
 
 // ── Registration ────────────────────────────────────────────────────────────
@@ -237,7 +237,6 @@ export async function registerWorker(
   const status: EngagementStatus = decision ? STATUS_OF_DECISION[decision] : "CANDIDATE";
   const stamp = { createdAt: ctx.now, updatedAt: ctx.now };
   const by = { createdByUserId: ctx.userId, updatedByUserId: ctx.userId };
-  const residenceCommuneId = await residenceCommuneOf(ex, ctx, values);
 
   await ex
     .insertInto("StaffMember")
@@ -248,11 +247,10 @@ export async function registerWorker(
       numberSuffix: suffix,
       number: number.display,
       ...columns,
-      residenceCommuneId,
       issuedPlace: settings["centre.city"],
       engagementStatus: status,
       branchId: ctx.branchId,
-      zoneId: await zoneFor(ex, ctx, values, residenceCommuneId),
+      zoneId: await zoneFor(ex, ctx, values, columns.residenceCommuneId),
       ...stamp,
       ...by,
     })
@@ -458,13 +456,11 @@ export async function updateWorker(
       ? STATUS_OF_DECISION[newDecision]
       : (before.engagementStatus as EngagementStatus);
 
-  const residenceCommuneId = await residenceCommuneOf(ex, ctx, values);
   const { set, changes } = changedColumns(before, {
     ...columns,
-    residenceCommuneId,
     numberSuffix: suffix,
     number,
-    zoneId: await zoneFor(ex, ctx, values, residenceCommuneId),
+    zoneId: await zoneFor(ex, ctx, values, columns.residenceCommuneId),
     engagementStatus: status,
   });
   if (changes) {

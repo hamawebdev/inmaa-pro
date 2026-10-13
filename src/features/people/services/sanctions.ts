@@ -24,6 +24,7 @@ import type { Executor, ServiceContext } from "@/lib/service/context";
 import { ServiceError } from "@/lib/service/errors";
 import { getSettings } from "@/lib/settings";
 import { localDate, type LocalDate } from "@/lib/units";
+import { staffName } from "@/lib/text/names";
 
 /**
  * «موقف / متوقف / معاقب» for the three kinds of person (his note: «عند
@@ -297,7 +298,7 @@ async function snapshotOf(ex: Executor, kind: SanctionSubject, id: string): Prom
     .executeTakeFirst();
   if (!staff || staff.deletedAt || staff.kind !== kind) throw new ServiceError("This person does not exist.");
   return {
-    displayName: `${staff.lastName} ${staff.firstName}`,
+    displayName: staffName(staff),
     displayNumber: staff.number,
     nameKey: staff.nameKey,
     nameLatinKey: staff.nameLatinKey,

@@ -14,6 +14,7 @@ import type { Executor, ServiceContext } from "@/lib/service/context";
 import { ServiceError } from "@/lib/service/errors";
 import { getSettings } from "@/lib/settings";
 import { localDate, minutes, type LocalDate } from "@/lib/units";
+import { staffName } from "@/lib/text/names";
 
 /**
  * A cleaning worker's hours (feature 21): what Operations' typed orders say
@@ -428,7 +429,7 @@ export async function addHoursAdjustment(
       updatedByUserId: ctx.userId,
     })
     .execute();
-  const label = `${person.lastName} ${person.firstName}`;
+  const label = staffName(person);
   await logChange(ex, ctx, {
     owner: "PEOPLE",
     action: "CREATE",
@@ -475,7 +476,7 @@ export async function removeHoursAdjustment(
     .set({ deletedAt: ctx.now, updatedAt: ctx.now, updatedByUserId: ctx.userId })
     .where("id", "=", line.id)
     .execute();
-  const label = `${line.lastName} ${line.firstName}`;
+  const label = staffName(line);
   await logErase(ex, ctx, {
     owner: "PEOPLE",
     action: "SOFT_DELETE",

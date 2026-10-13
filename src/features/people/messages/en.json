@@ -78,7 +78,6 @@
       "numberOnSave": "Given when the worker is saved",
       "birthCommune": "Commune",
       "birthWilaya": "Wilaya",
-      "residenceCommune": "Commune of residence",
       "otherIllness": "Which one",
       "expiryDate": "Expires on",
       "totalComputed": "Worked out from the ten criteria.",
@@ -99,7 +98,6 @@
       "zoneHint": "Left empty: the zone of the commune of residence.",
       "cnasDeclared": "Declared to the CNAS",
       "cnasNumber": "Social security number",
-      "residenceWilaya": "Wilaya of residence",
       "registrationCard": "Registration"
     },
     "Office": {
@@ -858,6 +856,10 @@
     "StaffContractEnding": {
       "Title": "Contracts ending",
       "Hint": "An employee's contract ends within {days} days"
+    },
+    "ViolationOpen": {
+      "Title": "Violations to decide",
+      "Hint": "Recorded or handed over, with no decision yet"
     }
   },
   "Errors": {

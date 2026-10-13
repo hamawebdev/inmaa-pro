@@ -23,6 +23,7 @@ import { STATUS_TONE } from "@/features/people/components/status-tones";
 import type { WorkerListRow } from "@/features/people/services/worker-reads";
 import { ENGAGEMENT_STATUSES, WORKER_ROLES } from "@/features/people/validators/staff-codes";
 import { normaliseName, phoneKey } from "@/lib/text/normalise";
+import { staffName } from "@/lib/text/names";
 
 /**
  * The workers, to search and filter. Section «عمال النظافة», tab «العمال».
@@ -67,7 +68,7 @@ export function WorkersTable({
         header: t("Table.Name"),
         cell: ({ row }) => (
           <Link to={`/dashboard/workers/${row.original.id}`} className="font-bold whitespace-nowrap hover:underline">
-            {row.original.lastName} {row.original.firstName}
+            {staffName(row.original)}
           </Link>
         ),
       },
@@ -136,7 +137,7 @@ export function WorkersTable({
       if (role !== ALL && worker.role !== role) return false;
       if (documents === TO_RENEW && worker.documentsToRenew === 0) return false;
       if (!words && !digits) return true;
-      const name = normaliseName(`${worker.lastName} ${worker.firstName} ${worker.fullNameLatin ?? ""}`);
+      const name = normaliseName(`${staffName(worker)} ${worker.fullNameLatin ?? ""}`);
       return (
         (words !== "" && words.split(" ").every((word) => name.includes(word))) ||
         (digits !== "" && (worker.phone.includes(digits) || String(worker.numberSeq) === digits))

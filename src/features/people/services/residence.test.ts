@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, expect, it } from "vitest";
 
+import { ensureCommune } from "@/features/core/services/places";
 import { emptyWorkerValues } from "@/features/people/forms/worker-values";
 import { emptyEmployeeValues } from "@/features/people/validators/employee";
 import { createTestDatabase, type TestDatabase } from "@/testing/database";
@@ -23,54 +24,34 @@ const NADIA = {
   phone: "0770 11 22 33",
 };
 
-it("records a worker who lives in another wilaya: his two blanks, the commune as typed", async () => {
+it("records a worker who lives in another wilaya: his two blanks, wilaya and commune", async () => {
+  // The picker adds a commune of another wilaya the first time it is needed.
+  const khroub = await test.transact((ex, ctx) => ensureCommune(ex, ctx, { wilayaCode: "25", nameAr: "الخروب" }));
   const { id } = await test.transact((ex, ctx) =>
-    registerWorker(ex, ctx, { ...NADIA, residenceWilayaCode: "25", residenceCommuneName: "الخروب" }),
+    registerWorker(ex, ctx, { ...NADIA, residenceWilayaCode: "25", residenceCommuneId: khroub.id }),
   );
-  const stored = await test.db
-    .selectFrom("StaffMember as w")
-    .innerJoin("Commune as c", "c.id", "w.residenceCommuneId")
-    .select(["c.id", "c.nameAr", "c.wilayaCode"])
-    .where("w.id", "=", id)
-    .executeTakeFirstOrThrow();
-  expect(stored).toMatchObject({ nameAr: "الخروب", wilayaCode: "25" });
 
-  // Her file shows the wilaya chosen and the commune typed; saving it again changes nothing.
+  // Her file shows the wilaya and the commune chosen.
   const file = await test.transact((ex, ctx) => openWorkerFile(ex, ctx, { id }));
-  expect(file.values).toMatchObject({
-    residenceWilayaCode: "25",
-    residenceCommuneName: "الخروب",
-    residenceCommuneId: "",
-  });
-  await test.transact((ex, ctx) => updateWorker(ex, ctx, { id, values: file.values }));
-  const communes = await test.db.selectFrom("Commune").select("id").where("wilayaCode", "=", "25").execute();
-  expect(communes).toHaveLength(1);
+  expect(file.values).toMatchObject({ residenceWilayaCode: "25", residenceCommuneId: khroub.id });
 
   // The printed form has both: «الخروب / قسنطينة».
   const printed = await test.transact((ex, ctx) => workerFormForPrint(ex, ctx, { id, reason: "ملف التوظيف" }));
   expect(printed.data).toMatchObject({ residenceCommune: "الخروب", residenceWilaya: "قسنطينة" });
 
-  // Another spelling of the same commune is the same commune; back in the centre's wilaya, the list's.
-  await test.transact((ex, ctx) =>
-    updateWorker(ex, ctx, { id, values: { ...file.values, residenceCommuneName: "الخروب " } }),
-  );
+  // Back in the centre's wilaya.
   await test.transact((ex, ctx) =>
     updateWorker(ex, ctx, {
       id,
-      values: {
-        ...file.values,
-        residenceWilayaCode: "04",
-        residenceCommuneId: "commune-0402",
-        residenceCommuneName: "",
-      },
+      values: { ...file.values, residenceWilayaCode: "04", residenceCommuneId: "commune-0402" },
     }),
   );
   const moved = await test.transact((ex, ctx) => openWorkerFile(ex, ctx, { id }));
   expect(moved.values).toMatchObject({ residenceWilayaCode: "04", residenceCommuneId: "commune-0402" });
-  expect(moved.commune).toMatchObject({ wilayaCode: "04" });
 });
 
 it("does the same on an employee's file", async () => {
+  const eulma = await test.transact((ex, ctx) => ensureCommune(ex, ctx, { wilayaCode: "19", nameAr: "العلمة" }));
   const { id } = await test.transact((ex, ctx) =>
     registerEmployee(ex, ctx, {
       ...emptyEmployeeValues("2026-10-01"),
@@ -81,13 +62,9 @@ it("does the same on an employee's file", async () => {
       phone: "0661 99 88 77",
       jobPosition: "ACCOUNTANT",
       residenceWilayaCode: "19",
-      residenceCommuneName: "العلمة",
+      residenceCommuneId: eulma.id,
     }),
   );
   const file = await test.transact((ex, ctx) => openEmployeeFile(ex, ctx, { id }));
-  expect(file.values).toMatchObject({
-    residenceWilayaCode: "19",
-    residenceCommuneName: "العلمة",
-    residenceCommuneId: "",
-  });
+  expect(file.values).toMatchObject({ residenceWilayaCode: "19", residenceCommuneId: eulma.id });
 });

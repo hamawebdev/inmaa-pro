@@ -31,6 +31,7 @@ import { useCentreClock } from "@/hooks/use-centre-clock";
 import { useErrorMessage } from "@/i18n/errors";
 import { useCodeLabel } from "@/i18n/use-code-label";
 import { pathKey } from "@/lib/compat/revalidate";
+import { staffName } from "@/lib/text/names";
 
 export interface CheckLine {
   id: string;
@@ -84,7 +85,7 @@ export function useAttendanceEntries() {
             required: true,
             options: (employees ?? []).map((employee) => ({
               value: employee.id,
-              label: `${employee.lastName} ${employee.firstName} · ${isolate(employee.number)}`,
+              label: `${staffName(employee)} · ${isolate(employee.number)}`,
             })),
           },
         ];

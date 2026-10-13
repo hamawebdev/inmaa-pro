@@ -19,6 +19,7 @@ import type { Executor, ServiceContext } from "@/lib/service/context";
 import { ServiceError } from "@/lib/service/errors";
 import { getSettings } from "@/lib/settings";
 import { localDate, localTime, minutes, qty } from "@/lib/units";
+import { staffName } from "@/lib/text/names";
 
 /**
  * Centre employees' attendance (his section 1; the academy's employee
@@ -55,7 +56,7 @@ async function employeeOf(ex: Executor, staffId: string) {
     throw new ServiceError("This employee does not exist.");
   return {
     ...person,
-    subject: { kind: "EMPLOYEE" as const, id: person.id, label: `${person.lastName} ${person.firstName}` },
+    subject: { kind: "EMPLOYEE" as const, id: person.id, label: staffName(person) },
   };
 }
 

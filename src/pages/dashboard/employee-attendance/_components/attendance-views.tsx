@@ -15,12 +15,13 @@ import type { EmployeeAttendance } from "@/features/people/services/employee-att
 import { useCodeLabel } from "@/i18n/use-code-label";
 
 import type { useAttendanceEntries } from "./use-attendance-entries";
+import { staffName } from "@/lib/text/names";
 
 type Entries = ReturnType<typeof useAttendanceEntries>;
 type Absence = EmployeeAttendance["absences"][number] & { staffId: string; name: string };
 type Leave = EmployeeAttendance["leaves"][number] & { staffId: string; name: string };
 
-const nameOf = (person: EmployeeAttendance) => `${person.lastName} ${person.firstName}`;
+const nameOf = (person: EmployeeAttendance) => staffName(person);
 const historyHref = (staffId: string, month: string) => `/dashboard/employee-attendance/${staffId}?month=${month}`;
 
 /**

@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { ChoiceField, DateField, TextField, TickField } from "@/features/people/components/form-fields";
-import { ResidenceFields } from "@/features/people/components/residence-fields";
+import { ResidenceField } from "@/features/people/components/residence-fields";
 import { isolate, useMay } from "@/features/people/components/may";
 import { useSanctionGate } from "@/features/people/components/sanction-gate";
 import { employeeIdentity, registerEmployeeAction, updateEmployeeAction } from "@/features/people/services/employees";
@@ -151,11 +151,7 @@ export function EmployeeForm({ mode, defaultValues }: { mode: Mode; defaultValue
               options={MARITAL_STATUSES.map((code) => ({ value: code, label: tWorker(`MaritalStatuses.${code}`) }))}
             />
             <TextField control={control} name="address" label={tWorker("Labels.address")} className={SPAN_BOTH} />
-            <ResidenceFields
-              control={control}
-              communeLabel={tWorker("Fields.residenceCommune")}
-              wilayaLabel={tWorker("Fields.residenceWilaya")}
-            />
+            <ResidenceField control={control} label={tWorker("Labels.residence")} className={SPAN_BOTH} />
             <TextField
               control={control}
               name="nationalIdNumber"

@@ -3,6 +3,7 @@ import { addDays } from "@/lib/clock";
 import { emit } from "@/lib/events";
 import type { Executor, ServiceContext } from "@/lib/service/context";
 import type { LocalDate } from "@/lib/units";
+import { settleTrainingCompletions } from "./services/training";
 
 /**
  * What People does because the day changed.
@@ -56,5 +57,9 @@ export function registerDaily(daily: RegisterDaily) {
     // Endings since the last completed day; the first time, yesterday's only.
     const yesterday = addDays(today, -1);
     await announceEndedSanctions(ex, ctx, { from: since ?? yesterday, to: yesterday });
+  });
+  // A training day that has come may complete a worker's training.
+  daily("complete the training of workers whose last day came", async (ex, ctx, { today, since }) => {
+    await settleTrainingCompletions(ex, ctx, { from: since ?? today, to: today });
   });
 }

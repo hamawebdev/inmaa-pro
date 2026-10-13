@@ -6,6 +6,7 @@ import type { Executor, ServiceContext } from "@/lib/service/context";
 import { ServiceError } from "@/lib/service/errors";
 
 import { WORKERS_PATH } from "./workers";
+import { staffName } from "@/lib/text/names";
 
 /**
  * The files on a worker's record (CLAUDE.md, "A file the user attaches"): her
@@ -26,7 +27,7 @@ async function workerOf(ex: Executor, id: string) {
   if (!worker) throw new ServiceError("This worker does not exist.");
   return {
     ...worker,
-    subject: { kind: "WORKER" as const, id: worker.id, label: `${worker.lastName} ${worker.firstName}` },
+    subject: { kind: "WORKER" as const, id: worker.id, label: staffName(worker) },
   };
 }
 

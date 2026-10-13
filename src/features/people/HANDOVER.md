@@ -9,7 +9,7 @@ Owner of features 21, 25, 37, 38: centre employees, cleaning workers, his worker
 - **Employees' attendance:** `services/employee-attendance.ts`. Times in and out, absences, leave with its decision and balance; everything recorded can be changed or taken off with a reason.
 - **Exports of CONTRACTS section 3:** `setWorkerZone`, `canCollectCash`, `getHourlyLabourCost` (`staff-exports.ts`); `addDebtEntry`, `getPayoutForExpense`, `getClosedPayroll`, `getPaidMinutes` (`payouts.ts`).
 - **Alerts and day start:** `alerts.ts` (`sanction.pending`, `document.expiry`, `trial.ending`, `staffContract.ending`), `daily.ts` (a dated sanction that ended is announced).
-- **The Checker's rows:** the worker form's table positions; «بلدية/ولاية إقامة» as two fields (`components/residence-fields.tsx`); the workers list in French; the first card's title; a sanctioned woman's wording; Save in `PageActions` as `success`; the line under the heading on tab pages only; tab pages headed by their tab.
+- **The Checker's rows:** the worker form's table positions; «بلدية/ولاية إقامة» as Foundation's `CommunePicker`, the wilaya then the commune (`components/residence-fields.tsx`); staff names surname first through `staffName`; the workers list in French; the first card's title; a sanctioned woman's wording; Save in `PageActions` as `success`; the line under the heading on tab pages only; tab pages headed by their tab.
 - **Not this round:** hiring and training (37), violations (article 17), the periodic evaluation (article 16).
 
 ## What exists
@@ -32,7 +32,7 @@ Owner of features 21, 25, 37, 38: centre employees, cleaning workers, his worker
   - `pay-runs.ts`: the monthly run and its payslips.
   - `payouts.ts`: payouts, the ledger, and what Money reads.
 - **Alerts** (`alerts.ts`) and **the day-start job** (`daily.ts`).
-- **Components** (`components/`): the sanction gate, card and chip; the reason dialog; the entry dialog (`useEntryDialog`, a short form in a dialog); `ListTable` and `SimpleTable`; `MonthSwitch`; the figures (`Amount`, `Duration`, `DayDate`, `Days`); the residence fields; form fields.
+- **Components** (`components/`): the sanction gate, card and chip; the reason dialog; the entry dialog (`useEntryDialog`, a short form in a dialog); `ListTable` and `SimpleTable`; `MonthSwitch`; the figures (`Amount`, `Duration`, `DayDate`, `Days`); the residence field (Foundation's picker bound to the form); form fields.
 - **Screens**:
   - workers: list, new, file, print, and «الموقوفون والمعاقبون» (`workers/sanctions`);
   - employees: list, new, file;
@@ -54,6 +54,7 @@ Owner of features 21, 25, 37, 38: centre employees, cleaning workers, his worker
 - A save sends only changed columns (`changedColumns`).
 - Sheets are pure, sized in mm and pt, inside `SHEET_BODY.worker`. A typed value stays on one line where a second would grow the page.
 - Tests sit beside the code on `createTestDatabase()`. `rows.insert("StaffMember")` needs an explicit `numberSeq`.
+- A person's name is `staffName` (`@/lib/text/names`): surname, then first name, on every screen, sheet and export. `listSchedulableWorkers` hands a ready `name`.
 - Pay is guarded by `requirePay(ctx, level)`: the workers' section read, plus `pay.read` or `pay.write`. It serves workers' and employees' runs alike.
 - A tab page is a `SectionScreen` headed by its tab's `Nav` label (the first tab keeps the section heading), with one line of description. A record page is a `DetailScreen` without a description. A form ends in `PageActions`: cancel `outline`, save `success`.
 - An amount on screen is `<Amount>`: digits left to right, the currency word after them as the language reads.
@@ -95,7 +96,7 @@ Owner of features 21, 25, 37, 38: centre employees, cleaning workers, his worker
 - Pay belongs to whoever reads the workers' section and holds `pay.read` or `pay.write`, for employees' runs too: the accountant has no employees' section.
 - An approved leave is logged as a status change. A refusal or a cancellation needs a typed reason.
 - A leave over two months is cut at the month's end. The rest day is not counted in its days.
-- The residence commune is picked in wilaya 04 and typed in any other, kept by `ensureCommune`.
+- The residence is the wilaya (04 by default) then its commune, in Foundation's picker; a commune of another wilaya is added from the picker (`ensureCommune`). A wilaya without a commune is not kept: `StaffMember` has a column for the commune only.
 
 ## Decisions taken in round 1 (accepted)
 
@@ -127,7 +128,6 @@ Owner of features 21, 25, 37, 38: centre employees, cleaning workers, his worker
   - the IRG scale in Settings (`pay.irgTable`), on قواعد العمل;
   - `centre.cnasEmployerNumber` on the centre's card and in the demo identity;
   - the consult logged once a day per user and record;
-  - a shared `<CommunePicker>`, if other owners need the two residence fields;
   - `--before` on the harness's `pdf`, for a sheet behind a question;
   - `linkAccountToStaff`, so that an employee's file can link its account.
 - **Operations:**

@@ -26,6 +26,7 @@ import { useErrorMessage } from "@/i18n/errors";
 import { pathKey } from "@/lib/compat/revalidate";
 
 import { EmployeeForm } from "../_components/employee-form";
+import { staffName } from "@/lib/text/names";
 
 /**
  * One centre employee's file. Section «الموظفون», below the tab «الموظفون». Owner: People.
@@ -75,7 +76,7 @@ export default function EmployeePage() {
     );
   }
 
-  const name = `${file.values.lastName} ${file.values.firstName}`;
+  const name = staffName(file.values);
 
   const leave = async () => {
     const answer = await askReason({

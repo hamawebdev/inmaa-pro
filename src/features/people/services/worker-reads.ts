@@ -23,6 +23,7 @@ import { ServiceError } from "@/lib/service/errors";
 import { getSetting } from "@/lib/settings";
 
 import { getSanctionStates, listSanctions, type SanctionRow, type SanctionStateOf } from "./sanctions";
+import { staffName } from "@/lib/text/names";
 
 /**
  * Reading cleaning workers: the list (not logged, as lists are not), one
@@ -215,7 +216,7 @@ export async function openWorkerFile(ex: Executor, ctx: ServiceContext, input: {
     getSetting(ex, "alerts.documentExpiryLeadDays"),
   ]);
 
-  const subject = { kind: "WORKER" as const, id: worker.id, label: `${worker.lastName} ${worker.firstName}` };
+  const subject = { kind: "WORKER" as const, id: worker.id, label: staffName(worker) };
   await logConsult(ex, ctx, {
     owner: "PEOPLE",
     action: "VIEW",
@@ -377,7 +378,7 @@ export async function workerFormForPrint(
     hiringTotal: score.score?.hiringTotal ?? "",
   };
 
-  const name = `${worker.lastName} ${worker.firstName}`;
+  const name = staffName(worker);
   await logDisclose(ex, ctx, {
     owner: "PEOPLE",
     action: "PRINT",

@@ -23,6 +23,7 @@ import { STATUS_TONE } from "@/features/people/components/status-tones";
 import type { EmployeeListRow } from "@/features/people/services/employees";
 import { JOB_POSITIONS } from "@/features/people/validators/staff-codes";
 import { normaliseName, phoneKey } from "@/lib/text/normalise";
+import { staffName } from "@/lib/text/names";
 
 /**
  * The centre's employees, to search and filter. Section «الموظفون», tab «الموظفون».
@@ -58,7 +59,7 @@ export function EmployeesTable({ rows }: { rows: EmployeeListRow[] }) {
         header: t("Table.Name"),
         cell: ({ row }) => (
           <Link to={`/dashboard/employees/${row.original.id}`} className="font-bold hover:underline">
-            {row.original.lastName} {row.original.firstName}
+            {staffName(row.original)}
           </Link>
         ),
       },
@@ -118,7 +119,7 @@ export function EmployeesTable({ rows }: { rows: EmployeeListRow[] }) {
       if (status === "LEFT" && employee.status !== "LEFT") return false;
       if (contract === ENDING && !employee.contractEnding) return false;
       if (!words && !digits) return true;
-      const name = normaliseName(`${employee.lastName} ${employee.firstName} ${employee.fullNameLatin ?? ""}`);
+      const name = normaliseName(`${staffName(employee)} ${employee.fullNameLatin ?? ""}`);
       return (
         (words !== "" && words.split(" ").every((word) => name.includes(word))) ||
         (digits !== "" && (employee.phone.includes(digits) || String(employee.numberSeq) === digits))

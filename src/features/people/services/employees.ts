@@ -43,12 +43,12 @@ import {
   readmit,
   recordLeaving,
   refuseSecondRecord,
-  residenceCommuneOf,
   settleSanctionCheck,
   staffOf,
   staffSubject,
   type SanctionPassage,
 } from "./staff-shared";
+import { staffName } from "@/lib/text/names";
 
 /**
  * Centre employees (his section 1, scope A2): the academy's employee file with
@@ -110,7 +110,7 @@ function memberColumns(values: EmployeeFormValues) {
     educationLevel: orNull(values.educationLevel),
     certificateName: orNull(values.certificateName),
     nationalIdNumber: orNull(idNumber(values.nationalIdNumber)),
-    nameKey: normaliseName(`${values.lastName} ${values.firstName}`),
+    nameKey: normaliseName(staffName(values)),
     nameLatinKey: orNull(normaliseName(values.fullNameLatin)),
     phoneKeys: phoneKeys([phone, phone2]),
     jobPosition: values.jobPosition,
@@ -158,7 +158,6 @@ export async function registerEmployee(
       numberSuffix: number.display.includes("/") ? number.display.slice(number.display.indexOf("/") + 1) : "",
       number: number.display,
       ...columns,
-      residenceCommuneId: await residenceCommuneOf(ex, ctx, values),
       // An employee is taken on when registered; «غادر» ends it.
       engagementStatus: "ACCEPTED",
       branchId: ctx.branchId,
@@ -232,10 +231,7 @@ export async function updateEmployee(
       })
     : null;
 
-  const { set, changes } = changedColumns(before, {
-    ...columns,
-    residenceCommuneId: await residenceCommuneOf(ex, ctx, values),
-  });
+  const { set, changes } = changedColumns(before, columns);
   if (!changes) return { id: before.id, number: before.number };
   await ex
     .updateTable("StaffMember")
@@ -401,7 +397,7 @@ export async function openEmployeeFile(
           .executeTakeFirst()
       : Promise.resolve(undefined),
   ]);
-  const subject = { kind: "EMPLOYEE" as const, id: employee.id, label: `${employee.lastName} ${employee.firstName}` };
+  const subject = { kind: "EMPLOYEE" as const, id: employee.id, label: staffName(employee) };
   await logConsult(ex, ctx, {
     owner: "PEOPLE",
     action: "VIEW",

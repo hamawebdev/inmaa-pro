@@ -1,7 +1,6 @@
-import { ensureCommune } from "@/features/core/services/places";
 import { isDate } from "@/features/people/rules/dates";
 import type { PersonIdentity } from "@/features/people/rules/sanction-match";
-import { HOME_WILAYA_CODE, type SanctionContext, type StaffKind } from "@/features/people/validators/staff-codes";
+import type { SanctionContext, StaffKind } from "@/features/people/validators/staff-codes";
 import { requireCapability, requireSection } from "@/lib/access/session";
 import { newId } from "@/lib/db/rows";
 import { emit } from "@/lib/events";
@@ -12,6 +11,7 @@ import { ServiceError } from "@/lib/service/errors";
 import { localDate, type LocalDate, type Minutes, type Money } from "@/lib/units";
 
 import { checkSanction, consumeDecision, type CheckSanctionResult } from "./sanctions";
+import { staffName } from "@/lib/text/names";
 
 /**
  * What the worker services and the employee services share: one table holds
@@ -46,7 +46,7 @@ export const staffSubject = (
   id: string,
   number: string,
   name: { lastName: string; firstName: string },
-) => ({ kind, id, label: `${number} ${name.lastName} ${name.firstName}` });
+) => ({ kind, id, label: `${number} ${staffName(name)}` });
 
 /** One record per person and kind (the database says so too): somebody coming back is readmitted on her file. */
 export async function refuseSecondRecord(
@@ -319,20 +319,4 @@ export async function readmit(
     changes: changes ?? undefined,
     context: { readmission: true, sanctionDecisionId: check.outcome === "ALLOWED" ? (input.decisionId ?? null) : null },
   });
-}
-
-/**
- * The commune of «بلدية/ولاية إقامة», as stored: the one picked from the list
- * in the centre's wilaya, or, in another wilaya, the one typed, kept the first
- * time it is used (two spellings of one name are one commune).
- */
-export async function residenceCommuneOf(
-  ex: Executor,
-  ctx: ServiceContext,
-  values: { residenceCommuneId: string; residenceWilayaCode: string; residenceCommuneName: string },
-): Promise<string | null> {
-  const wilayaCode = values.residenceWilayaCode || HOME_WILAYA_CODE;
-  if (wilayaCode === HOME_WILAYA_CODE) return orNull(values.residenceCommuneId);
-  const nameAr = values.residenceCommuneName.trim();
-  return nameAr === "" ? null : (await ensureCommune(ex, ctx, { wilayaCode, nameAr })).id;
 }

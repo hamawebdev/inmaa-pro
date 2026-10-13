@@ -21,6 +21,7 @@ import { ServiceError } from "@/lib/service/errors";
 import { localDate, money } from "@/lib/units";
 
 import { HOURS_PATH } from "./hours";
+import { staffName } from "@/lib/text/names";
 
 /**
  * Money paid to a person, and what a person owes the centre (feature 38).
@@ -44,7 +45,7 @@ async function personOf(ex: Executor, staffId: string) {
     .where("id", "=", staffId)
     .executeTakeFirst();
   if (!person || person.deletedAt) throw new ServiceError("This person does not exist.");
-  const label = `${person.lastName} ${person.firstName}`;
+  const label = staffName(person);
   return {
     ...person,
     label,
@@ -85,7 +86,7 @@ export async function listPayPeople(ex: Executor, ctx: ServiceContext): Promise<
     id: row.id,
     kind: row.kind as StaffKind,
     number: row.number,
-    name: `${row.lastName} ${row.firstName}`,
+    name: staffName(row),
   }));
 }
 
@@ -302,7 +303,7 @@ export async function listDebtors(ex: Executor, ctx: ServiceContext): Promise<De
     staffId: row.staffId,
     kind: row.kind as StaffKind,
     number: row.number,
-    name: `${row.lastName} ${row.firstName}`,
+    name: staffName(row),
     balance: row.balanceAfter,
     lastDate: row.date,
   }));
@@ -570,7 +571,7 @@ export async function listPayouts(
     staffId: row.staffId,
     staffKind: row.staffKind as StaffKind,
     staffNumber: row.staffNumber,
-    staffName: `${row.lastName} ${row.firstName}`,
+    staffName: staffName(row),
     date: row.date,
     amount: row.amount,
     kind: row.kind as PayoutKind,
@@ -701,7 +702,7 @@ export async function getPayoutForExpense(
     number: payout.number,
     staffId: payout.staffId,
     staffKind: payout.staffKind as StaffKind,
-    staffName: `${payout.lastName} ${payout.firstName}`,
+    staffName: staffName(payout),
     date: payout.date,
     amount: payout.amount,
     method: payout.wageMethod as PaymentMethod,

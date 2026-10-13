@@ -22,6 +22,7 @@ import { pathKey } from "@/lib/compat/revalidate";
 
 import { WorkerAttachmentsCard, WorkerDocumentsCard, WorkerHistoryCard } from "../_components/worker-file-cards";
 import { WorkerForm } from "../_components/worker-form";
+import { staffName } from "@/lib/text/names";
 
 /**
  * One cleaning worker's file. Section «عمال النظافة», below the tab «العمال».
@@ -72,7 +73,7 @@ export default function WorkerPage() {
     );
   }
 
-  const name = `${file.values.lastName} ${file.values.firstName}`;
+  const name = staffName(file.values);
   const decision = file.decisions[0];
 
   const leave = async () => {

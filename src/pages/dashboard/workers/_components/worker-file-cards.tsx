@@ -18,6 +18,7 @@ import type { WorkerFile } from "@/features/people/services/worker-reads";
 import { useErrorMessage } from "@/i18n/errors";
 import { checkUploadFile, PHOTO_UPLOAD_RULE, RECEIPT_UPLOAD_RULE } from "@/lib/uploads";
 import { saveManagedUpload, saveUploadCopy } from "@/server/uploads";
+import { staffName } from "@/lib/text/names";
 
 /**
  * The cards of a worker's file that are not his form: her photo and the scan
@@ -49,7 +50,7 @@ export function WorkerAttachmentsCard({ file }: { file: WorkerFile }) {
   const readsHealth = useMay("staff.health.read");
   const readsScore = useMay("staff.hiringScore.read");
   const canScan = readsHealth || readsScore;
-  const subject = { kind: "WORKER" as const, id: file.id, label: `${file.values.lastName} ${file.values.firstName}` };
+  const subject = { kind: "WORKER" as const, id: file.id, label: staffName(file.values) };
 
   const report = (result: { success: boolean; error?: string }, done: string) => {
     if (result.success) toast.success(done);

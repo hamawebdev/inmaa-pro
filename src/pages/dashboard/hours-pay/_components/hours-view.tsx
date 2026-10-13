@@ -16,6 +16,7 @@ import { ListTable } from "@/features/people/components/list-table";
 import { MonthSwitch } from "@/features/people/components/month-switch";
 import { workerHoursQuery, type WorkerHours } from "@/features/people/services/hours";
 import { pathKey } from "@/lib/compat/revalidate";
+import { staffName } from "@/lib/text/names";
 
 /**
  * Each worker's hours of a month (feature 21): what the typed orders give,
@@ -59,7 +60,7 @@ export function HoursView({
             to={`/dashboard/hours-pay/workers/${row.original.workerId}?month=${month}`}
             className="font-bold hover:underline"
           >
-            {row.original.lastName} {row.original.firstName}
+            {staffName(row.original)}
           </Link>
         ),
       },
@@ -163,7 +164,7 @@ export function HoursView({
       <ListTable
         rows={rows}
         columns={columns}
-        text={(row) => `${row.lastName} ${row.firstName} ${row.number}`}
+        text={(row) => `${staffName(row)} ${row.number}`}
         searchPlaceholder={t("Search")}
         emptyMessage={t(isPending ? "Loading" : "None")}
       />

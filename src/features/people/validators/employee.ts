@@ -49,11 +49,10 @@ export const employeeFormSchema = z
       .refine((value) => value === "" || isWilayaCode(value), "Choose a wilaya from the list."),
     address: text,
     residenceCommuneId: z.string(),
-    // «بلدية/ولاية إقامة»: his two blanks. The commune is picked in the centre's wilaya, typed in another.
+    // «بلدية/ولاية إقامة»: his two blanks, the wilaya and its commune (Foundation's picker).
     residenceWilayaCode: z
       .string()
       .refine((value) => value === "" || isWilayaCode(value), "Choose a wilaya from the list."),
-    residenceCommuneName: text,
     maritalStatus: z.enum(MARITAL_STATUSES).optional(),
     phone: z.string().trim().min(1, "This field is required.").refine(phoneOk, "The phone number has 9 or 10 digits."),
     phone2: optionalPhone,
@@ -142,7 +141,6 @@ export function emptyEmployeeValues(today: string): EmployeeFormValues {
     address: "",
     residenceCommuneId: "",
     residenceWilayaCode: HOME_WILAYA_CODE,
-    residenceCommuneName: "",
     maritalStatus: undefined,
     phone: "",
     phone2: "",

@@ -42,6 +42,8 @@ describe("listSchedulableWorkers", () => {
     expect(worker).toEqual({
       id: kamel.id,
       number: "1/H",
+      // Surname first, as his form's «اللقب والاسم».
+      name: "سعدي كمال",
       firstName: "كمال",
       lastName: "سعدي",
       fullNameLatin: null,

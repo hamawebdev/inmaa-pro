@@ -78,7 +78,6 @@
       "numberOnSave": "Attribué à l'enregistrement",
       "birthCommune": "Commune",
       "birthWilaya": "Wilaya",
-      "residenceCommune": "Commune de résidence",
       "otherIllness": "Laquelle",
       "expiryDate": "Expire le",
       "totalComputed": "Calculé à partir des dix critères.",
@@ -99,7 +98,6 @@
       "zoneHint": "Laissée vide : la zone de la commune de résidence.",
       "cnasDeclared": "Déclaré à la CNAS",
       "cnasNumber": "Numéro de sécurité sociale",
-      "residenceWilaya": "Wilaya de résidence",
       "registrationCard": "Inscription"
     },
     "Office": {
@@ -858,6 +856,10 @@
     "StaffContractEnding": {
       "Title": "Contrats qui se terminent",
       "Hint": "Le contrat d'un employé se termine dans les {days} jours"
+    },
+    "ViolationOpen": {
+      "Title": "Infractions à décider",
+      "Hint": "Saisies ou transmises, sans décision"
     }
   },
   "Errors": {

@@ -78,7 +78,6 @@
       "numberOnSave": "يُعطى عند الحفظ",
       "birthCommune": "البلدية",
       "birthWilaya": "الولاية",
-      "residenceCommune": "بلدية الإقامة",
       "otherIllness": "ما هي",
       "expiryDate": "تاريخ انتهاء الصلاحية",
       "totalComputed": "يُحسب من المعايير العشرة.",
@@ -99,7 +98,6 @@
       "zoneHint": "إن تُركت فارغة: منطقة بلدية الإقامة.",
       "cnasDeclared": "مصرّح به لدى الضمان الاجتماعي",
       "cnasNumber": "رقم الضمان الاجتماعي",
-      "residenceWilaya": "ولاية الإقامة",
       "registrationCard": "التسجيل"
     },
     "Office": {
@@ -858,6 +856,10 @@
     "StaffContractEnding": {
       "Title": "عقود تنتهي",
       "Hint": "ينتهي عقد موظف خلال {days} يوماً"
+    },
+    "ViolationOpen": {
+      "Title": "مخالفات تنتظر القرار",
+      "Hint": "مسجلة أو محالة دون قرار بعد"
     }
   },
   "Errors": {

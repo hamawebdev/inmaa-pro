@@ -19,7 +19,7 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { listZonesQuery, PLACES_PATH } from "@/features/core/services/places";
-import { ResidenceFields } from "@/features/people/components/residence-fields";
+import { ResidenceField } from "@/features/people/components/residence-fields";
 import { isolate, useMay } from "@/features/people/components/may";
 import { useSanctionGate } from "@/features/people/components/sanction-gate";
 import { workerFormRowByKey, YES_NO } from "@/features/people/forms/worker-form";
@@ -351,18 +351,7 @@ function RowField({
         </Field>
       );
     case "residence":
-      return (
-        <Field>
-          <FieldLabel>{label}</FieldLabel>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <ResidenceFields
-              control={control}
-              communeLabel={t("Fields.birthCommune")}
-              wilayaLabel={t("Fields.birthWilaya")}
-            />
-          </div>
-        </Field>
-      );
+      return <ResidenceField control={control} label={label} className="sm:col-span-2" />;
     case "maritalStatus":
       return (
         <ChoiceField

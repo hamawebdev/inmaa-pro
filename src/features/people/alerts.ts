@@ -1,8 +1,9 @@
-import { CalendarClock, FileWarning, Hourglass, ShieldQuestion } from "lucide-react";
+import { CalendarClock, FileWarning, Hourglass, ShieldAlert, ShieldQuestion } from "lucide-react";
 
 import type { RegisterAlert } from "@/lib/alerts";
 import { addDays } from "@/lib/clock";
 import type { Executor, ServiceContext } from "@/lib/service/context";
+import { countOpenViolations } from "./services/violations";
 
 /**
  * People's alerts (DESIGN.md section 13): the home screen's tiles for what
@@ -97,6 +98,15 @@ export function registerAlerts(register: RegisterAlert) {
     capability: "sanction.answer",
     route: "/dashboard/workers/sanctions",
     count: (ex) => countPendingDecisions(ex),
+  });
+  register({
+    key: "violation.open",
+    section: "workers",
+    severity: "warning",
+    name: "ViolationOpen",
+    icon: ShieldAlert,
+    route: "/dashboard/hiring?view=violations",
+    count: (ex) => countOpenViolations(ex),
   });
   register({
     key: "document.expiry",
