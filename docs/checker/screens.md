@@ -58,7 +58,7 @@ Kind: **defect** (differs from the academy or from a ruling, to fix), **question
 | S-07 | Workers list `/dashboard/workers` | In French the rows wrap (92 to 103 px at 1440×900) and at 1024×640 the table is 104 px wider than its box. Arabic fits. | defect, minor | People | 21:56, fr |
 | S-08 | Worker's file, employee's file | The record's actions stand in the heading row: «طباعة الاستمارة» (`info`) and «غادر», which records that the person has left (the Checker first took it for the form's way out). By R3 they stay there. What remains: the file's form has no Cancel at its foot; Save stands alone (`worker-form.tsx`, `employee-form.tsx` show Cancel on the new page only). | defect (R1, R3), minor | People | 21:57 |
 | S-09 | Registration, new employee, and both files | Save is `default` on the two new pages and `success` on the two files, and the foot is a plain row, not `PageActions`. By R1: `success` on all four, in `PageActions`. | defect (R1) | People | 21:57 |
-| S-10 | Registration `/dashboard/workers/new` | The first card (number, sex, date) has no title; every card of the academy's form has one. | defect, minor | People | 21:59 |
+| S-10 | Registration `/dashboard/workers/new` | The first card (number, sex, date) has no title; every card of the academy's form has one. | **closed 2026-10-14 08:09: the first card is titled «التسجيل»** | People | 21:59 |
 | S-11 | Suspended and penalised `/dashboard/workers/sanctions` | A woman (8/F) is written «عامل(ة) نظافة»; the workers list writes «عاملة نظافة» (`workerRoleAr(role, sex)`). The page is cards where the academy screen it names is a table: content, not counted. | defect, wording | People | 20:52, ar |
 | S-12 | Every form | Three treatments of Save: `default` (People's new pages, as the academy's forms), `success` (People's files), `success` and `lg` (Operations' visit page). The academy's button notes give `success` to "save, confirm, finish" and its own forms use `default`. Ruled: R1. What is left to change is in S-04 and S-09. | ruled (R1) | Foundation | 21:55 to 22:06 |
 | S-13 | Every tab page | The heading is the section's name on all its tabs («طلبات الخدمة» on «الزيارات», «عمال وعاملات النظافة» on «العمال»); the academy heads each tab page with the view's own name («حضور الموظفين»). By R2 a tab that is not its section's first is headed with its own label: of the screens audited, the day board («الزيارات», second tab of «طلبات الخدمة») must change; the workers and employees lists are first tabs and keep their headings. Every other tab page is checked against R2 in part 2. | **closed for Operations 2026-10-13 18:04: the day board is headed «الزيارات» («Visites»); the work programme and attendance are headed with their own tabs' labels** | Operations for the day board; each page's owner, with Foundation's `Nav` labels | 20:49 |
@@ -70,6 +70,9 @@ Kind: **defect** (differs from the academy or from a ruling, to fix), **question
 | S-19 | Attendance, 1024×640 | Two tab strips, the day switch, the counts, the search and the scroll arrows stand above the table: no worker's row is in view. The academy's attendance overview shows four. | defect, with S-03 | Operations | 2026-10-13 18:14 |
 | S-20 | Work programme `/dashboard/work-program` | Where visits overlap in one day, their blocks share the day's column and are cut so narrow that nothing in them can be read («…0», «…3», Wednesday 14 October). The academy's calendar could not be compared block for block: its demo seed has no rooms, so it shows its empty state. | defect | Operations | 2026-10-13 18:10 |
 | S-21 | File › المهام, «إضافة مهمة» dialog | The dialog commits with `add`; by R1 a dialog's commit is `success`, as the academy's «إضافة غياب» and this program's «تسجيل غياب» and «تعويض عامل». Its catalogue is 1624 px taller than the dialog and its tick boxes are barely visible on the dialog's surface. | defect (R1), minor | Operations | 2026-10-13 19:06 |
+| S-22 | Pay run `/dashboard/hours-pay/runs/:id` (the employees' September run) | In French at 1024×640 the table is wider than its box (scroll arrows). Arabic fits at both sizes. | defect, minor | People | 2026-10-13 23:32 |
+| S-23 | «منح تسبيق» and «تصحيح الساعات» dialogs | Both commit with `default`; by the ruling on S-21 committing a dialog is `success`. Both fit the window at both sizes. | defect (R1) | People | 2026-10-13 23:26 to 23:29 |
+| S-24 | An employee's month `/dashboard/employee-attendance/:id` | Rows are 92 px high at 1440×900 and 84 px at 1024×640, where the academy's are 81 and 71: each day's entry and exit chips carry their own edit and delete buttons. | defect, minor | People | 2026-10-14 08:08 |
 
 `docs/checker-table.md` carries one more: W-010 on the registration screen (the residence is one list of the 29 communes of أم البواقي, where his form has two blanks, commune and wilaya).
 
@@ -84,6 +87,21 @@ Shot on the demo data rebuilt at 18:03, as the manager, in Arabic light, Arabic 
 | Attendance, both views, «تسجيل غياب» | `/dashboard/worker-attendance`, `?view=absences` | attendance family, «إضافة غياب» | The dialog fits both windows and scrolls inside, `outline` and `success` at the foot (R1); S-18, S-19 |
 | File › المهام and «إضافة مهمة» | `/dashboard/files/:id/tasks` | programs list of the classes section | Detail screen, back action, cards and row menus as the academy's; S-21 |
 | Team card, «تعويض عامل» | `/dashboard/visits/:id` | group page | Names surname first, `outline` small row buttons, the dialog fits with `outline` and `success`; the picker «إضافة عامل» was not shot: the demo's visits had their teams complete |
+
+## People's round 2 (fifth pass, 2026-10-13 23:21 to 2026-10-14 08:12)
+
+Shot on the demo data as the manager, in Arabic light, Arabic dark and French light at 1440×900 and in Arabic and French at 1024×640; the two dialogs opened by a click. The machine slept between 23:38 and 08:04: the hours-and-pay shots are of the evening, the employee attendance shots of the morning.
+
+| Screen | Route | Academy screen it names | Result |
+|---|---|---|---|
+| Hours and pay, three views | `/dashboard/hours-pay`, `?view=pay`, `?view=advances` | the attendance family; finance's payouts and debts | Two tab strips, the month switch, `StatCard` tiles and the newer table at the academy's row heights (81 and 71 px); every table fits. Heading «الساعات والأجور», its tab's label (R2) |
+| «منح تسبيق», «تصحيح الساعات» | dialogs | «إضافة غياب» | Fit at both sizes; S-23 |
+| A worker's month | `/dashboard/hours-pay/workers/:id` | a person's check history | Fits; rows 64 px at 1024×640 |
+| A pay run | `/dashboard/hours-pay/runs/:id` | a group's page | Fits but for S-22 |
+| A payslip | `/dashboard/hours-pay/payslips/:id` | a payout's page in finance | Fits; heading «كشف الراتب · حداد مراد», surname first |
+| A person's ledger | `/dashboard/hours-pay/people/:id` | an employee's debt ledger | Fits in four modes; the French 1024×640 shot did not come back from Chrome (not checked) |
+| Employee attendance, three views | `/dashboard/employee-attendance`, `?view=absences`, `?view=leave` | the academy's employee attendance family | Second strip «الحضور · الغيابات · العطل», the newer table at the academy's heights, every table fits |
+| An employee's month | `/dashboard/employee-attendance/:id` | check history and absence detail | S-24 |
 
 ## The name rule (surname, then first name)
 
