@@ -4,11 +4,17 @@ import type { DemoNames, DemoTools } from "@/testing/demo";
 import { emptyWorkerValues, NO_DOCUMENTS, SAMPLE_WORKER_VALUES } from "./forms/worker-values";
 import { recordCheck, recordEmployeeAbsence, requestEmployeeLeave } from "./services/employee-attendance";
 import { registerEmployee } from "./services/employees";
+import { recordEvaluation } from "./services/evaluations";
+import { scheduleInterview } from "./services/hiring";
 import { addHoursAdjustment } from "./services/hours";
+import { addPayItem } from "./services/pay-items";
+import { addSkill, planTrainingSession, setTrainingAttendance, setWorkerSkills } from "./services/training";
+import { decideViolation, recordViolation } from "./services/violations";
 import { closePayRun, getPayRun, preparePayRun, updatePayslip } from "./services/pay-runs";
 import { recordPayout } from "./services/payouts";
 import { setSanction } from "./services/sanctions";
 import { registerWorker, type RegisterWorkerInput } from "./services/workers";
+import { seedTrainingModules } from "./seeds";
 import { emptyEmployeeValues } from "./validators/employee";
 import type { StaffDocumentType } from "./validators/staff-codes";
 
@@ -279,6 +285,7 @@ export async function seedDemo(ex: Executor, _ctx: ServiceContext, tools: DemoTo
   });
   names.employeeSupervisor = supervisor.id;
 
+  await seedHiringAndConduct(ex, tools, names);
   await seedAttendanceAndPay(ex, tools, names);
   return names;
 }
@@ -398,4 +405,91 @@ async function seedAttendanceAndPay(ex: Executor, tools: DemoTools, names: DemoN
 
   const drafted = await preparePayRun(ex, tools.at(at("2026-10-10")), { staffKind: "WORKER", month: "2026-09" });
   names.payRunWorkersDraft = drafted.payRunId;
+}
+
+/**
+ * Round 3's part: the candidate's interview; the training days of the worker
+ * on trial, three done and one to come; a skill; two violations, one decided
+ * with a written warning and one waiting; an evaluation; a transport allowance.
+ */
+async function seedHiringAndConduct(ex: Executor, tools: DemoTools, names: DemoNames): Promise<void> {
+  const ctx = tools.at(at("2026-10-01"));
+  await seedTrainingModules(ex, ctx);
+  const interview = await scheduleInterview(ex, tools.at(at("2026-10-11")), {
+    staffId: names.workerCandidate,
+    date: "2026-10-14",
+    time: "10:00",
+    note: "مقابلة أولى بحضور مسؤولة الموارد البشرية",
+  });
+  names.interview = interview.id;
+
+  const trainee = names.workerOnTrial;
+  for (const [date, moduleCode] of [
+    ["2026-10-06", "DAY_1"],
+    ["2026-10-07", "DAY_2"],
+    ["2026-10-08", "DAY_3"],
+    ["2026-10-15", "DAY_4"],
+  ] as const) {
+    const session = await planTrainingSession(ex, tools.at(at("2026-10-05")), {
+      date,
+      moduleCode,
+      place: "مقر المركز",
+      staffIds: [trainee, names.workerCandidate],
+    });
+    // The candidate did not come to the third day.
+    if (moduleCode === "DAY_3") {
+      await setTrainingAttendance(ex, tools.at(at("2026-10-08")), {
+        sessionId: session.id,
+        staffId: names.workerCandidate,
+        status: "ABSENT",
+      });
+    }
+  }
+
+  const { code } = await addSkill(ex, ctx, { labelAr: "آلة التنظيف بالبخار" });
+  await setWorkerSkills(ex, ctx, { workerId: names.workerSenior, skillCodes: [code] });
+
+  const warned = await recordViolation(ex, tools.at(at("2026-09-22")), {
+    workerId: names.workerAinBeida,
+    date: "2026-09-21",
+    severity: "MINOR",
+    article: "ART_2",
+    description: "تأخرت ساعة عن موعد المهمة دون إعلام المشرف",
+    staffStatement: "تعطلت الحافلة",
+  });
+  await decideViolation(ex, tools.at(at("2026-09-23")), { violationId: warned.id, action: "WRITTEN_WARNING" });
+  const open = await recordViolation(ex, tools.at(at("2026-10-10")), {
+    workerId: names.workerDaily,
+    date: "2026-10-09",
+    severity: "SERIOUS",
+    article: "ART_14",
+    article14Item: "LEFT_WITHOUT_LEAVE",
+    description: "غادر مكان العمل قبل نهاية المهمة دون إذن",
+  });
+  names.violationOpen = open.id;
+
+  await recordEvaluation(ex, tools.at(at("2026-10-02")), {
+    staffId: names.workerSamira,
+    periodStart: "2026-07-01",
+    periodEnd: "2026-09-30",
+    scores: {
+      scoreDiscipline: 5,
+      scoreAttendance: 5,
+      scoreCleaningQuality: 4,
+      scoreClientRespect: 5,
+      scoreEquipmentCare: 4,
+      scoreSafety: 4,
+      scoreProgramme: 5,
+    },
+    recommendation: "NONE",
+    comment: "عمل متقن والتزام بالمواعيد",
+  });
+
+  await addPayItem(ex, ctx, {
+    staffId: names.workerLeader,
+    type: "ALLOWANCE",
+    label: "منحة النقل",
+    amount: 200_000,
+    fromDate: "2026-09-01",
+  });
 }

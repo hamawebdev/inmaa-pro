@@ -7,6 +7,7 @@ import { createTestDatabase, type TestDatabase } from "@/testing/database";
 import { renewStaffDocument } from "./documents";
 import { evaluationTotal, listEvaluations, listEvaluationsDue, recordEvaluation } from "./evaluations";
 import { decideHiring, listCandidates, recordInterviewOutcome, scheduleInterview } from "./hiring";
+import { addPayItem, deletePayItem, endPayItem, listPayItems } from "./pay-items";
 import { debtBalanceOf } from "./payouts";
 import { getSanctionStates } from "./sanctions";
 import {
@@ -284,5 +285,37 @@ describe("documents", () => {
     expect(rows.filter((row) => row.isCurrent === 1)).toEqual([
       { isCurrent: 1, expiryDate: "2027-10-12", isRestricted: 1 },
     ]);
+  });
+});
+
+describe("recurring allowances and deductions", () => {
+  it("adds one to every month in force, until it is ended", async () => {
+    const id = await aCandidate({
+      hiringDecision: "ACCEPTED",
+      issuedDate: "2026-08-01",
+      payBasis: "MONTHLY",
+      payRate: "30000",
+    });
+    const { id: itemId } = await test.transact((ex, ctx) =>
+      addPayItem(ex, ctx, {
+        staffId: id,
+        type: "ALLOWANCE",
+        label: "منحة النقل",
+        amount: 200_000,
+        fromDate: "2026-09-01",
+      }),
+    );
+    await expect(test.transact((ex, ctx) => endPayItem(ex, ctx, { id: itemId, toDate: "2026-08-31" }))).rejects.toThrow(
+      "The end date must not be before the start date.",
+    );
+    await test.transact((ex, ctx) => endPayItem(ex, ctx, { id: itemId, toDate: "2026-09-30" }));
+    const [row] = await test.transact((ex, ctx) => listPayItems(ex, ctx, { staffId: id }));
+    expect(row).toMatchObject({ label: "منحة النقل", toDate: "2026-09-30", inForce: false, contributable: true });
+    const reception = await test.sessionFor("RECEPTION_SALES");
+    await expect(test.transact((ex, ctx) => listPayItems(ex, ctx, { staffId: id }), reception)).rejects.toThrow(
+      "You do not have permission to do this.",
+    );
+    await test.transact((ex, ctx) => deletePayItem(ex, ctx, { id: itemId, reason: "أدخلت خطأ" }));
+    expect(await test.transact((ex, ctx) => listPayItems(ex, ctx, { staffId: id }))).toEqual([]);
   });
 });

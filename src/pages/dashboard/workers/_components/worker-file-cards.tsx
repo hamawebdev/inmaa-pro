@@ -1,3 +1,4 @@
+import { RefreshCw } from "lucide-react";
 import * as React from "react";
 
 import { toast } from "sonner";
@@ -14,6 +15,7 @@ import { useMay } from "@/features/people/components/may";
 import { STATUS_TONE } from "@/features/people/components/status-tones";
 import type { DocumentState } from "@/features/people/rules/documents";
 import { setWorkerPhotoAction, setWorkerSignedScanAction } from "@/features/people/services/worker-files";
+import type { StaffDocumentType } from "@/features/people/validators/staff-codes";
 import type { WorkerFile } from "@/features/people/services/worker-reads";
 import { useErrorMessage } from "@/i18n/errors";
 import { checkUploadFile, PHOTO_UPLOAD_RULE, RECEIPT_UPLOAD_RULE } from "@/lib/uploads";
@@ -181,7 +183,14 @@ export function WorkerAttachmentsCard({ file }: { file: WorkerFile }) {
 }
 
 /** «الوثائق المسلمة» at a glance: which are handed in, which expire, which have expired. */
-export function WorkerDocumentsCard({ file }: { file: WorkerFile }) {
+export function WorkerDocumentsCard({
+  file,
+  onRenew,
+}: {
+  file: WorkerFile;
+  /** A document handed in again: a new certificate for one that expires. */
+  onRenew?: (type: StaffDocumentType) => void;
+}) {
   const t = useTranslations("Workers.File");
   const tForm = useTranslations("WorkerForm");
   return (
@@ -201,6 +210,18 @@ export function WorkerDocumentsCard({ file }: { file: WorkerFile }) {
               <span className="flex items-center gap-2">
                 {document.expiryDate && <Ltr className="text-muted-foreground tabular-nums">{document.expiryDate}</Ltr>}
                 <StatusChip tone={DOCUMENT_TONE[document.state]} label={t(`DocumentStates.${document.state}`)} />
+                {onRenew && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon-sm"
+                    aria-label={t("Renew")}
+                    title={t("Renew")}
+                    onClick={() => onRenew(document.type)}
+                  >
+                    <RefreshCw />
+                  </Button>
+                )}
               </span>
             </li>
           ))}

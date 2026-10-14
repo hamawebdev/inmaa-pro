@@ -1,6 +1,18 @@
 # People: handover
 
-Owner of features 21, 25, 37, 38: centre employees, cleaning workers, his worker form, hiring and training, hours, pay, and the suspended-or-penalised check. Paths: `src/features/people/**`, pages `employees/`, `employee-attendance/`, `workers/`, `hiring/`, `hours-pay/`. Updated at the end of round 2.
+Owner of features 21, 25, 37, 38: centre employees, cleaning workers, his worker form, hiring and training, hours, pay, and the suspended-or-penalised check. Paths: `src/features/people/**`, pages `employees/`, `employee-attendance/`, `workers/`, `hiring/`, `hours-pay/`. Updated at the end of round 3.
+
+## Round 3, done
+
+- **Hiring (37):** `services/hiring.ts`: interviews (`scheduleInterview`, `recordInterviewOutcome`), the administration's decision with the trial (`decideHiring`, `hiring.decide`), `listCandidates`. The ten points per criterion stay the confidential part of his form, on the worker's file; the hiring list links to it.
+- **Training (37):** `services/training.ts`: sessions of his eight days (`planTrainingSession` by module code), attendance (`setTrainingAttendance`), `cancelTrainingSession`, completion computed (`trainingCompletedDate`), skills (`addSkill`, `setWorkerSkills`). The eight rows are People's seed (`seeds.ts`, `registerSeeds`), run by Foundation's registry.
+- **Violations (article 17):** `services/violations.ts`: `recordViolation`, `createViolationFromSource` (for Operations), `decideViolation` (a deduction is a ledger line, a suspension or a penalty a sanction, the end of registration a leaving), `cancelViolation`, `listViolations`.
+- **Periodic evaluation (article 16):** `services/evaluations.ts`: `recordEvaluation` (seven criteria on `evaluation.scaleMax`, the period's hours kept with it), `deleteEvaluation`, `listEvaluations`, `listEvaluationsDue` (`evaluation.periodMonths`).
+- **Documents:** `services/documents.ts`: `renewStaffDocument`, a new current row, the old one kept.
+- **Recurring allowances and deductions:** `services/pay-items.ts` and its card on a person's pay page.
+- **Residence ruling:** once a wilaya other than 04 is chosen, its commune is required, on screen and in the service.
+- **Alerts and day start:** `violation.open` tile; the day-start job completes a worker's training when her last day has come.
+- **Screens:** «التوظيف والتدريب» (`hiring`), four views on `?view=`: candidates, training (sessions and skills), violations, evaluations. A worker's file gains the violations and evaluations card and a renew button per document.
 
 ## Round 2, done
 
@@ -31,14 +43,18 @@ Owner of features 21, 25, 37, 38: centre employees, cleaning workers, his worker
   - `employee-attendance.ts`: checks, absences, leave.
   - `pay-runs.ts`: the monthly run and its payslips.
   - `payouts.ts`: payouts, the ledger, and what Money reads.
+  - `pay-items.ts`: recurring allowances and deductions.
+  - `hiring.ts`, `training.ts`, `violations.ts`, `evaluations.ts`, `documents.ts`: round 3.
+- **Seeds** (`seeds.ts`): his eight training days, through Foundation's registry.
 - **Alerts** (`alerts.ts`) and **the day-start job** (`daily.ts`).
 - **Components** (`components/`): the sanction gate, card and chip; the reason dialog; the entry dialog (`useEntryDialog`, a short form in a dialog); `ListTable` and `SimpleTable`; `MonthSwitch`; the figures (`Amount`, `Duration`, `DayDate`, `Days`); the residence field (Foundation's picker bound to the form); form fields.
 - **Screens**:
   - workers: list, new, file, print, and «الموقوفون والمعاقبون» (`workers/sanctions`);
   - employees: list, new, file;
   - «الساعات والأجور» (`hours-pay`): three views (hours, pay, advances and debts); a worker's month (`workers/:id`); a run (`runs/:id`); a payslip and its print (`payslips/:id`, `/print`); a person's ledger and payments (`people/:id`);
-  - «الحضور والغياب» of employees (`employee-attendance`): three views (attendance, absences, leave) and one employee's month (`:id`).
-- **Demo data** (`demo.ts`): eight workers, one suspended, two employees; the employees' checks since 1 September, an absence, two leaves; September's pay closed for the employees and drafted for the workers; an advance.
+  - «الحضور والغياب» of employees (`employee-attendance`): three views (attendance, absences, leave) and one employee's month (`:id`);
+  - «التوظيف والتدريب» (`hiring`): candidates, training, violations, evaluations. The entries of all four are one hook, `components/conduct-entries.tsx`, shared with the worker's file.
+- **Demo data** (`demo.ts`): eight workers, one suspended, two employees; an interview, four training days, a skill, two violations (one decided), an evaluation, a transport allowance; the employees' checks since 1 September, an absence, two leaves; September's pay closed for the employees and drafted for the workers; an advance.
 
 ## Conventions
 
@@ -81,7 +97,16 @@ Owner of features 21, 25, 37, 38: centre employees, cleaning workers, his worker
 - The manager answers signed in as himself: `requestManagerApproval` will not come.
 - From the Checker's screen audit: Save is `success` at the foot in `PageActions`, cancel `outline` beside it; a record's actions stay in the heading; a tab page is headed by its tab; the CNAS tick is an office field, on screen only.
 
-## Decisions taken in round 2 (to confirm)
+## Decisions taken in round 3 (to confirm)
+
+- A violation handed over by Operations arrives as minor unless Operations says otherwise; HR sets how serious when deciding.
+- Deciding a violation is HR's (`staff.write`); a suspension or a penalty also needs `sanction.set`, so it is the manager's. A deduction is a ledger line of reason OTHER pointing at the violation. Only an open violation can be cancelled.
+- Workers planned for a training day are written as attending; the office marks who was absent. A day still to come does not count. Completion is set and cleared by the training service only.
+- An evaluation's figures are People's own hours of the period (days, lateness, absences, orders not typed): Operations' `getWorkerQualityFigures` is not written yet.
+- A renewed document is a new current row; the old row stays, no longer current.
+- The interview's ten points per criterion are typed on the worker's file (the confidential card), not in the interview dialog.
+
+## Decisions taken in round 2 (accepted)
 
 - A week (Saturday to Friday) belongs to the month it ends in: its overtime and its rest-day minutes are paid there, whole.
 - A run pays the seats typed and not yet paid, up to the month's end. A seat typed after its month closed is paid by the next run, marked as arrears.
@@ -110,14 +135,12 @@ Owner of features 21, 25, 37, 38: centre employees, cleaning workers, his worker
 
 ## Open items
 
-1. Hiring and training (interviews, training days, skills): not started. The tab is a placeholder.
-2. Violations (article 17), a sanction created from one (`createViolationFromSource`), the periodic evaluation (article 16).
-3. Recurring allowances and deductions (`StaffPayItem`) are read by a run, but no screen writes them yet.
-4. Weekly pay runs: only monthly runs are built. A weekly payment is an advance.
-5. A file per document on the worker's file (`StaffDocument.fileUrl`).
-6. A person matching two sanctions in force cannot be allowed by one yes.
-7. File consultations: switch to Foundation's once-a-day helper when it lands.
-8. The payslip's employer number prints from `centre.cnasEmployerNumber`, empty in the demo data.
+1. Weekly pay runs: only monthly runs are built. A weekly payment is an advance.
+2. A file per document on the worker's file (`StaffDocument.fileUrl`).
+3. A person matching two sanctions in force cannot be allowed by one yes.
+4. File consultations: switch to Foundation's once-a-day helper when it lands.
+5. The payslip's employer number prints from `centre.cnasEmployerNumber`, empty until Foundation's card has it.
+6. `formatPhone` moves to `src/lib/text` (Foundation): re-export it from `components/format.ts` when it lands.
 
 ## Needs from others
 
@@ -131,6 +154,8 @@ Owner of features 21, 25, 37, 38: centre employees, cleaning workers, his worker
   - `--before` on the harness's `pdf`, for a sheet behind a question;
   - `linkAccountToStaff`, so that an employee's file can link its account.
 - **Operations:**
+  - `createViolationFromSource(ex, ctx, { workerId, date, sourceKind, sourceId, description, article?, severity? })` is ready for complaints, inspections, visits and problem reports;
+  - `getWorkerQualityFigures` (CONTRACTS section 3) is not written: the evaluation keeps People's hours until it is;
   - `getWorkerHours` is not written: People reads `VisitWorker`, `Visit` and `File` itself, as CONTRACTS section 2 allows;
   - handle `staff.unavailable` (LEFT, SANCTION_SET, SANCTION_LIFTED);
   - replace the stand-ins `readWorkers` and `readStaffNames` with `listSchedulableWorkers` and `getStaffSummary`.

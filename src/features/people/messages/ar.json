@@ -229,7 +229,9 @@
       "TrialUntil": "التجربة إلى غاية",
       "StatusHistory": "تطور الحالة",
       "Hours": "الساعات",
-      "Pay": "الأجور والتسبيقات"
+      "Pay": "الأجور والتسبيقات",
+      "ConductTitle": "المخالفات والتقييم الدوري",
+      "Renew": "تجديد"
     },
     "Resume": {
       "PENDING": "لم يجب المدير بعد بخصوص {name}.",
@@ -716,6 +718,29 @@
     "KindsShort": {
       "WORKER": "العمال",
       "EMPLOYEE": "الموظفون"
+    },
+    "ItemTypes": {
+      "ALLOWANCE": "منحة",
+      "DEDUCTION": "اقتطاع"
+    },
+    "Items": {
+      "Title": "المنح والاقتطاعات الشهرية",
+      "Hint": "تضاف إلى كل كشف راتب أو تُقتطع منه في الأشهر التي تشملها.",
+      "None": "لا شيء.",
+      "Add": "إضافة",
+      "Type": "النوع",
+      "Label": "البيان",
+      "Amount": "المبلغ الشهري",
+      "From": "من",
+      "To": "إلى",
+      "Contributable": "يخضع لاشتراك الضمان الاجتماعي",
+      "Taxable": "يخضع للضريبة على الدخل",
+      "End": "إنهاء",
+      "EndTitle": "آخر يوم يُحتسب",
+      "DeleteTitle": "حذف هذا السطر",
+      "InForce": "سارية",
+      "Ended": "منتهية",
+      "Saved": "تم الحفظ."
     }
   },
   "EmployeeAttendance": {
@@ -840,6 +865,199 @@
     },
     "Description": "أوقات دخول وخروج الموظفين وغياباتهم وعطلهم."
   },
+  "Hiring": {
+    "Loading": "جارٍ التحميل…",
+    "Search": "ابحث بالاسم أو الرقم",
+    "Description": "المترشحون والمقابلات والقرارات، أيام التدريب، المخالفات والتقييم الدوري.",
+    "ViewsLabel": "التوظيف والتدريب",
+    "Views": {
+      "candidates": "المترشحون",
+      "training": "التدريب",
+      "violations": "المخالفات",
+      "evaluations": "التقييم الدوري"
+    },
+    "Candidates": {
+      "None": "لا يوجد مترشحون ولا عمال في فترة التجربة."
+    },
+    "Training": {
+      "None": "لا توجد أيام تدريب بعد."
+    },
+    "Violations": {
+      "None": "لا توجد مخالفات."
+    },
+    "Evaluations": {
+      "None": "لا يوجد تقييم بعد.",
+      "DueTitle": "حان موعد تقييمهم",
+      "DueHint": "يُقيَّم كل عامل في كل فترة محددة في الإعدادات، على المعايير السبعة للمادة 16.",
+      "NoneDue": "لا أحد حان موعد تقييمه."
+    },
+    "Skills": {
+      "Title": "المهارات",
+      "Hint": "الخدمات والآلات التي يتقنها العامل: يحتفظ المركز بقائمته.",
+      "None": "لا توجد مهارات في القائمة بعد."
+    },
+    "Table": {
+      "Number": "الرقم",
+      "Name": "اللقب والاسم",
+      "Status": "الحالة",
+      "Interview": "المقابلة",
+      "Decision": "قرار الإدارة",
+      "TrialUntil": "تجربة إلى غاية",
+      "TrialEnding": "تنتهي قريبًا",
+      "Training": "أيام التدريب",
+      "TrainingDone": "مكتمل",
+      "Outcome": "النتيجة",
+      "Score": "التقييم",
+      "Decide": "قرار",
+      "Date": "التاريخ",
+      "Module": "يوم التدريب",
+      "Attendees": "العمال",
+      "Attendance": "الحضور",
+      "Violation": "المخالفة",
+      "Cancel": "إلغاء",
+      "Period": "الفترة",
+      "Total": "النتيجة",
+      "Recommendation": "التوصية",
+      "Since": "منذ",
+      "LastTotal": "آخر نتيجة",
+      "Evaluate": "تقييم"
+    },
+    "InterviewStatuses": {
+      "SCHEDULED": "مبرمجة",
+      "DONE": "أُجريت",
+      "NO_SHOW": "لم يحضر",
+      "CANCELLED": "ملغاة"
+    },
+    "TrainingAttendances": {
+      "ATTENDED": "حضر",
+      "ABSENT": "غائب",
+      "EXCUSED": "معذور"
+    },
+    "Modules": {
+      "DAY_1": "التعريف بالمؤسسة",
+      "DAY_2": "معدات التنظيف",
+      "DAY_3": "طرق تنظيف الأرضيات",
+      "DAY_4": "الحمامات والمطابخ",
+      "DAY_5": "النوافذ",
+      "DAY_6": "السلامة",
+      "DAY_7": "تطبيق عملي",
+      "CONDUCT": "سلوك العاملة داخل منزل العميل"
+    },
+    "Severities": {
+      "SERIOUS": "جسيمة",
+      "MINOR": "بسيطة"
+    },
+    "Sources": {
+      "OFFICE": "المكتب",
+      "COMPLAINT": "شكوى",
+      "INSPECTION": "تفتيش",
+      "VISIT": "زيارة",
+      "PROBLEM_REPORT": "تقرير مشكلة"
+    },
+    "Actions": {
+      "NONE": "دون إجراء",
+      "VERBAL_WARNING": "تنبيه شفوي",
+      "WRITTEN_WARNING": "إنذار كتابي",
+      "DEDUCTION": "اقتطاع",
+      "SUSPENSION": "توقيف",
+      "PENALTY": "معاقبة",
+      "END_REGISTRATION": "إنهاء التسجيل"
+    },
+    "ViolationStatuses": {
+      "OPEN": "تنتظر القرار",
+      "DECIDED": "تم البتّ",
+      "CANCELLED": "ملغاة"
+    },
+    "Articles": {
+      "ART_1": "الالتزام بالعمل",
+      "ART_2": "الانضباط",
+      "ART_3": "المظهر المهني",
+      "ART_4": "جودة التنظيف",
+      "ART_5": "المعدات والمواد",
+      "ART_6": "السلامة",
+      "ART_7": "ممتلكات العملاء",
+      "ART_8": "السرية والخصوصية",
+      "ART_9": "التعامل مع العملاء",
+      "ART_10": "الهاتف",
+      "ART_11": "الشكاوى",
+      "ART_12": "الأموال",
+      "ART_13": "الحوادث",
+      "ART_14": "الممنوعات",
+      "ART_15": "التسلسل الإداري"
+    },
+    "Article14": {
+      "THEFT": "السرقة أو الاستيلاء على ممتلكات الغير",
+      "WILFUL_DAMAGE": "إتلاف الممتلكات عمدًا",
+      "FALSIFIED_RECORDS": "تزوير الحضور أو سجلات العمل",
+      "DISCLOSED_SECRETS": "إفشاء أسرار العملاء",
+      "LEFT_WITHOUT_LEAVE": "ترك العمل دون إذن",
+      "PERSONAL_WORK": "القيام بأعمال شخصية على حساب وقت العمل"
+    },
+    "Criteria": {
+      "scoreDiscipline": "الانضباط",
+      "scoreAttendance": "الحضور",
+      "scoreCleaningQuality": "جودة التنظيف",
+      "scoreClientRespect": "احترام العميل",
+      "scoreEquipmentCare": "المحافظة على المعدات",
+      "scoreSafety": "السلامة",
+      "scoreProgramme": "الالتزام بالبرنامج"
+    },
+    "Entry": {
+      "Failed": "تعذر الحفظ.",
+      "Save": "حفظ",
+      "Saved": "تم الحفظ.",
+      "Date": "التاريخ",
+      "Time": "الوقت",
+      "Note": "ملاحظة",
+      "Worker": "العامل",
+      "Why": "السبب",
+      "CancelIt": "إلغاء",
+      "Delete": "حذف",
+      "InterviewTitle": "برمجة المقابلة",
+      "InterviewSaved": "تمت برمجة المقابلة.",
+      "OutcomeTitle": "نتيجة المقابلة",
+      "OutcomeDescription": "تُدخل النقاط العشر لكل معيار في ملف العامل، في التقييم السري.",
+      "Outcome": "النتيجة",
+      "DecisionTitle": "قرار الإدارة",
+      "DecisionDescription": "تنتهي فترة التجربة في اليوم المحدد، أو بعد الأيام المحددة في الإعدادات.",
+      "TrialEnd": "نهاية فترة التجربة",
+      "DecisionSaved": "تم تسجيل القرار.",
+      "SessionTitle": "برمجة يوم تدريب",
+      "SessionSaved": "تمت برمجة يوم التدريب.",
+      "Module": "يوم التدريب",
+      "Place": "المكان",
+      "AttendanceTitle": "الحضور",
+      "SessionCancelTitle": "إلغاء يوم التدريب",
+      "SkillTitle": "إضافة مهارة",
+      "SkillName": "المهارة",
+      "WorkerSkillsTitle": "مهارات عامل",
+      "ViolationTitle": "تسجيل مخالفة",
+      "ViolationSaved": "تم تسجيل المخالفة: تنتظر القرار.",
+      "Severity": "درجة الخطورة",
+      "Article": "مادة النظام الداخلي",
+      "Article14": "الفعل الممنوع",
+      "Description": "الوقائع",
+      "Statement": "أقوال العامل",
+      "DecideTitle": "القرار في المخالفة رقم {number}",
+      "Action": "الإجراء",
+      "Amount": "المبلغ",
+      "Dinars": "دج",
+      "SanctionEnd": "إلى غاية (فارغ: حتى الرفع)",
+      "ViolationCancelTitle": "إلغاء المخالفة رقم {number}",
+      "EvaluationTitle": "تقييم دوري",
+      "EvaluationDescription": "يُنقط كل معيار من 1 إلى السلم المحدد في الإعدادات.",
+      "PeriodStart": "من",
+      "PeriodEnd": "إلى",
+      "Recommendation": "التوصية",
+      "Comment": "ملاحظات",
+      "EvaluationSaved": "تم تسجيل التقييم.",
+      "EvaluationDeleteTitle": "حذف هذا التقييم",
+      "RenewTitle": "تجديد: {document}",
+      "Delivered": "تاريخ التسليم",
+      "Issued": "تاريخ الإصدار",
+      "Expiry": "تاريخ الانتهاء"
+    }
+  },
   "Alerts": {
     "SanctionPending": {
       "Title": "في انتظار جوابك",
@@ -963,6 +1181,33 @@
     "AdvanceAlreadyRepaid": "هذا التسبيق سُدِّد: لا يمكن إلغاؤه.",
     "PayoutNotFound": "هذه الدفعة غير موجودة.",
     "PayoutAlreadyVoided": "هذه الدفعة ملغاة.",
-    "TimeNotValid": "أدخل وقتًا صحيحًا."
+    "TimeNotValid": "أدخل وقتًا صحيحًا.",
+    "DocumentRequired": "اختر الوثيقة.",
+    "ExpiryAfterDelivery": "يجب أن يكون تاريخ الانتهاء بعد يوم التسليم.",
+    "PeriodToCome": "لا يمكن تقييم فترة لم تأتِ بعد.",
+    "CriterionMark": "امنح كل معيار علامة من 1 إلى {max}.",
+    "RecommendationRequired": "اختر التوصية.",
+    "EvaluationNotFound": "هذا التقييم غير موجود.",
+    "WorkerLeftReadmit": "هذه العاملة غادرت: أعد تسجيلها أولًا.",
+    "InterviewOutcomeRequired": "اختر نتيجة المقابلة.",
+    "InterviewNotFound": "هذه المقابلة غير موجودة.",
+    "InterviewAlreadyRecorded": "سبق تسجيل نتيجة هذه المقابلة.",
+    "InterviewCancelReason": "اكتب سبب إلغاء المقابلة.",
+    "HiringDecisionRequired": "اختر القرار.",
+    "TrialEndAfterDecision": "يجب أن تنتهي فترة التجربة بعد القرار.",
+    "TrainingDayRequired": "اختر يوم التدريب.",
+    "AtLeastOneWorker": "اختر عاملًا واحدًا على الأقل.",
+    "AttendanceRequired": "اختر حضر أم لا.",
+    "TrainingSessionNotFound": "يوم التدريب هذا غير موجود.",
+    "SkillNameRequired": "اكتب اسم المهارة.",
+    "ViolationDescriptionRequired": "صف المخالفة.",
+    "ViolationSeverityRequired": "اختر درجة الخطورة.",
+    "ArticleRequired": "اختر المادة.",
+    "ViolationActionRequired": "اختر الإجراء المتخذ.",
+    "ViolationNotFound": "هذه المخالفة غير موجودة.",
+    "ViolationAlreadyDecided": "سبق البتّ في هذه المخالفة.",
+    "ResidenceCommuneRequired": "اختر بلدية الإقامة.",
+    "PayItemTypeRequired": "اختر منحة أو اقتطاعًا.",
+    "PayItemNotFound": "هذه المنحة أو الاقتطاع غير موجود."
   }
 }

@@ -229,7 +229,9 @@
       "TrialUntil": "Essai jusqu'au",
       "StatusHistory": "Évolution de l'état",
       "Hours": "Heures",
-      "Pay": "Paie et avances"
+      "Pay": "Paie et avances",
+      "ConductTitle": "Infractions et évaluation périodique",
+      "Renew": "Renouveler"
     },
     "Resume": {
       "PENDING": "Le directeur n'a pas encore répondu au sujet de {name}.",
@@ -716,6 +718,29 @@
     "KindsShort": {
       "WORKER": "Agents",
       "EMPLOYEE": "Employés"
+    },
+    "ItemTypes": {
+      "ALLOWANCE": "Prime",
+      "DEDUCTION": "Retenue"
+    },
+    "Items": {
+      "Title": "Primes et retenues mensuelles",
+      "Hint": "Ajoutées à chaque bulletin, ou retenues, pendant les mois couverts.",
+      "None": "Aucune.",
+      "Add": "Ajouter",
+      "Type": "Nature",
+      "Label": "Objet",
+      "Amount": "Montant mensuel",
+      "From": "Du",
+      "To": "Au",
+      "Contributable": "Soumis à la CNAS",
+      "Taxable": "Soumis à l'IRG",
+      "End": "Arrêter",
+      "EndTitle": "Dernier jour pris en compte",
+      "DeleteTitle": "Supprimer cette ligne",
+      "InForce": "En vigueur",
+      "Ended": "Terminée",
+      "Saved": "Enregistré."
     }
   },
   "EmployeeAttendance": {
@@ -840,6 +865,199 @@
     },
     "Description": "Les entrées et sorties des employés, leurs absences et leurs congés."
   },
+  "Hiring": {
+    "Loading": "Chargement…",
+    "Search": "Rechercher par nom ou numéro",
+    "Description": "Candidats, entretiens et décisions, jours de formation, infractions et évaluations périodiques.",
+    "ViewsLabel": "Recrutement et formation",
+    "Views": {
+      "candidates": "Candidats",
+      "training": "Formation",
+      "violations": "Infractions",
+      "evaluations": "Évaluations"
+    },
+    "Candidates": {
+      "None": "Aucun candidat ni agent à l'essai."
+    },
+    "Training": {
+      "None": "Aucun jour de formation pour l'instant."
+    },
+    "Violations": {
+      "None": "Aucune infraction."
+    },
+    "Evaluations": {
+      "None": "Aucune évaluation pour l'instant.",
+      "DueTitle": "À évaluer",
+      "DueHint": "Chaque agent est évalué à chaque période fixée dans les paramètres, sur les sept critères de l'article 16.",
+      "NoneDue": "Personne n'est à évaluer."
+    },
+    "Skills": {
+      "Title": "Compétences",
+      "Hint": "Les services et machines qu'un agent maîtrise : le centre tient sa liste.",
+      "None": "Aucune compétence dans la liste."
+    },
+    "Table": {
+      "Number": "N°",
+      "Name": "Nom et prénom",
+      "Status": "État",
+      "Interview": "Entretien",
+      "Decision": "Décision",
+      "TrialUntil": "Essai jusqu'au",
+      "TrialEnding": "Se termine bientôt",
+      "Training": "Jours de formation",
+      "TrainingDone": "Terminée",
+      "Outcome": "Résultat",
+      "Score": "Notation",
+      "Decide": "Décider",
+      "Date": "Date",
+      "Module": "Jour de formation",
+      "Attendees": "Agents",
+      "Attendance": "Présence",
+      "Violation": "Infraction",
+      "Cancel": "Annuler",
+      "Period": "Période",
+      "Total": "Total",
+      "Recommendation": "Recommandation",
+      "Since": "Depuis",
+      "LastTotal": "Dernier résultat",
+      "Evaluate": "Évaluer"
+    },
+    "InterviewStatuses": {
+      "SCHEDULED": "Prévu",
+      "DONE": "Passé",
+      "NO_SHOW": "Absent",
+      "CANCELLED": "Annulé"
+    },
+    "TrainingAttendances": {
+      "ATTENDED": "Présent",
+      "ABSENT": "Absent",
+      "EXCUSED": "Excusé"
+    },
+    "Modules": {
+      "DAY_1": "Jour 1 : le centre",
+      "DAY_2": "Jour 2 : le matériel",
+      "DAY_3": "Jour 3 : les sols",
+      "DAY_4": "Jour 4 : salles de bain et cuisines",
+      "DAY_5": "Jour 5 : les vitres",
+      "DAY_6": "Jour 6 : la sécurité",
+      "DAY_7": "Jour 7 : la pratique",
+      "CONDUCT": "Conduite chez le client"
+    },
+    "Severities": {
+      "SERIOUS": "Grave",
+      "MINOR": "Légère"
+    },
+    "Sources": {
+      "OFFICE": "Le bureau",
+      "COMPLAINT": "Une réclamation",
+      "INSPECTION": "Une inspection",
+      "VISIT": "Une visite",
+      "PROBLEM_REPORT": "Un rapport d'incident"
+    },
+    "Actions": {
+      "NONE": "Sans suite",
+      "VERBAL_WARNING": "Avertissement oral",
+      "WRITTEN_WARNING": "Avertissement écrit",
+      "DEDUCTION": "Retenue",
+      "SUSPENSION": "Suspension",
+      "PENALTY": "Sanction",
+      "END_REGISTRATION": "Fin de l'inscription"
+    },
+    "ViolationStatuses": {
+      "OPEN": "À décider",
+      "DECIDED": "Décidée",
+      "CANCELLED": "Annulée"
+    },
+    "Articles": {
+      "ART_1": "1. Engagement au travail",
+      "ART_2": "2. Discipline",
+      "ART_3": "3. Tenue professionnelle",
+      "ART_4": "4. Qualité du nettoyage",
+      "ART_5": "5. Matériel et produits",
+      "ART_6": "6. Sécurité",
+      "ART_7": "7. Biens des clients",
+      "ART_8": "8. Confidentialité",
+      "ART_9": "9. Relation avec les clients",
+      "ART_10": "10. Le téléphone",
+      "ART_11": "11. Réclamations",
+      "ART_12": "12. L'argent",
+      "ART_13": "13. Accidents",
+      "ART_14": "14. Interdits",
+      "ART_15": "15. La hiérarchie"
+    },
+    "Article14": {
+      "THEFT": "Vol",
+      "WILFUL_DAMAGE": "Dégradation volontaire",
+      "FALSIFIED_RECORDS": "Falsification des présences ou registres",
+      "DISCLOSED_SECRETS": "Divulgation des secrets des clients",
+      "LEFT_WITHOUT_LEAVE": "Abandon de poste sans autorisation",
+      "PERSONAL_WORK": "Travaux personnels pendant le service"
+    },
+    "Criteria": {
+      "scoreDiscipline": "Discipline",
+      "scoreAttendance": "Présence",
+      "scoreCleaningQuality": "Qualité du nettoyage",
+      "scoreClientRespect": "Respect du client",
+      "scoreEquipmentCare": "Soin du matériel",
+      "scoreSafety": "Sécurité",
+      "scoreProgramme": "Respect du programme"
+    },
+    "Entry": {
+      "Failed": "L'enregistrement a échoué.",
+      "Save": "Enregistrer",
+      "Saved": "Enregistré.",
+      "Date": "Date",
+      "Time": "Heure",
+      "Note": "Note",
+      "Worker": "Agent",
+      "Why": "Motif",
+      "CancelIt": "Annuler",
+      "Delete": "Supprimer",
+      "InterviewTitle": "Prévoir l'entretien",
+      "InterviewSaved": "L'entretien est prévu.",
+      "OutcomeTitle": "Résultat de l'entretien",
+      "OutcomeDescription": "Les dix points par critère se saisissent dans le dossier de l'agent, dans l'évaluation confidentielle.",
+      "Outcome": "Résultat",
+      "DecisionTitle": "Décision de la direction",
+      "DecisionDescription": "L'essai se termine au jour indiqué, ou après les jours fixés dans les paramètres.",
+      "TrialEnd": "Fin de l'essai",
+      "DecisionSaved": "La décision est enregistrée.",
+      "SessionTitle": "Prévoir un jour de formation",
+      "SessionSaved": "Le jour de formation est prévu.",
+      "Module": "Jour de formation",
+      "Place": "Lieu",
+      "AttendanceTitle": "Qui était présent",
+      "SessionCancelTitle": "Annuler ce jour de formation",
+      "SkillTitle": "Ajouter une compétence",
+      "SkillName": "Compétence",
+      "WorkerSkillsTitle": "Compétences d'un agent",
+      "ViolationTitle": "Saisir une infraction",
+      "ViolationSaved": "L'infraction est enregistrée : elle attend une décision.",
+      "Severity": "Gravité",
+      "Article": "Article du règlement",
+      "Article14": "Acte interdit",
+      "Description": "Les faits",
+      "Statement": "Déclaration de l'agent",
+      "DecideTitle": "Décider de l'infraction {number}",
+      "Action": "Suite donnée",
+      "Amount": "Montant",
+      "Dinars": "DA",
+      "SanctionEnd": "Jusqu'au (vide : jusqu'à la levée)",
+      "ViolationCancelTitle": "Annuler l'infraction {number}",
+      "EvaluationTitle": "Évaluer",
+      "EvaluationDescription": "Chaque critère est noté de 1 à l'échelle fixée dans les paramètres.",
+      "PeriodStart": "Du",
+      "PeriodEnd": "Au",
+      "Recommendation": "Recommandation",
+      "Comment": "Commentaire",
+      "EvaluationSaved": "L'évaluation est enregistrée.",
+      "EvaluationDeleteTitle": "Supprimer cette évaluation",
+      "RenewTitle": "Renouveler : {document}",
+      "Delivered": "Remis le",
+      "Issued": "Délivré le",
+      "Expiry": "Expire le"
+    }
+  },
   "Alerts": {
     "SanctionPending": {
       "Title": "En attente de votre réponse",
@@ -963,6 +1181,33 @@
     "AdvanceAlreadyRepaid": "Cette avance a déjà été remboursée : elle ne peut plus être annulée.",
     "PayoutNotFound": "Ce versement n'existe pas.",
     "PayoutAlreadyVoided": "Ce versement est déjà annulé.",
-    "TimeNotValid": "Saisissez une heure valide."
+    "TimeNotValid": "Saisissez une heure valide.",
+    "DocumentRequired": "Choisissez la pièce.",
+    "ExpiryAfterDelivery": "La date d'expiration doit suivre le jour de la remise.",
+    "PeriodToCome": "Une période à venir ne peut pas encore être évaluée.",
+    "CriterionMark": "Donnez à chaque critère une note de 1 à {max}.",
+    "RecommendationRequired": "Choisissez la recommandation.",
+    "EvaluationNotFound": "Cette évaluation n'existe pas.",
+    "WorkerLeftReadmit": "Cet agent est parti : réintégrez-le d'abord.",
+    "InterviewOutcomeRequired": "Choisissez l'issue de l'entretien.",
+    "InterviewNotFound": "Cet entretien n'existe pas.",
+    "InterviewAlreadyRecorded": "Cet entretien a déjà été enregistré.",
+    "InterviewCancelReason": "Écrivez pourquoi l'entretien est annulé.",
+    "HiringDecisionRequired": "Choisissez la décision.",
+    "TrialEndAfterDecision": "L'essai doit se terminer après la décision.",
+    "TrainingDayRequired": "Choisissez le jour de formation.",
+    "AtLeastOneWorker": "Choisissez au moins un agent.",
+    "AttendanceRequired": "Choisissez présent ou non.",
+    "TrainingSessionNotFound": "Cette séance de formation n'existe pas.",
+    "SkillNameRequired": "Écrivez le nom de la compétence.",
+    "ViolationDescriptionRequired": "Décrivez l'infraction.",
+    "ViolationSeverityRequired": "Choisissez la gravité.",
+    "ArticleRequired": "Choisissez l'article.",
+    "ViolationActionRequired": "Choisissez la suite donnée.",
+    "ViolationNotFound": "Cette infraction n'existe pas.",
+    "ViolationAlreadyDecided": "Cette infraction a déjà été décidée.",
+    "ResidenceCommuneRequired": "Choisissez la commune de résidence.",
+    "PayItemTypeRequired": "Choisissez une prime ou une retenue.",
+    "PayItemNotFound": "Cette prime ou retenue n'existe pas."
   }
 }

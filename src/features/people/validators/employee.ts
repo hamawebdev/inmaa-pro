@@ -107,6 +107,10 @@ export const employeeFormSchema = z
       ),
   })
   .superRefine((data, ctx) => {
+    // The coordinator's ruling: once a wilaya other than the centre's is chosen, its commune is required.
+    if (data.residenceWilayaCode && data.residenceWilayaCode !== HOME_WILAYA_CODE && !data.residenceCommuneId) {
+      ctx.addIssue({ code: "custom", path: ["residenceCommuneId"], message: "Choose the commune of residence." });
+    }
     if (data.birthDate !== "" && data.registrationDate !== "" && data.birthDate >= data.registrationDate) {
       ctx.addIssue({
         code: "custom",

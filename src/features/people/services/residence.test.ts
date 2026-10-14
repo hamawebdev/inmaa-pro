@@ -68,3 +68,20 @@ it("does the same on an employee's file", async () => {
   const file = await test.transact((ex, ctx) => openEmployeeFile(ex, ctx, { id }));
   expect(file.values).toMatchObject({ residenceWilayaCode: "19", residenceCommuneId: eulma.id });
 });
+
+it("requires the commune once another wilaya is chosen, and allows an empty residence", async () => {
+  await expect(
+    test.transact((ex, ctx) =>
+      registerWorker(ex, ctx, { ...NADIA, residenceWilayaCode: "25", residenceCommuneId: "" }),
+    ),
+  ).rejects.toThrow("Choose the commune of residence.");
+  const { id } = await test.transact((ex, ctx) =>
+    registerWorker(ex, ctx, { ...NADIA, residenceWilayaCode: "04", residenceCommuneId: "" }),
+  );
+  const stored = await test.db
+    .selectFrom("StaffMember")
+    .select("residenceCommuneId")
+    .where("id", "=", id)
+    .executeTakeFirstOrThrow();
+  expect(stored.residenceCommuneId).toBeNull();
+});

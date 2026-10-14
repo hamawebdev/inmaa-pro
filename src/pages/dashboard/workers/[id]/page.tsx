@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { Clock, LogOut, Printer, RotateCcw, Wallet } from "lucide-react";
+import { Clock, LogOut, Printer, RotateCcw, Scale, ShieldAlert, Wallet } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import { useTranslations } from "use-intl";
@@ -9,6 +9,8 @@ import { ErrorState } from "@/components/error-state";
 import { Ltr } from "@/components/ltr";
 import { StatusChip } from "@/components/status-chip";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useConductEntries } from "@/features/people/components/conduct-entries";
 import { todayAtTheCentre, useMay } from "@/features/people/components/may";
 import { useReasonDialog } from "@/features/people/components/reason-dialog";
 import { SanctionCard } from "@/features/people/components/sanction-card";
@@ -21,6 +23,7 @@ import { useErrorMessage } from "@/i18n/errors";
 import { pathKey } from "@/lib/compat/revalidate";
 
 import { WorkerAttachmentsCard, WorkerDocumentsCard, WorkerHistoryCard } from "../_components/worker-file-cards";
+import { EvaluationsView, ViolationsView } from "../../hiring/_components/hiring-views";
 import { WorkerForm } from "../_components/worker-form";
 import { staffName } from "@/lib/text/names";
 
@@ -62,6 +65,8 @@ export default function WorkerPage() {
   });
   const back = { href: "/dashboard/workers", label: tNav("WorkersList") };
   const keepsFiles = useMay("staff.write");
+  const conduct = useConductEntries();
+  const tHiring = useTranslations("Hiring");
   const readsPay = useMay("pay.read");
   const printsFilledForm = useMay("staff.printFilledForm");
 
@@ -178,11 +183,38 @@ export default function WorkerPage() {
       <div className="space-y-6">
         <SanctionCard subjectKind="WORKER" subjectId={id} />
         <WorkerAttachmentsCard file={file} />
-        <WorkerDocumentsCard file={file} />
+        <WorkerDocumentsCard
+          file={file}
+          onRenew={keepsFiles ? (type) => void conduct.renewDocument(id, type) : undefined}
+        />
+        <Card id="worker-card-conduct">
+          <CardHeader>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <CardTitle className="text-base">{t("File.ConductTitle")}</CardTitle>
+              {keepsFiles && (
+                <div className="flex flex-wrap gap-2">
+                  <Button type="button" variant="outline" size="sm" onClick={() => void conduct.recordViolation(id)}>
+                    <ShieldAlert />
+                    {tHiring("Entry.ViolationTitle")}
+                  </Button>
+                  <Button type="button" variant="outline" size="sm" onClick={() => void conduct.evaluate(id)}>
+                    <Scale />
+                    {tHiring("Entry.EvaluationTitle")}
+                  </Button>
+                </div>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <ViolationsView entries={conduct} staffId={id} />
+            <EvaluationsView entries={conduct} staffId={id} />
+          </CardContent>
+        </Card>
         <WorkerHistoryCard file={file} />
         <WorkerForm key={file.id} mode={{ kind: "edit", id, number: file.number }} defaultValues={file.values} />
       </div>
       {reasonDialog}
+      {conduct.dialogs}
       {gateDialogs}
     </DetailScreen>
   );

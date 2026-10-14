@@ -229,7 +229,9 @@
       "TrialUntil": "Trial until",
       "StatusHistory": "Status over time",
       "Hours": "Hours",
-      "Pay": "Pay and advances"
+      "Pay": "Pay and advances",
+      "ConductTitle": "Violations and periodic evaluation",
+      "Renew": "Renew"
     },
     "Resume": {
       "PENDING": "The manager has not answered yet about {name}.",
@@ -716,6 +718,29 @@
     "KindsShort": {
       "WORKER": "Workers",
       "EMPLOYEE": "Employees"
+    },
+    "ItemTypes": {
+      "ALLOWANCE": "Allowance",
+      "DEDUCTION": "Deduction"
+    },
+    "Items": {
+      "Title": "Monthly allowances and deductions",
+      "Hint": "Added to, or taken off, every payslip of the months they cover.",
+      "None": "None.",
+      "Add": "Add",
+      "Type": "Kind",
+      "Label": "What for",
+      "Amount": "Amount a month",
+      "From": "From",
+      "To": "To",
+      "Contributable": "Counts for the CNAS",
+      "Taxable": "Counts for the IRG",
+      "End": "End",
+      "EndTitle": "The last day it counts",
+      "DeleteTitle": "Delete this line",
+      "InForce": "In force",
+      "Ended": "Ended",
+      "Saved": "Saved."
     }
   },
   "EmployeeAttendance": {
@@ -840,6 +865,199 @@
     },
     "Description": "The employees' times in and out, their absences and their leave."
   },
+  "Hiring": {
+    "Loading": "Loading…",
+    "Search": "Search by name or number",
+    "Description": "Candidates, interviews and decisions, training days, violations and periodic evaluations.",
+    "ViewsLabel": "Hiring and training",
+    "Views": {
+      "candidates": "Candidates",
+      "training": "Training",
+      "violations": "Violations",
+      "evaluations": "Evaluations"
+    },
+    "Candidates": {
+      "None": "No candidate and nobody on trial."
+    },
+    "Training": {
+      "None": "No training day yet."
+    },
+    "Violations": {
+      "None": "No violation."
+    },
+    "Evaluations": {
+      "None": "No evaluation yet.",
+      "DueTitle": "Due for an evaluation",
+      "DueHint": "Every worker is evaluated each period set in Settings, on the seven criteria of article 16.",
+      "NoneDue": "Nobody is due."
+    },
+    "Skills": {
+      "Title": "Skills",
+      "Hint": "The services and machines a worker masters: the centre keeps its own list.",
+      "None": "No skill in the list yet."
+    },
+    "Table": {
+      "Number": "No.",
+      "Name": "Name",
+      "Status": "Status",
+      "Interview": "Interview",
+      "Decision": "Decision",
+      "TrialUntil": "Trial until",
+      "TrialEnding": "Ends soon",
+      "Training": "Training days",
+      "TrainingDone": "Completed",
+      "Outcome": "Result",
+      "Score": "Score",
+      "Decide": "Decide",
+      "Date": "Date",
+      "Module": "Training day",
+      "Attendees": "Workers",
+      "Attendance": "Attendance",
+      "Violation": "Violation",
+      "Cancel": "Cancel",
+      "Period": "Period",
+      "Total": "Total",
+      "Recommendation": "Recommendation",
+      "Since": "Since",
+      "LastTotal": "Last result",
+      "Evaluate": "Evaluate"
+    },
+    "InterviewStatuses": {
+      "SCHEDULED": "Scheduled",
+      "DONE": "Held",
+      "NO_SHOW": "Did not come",
+      "CANCELLED": "Cancelled"
+    },
+    "TrainingAttendances": {
+      "ATTENDED": "Attended",
+      "ABSENT": "Absent",
+      "EXCUSED": "Excused"
+    },
+    "Modules": {
+      "DAY_1": "Day 1: the centre",
+      "DAY_2": "Day 2: cleaning equipment",
+      "DAY_3": "Day 3: floors",
+      "DAY_4": "Day 4: bathrooms and kitchens",
+      "DAY_5": "Day 5: windows",
+      "DAY_6": "Day 6: safety",
+      "DAY_7": "Day 7: practice",
+      "CONDUCT": "Conduct in a client's home"
+    },
+    "Severities": {
+      "SERIOUS": "Serious",
+      "MINOR": "Minor"
+    },
+    "Sources": {
+      "OFFICE": "The office",
+      "COMPLAINT": "A complaint",
+      "INSPECTION": "An inspection",
+      "VISIT": "A visit",
+      "PROBLEM_REPORT": "A problem report"
+    },
+    "Actions": {
+      "NONE": "No action",
+      "VERBAL_WARNING": "Verbal warning",
+      "WRITTEN_WARNING": "Written warning",
+      "DEDUCTION": "Deduction",
+      "SUSPENSION": "Suspension",
+      "PENALTY": "Penalty",
+      "END_REGISTRATION": "End of registration"
+    },
+    "ViolationStatuses": {
+      "OPEN": "To decide",
+      "DECIDED": "Decided",
+      "CANCELLED": "Cancelled"
+    },
+    "Articles": {
+      "ART_1": "1. Commitment to the work",
+      "ART_2": "2. Discipline",
+      "ART_3": "3. Professional appearance",
+      "ART_4": "4. Cleaning quality",
+      "ART_5": "5. Equipment and products",
+      "ART_6": "6. Safety",
+      "ART_7": "7. Clients' property",
+      "ART_8": "8. Confidentiality and privacy",
+      "ART_9": "9. Dealing with clients",
+      "ART_10": "10. The telephone",
+      "ART_11": "11. Complaints",
+      "ART_12": "12. Money",
+      "ART_13": "13. Accidents",
+      "ART_14": "14. Forbidden acts",
+      "ART_15": "15. The chain of command"
+    },
+    "Article14": {
+      "THEFT": "Theft",
+      "WILFUL_DAMAGE": "Wilful damage",
+      "FALSIFIED_RECORDS": "Falsified attendance or records",
+      "DISCLOSED_SECRETS": "Disclosing clients' secrets",
+      "LEFT_WITHOUT_LEAVE": "Leaving work without leave",
+      "PERSONAL_WORK": "Personal work in work time"
+    },
+    "Criteria": {
+      "scoreDiscipline": "Discipline",
+      "scoreAttendance": "Attendance",
+      "scoreCleaningQuality": "Cleaning quality",
+      "scoreClientRespect": "Respect for the client",
+      "scoreEquipmentCare": "Care of the equipment",
+      "scoreSafety": "Safety",
+      "scoreProgramme": "Keeping to the programme"
+    },
+    "Entry": {
+      "Failed": "This could not be saved.",
+      "Save": "Save",
+      "Saved": "Saved.",
+      "Date": "Date",
+      "Time": "Time",
+      "Note": "Note",
+      "Worker": "Worker",
+      "Why": "Reason",
+      "CancelIt": "Cancel it",
+      "Delete": "Delete",
+      "InterviewTitle": "Schedule the interview",
+      "InterviewSaved": "The interview is scheduled.",
+      "OutcomeTitle": "The interview's result",
+      "OutcomeDescription": "The ten points per criterion are typed on the worker's file, in the confidential evaluation.",
+      "Outcome": "Result",
+      "DecisionTitle": "The administration's decision",
+      "DecisionDescription": "A trial ends on the day given, or after the days set in Settings.",
+      "TrialEnd": "End of the trial",
+      "DecisionSaved": "The decision is recorded.",
+      "SessionTitle": "Plan a training day",
+      "SessionSaved": "The training day is planned.",
+      "Module": "Training day",
+      "Place": "Place",
+      "AttendanceTitle": "Who attended",
+      "SessionCancelTitle": "Cancel this training day",
+      "SkillTitle": "Add a skill",
+      "SkillName": "Skill",
+      "WorkerSkillsTitle": "A worker's skills",
+      "ViolationTitle": "Record a violation",
+      "ViolationSaved": "The violation is recorded: it waits for a decision.",
+      "Severity": "How serious",
+      "Article": "Article of the regulations",
+      "Article14": "Forbidden act",
+      "Description": "What happened",
+      "Statement": "The worker's statement",
+      "DecideTitle": "Decide on violation {number}",
+      "Action": "What follows",
+      "Amount": "Amount",
+      "Dinars": "DA",
+      "SanctionEnd": "Until (empty: until lifted)",
+      "ViolationCancelTitle": "Cancel violation {number}",
+      "EvaluationTitle": "Evaluate",
+      "EvaluationDescription": "Each criterion is marked from 1 to the scale set in Settings.",
+      "PeriodStart": "From",
+      "PeriodEnd": "To",
+      "Recommendation": "Recommendation",
+      "Comment": "Comment",
+      "EvaluationSaved": "The evaluation is recorded.",
+      "EvaluationDeleteTitle": "Delete this evaluation",
+      "RenewTitle": "Renew: {document}",
+      "Delivered": "Handed in on",
+      "Issued": "Issued on",
+      "Expiry": "Expires on"
+    }
+  },
   "Alerts": {
     "SanctionPending": {
       "Title": "Waiting for your answer",
@@ -963,6 +1181,33 @@
     "AdvanceAlreadyRepaid": "This advance has already been repaid: it can no longer be voided.",
     "PayoutNotFound": "This payout does not exist.",
     "PayoutAlreadyVoided": "This payout is already voided.",
-    "TimeNotValid": "Enter a valid time."
+    "TimeNotValid": "Enter a valid time.",
+    "DocumentRequired": "Choose the document.",
+    "ExpiryAfterDelivery": "The expiry date must be after the day it was handed in.",
+    "PeriodToCome": "A period still to come cannot be evaluated yet.",
+    "CriterionMark": "Give each criterion a mark from 1 to {max}.",
+    "RecommendationRequired": "Choose the recommendation.",
+    "EvaluationNotFound": "This evaluation does not exist.",
+    "WorkerLeftReadmit": "This worker has left: readmit her first.",
+    "InterviewOutcomeRequired": "Choose what came of the interview.",
+    "InterviewNotFound": "This interview does not exist.",
+    "InterviewAlreadyRecorded": "This interview has already been recorded.",
+    "InterviewCancelReason": "Write why the interview is cancelled.",
+    "HiringDecisionRequired": "Choose the decision.",
+    "TrialEndAfterDecision": "The trial must end after the decision.",
+    "TrainingDayRequired": "Choose the training day.",
+    "AtLeastOneWorker": "Choose at least one worker.",
+    "AttendanceRequired": "Choose attended or not.",
+    "TrainingSessionNotFound": "This training session does not exist.",
+    "SkillNameRequired": "Write the name of the skill.",
+    "ViolationDescriptionRequired": "Describe the violation.",
+    "ViolationSeverityRequired": "Choose how serious it is.",
+    "ArticleRequired": "Choose the article.",
+    "ViolationActionRequired": "Choose what follows.",
+    "ViolationNotFound": "This violation does not exist.",
+    "ViolationAlreadyDecided": "This violation has already been decided.",
+    "ResidenceCommuneRequired": "Choose the commune of residence.",
+    "PayItemTypeRequired": "Choose an allowance or a deduction.",
+    "PayItemNotFound": "This allowance or deduction does not exist."
   }
 }

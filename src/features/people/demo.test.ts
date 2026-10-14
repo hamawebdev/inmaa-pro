@@ -5,7 +5,9 @@ import { createTestDatabase, type TestDatabase } from "@/testing/database";
 import { listEmployeeAttendance } from "./services/employee-attendance";
 import { listEmployees } from "./services/employees";
 import { getPayRun, getPayslip } from "./services/pay-runs";
+import { listCandidates } from "./services/hiring";
 import { listDebtors } from "./services/payouts";
+import { listViolations } from "./services/violations";
 import { listSanctions } from "./services/sanctions";
 import { listWorkers, workerFormForPrint } from "./services/worker-reads";
 
@@ -110,4 +112,18 @@ it("has September's pay closed for the employees and drafted for the workers, an
   expect(october.find((person) => person.staffId === names.employeeHr)?.leaves.map((leave) => leave.status)).toEqual([
     "APPROVED",
   ]);
+});
+
+it("has an interview, training days, two violations, an evaluation and an allowance", async () => {
+  const names = test.demo.people;
+  const candidates = await test.transact((ex, ctx) => listCandidates(ex, ctx));
+  expect(candidates.find((row) => row.id === names.workerCandidate)?.interview).toMatchObject({ status: "SCHEDULED" });
+  // Three days done for the worker on trial; the fourth is to come.
+  expect(candidates.find((row) => row.id === names.workerOnTrial)?.training).toMatchObject({ done: 3, required: 8 });
+  const violations = await test.transact((ex, ctx) => listViolations(ex, ctx, {}));
+  expect(violations.map((row) => [row.status, row.action])).toEqual([
+    ["OPEN", null],
+    ["DECIDED", "WRITTEN_WARNING"],
+  ]);
+  expect(violations[0].id).toBe(names.violationOpen);
 });

@@ -18,6 +18,7 @@ import { getStaffLedgerQuery, listPayoutsQuery } from "@/features/people/service
 import { useCodeLabel } from "@/i18n/use-code-label";
 import { pathKey } from "@/lib/compat/revalidate";
 
+import { PayItemsCard } from "../../_components/pay-items-card";
 import { usePayEntries } from "../../_components/use-pay-entries";
 
 /**
@@ -120,6 +121,8 @@ export default function StaffPayPage() {
             />
           </CardContent>
         </Card>
+
+        <PayItemsCard staffId={id} />
 
         <Card>
           <CardHeader>

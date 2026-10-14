@@ -143,6 +143,14 @@ export async function deleteEvaluation(
   });
 }
 
+function parseFigures(text: string | null): Record<string, number> | null {
+  try {
+    return text ? (JSON.parse(text) as Record<string, number>) : null;
+  } catch {
+    return null;
+  }
+}
+
 export interface EvaluationRow {
   id: string;
   staffId: string;
@@ -173,12 +181,7 @@ export async function listEvaluations(
   if (input.staffId) rows = rows.where("e.staffId", "=", input.staffId);
   const found = await rows.orderBy("e.periodEnd", "desc").execute();
   return found.map((row) => {
-    let figures: Record<string, number> | null = null;
-    try {
-      figures = row.figuresSnapshot ? (JSON.parse(row.figuresSnapshot) as Record<string, number>) : null;
-    } catch {
-      figures = null;
-    }
+    const figures = parseFigures(row.figuresSnapshot);
     return {
       id: row.id,
       staffId: row.staffId,

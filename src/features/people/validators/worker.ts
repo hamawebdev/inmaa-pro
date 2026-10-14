@@ -6,6 +6,7 @@ import { typedTotalAgrees } from "@/features/people/rules/scores";
 import { isWilayaCode } from "@/lib/geo/wilayas";
 
 import {
+  HOME_WILAYA_CODE,
   ABILITIES,
   HEALTH_CONDITIONS,
   HIRING_CRITERIA,
@@ -175,6 +176,10 @@ export const workerFormSchema = z
       ),
   })
   .superRefine((data, ctx) => {
+    // The coordinator's ruling: once a wilaya other than the centre's is chosen, its commune is required.
+    if (data.residenceWilayaCode && data.residenceWilayaCode !== HOME_WILAYA_CODE && !data.residenceCommuneId) {
+      ctx.addIssue({ code: "custom", path: ["residenceCommuneId"], message: "Choose the commune of residence." });
+    }
     if (data.healthConditions.includes("NONE") && data.healthConditions.length > 1) {
       ctx.addIssue({
         code: "custom",

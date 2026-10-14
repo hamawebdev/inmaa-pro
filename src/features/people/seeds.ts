@@ -1,3 +1,4 @@
+import type { RegisterSeed } from "@/lib/seeds";
 import type { Executor, ServiceContext } from "@/lib/service/context";
 
 import { TRAINING_MODULES } from "./validators/staff-codes";
@@ -7,10 +8,8 @@ import { TRAINING_MODULES } from "./validators/staff-codes";
  * (D1) as rows of `TrainingModule`. Fixed ids, only what is missing is
  * written, and a row the office edited is never overwritten.
  *
- * Not registered yet: the coordinator's ruling waits for Foundation's seed
- * registry (`src/lib/seeds`), which first run and the day-start job will call.
- * Until then the demo data and the tests call `seedTrainingModules` themselves;
- * no read and no screen writes these rows.
+ * Foundation's registry (`src/lib/seeds`) runs it in first run and again at
+ * each day start, so an older database catches up; the test database has them.
  */
 export async function seedTrainingModules(ex: Executor, ctx: ServiceContext): Promise<number> {
   const present = new Set((await ex.selectFrom("TrainingModule").select("code").execute()).map((row) => row.code));
@@ -35,9 +34,8 @@ export async function seedTrainingModules(ex: Executor, ctx: ServiceContext): Pr
   return added;
 }
 
-/** The shape Foundation's registry is expected to call: `seed(name, step)`. */
-export function registerSeeds(
-  seed: (name: string, step: (ex: Executor, ctx: ServiceContext) => Promise<unknown>) => void,
-) {
-  seed("his eight training days", seedTrainingModules);
+export function registerSeeds(seed: RegisterSeed) {
+  seed("the eight training modules", async (ex, ctx) => {
+    await seedTrainingModules(ex, ctx);
+  });
 }

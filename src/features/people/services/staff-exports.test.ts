@@ -139,7 +139,12 @@ describe("listSchedulableWorkers", () => {
 
   it("lists the days she is expected at a training session", async () => {
     const kamel = await register(KAMEL);
-    const module = await test.rows.insert("TrainingModule", { code: "DAY_1", titleAr: "التعريف بالمؤسسة" });
+    // His eight training days are People's seed: first run has written them.
+    const module = await test.db
+      .selectFrom("TrainingModule")
+      .select("id")
+      .where("code", "=", "DAY_1")
+      .executeTakeFirstOrThrow();
     for (const date of ["2026-10-10", "2026-10-18", "2026-10-25"]) {
       const session = await test.rows.insert("TrainingSession", { date: date as never, moduleId: module.id });
       await test.rows.insert("TrainingAttendance", { sessionId: session.id, staffId: kamel.id, status: "ATTENDED" });
