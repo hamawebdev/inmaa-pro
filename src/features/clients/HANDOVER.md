@@ -21,10 +21,17 @@ For whoever continues this folder. Features 1, 2, 3, 4, 5, 6, 26, 29, 40. Read `
 | One renderer for the six sheets and the residents page                                                                                                                                                                                             | `sheets/file-form-sheet.tsx`                                        |
 | What a day's start does: a live contract past «تاريخ النهاية» reaches «انتهاء التعاقد» (EXPIRED, or RENEWED when its successor is signed)                                                                                                          | `daily.ts`, `services/files.ts` (`endExpiredContracts`)             |
 | The home tile «عروض أسعار تنتظر المتابعة» (feature 29, `quote.followUp`)                                                                                                                                                                           | `alerts.ts`, `services/alerts.ts`                                   |
-| Demo data: five files through the services, on their own dates                                                                                                                                                                                     | `demo.ts`                                                           |
-| Screens: the list, the new file, the hub, the form, the two print pages, the empty forms                                                                                                                                                           | `src/pages/dashboard/files/`                                        |
+| Demo data: seven files through the services, on their own dates (see "Round 2")                                                                                                                                                                    | `demo.ts`                                                           |
+| Screens: the list, the new file (with «قديم» and the sanction gate), the hub, the form, the print pages, the empty forms                                                                                                                           | `src/pages/dashboard/files/`                                        |
+| «قديم» (feature 40): `findReturningClients`, `getReturningFill`; `registerFile({ returning, notTheSamePerson, decisionId })` runs People's `checkSanction` and spends the manager's yes                                                            | `services/returning.ts`, `services/files.ts`                        |
+| «الزيارة الأولية» (feature 3): `getFirstVisits`, `saveFirstVisit`, `removeFirstVisit`, `addFirstVisitPhoto`, `getInspectionSheet`, `recordInspectionPrint`; the sheet «بطاقة المعاينة»                                                             | `services/first-visits.ts`, `sheets/inspection-sheet.tsx`           |
+| «الدراسة المالية» (feature 4, behind `cost.read`): `getCostStudy` (logged), `saveCostStudy`; the arithmetic in `rules/pricing.ts`                                                                                                                  | `services/cost-study.ts`                                            |
+| «عرض السعر» (features 5, 29): `saveQuote`, `submitQuote`, `decideQuote` (`quote.approve`), `issueQuote`, `reviseQuote`, `cancelQuote`, `recordQuoteResult` (`contract: true` takes the file to «متعاقد»), `addQuoteFollowUp`; the quote sheet      | `services/quotes.ts`, `sheets/quote-sheet.tsx`                      |
+| «العقد وتجديده» (feature 6): `getContractPart`, `renewFile` (emits `file.renewed`), `endContract`, `saveFileClauses`; the annex sheet; `countResidents`                                                                                            | `services/contracts.ts`, `sheets/clauses-sheet.tsx`                 |
+| «العملاء» (feature 1): `listClients`, `openClientCard` (logged once a day), `saveClientIdentifiers` (RC, NIS, NIF, article, legal form, billing name and address, second phone, e-mail, note)                                                      | `services/clients.ts`, `rules/client-identifiers.ts`                |
+| For Money: `getAcceptedQuote`, `getFileEstimate`                                                                                                                                                                                                   | `services/exports.ts`                                               |
 
-Placeholders still: the parts `inspection`, `financial-study`, `quote`, `contract`, `residents`; the tabs `clients/` and `rep-visits/`.
+Placeholder still: the tab `rep-visits/` (feature 40's rep visits, «زيارات المندوب التجاري»).
 
 ## Conventions followed here
 
@@ -32,7 +39,8 @@ Placeholders still: the parts `inspection`, `financial-study`, `quote`, `contrac
 - Arabic on screen is his wording: labels are checked against the definitions (`messages.test.ts`); options read from the definition in Arabic and from code labels in French and English.
 - A save sends only changed columns (`changedColumns`); every write of personal data is logged in the same transaction.
 - A signed file (`lockedAt`) prints from `File.partySnapshot`. Changing its sheet needs `file.editLocked` and a typed reason, and changes the snapshot, not the client's record. Office-only answers stay free.
-- The residents list needs `residents.read`; every reading and print is logged; removing a line needs a typed reason.
+- The residents list needs `residents.read`; every reading and print is logged; removing a line needs a typed reason. Ruling: the first registration of a file carries its list with the section's WRITE level alone, each line a COLLECT.
+- The cost study's figures never reach the log (`CostStudy` is withheld); a quote's cost and margin are shown only with `cost.read`, never on its sheet.
 - Message files are generated once from the definitions (the script is not in the repository); edit the JSON by hand from now on, and run `messages.test.ts`.
 
 ## Rulings received
@@ -42,12 +50,20 @@ Placeholders still: the parts `inspection`, `financial-study`, `quote`, `contrac
 - The office-only work fields (forbidden places, same worker, women only, security text, who receives the service) live once, on the site.
 - Money is written one way on screen and on paper: «195.650,00 دج».
 - Shared option lists come from `src/lib/options`; the sheet's faces from the print kit's `SHEET_FONT`.
+- Save is `success` in `PageActions` at the form's foot, cancel `outline` beside it; a tab page is headed with its tab's label.
+- The first registration of a building or a complex carries its residents with WRITE alone (above).
 
 ## Decisions of mine to confirm
 
 - A signed file does not go back to an earlier stage (nothing tells Operations and Money to take visits and dues back).
 - A contract becomes «متعاقد» once his sheet's terms and the office's amount basis are filled; an on-demand file once its quote is accepted too.
 - Name, phone, address and commune are required to register a file (the columns are NOT NULL).
+- An accepted quote gives a request on demand its whole total as «المبلغ إجمالي» (basis WHOLE_CONTRACT); a contract takes the quote without its INITIAL_JOB lines (RULINGS 3), the discount off the periodic part.
+- Issuing a quote moves a file at «جديد» or «الزيارة» to «عرض سعر»; planning its first visit moves a new file to «الزيارة»; a done first visit writes the form's «تاريخ الزيارة» while the file is unsigned.
+- A quote's new version keeps its number; issuing it supersedes the one the client held. An issued quote is never cancelled.
+- Buildings' and complexes' first-visit recommendations are the organisations' seven plus the five D8 adds.
+- A renewal copies the form with its dates following on (start the day after the old end, end and first due date to type), the clauses too; an early ending needs its kind, a day not after today, and a reason.
+- The clauses print as an annex; they are typed until the file is signed. Clause templates (`ClauseTemplate`) have no screen.
 
 ## Round 1: done (files end to end)
 
@@ -62,17 +78,20 @@ What a reader should know about it:
 - Table positions on paper follow the Checker's corrected facts (leading-edge tables −2.7 mm, centred ones −2.6 mm from the right margin): right edges print 7.3 mm from the paper edge, left edges about 10.0 mm (the target is 10.1 to 10.2; the difference is the border's own width).
 - Page 1 of the building contract is the fullest page of all: it ends 6 mm above the end of the text area when every answer is one line long.
 
+## Round 2: done (request to contract)
+
+A file goes جديد → الزيارة (its first visit planned, printed, typed in) → عرض سعر (cost study, quote approved by the manager, issued, printed) → متعاقد (the client's yes, which emits `file.contracted`; Operations makes the visits, Money the dues). A returning client is found and filled in («قديم»), and the registration passes People's sanction gate. The clients list and card hold an organisation's RC, NIS and NIF; the hub of an organisation without its RC says so. A contract is renewed or ended early from «العقد وتجديده»; «القاطنون» shows the list to who may read it and its count to anybody.
+
+Demo: `housingRequest` (first visit done, study, quote issued and waiting), `housingJob` and `orgJob` (on demand, quote accepted, «متعاقد», visits on 13, 14 and 15 October), with `…Quote` and `…FirstVisit` names. Pictures in `.harness/shots/clients-r2/`, sheets in `.harness/pdf/clients-r2/`.
+
 ## Open
 
-Not built yet, in the order planned:
-
-1. Round 2: the «قديم» dialog (`rules/returning-client.ts` has the copy rules) with People's `useSanctionGate` (context `CLIENT_FILE`) before a registration; «العملاء» list and the client card (contacts, sites, tax identifiers, `<SanctionChip>`, set and lift through People's `setSanction` / `liftSanction`); the part «القاطنون» (office columns: apartment, building, left date).
-2. Then: «الزيارة الأولية», «الدراسة المالية», «عرض السعر» (an on-demand file cannot reach «متعاقد» before its quote is accepted), «العقد وتجديده» (the office's own closing and ending screens, `endContract`, `renewFile`), «زيارات المندوب التجاري».
-3. The other functions CONTRACTS.md section 3 names (`getFileBillingTerms`, `getClientForInvoice`, `getFileEstimate`, `getAcceptedQuote`, `endContract`, `renewFile`): Money reads the tables directly for now.
+1. «زيارات المندوب التجاري» (`RepVisit`, the tab `rep-visits/`).
+2. `getFileBillingTerms`, `getClientForInvoice` (CONTRACTS.md section 3): Money reads the tables directly for now.
+3. A screen for `ClauseTemplate`; contacts (`Contact`) on the client card; `claimNumber` for a client number already on paper.
 
 Known gaps in what is built:
 
 - A ticked radio button is given its look in `pages/dashboard/files/_components/sheet-fields.tsx` (`RADIO_CHECKED`): the shared `RadioGroupItem` and `Checkbox` style their ticked state with `data-checked:`, which matches nothing (asked of Foundation).
-- The client's number («رقم الملف») is always given by the program; a number already on paper (`claimNumber`, capability `file.setNumber`) has no field yet.
 - A site's zone is set to its commune's zone at every save of an unsigned file; once a site can be put in another zone by hand, the form must stop doing that.
-- `closeFile` closes a file not yet signed, or ends a signed on-demand job (JOB_DONE). A signed contract is ended by `moveFileStage` to «انتهاء التعاقد» with its kind of ending; no screen offers that yet.
+- The quote and inspection sheets follow his client forms' letterhead and faces; he gave no form for either (scope F1).

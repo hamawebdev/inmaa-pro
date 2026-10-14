@@ -1,7 +1,9 @@
 import type { RouteObject } from "react-router-dom";
 
+import ClientCardPage from "@/pages/dashboard/clients/[id]/page";
 import ClientsPage from "@/pages/dashboard/clients/page";
 import FileContractPage from "@/pages/dashboard/files/[id]/contract/page";
+import ContractAnnexPrintPage from "@/pages/dashboard/files/[id]/contract/print/page";
 import FileFinancialStudyPage from "@/pages/dashboard/files/[id]/financial-study/page";
 import FileFormPage from "@/pages/dashboard/files/[id]/form/page";
 import FileFormPrintPage from "@/pages/dashboard/files/[id]/form/print/page";
@@ -34,6 +36,7 @@ export const clientsRoutes: RouteObject[] = [
   { path: "files", element: <FilesPage /> },
   { path: "files/new", element: <NewFilePage /> },
   { path: "clients", element: <ClientsPage /> },
+  { path: "clients/:id", element: <ClientCardPage /> },
   { path: "files/:id", element: <FileHubPage /> },
 
   // Parts of a file. The list of parts is src/navigation/file-parts.ts.
@@ -49,6 +52,7 @@ export const clientsRoutes: RouteObject[] = [
   { path: "files/:id/residents/print", element: <FileResidentsPrintPage /> },
   { path: "files/:id/quote/:quoteId/print", element: <QuotePrintPage /> },
   { path: "files/:id/inspection/:visitId/print", element: <InspectionPrintPage /> },
+  { path: "files/:id/contract/print", element: <ContractAnnexPrintPage /> },
   // …and the same forms empty, to fill in by hand.
   { path: "files/empty-forms", element: <EmptyFormsPage /> },
   { path: "files/empty-forms/:kind/print", element: <EmptyFormPrintPage /> },

@@ -5,9 +5,11 @@ import type { DemoNames, DemoTools } from "@/testing/demo";
 
 import type { FormValues } from "./forms/values";
 import { saveCostStudy } from "./services/cost-study";
+import { saveFirstVisit } from "./services/first-visits";
 import { moveFileStage, registerFile, type RegisterFileInput } from "./services/files";
 import { decideQuote, issueQuote, recordQuoteResult, saveQuote, submitQuote } from "./services/quotes";
 import type { FileStage } from "./validators/option-lists";
+import { emptyFirstVisit, type FirstVisitInput } from "./validators/first-visit";
 import type { CostStudyInput, QuoteInput } from "./validators/pricing";
 
 /**
@@ -661,6 +663,77 @@ const studyOf = (workers: number, hours: number, materials: number, transport: n
   discount: 0,
 });
 
+/** The first visits typed in from the supervisor's sheet (the inspector is People's demo supervisor). */
+export const DEMO_FIRST_VISITS: ReadonlyArray<{ file: string; at: string; visit: FirstVisitInput }> = [
+  {
+    file: "housingRequest",
+    at: at("2026-10-11", "15:00"),
+    visit: {
+      ...emptyFirstVisit("2026-10-11"),
+      plannedTime: "10:30",
+      doneDate: "2026-10-11",
+      startTime: "10:30",
+      endTime: "11:20",
+      clientRepresentative: "بن صالح كريمة",
+      firstResult: ["NEEDS_INITIAL_DEEP"],
+      conditionFactors: ["CEMENT_PAINT_TRACES", "RECENT_WORKS"],
+      spaces: [
+        {
+          label: "الغرف",
+          countOrArea: "4",
+          state: "POOR",
+          workRequired: "إزالة بقع الطلاء وتنظيف عميق",
+          frequency: null,
+        },
+        {
+          label: "المطبخ",
+          countOrArea: "1",
+          state: "AVERAGE",
+          workRequired: "تنظيف الخزائن والأرضية",
+          frequency: null,
+        },
+        { label: "الحمام", countOrArea: "1", state: "POOR", workRequired: "إزالة الترسبات", frequency: null },
+      ],
+      estimatedWorkers: 3,
+      perVisitMin: 600,
+      daysNeeded: toQty(1.5),
+      distanceKm: toQty(14),
+      travelMin: 25,
+      transportMeans: "CENTRE_VEHICLE",
+      materialsAndEquipmentNeeds: "مكنسة كهربائية، مواد إزالة الطلاء",
+      recommendation: ["EXTRA_TIME"],
+      recommendationReason: "بقايا الطلاء كثيرة",
+    },
+  },
+  {
+    file: "orgJob",
+    at: at("2026-10-11", "09:30"),
+    visit: {
+      ...emptyFirstVisit("2026-10-11"),
+      doneDate: "2026-10-11",
+      startTime: "08:30",
+      endTime: "09:15",
+      clientRepresentative: "حمدي رشيد",
+      firstResult: ["SUITABLE"],
+      conditionFactors: ["RECENT_WORKS"],
+      spaces: [
+        { label: "المكاتب", countOrArea: "6", state: "AVERAGE", workRequired: "تنظيف شامل", frequency: null },
+        {
+          label: "قاعة الانتظار",
+          countOrArea: "40 م²",
+          state: "POOR",
+          workRequired: "غسل الأرضية والزجاج",
+          frequency: null,
+        },
+      ],
+      estimatedWorkers: 3,
+      perVisitMin: 360,
+      daysNeeded: toQty(2),
+      recommendation: ["STANDARD_QUOTE"],
+    },
+  },
+];
+
 /**
  * The on-demand files' way to the client: the study, the quote prepared by
  * reception, approved by the manager, issued, and for two of them accepted,
@@ -815,6 +888,20 @@ export async function seedDemo(ex: Executor, _ctx: ServiceContext, tools: DemoTo
         },
       });
     }
+  }
+
+  for (const entry of DEMO_FIRST_VISITS) {
+    steps.push({
+      at: entry.at,
+      run: async () => {
+        const inspector = tools.names.people?.employeeSupervisor ?? null;
+        const { firstVisitId } = await saveFirstVisit(ex, tools.at(entry.at, reception), {
+          fileId: fileIds.get(entry.file)!,
+          visit: { ...entry.visit, inspectorEmployeeId: inspector },
+        });
+        names[`${entry.file}FirstVisit`] = firstVisitId;
+      },
+    });
   }
 
   steps.sort((a, b) => (a.at < b.at ? -1 : a.at > b.at ? 1 : 0));

@@ -20,6 +20,7 @@ import { useLocale, useTranslations } from "use-intl";
 import { DetailScreen } from "@/components/detail-screen";
 import { Ltr } from "@/components/ltr";
 import { StatusChip } from "@/components/status-chip";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -336,6 +337,16 @@ export default function FileHubPage() {
       }
     >
       <div className="space-y-6">
+        {hub.missingIdentifiers.length > 0 && (
+          <Alert className="text-start">
+            <AlertDescription className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-2 text-base">
+              <span>{t("RcMissing")}</span>
+              <Button asChild variant="outline" size="sm">
+                <Link to={`/dashboard/clients/${encodeURIComponent(hub.client.id)}`}>{t("OpenClientCard")}</Link>
+              </Button>
+            </AlertDescription>
+          </Alert>
+        )}
         <StageStrip hub={hub} />
         <Summary hub={hub} />
         <Parts hub={hub} />

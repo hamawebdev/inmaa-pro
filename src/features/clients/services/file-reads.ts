@@ -12,6 +12,7 @@ import { FORM_DEFINITIONS } from "../forms/definitions";
 import { residentLinesOf, type FileRow, type ResidentRow } from "../forms/stored-values";
 import type { FormValues, ResidentLine } from "../forms/values";
 import { nextStages, openMoves, stageMove, type MissingField, type StageRefusal } from "../rules/stage-moves";
+import { missingIdentifiersOf, type MissingIdentifier } from "../rules/client-identifiers";
 import { statusTicks } from "../rules/status-ticks";
 import type { FileOfficeInput, SiteOfficeInput } from "../validators/file-values";
 import { SITE_OFFICE_FLAGS, SITE_OFFICE_SETS } from "../validators/file-values";
@@ -228,6 +229,7 @@ export interface FileHub {
   closed: boolean;
   closeReason: string | null;
   isReturning: boolean;
+  missingIdentifiers: MissingIdentifier[];
   locked: boolean;
   registrationDate: string;
   contractedAt: string | null;
@@ -318,6 +320,8 @@ export async function getFileHub(ex: Executor, ctx: ServiceContext, input: { fil
     closed: file.closedAt !== null,
     closeReason: file.closeReason,
     isReturning: file.isReturning === 1,
+    /** What an organisation's first invoice still lacks on the client's card (Money refuses without the RC). */
+    missingIdentifiers: missingIdentifiersOf(client),
     locked: file.lockedAt !== null,
     registrationDate: file.registrationDate,
     contractedAt: file.contractedAt,

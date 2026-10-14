@@ -433,3 +433,71 @@ export async function getSiteForOrder(
     personOnSite,
   };
 }
+
+// ── For Money (CONTRACTS.md section 3) ───────────────────────────────────────
+
+export interface AcceptedQuote {
+  id: string;
+  number: string;
+  version: number;
+  date: string;
+  resultDate: string | null;
+  total: number;
+  discount: number;
+  amountBasis: string | null;
+  /** The quote's lines summed by kind, before the discount: an INITIAL_JOB total is billed once, apart. */
+  totals: { INITIAL_JOB: number; PERIODIC: number; EXTRA: number };
+}
+
+/** `getAcceptedQuote(fileId)`: the one quote of the file with result ACCEPTED, or null. */
+export async function getAcceptedQuote(
+  ex: Executor,
+  _ctx: ServiceContext,
+  input: { fileId: string },
+): Promise<AcceptedQuote | null> {
+  const quote = await ex
+    .selectFrom("Quote")
+    .select(["id", "number", "version", "date", "resultDate", "total", "discount", "amountBasis"])
+    .where("fileId", "=", input.fileId)
+    .where("result", "=", "ACCEPTED")
+    .where("deletedAt", "is", null)
+    .executeTakeFirst();
+  if (!quote) return null;
+  const lines = await ex.selectFrom("QuoteLine").select(["kind", "amount"]).where("quoteId", "=", quote.id).execute();
+  const totals = { INITIAL_JOB: 0, PERIODIC: 0, EXTRA: 0 };
+  for (const line of lines) {
+    if (line.kind in totals) totals[line.kind as keyof typeof totals] += line.amount;
+  }
+  return { ...quote, totals };
+}
+
+/**
+ * `getFileEstimate(fileId)`: the estimated minutes per visit and workers, the
+ * one estimate Money uses: the cost study's, else the latest done first visit's.
+ */
+export async function getFileEstimate(
+  ex: Executor,
+  _ctx: ServiceContext,
+  input: { fileId: string },
+): Promise<{ perVisitMin: number | null; workers: number | null; source: "COST_STUDY" | "FIRST_VISIT" | null }> {
+  const study = await ex
+    .selectFrom("CostStudy")
+    .select(["perVisitMin", "workers"])
+    .where("fileId", "=", input.fileId)
+    .executeTakeFirst();
+  if (study && study.perVisitMin !== null) {
+    return { perVisitMin: study.perVisitMin, workers: study.workers, source: "COST_STUDY" };
+  }
+  const visit = await ex
+    .selectFrom("FirstVisit")
+    .select(["perVisitMin", "estimatedWorkers"])
+    .where("fileId", "=", input.fileId)
+    .where("deletedAt", "is", null)
+    .where("doneDate", "is not", null)
+    .orderBy("doneDate", "desc")
+    .executeTakeFirst();
+  if (visit && visit.perVisitMin !== null) {
+    return { perVisitMin: visit.perVisitMin, workers: visit.estimatedWorkers, source: "FIRST_VISIT" };
+  }
+  return { perVisitMin: null, workers: null, source: null };
+}

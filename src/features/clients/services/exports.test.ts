@@ -5,7 +5,7 @@ import { createTestDatabase, type TestDatabase } from "@/testing/database";
 
 import { DEMO_FILES } from "../demo";
 
-import { getFileForScheduling, getSiteForOrder } from "./exports";
+import { getAcceptedQuote, getFileEstimate, getFileForScheduling, getSiteForOrder } from "./exports";
 import { closeFile, moveFileStage, registerFile, type RegisterFileInput } from "./files";
 
 let test: TestDatabase;
@@ -247,5 +247,34 @@ describe("closing a file", () => {
     await expect(
       test.transact((ex, ctx) => closeFile(ex, ctx, { fileId, reason: "JOB_DONE" }), accountant),
     ).resolves.toEqual({ fileId, closed: true });
+  });
+});
+
+describe("for Money", () => {
+  it("gives the accepted quote with its totals by kind, and the estimate of the work", async () => {
+    const demo = await createTestDatabase({ demo: ["clients"] });
+    try {
+      const fileId = demo.demo.clients.orgJob;
+      const quote = await demo.transact((ex, ctx) => getAcceptedQuote(ex, ctx, { fileId }));
+      expect(quote).toMatchObject({
+        number: "0002/2026",
+        total: 3400000,
+        discount: 150000,
+        totals: { INITIAL_JOB: 3200000, PERIODIC: 0, EXTRA: 350000 },
+      });
+      expect(
+        await demo.transact((ex, ctx) => getAcceptedQuote(ex, ctx, { fileId: demo.demo.clients.housingRequest })),
+      ).toBeNull();
+      expect(await demo.transact((ex, ctx) => getFileEstimate(ex, ctx, { fileId }))).toEqual({
+        perVisitMin: 720,
+        workers: 3,
+        source: "COST_STUDY",
+      });
+      expect(
+        await demo.transact((ex, ctx) => getFileEstimate(ex, ctx, { fileId: demo.demo.clients.buildingContract })),
+      ).toEqual({ perVisitMin: null, workers: null, source: null });
+    } finally {
+      demo.close();
+    }
   });
 });
