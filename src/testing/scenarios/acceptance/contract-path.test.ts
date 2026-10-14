@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, expect, it } from "vitest";
 
 import { openResidentList } from "@/features/clients/services/file-reads";
+import { saveClientIdentifiers } from "@/features/clients/services/clients";
 import { moveFileStage, registerFile } from "@/features/clients/services/files";
 import type { FormKind } from "@/features/clients/validators/option-lists";
 import { issueInvoice } from "@/features/money/services/invoices";
@@ -24,11 +25,23 @@ import { at, contractInput, doVisit, logOf, MONTH, openEachMorning, visitsOf } f
  * Starts from People's demo data, for workers to seat; the file is this test's.
  */
 
+/** A scenario builds a database and walks many steps: room for a machine six teammates are loading. */
+const LONG = { timeout: 180_000 };
+
 let test: TestDatabase;
 beforeEach(async () => {
   test = await createTestDatabase({ demo: ["people"] });
-});
+}, LONG.timeout);
 afterEach(() => test?.close());
+
+/** An organisation's identifiers, as its papers give them (invented). */
+const ORG_IDS = {
+  legalForm: "SARL",
+  rcNumber: "04/00-1234567 B 20",
+  nis: "001204012345678",
+  nif: "001204012345678",
+  articleNumber: "04011234567",
+};
 
 const DIVISIONS: Array<{ kind: FormKind; division: string; name: string }> = [
   { kind: "HOUSING_CONTRACT", division: "HOUSING", name: "المنازل" },
@@ -41,6 +54,7 @@ const DIVISIONS: Array<{ kind: FormKind; division: string; name: string }> = [
 
 it.each(DIVISIONS)(
   "$name: a contract runs from its form to a paid invoice and shows in income",
+  LONG,
   async ({ kind, division }) => {
     const reception = await test.sessionFor("RECEPTION_SALES");
     const operations = await test.sessionFor("OPERATIONS");
@@ -91,13 +105,11 @@ it.each(DIVISIONS)(
     await openEachMorning(test, file.fileId, reception, MONTH.after);
     test.clock.set(at(MONTH.after, "10:00"));
     if (kind === "ORG_CONTRACT") {
-      // Arranged by hand: no service stores an organisation's trade register number yet (Clients: the client card
-      // `/dashboard/clients` is a placeholder), and Money rightly refuses its invoice without one. See the todo below.
-      await test.db
-        .updateTable("Client")
-        .set({ rcNumber: "04/00-1234567 B 20" })
-        .where("id", "=", file.clientId)
-        .execute();
+      // An organisation's invoice carries its RC, NIS and NIF: reception types them on the client's card first.
+      await test.transact(
+        (ex, ctx) => saveClientIdentifiers(ex, ctx, { clientId: file.clientId, identifiers: ORG_IDS }),
+        reception,
+      );
     }
     const invoice = await test.transact(
       (ex, ctx) => issueInvoice(ex, ctx, { fileId: file.fileId, dueIds: [november!.id], paymentMethod: "CASH" }),
@@ -150,7 +162,7 @@ it.each(DIVISIONS)(
   },
 );
 
-it("المؤسسات: without the client's trade register number the invoice is refused, in words", async () => {
+it("المؤسسات: without the client's trade register number the invoice is refused, in words", LONG, async () => {
   const reception = await test.sessionFor("RECEPTION_SALES");
   const operations = await test.sessionFor("OPERATIONS");
   const accountant = await test.sessionFor("ACCOUNTANT");
@@ -179,15 +191,47 @@ it("المؤسسات: without the client's trade register number the invoice is 
   ).rejects.toThrow("This client's trade register number is needed on the invoice.");
 });
 
-// Clients: a service (and the client card, `/dashboard/clients`) to type an organisation's RC, NIS, NIF and article
-// number. Until then the path of المؤسسات above goes on only because the test writes `Client.rcNumber` by hand.
-it.todo("المؤسسات: the office types the organisation's RC, NIS and NIF through a service before its first invoice");
+it(
+  "المؤسسات: the office types the organisation's RC, NIS and NIF on its card, and the change is logged",
+  LONG,
+  async () => {
+    const reception = await test.sessionFor("RECEPTION_SALES");
+    const file = await test.transact((ex, ctx) => registerFile(ex, ctx, contractInput("ORG_CONTRACT")), reception);
+    test.clock.advance({ minutes: 15 });
+    const saved = await test.transact(
+      (ex, ctx) => saveClientIdentifiers(ex, ctx, { clientId: file.clientId, identifiers: ORG_IDS }),
+      reception,
+    );
+    expect(saved).toEqual({ clientId: file.clientId, changed: true });
+    const client = await test.db
+      .selectFrom("Client")
+      .select(["rcNumber", "nis", "nif", "articleNumber"])
+      .where("id", "=", file.clientId)
+      .executeTakeFirstOrThrow();
+    expect(client).toEqual({
+      rcNumber: ORG_IDS.rcNumber,
+      nis: ORG_IDS.nis,
+      nif: ORG_IDS.nif,
+      articleNumber: ORG_IDS.articleNumber,
+    });
+    const log = await logOf(test, "Client", file.clientId);
+    expect(log.map((entry) => entry.operation)).toContain("CHANGE");
+    // The same again changes nothing.
+    expect(
+      await test.transact(
+        (ex, ctx) => saveClientIdentifiers(ex, ctx, { clientId: file.clientId, identifiers: ORG_IDS }),
+        reception,
+      ),
+    ).toEqual({ clientId: file.clientId, changed: false });
+  },
+);
 
 it.each([
   { kind: "BUILDING_CONTRACT" as const, name: "العمارات" },
   { kind: "COMPLEX_CONTRACT" as const, name: "التجمعات السكنية" },
 ])(
   "$name: reception registers the contract with its residents list, and cannot read the list back",
+  LONG,
   async ({ kind }) => {
     // The coordinator's ruling: the first registration of a file carries «قائمة القاطنين» with the section's WRITE level
     // alone, because the clerk copies the paper in front of her, each line logged as a COLLECT. After that the list is

@@ -73,6 +73,9 @@ Kind: **defect** (differs from the academy or from a ruling, to fix), **question
 | S-22 | Pay run `/dashboard/hours-pay/runs/:id` (the employees' September run) | In French at 1024×640 the table is wider than its box (scroll arrows). Arabic fits at both sizes. | defect, minor | People | 2026-10-13 23:32 |
 | S-23 | «منح تسبيق» and «تصحيح الساعات» dialogs | Both commit with `default`; by the ruling on S-21 committing a dialog is `success`. Both fit the window at both sizes. | defect (R1) | People | 2026-10-13 23:26 to 23:29 |
 | S-24 | An employee's month `/dashboard/employee-attendance/:id` | Rows are 92 px high at 1440×900 and 84 px at 1024×640, where the academy's are 81 and 71: each day's entry and exit chips carry their own edit and delete buttons. | defect, minor | People | 2026-10-14 08:08 |
+| S-25 | Hiring, «المترشحون» `/dashboard/hiring` | The table is wider than its box at 1024×640 in Arabic and French and at 1440×900 in French (scroll arrows), and its rows are 102 px high at 1440×900 where the academy's are 81. | defect | People | 2026-10-14 14:36 to 14:39 |
+| S-26 | Hiring, «المخالفات» `?view=violations` | Rows are 97 px high at 1440×900 and 77 px at 1024×640, where the academy's are 81 and 71. The table fits. | defect, minor | People | 2026-10-14 14:42 |
+| S-27 | «برمجة يوم تدريب», «تسجيل مخالفة», «تقييم دوري» dialogs | All three commit with `default`; by the ruling on S-21 committing a dialog is `success`. All three fit the window at both sizes and scroll inside. | defect (R1) | People | 2026-10-14 14:41 to 14:47 |
 
 `docs/checker-table.md` carries one more: W-010 on the registration screen (the residence is one list of the 29 communes of أم البواقي, where his form has two blanks, commune and wilaya).
 
@@ -102,6 +105,16 @@ Shot on the demo data as the manager, in Arabic light, Arabic dark and French li
 | A person's ledger | `/dashboard/hours-pay/people/:id` | an employee's debt ledger | Fits in four modes; the French 1024×640 shot did not come back from Chrome (not checked) |
 | Employee attendance, three views | `/dashboard/employee-attendance`, `?view=absences`, `?view=leave` | the academy's employee attendance family | Second strip «الحضور · الغيابات · العطل», the newer table at the academy's heights, every table fits |
 | An employee's month | `/dashboard/employee-attendance/:id` | check history and absence detail | S-24 |
+
+## People's round 3 (sixth pass, 2026-10-14 14:36 to 14:49)
+
+Shot on the demo data as the manager, in the five modes of the earlier passes; the dialogs opened by the heading's `add` button.
+
+| Screen | Route | Academy screen it names | Result |
+|---|---|---|---|
+| Hiring and training, four views | `/dashboard/hiring`, `?view=training`, `?view=violations`, `?view=evaluations` | the attendance family (second strip, table, an `add` button in the heading) | Heading «التوظيف والتدريب» (R2), the second strip, `add` in the heading; training and evaluations at the academy's row heights and fitting; S-25, S-26. The Arabic dark shot of the candidates did not settle: another owner's page (`supervisors/page.tsx`) failed to load at that moment |
+| Its three dialogs | from the heading's `add` | «إضافة غياب» | S-27 |
+| The worker's file, lower cards | `/dashboard/workers/:id` | employee file | Documents and recurring pay items in cards; nothing wider than its box |
 
 ## The name rule (surname, then first name)
 

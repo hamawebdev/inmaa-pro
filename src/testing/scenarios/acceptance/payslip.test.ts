@@ -13,17 +13,20 @@ import { createTestDatabase, type TestDatabase } from "../../database";
  * Reads People's demo payslips through `getPayslip`, as the print page does.
  */
 
+/** A scenario builds a database and walks many steps: room for a machine six teammates are loading. */
+const LONG = { timeout: 180_000 };
+
 let test: TestDatabase;
 beforeEach(async () => {
   test = await createTestDatabase({ demo: ["people"] });
-});
+}, LONG.timeout);
 afterEach(() => test?.close());
 
 const round = (value: number) => Math.round(value);
 const sum = (items: Array<{ type: string; amount: number }>, types: readonly string[]) =>
   items.filter((item) => types.includes(item.type)).reduce((total, item) => total + item.amount, 0);
 
-it.each(["payslipSupervisor", "payslipHr"])("%s adds up, with the settings' rates", async (name) => {
+it.each(["payslipSupervisor", "payslipHr"])("%s adds up, with the settings' rates", LONG, async (name) => {
   const accountant = await test.sessionFor("ACCOUNTANT");
   const slip = await getPayslip(test.db, test.ctx(accountant), { payslipId: test.demo.people[name] });
   const settings = await getSettings(test.db, [
@@ -89,7 +92,7 @@ it.each(["payslipSupervisor", "payslipHr"])("%s adds up, with the settings' rate
   );
 });
 
-it("printing a payslip is logged as a disclosure about the person it names", async () => {
+it("printing a payslip is logged as a disclosure about the person it names", LONG, async () => {
   const accountant = await test.sessionFor("ACCOUNTANT");
   const payslipId = test.demo.people.payslipSupervisor;
   await test.transact((ex, ctx) => recordPayslipPrint(ex, ctx, { payslipId }), accountant);
