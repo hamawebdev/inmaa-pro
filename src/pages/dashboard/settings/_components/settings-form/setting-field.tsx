@@ -673,7 +673,7 @@ function IrgTableField({ id, value, onChange, onValidity, disabled }: SettingFie
         <>
           {table.brackets.map((bracket, index) => (
             <div key={index} className="flex min-w-0 flex-wrap items-center gap-3 border-b border-border/60 pb-2">
-              <span className="w-24 text-base text-muted-foreground">{t("UpTo")}</span>
+              <span className="w-36 text-base text-muted-foreground">{t("IrgUpTo")}</span>
               <NumberField
                 id={`${id}-upTo-${index}`}
                 field={{ kind: "money" }}

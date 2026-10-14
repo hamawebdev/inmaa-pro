@@ -8,6 +8,7 @@ import {
 } from "@/lib/access/catalogue";
 import type { Executor, Session } from "@/lib/service/context";
 import { ServiceError } from "@/lib/service/errors";
+import { staffName } from "@/lib/text/names";
 
 /**
  * Who may do what.
@@ -64,12 +65,41 @@ export function mayOpenSection(who: Session, sectionId: string): boolean {
   return code !== null && sectionLevel(who, code) !== null;
 }
 
+/**
+ * The name an account goes by: the centre employee it is linked to, written
+ * surname first (`staffName`), or its own display name, which is written
+ * surname first too. What the sign-in window lists, what the log writes beside
+ * an act, and the cashier on a receipt.
+ */
+export function accountName(account: {
+  displayName: string;
+  staffMemberId?: string | null;
+  lastName?: string | null;
+  firstName?: string | null;
+}): string {
+  if (account.staffMemberId) {
+    const name = staffName({ lastName: account.lastName, firstName: account.firstName });
+    if (name) return name;
+  }
+  return account.displayName;
+}
+
 /** Loads a user's session snapshot. Called at sign-in, and by tests. */
 export async function loadSession(ex: Executor, userId: string): Promise<Session> {
   const user = await ex
-    .selectFrom("User")
-    .select(["id", "displayName", "roleId", "staffMemberId", "branchId", "isActive"])
-    .where("id", "=", userId)
+    .selectFrom("User as u")
+    .leftJoin("StaffMember as s", "s.id", "u.staffMemberId")
+    .select([
+      "u.id",
+      "u.displayName",
+      "u.roleId",
+      "u.staffMemberId",
+      "u.branchId",
+      "u.isActive",
+      "s.lastName as staffLastName",
+      "s.firstName as staffFirstName",
+    ])
+    .where("u.id", "=", userId)
     .executeTakeFirst();
   if (!user || !user.isActive) throw new ServiceError("This account does not exist or is not active.");
 
@@ -95,7 +125,8 @@ export async function loadSession(ex: Executor, userId: string): Promise<Session
 
   return {
     userId: user.id,
-    userName: user.displayName,
+    // The name written beside everything this person does: the linked employee's, surname first.
+    userName: accountName({ ...user, lastName: user.staffLastName, firstName: user.staffFirstName }),
     roleId: user.roleId,
     staffMemberId: user.staffMemberId,
     branchId,

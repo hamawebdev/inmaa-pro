@@ -938,7 +938,7 @@
       },
       "pay_irgTable": {
         "Label": "Barème de l'IRG",
-        "Hint": "Saisi par son comptable. D'ici là, l'IRG de chaque bulletin est saisi à la main."
+        "Hint": "Saisi par son comptable : les tranches du salaire mensuel imposable, dans l'ordre, chacune avec son taux ; le taux d'abattement avec son montant minimal et maximal ; et le montant mensuel en dessous duquel rien n'est dû. Tant qu'il n'est pas saisi, l'IRG de chaque bulletin est saisi à la main."
       },
       "pay_defaultBasis": {
         "Label": "Base de paie habituelle"
@@ -997,7 +997,7 @@
       "AddBand": "Ajouter une tranche",
       "Rate": "taux",
       "IrgOn": "Le barème est saisi : le programme calcule l'IRG.",
-      "IrgOff": "Pas de barème : l'IRG de chaque bulletin est saisi à la main.",
+      "IrgOff": "Pas encore de barème : il est saisi par le comptable. D'ici là, l'IRG de chaque bulletin est saisi à la main.",
       "InArabic": "En arabe",
       "InFrench": "En français",
       "Irg": {
@@ -1007,7 +1007,8 @@
         "exemptUpTo": "Exonéré jusqu'à"
       },
       "IrgUse": "Un barème",
-      "IrgByHand": "À la main"
+      "IrgByHand": "À la main",
+      "IrgUpTo": "Jusqu'à (par mois)"
     },
     "Locales": {
       "ar": "العربية",
@@ -1082,7 +1083,7 @@
   "UsersTab": {
     "NewAccount": "Nouveau compte",
     "NewAccountHint": "Le compte n'a pas encore de mot de passe : son titulaire le choisit à sa première connexion.",
-    "DisplayName": "Nom",
+    "DisplayName": "Nom (nom de famille, puis prénom)",
     "Username": "Identifiant",
     "Role": "Rôle",
     "Employee": "Employé du centre",
@@ -1148,7 +1149,8 @@
         "money": "Finances et stock",
         "program": "Le programme"
       }
-    }
+    },
+    "DisplayNameHint": "Le nom de famille d'abord, comme sur ses formulaires : « بن عمر سعاد ». Un compte lié à un employé du centre porte le nom de cet employé."
   },
   "Capabilities": {
     "staff_write": "Créer et modifier les dossiers des agents et employés ; décider d'un congé",

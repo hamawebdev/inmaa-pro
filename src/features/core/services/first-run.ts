@@ -4,6 +4,7 @@ import { CHAINED_TABLES } from "@/lib/db/chain-columns";
 import { newId } from "@/lib/db/rows";
 import { logCollect, logSecurity } from "@/lib/log";
 import type { Executor, ServiceContext } from "@/lib/service/context";
+import { runSeeds } from "@/lib/seeds";
 import { getSetting, setSetting } from "@/lib/settings";
 
 /**
@@ -20,6 +21,8 @@ import { getSetting, setSetting } from "@/lib/settings";
 export const FIRST_MANAGER_ID = "user-manager";
 
 export interface FirstRunInput {
+  /** False leaves out the owners' seed steps (src/lib/seeds): a test that wants an empty database. */
+  seeds?: boolean;
   /** Given by tests, so that hashes can be compared between runs. A new UUID otherwise. */
   databaseId?: string;
   manager?: {
@@ -93,6 +96,9 @@ export async function firstRun(
     entityLabel: username,
     subject: { kind: "USER", id: managerId, label: displayName },
   });
+
+  // 5. The owners' own starting rows (training modules, inspection criteria, stock items): src/lib/seeds.
+  if (input.seeds !== false) await runSeeds(ex, ctx);
 
   await setSetting(ex, ctx, "system.firstRunDone", true);
   return { databaseId, managerId };

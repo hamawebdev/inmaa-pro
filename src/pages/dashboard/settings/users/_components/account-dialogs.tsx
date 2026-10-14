@@ -147,6 +147,7 @@ export function NewAccountDialog({ open, onOpenChange }: { open: boolean; onOpen
         <form className="space-y-4" onSubmit={submit}>
           <div className="grid gap-2">
             <Label htmlFor="account_display_name">{t("DisplayName")}</Label>
+            <p className="text-sm text-muted-foreground">{t("DisplayNameHint")}</p>
             <Input
               id="account_display_name"
               value={displayName}
@@ -240,6 +241,7 @@ function EditAccountForm({ account, onDone }: { account: AccountRow; onDone: () 
     <form className="space-y-4" onSubmit={submit}>
       <div className="grid gap-2">
         <Label htmlFor="edit_display_name">{t("DisplayName")}</Label>
+        <p className="text-sm text-muted-foreground">{t("DisplayNameHint")}</p>
         <Input id="edit_display_name" value={displayName} onChange={(event) => setDisplayName(event.target.value)} />
       </div>
       <div className="grid gap-2">

@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { loadFeatureSeeds, resetFeatureSeeds } from "@/lib/seeds";
 import { getSetting } from "@/lib/settings";
 import { createTestDatabase, type TestDatabase } from "@/testing/database";
 
@@ -17,12 +18,16 @@ let test: TestDatabase;
 beforeEach(async () => {
   test = await createTestDatabase();
   resetFeatureDaily();
+  // The runner is tested with this file's handlers alone; the owners' seed steps have their own test.
+  resetFeatureSeeds({ loadFolders: false });
 });
 
 afterEach(() => {
   test.close();
   resetFeatureDaily();
   loadFeatureDaily();
+  resetFeatureSeeds();
+  loadFeatureSeeds();
   vi.restoreAllMocks();
 });
 

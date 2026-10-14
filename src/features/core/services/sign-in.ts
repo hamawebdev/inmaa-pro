@@ -1,5 +1,5 @@
 import { MANAGER_ROLE } from "@/lib/access/catalogue";
-import { loadSession } from "@/lib/access/session";
+import { accountName, loadSession } from "@/lib/access/session";
 import {
   generateRecoveryCode,
   hashSecret,
@@ -57,10 +57,14 @@ export async function listSignInAccounts(ex: Executor): Promise<SignInAccount[]>
   const rows = await ex
     .selectFrom("User as u")
     .innerJoin("Role as r", "r.id", "u.roleId")
+    .leftJoin("StaffMember as s", "s.id", "u.staffMemberId")
     .select([
       "u.id",
       "u.username",
       "u.displayName",
+      "u.staffMemberId",
+      "s.lastName",
+      "s.firstName",
       "u.roleId",
       "u.passwordHash",
       "r.labelAr",
@@ -76,7 +80,7 @@ export async function listSignInAccounts(ex: Executor): Promise<SignInAccount[]>
   return rows.map((row) => ({
     id: row.id,
     username: row.username,
-    displayName: row.displayName,
+    displayName: accountName(row),
     roleId: row.roleId,
     role: { ar: row.labelAr, fr: row.labelFr, en: row.labelEn },
     isManager: row.roleId === MANAGER_ROLE,

@@ -393,7 +393,11 @@ export function printReport(label, result, log = console.log) {
   if (!result.settled && result.state?.broken) {
     clean = false;
     const thrown = result.problems.find((problem) => problem.kind === "exception");
-    log(`  ! ${label}: the page did not start: ${String(thrown?.text ?? "").split("\n")[0].slice(0, 300)}`);
+    log(
+      `  ! ${label}: the page did not start: ${String(thrown?.text ?? "")
+        .split("\n")[0]
+        .slice(0, 300)}`,
+    );
   } else if (!result.settled) {
     clean = false;
     log(`  ! ${label}: the screen never settled (${JSON.stringify(result.state)})`);

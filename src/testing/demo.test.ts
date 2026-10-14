@@ -123,7 +123,7 @@ describe("the demo data", () => {
 
     expect(order).toEqual(["clients", "money"]);
     expect(Object.keys(names)).toEqual(["core", "clients", "money"]);
-    expect(seen).toEqual({ names: ["core", "clients"], role: "ACCOUNTANT", today: "2026-09-01", user: "نادية لعريبي" });
+    expect(seen).toEqual({ names: ["core", "clients"], role: "ACCOUNTANT", today: "2026-09-01", user: "لعريبي نادية" });
   });
 
   it("stops on a folder that fails, naming it, and keeps nothing it wrote", async () => {

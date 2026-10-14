@@ -15,6 +15,7 @@ import type { DB } from "@/lib/db/schema";
 import { loadFeatureAlerts } from "@/lib/alerts";
 import { loadFeatureDaily } from "@/lib/daily";
 import { loadFeatureEvents } from "@/lib/events";
+import { loadFeatureSeeds } from "@/lib/seeds";
 import { buildContext, SYSTEM_SESSION, type Executor, type ServiceContext, type Session } from "@/lib/service/context";
 import { createRunner, type Runner } from "@/lib/service/runner";
 
@@ -54,6 +55,8 @@ export function migrationFiles(): Array<{ name: string; sql: string }> {
 }
 
 export interface TestDatabaseOptions {
+  /** False makes first run leave out the owners' seed steps (src/lib/seeds): an empty database. */
+  seeds?: boolean;
   /** The instant the clock starts at. */
   now?: string;
   /** False leaves the database as the migrations make it: no id, no chain heads, no manager. */
@@ -121,11 +124,17 @@ async function wrap(sqlite: DatabaseSync, options: TestDatabaseOptions, didFirst
     loadFeatureEvents();
     loadFeatureAlerts();
     loadFeatureDaily();
+    loadFeatureSeeds();
   }
 
   if (options.firstRun !== false && !didFirstRun) {
     const ctx = buildContext(SYSTEM_SESSION, clock);
-    await db.transaction().execute((trx) => firstRun(trx, ctx, { databaseId: TEST_DATABASE_ID }));
+    await db.transaction().execute((trx) =>
+      firstRun(trx, ctx, {
+        databaseId: TEST_DATABASE_ID,
+        seeds: options.seeds !== false && options.events !== false,
+      }),
+    );
     await writeAnchor(db, anchor, ctx.now);
   }
 

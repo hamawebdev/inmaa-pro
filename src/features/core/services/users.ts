@@ -10,7 +10,7 @@ import {
   type SectionCode,
   type SectionLevel,
 } from "@/lib/access/catalogue";
-import { requireCapability } from "@/lib/access/session";
+import { accountName, requireCapability } from "@/lib/access/session";
 import { hashSecret, isPasswordLongEnough, normalizePassword } from "@/lib/auth";
 import { newId } from "@/lib/db/rows";
 import { logChange, logCollect, logSecurity } from "@/lib/log";
@@ -187,7 +187,12 @@ export async function listAccounts(ex: Executor, ctx: ServiceContext): Promise<A
   return rows.map((row) => ({
     id: row.id,
     username: row.username,
-    displayName: row.displayName,
+    displayName: accountName({
+      displayName: row.displayName,
+      staffMemberId: row.staffMemberId,
+      lastName: row.staffLastName,
+      firstName: row.staffFirstName,
+    }),
     roleId: row.roleId,
     role: { ar: row.labelAr, fr: row.labelFr, en: row.labelEn },
     isActive: row.isActive === 1,

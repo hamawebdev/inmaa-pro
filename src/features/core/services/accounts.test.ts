@@ -32,7 +32,7 @@ const lastEntry = () =>
 describe("accounts", () => {
   it("are listed for whoever manages them, active first", async () => {
     const { id } = await test.transact((ex, ctx) =>
-      createAccount(ex, ctx, { username: "hr", displayName: "سعاد بن عمر", roleId: "HR_OFFICER" }),
+      createAccount(ex, ctx, { username: "hr", displayName: "بن عمر سعاد", roleId: "HR_OFFICER" }),
     );
     const rows = await test.transact((ex, ctx) => listAccounts(ex, ctx));
     expect(rows.map((row) => [row.username, row.roleId, row.isActive, row.needsPassword])).toEqual([
@@ -50,11 +50,11 @@ describe("accounts", () => {
       createAccount(ex, ctx, { username: "admin", displayName: "كريم", roleId: "ADMINISTRATION" }),
     );
     await test.transact((ex, ctx) =>
-      updateAccount(ex, ctx, { userId: id, displayName: "كريم بوزيد", roleId: "SUPERVISOR" }),
+      updateAccount(ex, ctx, { userId: id, displayName: "بوزيد كريم", roleId: "SUPERVISOR" }),
     );
     expect(await lastEntry()).toMatchObject({ operation: "CHANGE", action: "UPDATE", entity: "User", entityId: id });
     expect(JSON.parse((await lastEntry()).changes!)).toEqual({
-      displayName: ["كريم", "كريم بوزيد"],
+      displayName: ["كريم", "بوزيد كريم"],
       roleId: ["ADMINISTRATION", "SUPERVISOR"],
     });
 

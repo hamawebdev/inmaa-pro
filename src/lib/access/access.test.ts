@@ -6,6 +6,8 @@ import { createTestDatabase, type TestDatabase } from "@/testing/database";
 
 import { CAPABILITIES, DEFAULT_SECTION_LEVELS } from "./catalogue";
 import { can, loadSession, requireCapability, requireSection, sectionLevel } from "./session";
+import { listSignInAccounts } from "@/features/core/services/sign-in";
+import { createAccount, linkAccountToStaff } from "@/features/core/services/users";
 
 let test: TestDatabase;
 
@@ -79,5 +81,23 @@ describe("roles and capabilities", () => {
     const clerk = await test.sessionFor("RECEPTION_SALES");
     test.raw.prepare(`UPDATE "User" SET "isActive" = 0 WHERE "id" = ?`).run(clerk.userId);
     await expect(loadSession(test.db, clerk.userId!)).rejects.toThrow("This account does not exist or is not active.");
+  });
+});
+
+describe("the name an account goes by", () => {
+  it("is the linked employee's, surname first, or the account's own", async () => {
+    const test = await createTestDatabase();
+    try {
+      const employee = await test.rows.insert("StaffMember", { kind: "EMPLOYEE", lastName: "حداد", firstName: "مراد" });
+      const { id } = await test.transact((ex, ctx) =>
+        createAccount(ex, ctx, { username: "supervisor", displayName: "مشرف", roleId: "SUPERVISOR" }),
+      );
+      expect((await loadSession(test.db, id)).userName).toBe("مشرف");
+      await test.transact((ex, ctx) => linkAccountToStaff(ex, ctx, { userId: id, staffMemberId: employee.id }));
+      expect((await loadSession(test.db, id)).userName).toBe("حداد مراد");
+      expect((await listSignInAccounts(test.db)).find((account) => account.id === id)?.displayName).toBe("حداد مراد");
+    } finally {
+      test.close();
+    }
   });
 });

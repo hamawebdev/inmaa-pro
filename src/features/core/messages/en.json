@@ -938,7 +938,7 @@
       },
       "pay_irgTable": {
         "Label": "Income tax scale (IRG)",
-        "Hint": "Typed by his accountant. Until then, the IRG of each payslip is typed by hand."
+        "Hint": "Typed by his accountant: brackets of monthly taxable pay, in order, each with its rate; the abatement rate with its least and most amount; and the monthly amount below which nothing is owed. Until it is typed, the IRG of each payslip is typed by hand."
       },
       "pay_defaultBasis": {
         "Label": "Usual pay basis"
@@ -997,7 +997,7 @@
       "AddBand": "Add a band",
       "Rate": "rate",
       "IrgOn": "The scale is typed: the program computes the IRG.",
-      "IrgOff": "No scale: the IRG of each payslip is typed by hand.",
+      "IrgOff": "No scale yet: it is typed by the accountant. Until then, the IRG of each payslip is typed by hand.",
       "InArabic": "In Arabic",
       "InFrench": "In French",
       "Irg": {
@@ -1007,7 +1007,8 @@
         "exemptUpTo": "No tax up to"
       },
       "IrgUse": "A scale",
-      "IrgByHand": "By hand"
+      "IrgByHand": "By hand",
+      "IrgUpTo": "Up to (a month)"
     },
     "Locales": {
       "ar": "العربية",
@@ -1082,7 +1083,7 @@
   "UsersTab": {
     "NewAccount": "New account",
     "NewAccountHint": "The account has no password yet: its owner chooses one the first time he signs in.",
-    "DisplayName": "Name",
+    "DisplayName": "Name (surname, then first name)",
     "Username": "Sign-in name",
     "Role": "Role",
     "Employee": "Centre employee",
@@ -1148,7 +1149,8 @@
         "money": "Money and stock",
         "program": "The program"
       }
-    }
+    },
+    "DisplayNameHint": "Surname first, as on his forms: «بن عمر سعاد». An account linked to a centre employee goes by that employee's name."
   },
   "Capabilities": {
     "staff_write": "Create and edit worker and employee files; decide a worker's leave",

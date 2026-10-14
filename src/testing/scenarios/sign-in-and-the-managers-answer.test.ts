@@ -39,7 +39,7 @@ it("the HR officer asks while signed in, and the manager answers when he signs i
     SYSTEM_SESSION,
   );
   const { id: hrId } = await test.transact((ex, ctx) =>
-    createAccount(ex, ctx, { username: "hr", displayName: "سعاد بن عمر", roleId: "HR_OFFICER" }),
+    createAccount(ex, ctx, { username: "hr", displayName: "بن عمر سعاد", roleId: "HR_OFFICER" }),
   );
   await test.transact(
     (ex, ctx) => setFirstPassword(ex, ctx, { userId: hrId, password: "hr-password", ...FAST }),
@@ -118,8 +118,8 @@ it("the HR officer asks while signed in, and the manager answers when he signs i
     .orderBy("chainSeq")
     .execute();
   expect(log.slice(-5)).toEqual([
-    { action: "SIGN_IN", userName: "سعاد بن عمر" },
-    { action: "LOCK", userName: "سعاد بن عمر" },
+    { action: "SIGN_IN", userName: "بن عمر سعاد" },
+    { action: "LOCK", userName: "بن عمر سعاد" },
     { action: "SIGN_IN", userName: "المدير" },
     { action: "APPROVE", userName: "المدير" },
     { action: "LOCK", userName: "المدير" },

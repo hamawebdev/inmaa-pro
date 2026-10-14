@@ -20,12 +20,12 @@ import { createAccount } from "./services/users";
  *  - three zones: أم البواقي, عين البيضاء and عين مليلة.
  */
 export const DEMO_ACCOUNTS: ReadonlyArray<{ name: string; username: string; displayName: string; roleId: RoleCode }> = [
-  { name: "hrOfficer", username: "hr", displayName: "سعاد بن عمر", roleId: "HR_OFFICER" },
-  { name: "administration", username: "admin", displayName: "كريم بوزيد", roleId: "ADMINISTRATION" },
-  { name: "supervisor", username: "supervisor", displayName: "مراد حداد", roleId: "SUPERVISOR" },
-  { name: "reception", username: "reception", displayName: "أمينة شريف", roleId: "RECEPTION_SALES" },
-  { name: "operations", username: "operations", displayName: "ياسين قاسمي", roleId: "OPERATIONS" },
-  { name: "accountant", username: "accountant", displayName: "نادية لعريبي", roleId: "ACCOUNTANT" },
+  { name: "hrOfficer", username: "hr", displayName: "بن عمر سعاد", roleId: "HR_OFFICER" },
+  { name: "administration", username: "admin", displayName: "بوزيد كريم", roleId: "ADMINISTRATION" },
+  { name: "supervisor", username: "supervisor", displayName: "حداد مراد", roleId: "SUPERVISOR" },
+  { name: "reception", username: "reception", displayName: "شريف أمينة", roleId: "RECEPTION_SALES" },
+  { name: "operations", username: "operations", displayName: "قاسمي ياسين", roleId: "OPERATIONS" },
+  { name: "accountant", username: "accountant", displayName: "لعريبي نادية", roleId: "ACCOUNTANT" },
 ];
 
 /**
@@ -63,6 +63,7 @@ export async function seedDemo(ex: Executor, ctx: ServiceContext, _tools: DemoTo
   await setSetting(ex, ctx, "centre.articleNumber", "04011234567");
   await setSetting(ex, ctx, "centre.bankName", "BADR أم البواقي");
   await setSetting(ex, ctx, "centre.bankAccount", "00300456000123456789");
+  await setSetting(ex, ctx, "centre.cnasEmployerNumber", "04123456789");
   await setSetting(ex, ctx, "tax.mode", "IFU");
 
   for (const zone of DEMO_ZONES) {

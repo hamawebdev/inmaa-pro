@@ -3,6 +3,7 @@ import type { Kysely } from "kysely";
 import type { Clock } from "@/lib/clock";
 import type { DB } from "@/lib/db/schema";
 import { buildContext, SYSTEM_SESSION, type Executor, type ServiceContext } from "@/lib/service/context";
+import { seedSteps } from "@/lib/seeds";
 import { getSetting, setSetting } from "@/lib/settings";
 import type { LocalDate } from "@/lib/units";
 
@@ -104,14 +105,17 @@ export async function runDayStart(db: Kysely<DB>, clock: Clock): Promise<DayStar
   const report: DayStartReport = { today: ctx.today, ran: [], alreadyDone: [], failed: [] };
 
   for (const owner of DAILY_OWNERS) {
-    const list = handlers.get(owner);
-    if (!list?.length) continue;
+    const list = handlers.get(owner) ?? [];
+    // An owner's seed steps run first: a database made before a seed existed catches up (src/lib/seeds).
+    const seeds = seedSteps(owner);
+    if (list.length === 0 && seeds.length === 0) continue;
     try {
       const ran = await db.transaction().execute(async (trx) => {
         // Read inside the transaction: two windows of time cannot both start one owner's day.
         const done = await getSetting(trx, "system.dayStart");
         if (done[owner] === ctx.today) return false;
         const day: DayStart = { today: ctx.today, since: (done[owner] as LocalDate | undefined) ?? null };
+        for (const { step } of seeds) await step(trx, ctx);
         for (const { handler } of list) await handler(trx, ctx, day);
         await setSetting(trx, ctx, "system.dayStart", { ...done, [owner]: ctx.today });
         return true;

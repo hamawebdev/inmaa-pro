@@ -15,13 +15,13 @@ afterEach(() => test.close());
 describe("createAccount", () => {
   it("makes an account with a role, asks for a password at its first sign-in, and logs it", async () => {
     const { id } = await test.transact((ex, ctx) =>
-      createAccount(ex, ctx, { username: "  Accountant ", displayName: "نادية  لعريبي", roleId: "ACCOUNTANT" }),
+      createAccount(ex, ctx, { username: "  Accountant ", displayName: "لعريبي  نادية", roleId: "ACCOUNTANT" }),
     );
 
     const account = await test.db.selectFrom("User").selectAll().where("id", "=", id).executeTakeFirstOrThrow();
     expect(account).toMatchObject({
       username: "accountant",
-      displayName: "نادية لعريبي",
+      displayName: "لعريبي نادية",
       roleId: "ACCOUNTANT",
       passwordHash: "",
       mustChangePassword: 1,

@@ -109,6 +109,7 @@ Nobody but the coordinator runs `npm run tauri dev` or a built binary: it opens 
 | Handlers of other owners' events | `src/features/<folder>/events.ts` |
 | Alerts for the home screen | `src/features/<folder>/alerts.ts` |
 | What the folder does when a day starts | `src/features/<folder>/daily.ts` |
+| The rows a real installation starts with (owner seeds) | `src/features/<folder>/seeds.ts` |
 | Demo data | `src/features/<folder>/demo.ts` |
 | Validators and code lists | `src/features/<folder>/validators/*.ts`; a list more than one owner uses is in `src/lib/options` (Foundation) |
 | Messages | `src/features/<folder>/messages/{en,ar,fr}.json` (core, people, clients, operations, money, stock) |
@@ -120,7 +121,7 @@ Nobody but the coordinator runs `npm run tauri dev` or a built binary: it opens 
 | Shared components | `src/components/`; shadcn primitives in `src/components/ui/`; the print kit in `src/components/print/` (Foundation) |
 | The data model: tables, who writes what, option codes, events | `docs/data-model/` (Foundation) |
 | Schema, migrations, generated types | `prisma/schema.prisma`, `prisma/triggers.sql`, `src-tauri/migrations/`, `src/lib/db/` (Foundation; generated) |
-| What every service calls | `src/lib/` (Foundation): `service`, `numbering`, `log`, `settings`, `access`, `events`, `alerts`, `daily`, `attachments`, `restricted`, `chain`, `clock`, `units`, `text`, `geo` |
+| What every service calls | `src/lib/` (Foundation): `service`, `numbering`, `log`, `settings`, `access`, `events`, `alerts`, `daily`, `seeds`, `attachments`, `restricted`, `chain`, `clock`, `units`, `text`, `geo` |
 | A test database and test rows | `src/testing/` (Foundation; imported by tests only) |
 
 The folder names `services/`, `validators/` and `messages/` are not a matter of taste: tests find your files by them.
@@ -143,7 +144,8 @@ Every tab and every part of a file already has a page with a `<PagePlaceholder>`
 - An amount is written one way everywhere, «195.650,00 دج»: `useMoneyText()` (`src/hooks/use-money-text.ts`) on a screen, `formatMoneyAr()` or `formatMoney()` (`src/lib/units`) on a sheet. Amounts are whole centimes.
 - What a screen shows by role: `useCan("cost.read")` and `useSectionLevel("WORKERS") === "WRITE"` (`src/hooks/use-session.ts`) leave out a button the reader could only be refused by. The service checks again. `useCentreClock()` gives the centre's date and time to a screen.
 - A place is typed with `<CommunePicker id value={{ wilayaCode, communeId }} onChange>` (`src/components/commune-picker.tsx`): the wilaya of 69, then its commune, with «إضافة بلدية» for one the list does not hold yet. A zone with `<ZonePicker id value onChange allowNone?>`. Save with `ensureZoneForCommune` where a zone follows from the place.
-- **A worker's or an employee's name is written surname then first name**, as his form's label «اللقب و الاسم», on every screen and sheet: `staffName({ lastName, firstName })` (`src/lib/text/names.ts`). «حمدي رضا», never «رضا حمدي».
+- **A worker's or an employee's name is written surname then first name**, as his form's label «اللقب و الاسم», on every screen and sheet: `staffName({ lastName, firstName })` (`src/lib/text/names.ts`). «حمدي رضا», never «رضا حمدي». An account goes by the name of the employee it is linked to, surname first, and its own display name is written surname first too (`accountName`, `src/lib/access/session.ts`): that is the `ctx.userName` the log and a receipt carry.
+- **Every phone number on screen and on paper** is `<Ltr>{phoneText(phone)}</Ltr>` (`src/lib/text/phone.ts`): ten digits as `0661 20 31 42`, nine as `032 41 50 00`, anything else as stored.
 - Native date fields and file buttons stay as the academy has them.
 
 ### A route
@@ -329,6 +331,22 @@ export function registerDaily(daily: RegisterDaily) {
 ```
 
 The runner (`src/lib/daily`) calls each owner's handlers in one transaction, as the program (`ctx.userId` is null: `requireSection` and `requireCapability` pass), once per local day: when the program opens, and at midnight if it is open. `since` is the last day your handlers completed, or null the first time: catch up from there, the program may have been closed for a week. Write a handler so that running it twice changes nothing. One that throws rolls back its owner's whole day and is tried again within the hour; the other owners are not held up. In a test: `runDayStart(test.db, test.clock)`.
+
+### Owner seeds
+
+The rows a real installation starts with that are an owner's (BUILD-NOTES "Owner seeds": the training modules, the inspection criteria, the stock items). Export `registerSeeds` from your own `src/features/<folder>/seeds.ts`:
+
+```ts
+import type { RegisterSeed } from "@/lib/seeds";
+
+export function registerSeeds(seed: RegisterSeed) {
+  seed("the eight training modules", async (ex, ctx) => {
+    await seedTrainingModules(ex, ctx); // fixed ids; inserts what is missing; never overwrites an edit
+  });
+}
+```
+
+First run calls every owner's steps in owner order (core, people, clients, operations, money, stock), in its transaction, as the program, after Foundation's own rows. The day-start job calls each owner's steps again, first in that owner's day transaction, so that a database made before a seed existed catches up. **A step runs many times: make it idempotent.** Fixed ids, insert only what is missing, never overwrite what the office edited. `createTestDatabase()` makes its database through first run, so every test starts with the seeds; `createTestDatabase({ seeds: false })` gives an empty one. The demo data is built on top of them: a `demo.ts` uses the seeded rows, it does not insert them again.
 
 ### The home screen
 

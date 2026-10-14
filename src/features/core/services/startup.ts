@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { loadFeatureAlerts } from "@/lib/alerts";
 import { loadFeatureDaily } from "@/lib/daily";
 import { loadFeatureEvents } from "@/lib/events";
+import { loadFeatureSeeds } from "@/lib/seeds";
 import { buildContext, SYSTEM_SESSION } from "@/lib/service/context";
 import { programClock, setProgramAnchor, setProgramClock } from "@/lib/service/program";
 import { getSetting } from "@/lib/settings";
@@ -65,16 +66,18 @@ export async function startProgram(): Promise<void> {
   setProgramClock(clock);
   setProgramAnchor(desktopAnchorStore);
 
+  // The registries each folder fills, before first run: it runs the owners' seed steps.
+  loadFeatureEvents();
+  loadFeatureAlerts();
+  loadFeatureDaily();
+  loadFeatureSeeds();
+
   if (!(await isFirstRunDone(db))) {
     const ctx = buildContext(SYSTEM_SESSION, clock);
     await db.transaction().execute((trx) => firstRun(trx, ctx));
     // Only where there is no anchor yet: a new database beside an old anchor is for the manager to judge.
     if (!(await desktopAnchorStore.read())) await writeAnchor(db, desktopAnchorStore, ctx.now);
   }
-
-  loadFeatureEvents();
-  loadFeatureAlerts();
-  loadFeatureDaily();
 
   try {
     setStartupAnchor(await reconcileAnchor(db, desktopAnchorStore, clock.now().toISOString()));

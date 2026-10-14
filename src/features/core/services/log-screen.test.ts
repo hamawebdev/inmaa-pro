@@ -15,7 +15,7 @@ afterEach(() => test.close());
 describe("the log screen", () => {
   it("lists the newest first, by pages, and filters by person, record, operation and date", async () => {
     await test.transact((ex, ctx) =>
-      createAccount(ex, ctx, { username: "hr", displayName: "سعاد بن عمر", roleId: "HR_OFFICER" }),
+      createAccount(ex, ctx, { username: "hr", displayName: "بن عمر سعاد", roleId: "HR_OFFICER" }),
     );
     test.clock.advance({ days: 1 });
     await test.transact((ex, ctx) => setSetting(ex, ctx, "centre.rc", "04/00-1"));
@@ -37,7 +37,7 @@ describe("the log screen", () => {
     expect((await list({ to: "2026-10-12" })).total).toBe(3);
 
     const choices = await test.transact((ex, ctx) => listLogFilterChoices(ex, ctx));
-    expect(choices.users.map((user) => user.name).sort()).toEqual(["المدير", "سعاد بن عمر"].sort());
+    expect(choices.users.map((user) => user.name).sort()).toEqual(["المدير", "بن عمر سعاد"].sort());
     expect(choices.entities).toEqual(["Database", "Setting", "User"]);
   });
 
