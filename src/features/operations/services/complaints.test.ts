@@ -1,24 +1,40 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { emit } from "@/lib/events";
+import { emit, registerHandler } from "@/lib/events";
 import { localDate, localTime } from "@/lib/units";
 import { createTestDatabase, type TestDatabase } from "@/testing/database";
 
 import { entryValuesOf } from "../components/visit-entry/visit-entry-data";
 import {
   SIGNOFF_COMPLAINT_TEXT,
+  getComplaint,
   getComplaintCounter,
+  listComplaintChoices,
+  listComplaintCredits,
+  listComplaints,
+  listComplaintVisits,
   openComplaint,
+  recordClientTold,
   recordFirstResponse,
+  rejectComplaint,
+  settleComplaint,
   type OpenComplaintInput,
+  type SettleComplaintInput,
 } from "./complaints";
 import { getVisitEntry, saveReturnedOrder } from "./visit-entry";
 
 let test: TestDatabase;
 beforeEach(async () => {
   test = await createTestDatabase();
+  settledEvents.length = 0;
 });
 afterEach(() => test.close());
+
+/** What Money would hear: `complaint.settled`, followed here by a listener of this test file only. */
+const settledEvents: string[] = [];
+registerHandler("money", "complaint.settled", async (_ex, _ctx, { complaintId }) => {
+  settledEvents.push(complaintId);
+});
 
 /** A housing job done on Saturday 10 October, and its client. */
 async function job() {
@@ -35,8 +51,11 @@ async function job() {
     fileId: file.id,
     origin: "ON_DEMAND",
     visitDate: localDate("2026-10-10"),
+    plannedStartTime: localTime("08:00"),
+    plannedDurationMin: 180,
+    workersNeeded: 1,
     status: "DONE",
-  });
+  } as never);
   return { clientId: site.clientId, file, visit };
 }
 
@@ -278,6 +297,406 @@ describe("a client who did not accept the service", () => {
     expect(saved).toEqual({ entryState: "COMPLETE", status: "DONE" });
     expect(await complaintsOf(visit.id)).toMatchObject([
       { channel: "ON_ORDER", kind: "QUALITY", description: "المكاتب لم تُنظَّف كما يجب", clientId: site.clientId },
+    ]);
+  });
+});
+
+// ── The lists, the page, the closing ─────────────────────────────────────────
+
+/** A worker of the centre, seated on a visit. */
+async function seated(visitId: string, lastName = "بوزيد") {
+  const worker = await test.rows.insert("StaffMember", { kind: "WORKER", firstName: "سعاد", lastName } as never);
+  await test.rows.insert("VisitWorker", { visitId, workerId: worker.id, seatStatus: "ASSIGNED" } as never);
+  return worker;
+}
+
+const settle = (input: SettleComplaintInput) => test.transact((ex, ctx) => settleComplaint(ex, ctx, input));
+
+describe("listComplaints", () => {
+  it("keeps open, late, closed or every complaint, each with its counter", async () => {
+    const { clientId, visit } = await job();
+    // Received Monday 09:00, then 09:30, then 10:00.
+    const first = await open({ channel: "PHONE", clientId, visitId: visit.id, kind: "DELAY", description: "تأخر" });
+    test.clock.advance({ minutes: 30 });
+    const second = await open({ channel: "AT_OFFICE", clientId, kind: "QUALITY", description: "بقع" });
+    test.clock.advance({ minutes: 30 });
+    const third = await open({ channel: "SUPERVISOR", clientId, kind: "OTHER", description: "ضجيج" });
+    await test.transact((ex, ctx) => rejectComplaint(ex, ctx, { complaintId: third.complaintId, reason: "مكررة" }));
+
+    // 11:15: the first is past its target (11:00), the second is close to it (11:30), the third is closed.
+    test.clock.set("2026-10-12T10:15:00.000Z");
+    const list = (state?: "open" | "late" | "settled" | "all") =>
+      test.transact((ex, ctx) => listComplaints(ex, ctx, { state }));
+    const open_ = await list("open");
+    expect(open_.map((line) => line.number)).toEqual([first.number, second.number]);
+    expect(open_[0]).toMatchObject({
+      channel: "PHONE",
+      kind: "DELAY",
+      status: "NEW",
+      received: { date: "2026-10-12", time: "09:00" },
+      client: { id: clientId },
+      visit: { id: visit.id, visitDate: "2026-10-10" },
+      counter: { state: "LATE", marginMin: -15 },
+    });
+    expect(open_[1].counter).toMatchObject({ state: "CLOSE_TO_TARGET", marginMin: 15 });
+    expect((await list("late")).map((line) => line.id)).toEqual([first.complaintId]);
+    expect(await list("settled")).toMatchObject([
+      { id: third.complaintId, status: "REJECTED", closed: { date: "2026-10-12", time: "10:00" } },
+    ]);
+    expect((await list("all")).map((line) => line.id)).toEqual([third.complaintId, second.complaintId, first.complaintId]);
+    // The default is the open list.
+    expect(await test.transact((ex, ctx) => listComplaints(ex, ctx))).toHaveLength(2);
+  });
+
+  it("keeps the complaints received in a range of days", async () => {
+    const { clientId } = await job();
+    test.clock.set("2026-10-10T09:00:00.000Z");
+    await open({ channel: "PHONE", clientId, kind: "DELAY", description: "x" });
+    test.clock.set("2026-10-12T09:00:00.000Z");
+    const today = await open({ channel: "PHONE", clientId, kind: "DELAY", description: "y" });
+    const range = (from: string, to: string) =>
+      test.transact((ex, ctx) => listComplaints(ex, ctx, { state: "all", from, to }));
+    expect((await range("2026-10-11", "2026-10-12")).map((line) => line.id)).toEqual([today.complaintId]);
+    expect(await range("2026-10-01", "2026-10-31")).toHaveLength(2);
+    await expect(range("2026-10-12", "2026-10-01")).rejects.toThrow(
+      "The end date must not be before the start date.",
+    );
+    await expect(range("12/10/2026", "2026-10-12")).rejects.toThrow("Enter a valid date.");
+  });
+});
+
+describe("getComplaint", () => {
+  it("shows the facts, who received and answered it, and the visit a redo would repeat", async () => {
+    const { clientId, file, visit } = await job();
+    const worker = await seated(visit.id);
+    const { complaintId } = await open({
+      channel: "PHONE",
+      clientId,
+      visitId: visit.id,
+      workerId: worker.id,
+      complainantName: "ساكن الطابق الثالث",
+      complainantPhone: "0661203142",
+      kind: "BEHAVIOUR",
+      description: "كلام غير لائق",
+    });
+    test.clock.advance({ minutes: 20 });
+    await test.transact((ex, ctx) => recordFirstResponse(ex, ctx, { complaintId, note: "اعتذرنا" }));
+
+    const detail = await test.transact((ex, ctx) => getComplaint(ex, ctx, { complaintId }));
+    expect(detail).toMatchObject({
+      id: complaintId,
+      status: "IN_PROGRESS",
+      file: { id: file.id },
+      worker: { id: worker.id, lastName: "بوزيد" },
+      complainantName: "ساكن الطابق الثالث",
+      complainantPhone: "0661203142",
+      targetMin: 120,
+      firstResponse: { at: { date: "2026-10-12", time: "09:20" }, note: "اعتذرنا" },
+      counter: { state: "ANSWERED_IN_TIME", marginMin: 100 },
+      repeatableVisits: [{ id: visit.id, visitDate: "2026-10-10" }],
+      violations: [],
+      redoVisit: null,
+      clientTold: null,
+    });
+    expect(detail.receivedBy).toBeTruthy();
+    expect(detail.firstResponse?.by).toBe(detail.receivedBy);
+    await expect(test.transact((ex, ctx) => getComplaint(ex, ctx, { complaintId: "nothing" }))).rejects.toThrow(
+      "This complaint does not exist.",
+    );
+  });
+
+  it("offers the file's visits done, latest first, when the complaint names no visit", async () => {
+    const { clientId, file, visit } = await job();
+    const later = await test.rows.insert("Visit", {
+      fileId: file.id,
+      origin: "ON_DEMAND",
+      visitDate: localDate("2026-10-11"),
+      status: "DONE",
+    });
+    await test.rows.insert("Visit", {
+      fileId: file.id,
+      origin: "ON_DEMAND",
+      visitDate: localDate("2026-10-20"),
+      status: "CONFIRMED",
+    });
+    const { complaintId } = await open({ channel: "PHONE", clientId, fileId: file.id, kind: "QUALITY", description: "x" });
+    const detail = await test.transact((ex, ctx) => getComplaint(ex, ctx, { complaintId }));
+    expect(detail.repeatableVisits.map((each) => each.id)).toEqual([later.id, visit.id]);
+  });
+});
+
+describe("settleComplaint", () => {
+  it("redoes the service: plans the redo visit from the visit complained about, and stops the counter", async () => {
+    const { clientId, visit } = await job();
+    const { complaintId, number } = await open({
+      channel: "PHONE",
+      clientId,
+      visitId: visit.id,
+      kind: "QUALITY",
+      description: "المطبخ لم يُنظَّف",
+    });
+    test.clock.advance({ minutes: 45 });
+    const settled = await settle({
+      complaintId,
+      centreAtFault: "YES",
+      settlement: "REDO_SERVICE",
+      redo: { date: "2026-10-14", startTime: "09:00" },
+      resolutionNote: "  إعادة تنظيف المطبخ  ",
+    });
+    expect(settled).toMatchObject({ status: "SETTLED", redoVisit: { number: expect.any(String) }, violation: null });
+
+    const redo = await test.db
+      .selectFrom("Visit")
+      .selectAll()
+      .where("id", "=", settled.redoVisit?.visitId ?? "")
+      .executeTakeFirstOrThrow();
+    // Origin EXTRA stands in for REDO (planExtraVisit), pointing back at the visit complained about.
+    expect(redo).toMatchObject({
+      origin: "EXTRA",
+      sourceVisitId: visit.id,
+      visitDate: "2026-10-14",
+      plannedStartTime: "09:00",
+      status: "AWAITING_CONFIRMATION",
+    });
+    expect(await complaintRow(complaintId)).toMatchObject({
+      status: "SETTLED",
+      centreAtFault: "YES",
+      settlement: "REDO_SERVICE",
+      settlementAmount: null,
+      redoVisitId: redo.id,
+      resolutionNote: "إعادة تنظيف المطبخ",
+      settledAt: "2026-10-12T08:45:00.000Z",
+      settledByUserId: test.manager.userId,
+      // Never answered before: the settlement is the answer.
+      firstResponseAt: "2026-10-12T08:45:00.000Z",
+    });
+    expect(await lastLog()).toMatchObject({
+      operation: "CHANGE",
+      action: "STATUS_CHANGE",
+      entity: "Complaint",
+      entityId: complaintId,
+      entityLabel: number,
+    });
+    expect(settledEvents).toEqual([]);
+
+    const detail = await test.transact((ex, ctx) => getComplaint(ex, ctx, { complaintId }));
+    expect(detail).toMatchObject({
+      counter: { state: "ANSWERED_IN_TIME", marginMin: 75 },
+      redoVisit: { id: redo.id, visitDate: "2026-10-14", status: "AWAITING_CONFIRMATION" },
+      closed: { date: "2026-10-12", time: "09:45" },
+    });
+    await expect(
+      settle({ complaintId, centreAtFault: "YES", settlement: "NONE" }),
+    ).rejects.toThrow("This complaint is closed.");
+  });
+
+  it("needs a visit to repeat and a day to come for a redo", async () => {
+    const { clientId, visit } = await job();
+    const other = await test.rows.insert("Client", {});
+    const loose = await open({ channel: "PHONE", clientId: other.id, kind: "QUALITY", description: "x" });
+    await expect(
+      settle({ complaintId: loose.complaintId, centreAtFault: "YES", settlement: "REDO_SERVICE", redo: { date: "2026-10-14" } }),
+    ).rejects.toThrow("A redo visit needs a visit of this client file to repeat.");
+    await expect(
+      settle({
+        complaintId: loose.complaintId,
+        centreAtFault: "YES",
+        settlement: "REDO_SERVICE",
+        redo: { date: "2026-10-14", sourceVisitId: visit.id },
+      }),
+    ).rejects.toThrow("This visit belongs to another client file.");
+
+    const { complaintId } = await open({ channel: "PHONE", clientId, visitId: visit.id, kind: "QUALITY", description: "x" });
+    await expect(
+      settle({ complaintId, centreAtFault: "YES", settlement: "REDO_SERVICE", redo: { date: "2026-10-01" } }),
+    ).rejects.toThrow("An extra visit is planned for today or later.");
+    await expect(settle({ complaintId, centreAtFault: "YES", settlement: "REDO_SERVICE" })).rejects.toThrow(
+      "Enter a valid date.",
+    );
+    // Nothing was kept of the refused attempts.
+    expect((await complaintRow(complaintId)).status).toBe("NEW");
+  });
+
+  it("settles with an agreed discount for Money's next invoice, the manager's decision", async () => {
+    const { clientId, file, visit } = await job();
+    const { complaintId, number } = await open({
+      channel: "PHONE",
+      clientId,
+      visitId: visit.id,
+      kind: "DELAY",
+      description: "تأخر ساعة",
+    });
+    const discount = { complaintId, centreAtFault: "YES", settlement: "DISCOUNT", amount: 150_000 } as const;
+
+    const operations = await test.sessionFor("OPERATIONS");
+    await expect(test.transact((ex, ctx) => settleComplaint(ex, ctx, discount), operations)).rejects.toThrow(
+      "You do not have permission to do this.",
+    );
+    await expect(settle({ ...discount, amount: 0 })).rejects.toThrow("Enter an amount above zero.");
+    await expect(settle({ ...discount, amount: 12.5 })).rejects.toThrow("Enter an amount above zero.");
+
+    await settle(discount);
+    expect(await complaintRow(complaintId)).toMatchObject({
+      status: "SETTLED",
+      settlement: "DISCOUNT",
+      settlementAmount: 150_000,
+      redoVisitId: null,
+    });
+    expect(settledEvents).toEqual([complaintId]);
+    expect(await test.transact((ex, ctx) => listComplaintCredits(ex, ctx, { fileId: file.id }))).toEqual([
+      { complaintId, number, settledDate: "2026-10-12", amount: 150_000, kind: "DELAY" },
+    ]);
+  });
+
+  it("gives no discount on a complaint that names no client file", async () => {
+    const { clientId } = await job();
+    const { complaintId } = await open({ channel: "PHONE", clientId, kind: "DELAY", description: "x" });
+    await expect(
+      settle({ complaintId, centreAtFault: "YES", settlement: "DISCOUNT", amount: 100_000 }),
+    ).rejects.toThrow("A discount needs the client file the complaint is about.");
+  });
+
+  it("writes out a settlement of another kind, and closes one with none", async () => {
+    const { clientId } = await job();
+    const first = await open({ channel: "PHONE", clientId, kind: "OTHER", description: "x" });
+    await expect(
+      settle({ complaintId: first.complaintId, centreAtFault: "UNDECIDED", settlement: "OTHER", resolutionNote: "  " }),
+    ).rejects.toThrow("Write how the complaint was settled.");
+    await settle({
+      complaintId: first.complaintId,
+      centreAtFault: "UNDECIDED",
+      settlement: "OTHER",
+      resolutionNote: "هدية تنظيف مجانية للمدخل",
+    });
+    const second = await open({ channel: "PHONE", clientId, kind: "OTHER", description: "y" });
+    await settle({ complaintId: second.complaintId, centreAtFault: "NO", settlement: "NONE" });
+    expect(await complaintRow(first.complaintId)).toMatchObject({
+      status: "SETTLED",
+      centreAtFault: "UNDECIDED",
+      settlement: "OTHER",
+      resolutionNote: "هدية تنظيف مجانية للمدخل",
+    });
+    expect(await complaintRow(second.complaintId)).toMatchObject({
+      status: "SETTLED",
+      centreAtFault: "NO",
+      settlement: "NONE",
+      resolutionNote: null,
+    });
+  });
+
+  it("hands the worker it names to HR as a violation to decide on", async () => {
+    const { clientId, visit } = await job();
+    const worker = await seated(visit.id);
+    const { complaintId, number } = await open({
+      channel: "PHONE",
+      clientId,
+      visitId: visit.id,
+      workerId: worker.id,
+      kind: "BEHAVIOUR",
+      description: "كلام غير لائق مع العميل",
+    });
+    const settled = await settle({ complaintId, centreAtFault: "YES", settlement: "NONE", referWorker: true });
+    expect(settled.violation).toMatchObject({ number: expect.any(String) });
+    const violation = await test.db
+      .selectFrom("Violation")
+      .selectAll()
+      .where("complaintId", "=", complaintId)
+      .executeTakeFirstOrThrow();
+    expect(violation).toMatchObject({
+      staffId: worker.id,
+      status: "OPEN",
+      sourceKind: "COMPLAINT",
+      // The day of the visit complained about.
+      date: "2026-10-10",
+      description: `${number}: كلام غير لائق مع العميل`,
+    });
+    const detail = await test.transact((ex, ctx) => getComplaint(ex, ctx, { complaintId }));
+    expect(detail.violations).toEqual([{ id: violation.id, number: violation.number, status: "OPEN" }]);
+
+    const nobody = await open({ channel: "PHONE", clientId, kind: "BEHAVIOUR", description: "x" });
+    await expect(
+      settle({ complaintId: nobody.complaintId, centreAtFault: "YES", settlement: "NONE", referWorker: true }),
+    ).rejects.toThrow("This complaint names no worker.");
+  });
+
+  it("is refused to a role that may only read the requests", async () => {
+    const { clientId } = await job();
+    const { complaintId } = await open({ channel: "PHONE", clientId, kind: "DELAY", description: "x" });
+    const accountant = await test.sessionFor("ACCOUNTANT");
+    await expect(
+      test.transact(
+        (ex, ctx) => settleComplaint(ex, ctx, { complaintId, centreAtFault: "NO", settlement: "NONE" }),
+        accountant,
+      ),
+    ).rejects.toThrow("You do not have permission to do this.");
+    await expect(
+      test.transact((ex, ctx) => rejectComplaint(ex, ctx, { complaintId, reason: "x" }), accountant),
+    ).rejects.toThrow("You do not have permission to do this.");
+    // Reading is allowed.
+    expect(await test.transact((ex, ctx) => listComplaints(ex, ctx), accountant)).toHaveLength(1);
+  });
+});
+
+describe("rejectComplaint and recordClientTold", () => {
+  it("rejects with the reason typed, then records once that the client was told", async () => {
+    const { clientId } = await job();
+    const { complaintId } = await open({ channel: "AT_OFFICE", clientId, kind: "QUALITY", description: "x" });
+    await expect(test.transact((ex, ctx) => recordClientTold(ex, ctx, { complaintId }))).rejects.toThrow(
+      "Settle or reject the complaint first.",
+    );
+    await expect(
+      test.transact((ex, ctx) => rejectComplaint(ex, ctx, { complaintId, reason: "   " })),
+    ).rejects.toThrow("Write why the complaint is rejected.");
+
+    test.clock.advance({ minutes: 10 });
+    await test.transact((ex, ctx) =>
+      rejectComplaint(ex, ctx, { complaintId, reason: " الخدمة المذكورة لم تكن من عقده " }),
+    );
+    expect(await complaintRow(complaintId)).toMatchObject({
+      status: "REJECTED",
+      resolutionNote: "الخدمة المذكورة لم تكن من عقده",
+      settledAt: "2026-10-12T08:10:00.000Z",
+      firstResponseAt: "2026-10-12T08:10:00.000Z",
+      settlement: null,
+    });
+    expect(await lastLog()).toMatchObject({
+      operation: "CHANGE",
+      action: "REFUSE",
+      reason: "الخدمة المذكورة لم تكن من عقده",
+      entityId: complaintId,
+    });
+    await expect(
+      test.transact((ex, ctx) => rejectComplaint(ex, ctx, { complaintId, reason: "مرة أخرى" })),
+    ).rejects.toThrow("This complaint is closed.");
+
+    test.clock.advance({ minutes: 5 });
+    expect(await test.transact((ex, ctx) => recordClientTold(ex, ctx, { complaintId }))).toEqual({
+      clientTold: { date: "2026-10-12", time: "09:15" },
+    });
+    expect((await complaintRow(complaintId)).clientToldAt).toBe("2026-10-12T08:15:00.000Z");
+    expect(await lastLog()).toMatchObject({ action: "UPDATE", entity: "Complaint", entityId: complaintId });
+    await expect(test.transact((ex, ctx) => recordClientTold(ex, ctx, { complaintId }))).rejects.toThrow(
+      "The client has already been told.",
+    );
+  });
+});
+
+describe("what the new-complaint dialog offers", () => {
+  it("lists the clients with their files, and a file's visits up to today with their teams", async () => {
+    const { clientId, file, visit } = await job();
+    const worker = await seated(visit.id, "حمدي");
+    await test.rows.insert("Visit", {
+      fileId: file.id,
+      origin: "ON_DEMAND",
+      visitDate: localDate("2026-10-20"),
+      status: "CONFIRMED",
+    });
+    const choices = await test.transact((ex, ctx) => listComplaintChoices(ex, ctx));
+    expect(choices.find((client) => client.id === clientId)).toMatchObject({
+      files: [{ id: file.id, division: "HOUSING", current: true }],
+    });
+    expect(await test.transact((ex, ctx) => listComplaintVisits(ex, ctx, { fileId: file.id }))).toMatchObject([
+      { id: visit.id, visitDate: "2026-10-10", workers: [{ id: worker.id, lastName: "حمدي" }] },
     ]);
   });
 });

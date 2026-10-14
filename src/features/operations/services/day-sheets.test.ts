@@ -65,17 +65,17 @@ describe("a supervisor's day sheet", () => {
       getSupervisorDaySheet(ex, ctx, { supervisorId: supervisor.id, date: localDate("2026-10-13") }),
     );
     expect(sheet).toMatchObject({
-      supervisorName: "سميرة حداد",
+      supervisorName: "حداد سميرة",
       date: "2026-10-13",
       zones: ["عين البيضاء"],
-      workerPhones: [{ name: "كريم بوزيد", phone: "0661203142" }],
+      workerPhones: [{ name: "بوزيد كريم", phone: "0661 20 31 42" }],
     });
     expect(sheet.visits).toHaveLength(1);
     expect(sheet.visits[0]).toMatchObject({
       startTime: "08:00",
       endTime: "12:00",
       site: "عمارة النور",
-      team: ["كريم بوزيد"],
+      team: ["بوزيد كريم"],
     });
   });
 });
@@ -85,7 +85,7 @@ describe("the client call list", () => {
     await arrange();
     const first = await test.transact((ex, ctx) => getCallList(ex, ctx, { visitsDate: localDate("2026-10-13") }));
     expect(first.rows).toHaveLength(1);
-    expect(first.rows[0]).toMatchObject({ startTime: "08:00", workersCount: 1, supervisorName: "سميرة حداد" });
+    expect(first.rows[0]).toMatchObject({ startTime: "08:00", workersCount: 1, supervisorName: "حداد سميرة" });
     expect(first.callDate).toBe("2026-10-12");
     const next = await test.transact((ex, ctx) => getCallList(ex, ctx, { visitsDate: localDate("2026-10-18") }));
     expect(next.rows).toHaveLength(0);

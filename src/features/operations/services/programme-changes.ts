@@ -1,3 +1,4 @@
+import { syncDues } from "@/features/money/services/dues";
 import { requireSection } from "@/lib/access/session";
 import { newId } from "@/lib/db/rows";
 import { emit } from "@/lib/events";
@@ -535,7 +536,10 @@ export async function updateFileFutureVisits(
       "The days or dates on this file's form are missing or out of order. Correct the form first.",
     );
   }
-  return applyPlan(ex, ctx, plan);
+  const summary = await applyPlan(ex, ctx, plan);
+  // Money's dues follow the new programme in the same transaction (CONTRACTS.md section 3).
+  await syncDues(ex, ctx, { fileId });
+  return summary;
 }
 
 /** «تحديث الزيارات القادمة» on File › الزيارات, after the terms or the slots changed. */

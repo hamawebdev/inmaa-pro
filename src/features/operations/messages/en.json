@@ -334,7 +334,15 @@
     "VisitNotMovable": "Only a visit confirmed or awaiting confirmation can be moved.",
     "VisitMoveIntoPast": "A visit cannot be moved to a day already past.",
     "ZoneNotFound": "This zone does not exist.",
-    "SupervisorMustBeEmployee": "Choose an employee as supervisor."
+    "SupervisorMustBeEmployee": "Choose an employee as supervisor.",
+    "MakeupVisitInPast": "A make-up visit is planned for today or later.",
+    "OnlyClosedVisitReopened": "Only a postponed or cancelled visit can be opened again.",
+    "OnlyOpenVisitPostponed": "Only a visit still to happen can be postponed or cancelled.",
+    "VisitHasMakeup": "This visit already has its make-up visit.",
+    "VisitDroppedByProgramme": "This visit was dropped by a programme change.",
+    "WriteWhy": "Write why.",
+    "NoExtraVisitWaiting": "This visit has no extra visit waiting to be planned.",
+    "ExtraVisitDismissNeedsReason": "Write why no extra visit is needed."
   },
   "FileVisits": {
     "ProgrammeTitle": "Programme",
@@ -728,5 +736,90 @@
       "problems": "Problem reports",
       "ratings": "Clients' ratings"
     }
+  },
+  "VisitStatus": {
+    "Menu": "Postpone / cancel",
+    "Postpone": "Postpone",
+    "Cancel": "Cancel the visit",
+    "Reopen": "Open again",
+    "Title": {
+      "postpone": "Postpone the visit",
+      "cancel": "Cancel the visit",
+      "reopen": "Open the visit again"
+    },
+    "Hint": {
+      "postpone": "With a new day, a make-up visit is made with the same team where the rules allow it.",
+      "cancel": "The visit will not take place. Its seats stay as a record.",
+      "reopen": "The visit waits for confirmation again."
+    },
+    "Reason": "Reason",
+    "Note": "Explanation",
+    "NewDate": "Make-up day",
+    "NewTime": "Start",
+    "Back": "Back",
+    "Confirm": {
+      "postpone": "Postpone",
+      "cancel": "Cancel the visit",
+      "reopen": "Open again"
+    },
+    "Done": {
+      "postpone": "The visit is postponed.",
+      "cancel": "The visit is cancelled.",
+      "reopen": "The visit is open again."
+    },
+    "SaveFailed": "The visit could not be changed.",
+    "Reasons": {
+      "CLIENT_REQUEST": "The client's request",
+      "CLIENT_ABSENT": "The client was absent",
+      "LATE_CANCELLATION": "Cancelled late by the client",
+      "NO_WORKER": "No worker available",
+      "ACCESS_BLOCKED": "No access to the site",
+      "MATERIALS_MISSING": "Materials missing",
+      "CONTRACT_ENDED": "The contract ended",
+      "CLIENT_SUSPENDED": "The client is suspended",
+      "CENTRE_DECISION": "The centre's decision",
+      "OTHER": "Other"
+    }
+  },
+  "ExtraVisits": {
+    "Title": "Extra visits asked for",
+    "Hint": "Returned orders that answered yes to «an extra visit needed?», not planned yet.",
+    "Plan": "Plan the visit",
+    "Dismiss": "No extra visit needed",
+    "PlanTitle": "Plan the extra visit",
+    "PlanHint": "Its day, its start and how many workers; the team is named on the visit.",
+    "Date": "Day",
+    "Time": "Start",
+    "Workers": "Workers",
+    "PlanConfirm": "Plan",
+    "Planned": "Extra visit {number} planned.",
+    "DismissTitle": "No extra visit needed",
+    "DismissHint": "Say why: the reason is kept on the visit and in the log.",
+    "Reason": "Reason",
+    "Dismissed": "Noted: no extra visit.",
+    "DismissedJobClosed": "Noted: no extra visit. The job is finished and its file is closed.",
+    "Cancel": "Cancel",
+    "SaveFailed": "This could not be saved."
+  },
+  "FutureVisits": {
+    "Button": "Update the visits to come",
+    "Title": "Update the visits to come",
+    "Hint": "What the form now asks for, applied to the visits not printed yet.",
+    "Count": {
+      "moved": "Changed",
+      "added": "Added",
+      "cancelled": "Cancelled"
+    },
+    "Left": "Left as they are: {printed} printed, {edited} changed by hand, {other} in another status.",
+    "Confirm": "Update",
+    "Cancel": "Cancel",
+    "Done": "{moved} visits changed, {added} added, {cancelled} cancelled.",
+    "SaveFailed": "The visits could not be updated."
+  },
+  "OperationsHome": {
+    "TodayVisits": "Today's visits",
+    "TodayVisitsHint": "Every visit of the day, on the board",
+    "NoArrival": "Arrival not reported",
+    "NoArrivalHint": "Started past their grace and nobody has said the team is there"
   }
 }

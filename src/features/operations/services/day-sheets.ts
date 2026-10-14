@@ -1,4 +1,5 @@
 import { requireSection } from "@/lib/access/session";
+import { phoneText } from "@/lib/text/phone";
 import { logDisclose } from "@/lib/log";
 import { action, query } from "@/lib/service/action";
 import type { Executor, ServiceContext } from "@/lib/service/context";
@@ -132,7 +133,7 @@ export async function getSupervisorDaySheet(
       site: label,
       address: site ? [site.address, site.communeName].filter(Boolean).join("، ") : null,
       contactName: site?.personOnSite?.name ?? null,
-      contactPhone: site?.personOnSite?.phone ?? null,
+      contactPhone: site?.personOnSite?.phone ? phoneText(site.personOnSite.phone) : null,
       team: seats
         .filter((seat) => seat.visitId === visit.id && seat.seatStatus === "ASSIGNED")
         .map((seat) => fullName(seat)),
@@ -173,7 +174,7 @@ export async function getSupervisorDaySheet(
 
   const phones = new Map<string, { name: string; phone: string }>();
   for (const seat of seats.filter((candidate) => candidate.seatStatus === "ASSIGNED")) {
-    phones.set(fullName(seat), { name: fullName(seat), phone: seat.phone });
+    phones.set(fullName(seat), { name: fullName(seat), phone: phoneText(seat.phone) });
   }
 
   return {
@@ -250,14 +251,19 @@ export async function getCallList(
     rows.push({
       client: site?.commonName ? `${visit.clientName} – ${site.commonName}` : visit.clientName,
       contactName: site?.personOnSite?.name ?? null,
-      phones,
+      phones: phones.map(phoneText),
       startTime: visit.plannedStartTime,
       workersCount: visit.workersNeeded,
       supervisorName: supervisor ? fullName(supervisor) : null,
       purpose: changed ? "REPLACEMENT_NOTICE" : "REMINDER",
     });
   }
-  return { visitsDate: input.visitsDate, callDate: ctx.today, centrePhone: settings["centre.phone"], rows };
+  return {
+    visitsDate: input.visitsDate,
+    callDate: ctx.today,
+    centrePhone: phoneText(settings["centre.phone"].replace(/\D/g, "")) || settings["centre.phone"],
+    rows,
+  };
 }
 
 // ── Printing ────────────────────────────────────────────────────────────────

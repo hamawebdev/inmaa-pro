@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCentreClock } from "@/features/operations/components/use-centre-clock";
 import { VisitEntryForm } from "@/features/operations/components/visit-entry/visit-entry-form";
+import { VisitStatusMenu } from "@/features/operations/components/visit-status/visit-status-menu";
 import { VisitTeamCard } from "@/features/operations/components/visit-team/visit-team-card";
 import { VISITS_PATH } from "@/features/operations/services/programme";
 import { getVisitEntryQuery } from "@/features/operations/services/visit-entry";
@@ -41,12 +42,17 @@ export default function VisitPage() {
       description={t("Description")}
       back={{ href: VISITS_PATH, label: tNav("Visits") }}
       actions={
-        <Button asChild variant="info">
-          <Link to={`${VISITS_PATH}/${id}/print`}>
-            <Printer />
-            {t("PrintOrder")}
-          </Link>
-        </Button>
+        mayWrite ? (
+          <div className="flex flex-wrap items-center gap-2">
+            {entry.data && <VisitStatusMenu visit={entry.data.visit} />}
+            <Button asChild variant="info">
+              <Link to={`${VISITS_PATH}/${id}/print`}>
+                <Printer />
+                {t("PrintOrder")}
+              </Link>
+            </Button>
+          </div>
+        ) : undefined
       }
     >
       {entry.isError ? (

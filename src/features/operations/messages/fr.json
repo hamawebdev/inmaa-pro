@@ -334,7 +334,15 @@
     "VisitNotMovable": "Seule une visite confirmée ou en attente de confirmation peut être déplacée.",
     "VisitMoveIntoPast": "Une visite ne peut pas être déplacée à un jour déjà passé.",
     "ZoneNotFound": "Cette zone n'existe pas.",
-    "SupervisorMustBeEmployee": "Choisissez un employé comme superviseur."
+    "SupervisorMustBeEmployee": "Choisissez un employé comme superviseur.",
+    "MakeupVisitInPast": "Une visite de rattrapage se planifie pour aujourd'hui ou plus tard.",
+    "OnlyClosedVisitReopened": "Seule une visite reportée ou annulée peut être rouverte.",
+    "OnlyOpenVisitPostponed": "Seule une visite encore à venir peut être reportée ou annulée.",
+    "VisitHasMakeup": "Cette visite a déjà sa visite de rattrapage.",
+    "VisitDroppedByProgramme": "Cette visite a été retirée par un changement de programme.",
+    "WriteWhy": "Indiquez pourquoi.",
+    "NoExtraVisitWaiting": "Cette visite n'a pas de visite supplémentaire à planifier.",
+    "ExtraVisitDismissNeedsReason": "Indiquez pourquoi aucune visite supplémentaire n'est nécessaire."
   },
   "FileVisits": {
     "ProgrammeTitle": "Programme",
@@ -728,5 +736,90 @@
       "problems": "Signalements",
       "ratings": "Évaluations des clients"
     }
+  },
+  "VisitStatus": {
+    "Menu": "Reporter / annuler",
+    "Postpone": "Reporter",
+    "Cancel": "Annuler la visite",
+    "Reopen": "Rouvrir",
+    "Title": {
+      "postpone": "Reporter la visite",
+      "cancel": "Annuler la visite",
+      "reopen": "Rouvrir la visite"
+    },
+    "Hint": {
+      "postpone": "Avec un nouveau jour, une visite de rattrapage est créée avec la même équipe là où les règles le permettent.",
+      "cancel": "La visite n'aura pas lieu. Son équipe reste enregistrée.",
+      "reopen": "La visite attend de nouveau sa confirmation."
+    },
+    "Reason": "Motif",
+    "Note": "Explication",
+    "NewDate": "Jour du rattrapage",
+    "NewTime": "Début",
+    "Back": "Retour",
+    "Confirm": {
+      "postpone": "Reporter",
+      "cancel": "Annuler la visite",
+      "reopen": "Rouvrir"
+    },
+    "Done": {
+      "postpone": "La visite est reportée.",
+      "cancel": "La visite est annulée.",
+      "reopen": "La visite est rouverte."
+    },
+    "SaveFailed": "La visite n'a pas pu être modifiée.",
+    "Reasons": {
+      "CLIENT_REQUEST": "Demande du client",
+      "CLIENT_ABSENT": "Client absent",
+      "LATE_CANCELLATION": "Annulation tardive du client",
+      "NO_WORKER": "Aucun agent disponible",
+      "ACCESS_BLOCKED": "Accès au site impossible",
+      "MATERIALS_MISSING": "Produits manquants",
+      "CONTRACT_ENDED": "Fin du contrat",
+      "CLIENT_SUSPENDED": "Client suspendu",
+      "CENTRE_DECISION": "Décision du centre",
+      "OTHER": "Autre"
+    }
+  },
+  "ExtraVisits": {
+    "Title": "Visites supplémentaires demandées",
+    "Hint": "Ordres retournés ayant répondu oui à « visite supplémentaire nécessaire ? », pas encore planifiés.",
+    "Plan": "Planifier la visite",
+    "Dismiss": "Pas de visite supplémentaire",
+    "PlanTitle": "Planifier la visite supplémentaire",
+    "PlanHint": "Son jour, son début et le nombre d'agents ; l'équipe se désigne sur la visite.",
+    "Date": "Jour",
+    "Time": "Début",
+    "Workers": "Agents",
+    "PlanConfirm": "Planifier",
+    "Planned": "Visite supplémentaire {number} planifiée.",
+    "DismissTitle": "Pas de visite supplémentaire",
+    "DismissHint": "Indiquez pourquoi : le motif est gardé sur la visite et au journal.",
+    "Reason": "Motif",
+    "Dismissed": "Noté : pas de visite supplémentaire.",
+    "DismissedJobClosed": "Noté : pas de visite supplémentaire. La prestation est terminée et son dossier clos.",
+    "Cancel": "Annuler",
+    "SaveFailed": "L'enregistrement a échoué."
+  },
+  "FutureVisits": {
+    "Button": "Mettre à jour les visites à venir",
+    "Title": "Mettre à jour les visites à venir",
+    "Hint": "Ce que le formulaire demande maintenant, appliqué aux visites dont l'ordre n'est pas imprimé.",
+    "Count": {
+      "moved": "Modifiées",
+      "added": "Ajoutées",
+      "cancelled": "Annulées"
+    },
+    "Left": "Laissées telles quelles : {printed} imprimées, {edited} modifiées à la main, {other} dans un autre statut.",
+    "Confirm": "Mettre à jour",
+    "Cancel": "Annuler",
+    "Done": "{moved} visites modifiées, {added} ajoutées, {cancelled} annulées.",
+    "SaveFailed": "Les visites n'ont pas pu être mises à jour."
+  },
+  "OperationsHome": {
+    "TodayVisits": "Visites du jour",
+    "TodayVisitsHint": "Toutes les visites du jour, au tableau",
+    "NoArrival": "Arrivée non signalée",
+    "NoArrivalHint": "Commencées au-delà de la tolérance sans que l'arrivée de l'équipe soit signalée"
   }
 }

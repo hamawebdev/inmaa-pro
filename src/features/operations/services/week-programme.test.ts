@@ -337,8 +337,8 @@ describe("moveVisit", () => {
     const result = await move(monday.id, "2026-11-06", "08:00");
     expect(result.warnings.map((warning) => [warning.code, warning.level, warning.workerName]).sort()).toEqual(
       [
-        ["REST_DAY_WORKED", "FLAG", "سميرة بوزيد"],
-        ["UNAVAILABLE_DAY", "WARNING", "سميرة بوزيد"],
+        ["REST_DAY_WORKED", "FLAG", "بوزيد سميرة"],
+        ["UNAVAILABLE_DAY", "WARNING", "بوزيد سميرة"],
       ].sort(),
     );
     expect(result.placeWarnings).toEqual(["OUTSIDE_SITE_DAYS"]);

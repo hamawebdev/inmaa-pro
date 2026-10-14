@@ -1,3 +1,4 @@
+import { closeFile } from "@/features/clients/services/files";
 import { requireSection } from "@/lib/access/session";
 import { newId } from "@/lib/db/rows";
 import { logChange } from "@/lib/log";
@@ -83,6 +84,10 @@ export async function listExtraVisitProposals(
     ])
     .where("VisitReport.needsExtraVisit", "=", 1)
     .where("File.deletedAt", "is", null)
+    // The office said no: «لا حاجة لزيارة إضافية» is its decision on the visit.
+    .where((eb) =>
+      eb.or([eb("Visit.actionTaken", "is", null), eb("Visit.actionTaken", "not like", `${NO_EXTRA_VISIT}%`)]),
+    )
     .where((eb) =>
       eb.not(
         eb.exists(
@@ -249,5 +254,64 @@ export async function onDemandJobFinished(ex: Executor, fileId: string): Promise
   return !complaint;
 }
 
+/** The office's decision written on a visit whose order asked for an extra visit it will not plan. */
+export const NO_EXTRA_VISIT = "لا حاجة لزيارة إضافية";
+
+/**
+ * «لا حاجة لزيارة إضافية»: the proposal of a returned order is dismissed, with
+ * the reason the user typed (kept on the visit as the office's decision, and
+ * in the log). When it was the last thing keeping an on-demand job open, the
+ * job ends as it would have on its last sign-off.
+ */
+export async function dismissExtraVisitProposal(
+  ex: Executor,
+  ctx: ServiceContext,
+  input: { sourceVisitId: string; reason: string },
+): Promise<{ jobClosed: boolean }> {
+  requireSection(ctx, "REQUESTS", "WRITE");
+  const reason = input.reason.trim();
+  if (!reason) throw new ServiceError("Write why no extra visit is needed.");
+  const proposals = await listExtraVisitProposals(ex, ctx, {});
+  const proposal = proposals.find((each) => each.visitId === input.sourceVisitId);
+  if (!proposal) throw new ServiceError("This visit has no extra visit waiting to be planned.");
+  await ex
+    .updateTable("Visit")
+    .set({ actionTaken: `${NO_EXTRA_VISIT}: ${reason}`, updatedAt: ctx.now, updatedByUserId: ctx.userId })
+    .where("id", "=", input.sourceVisitId)
+    .execute();
+  await logChange(ex, ctx, {
+    owner: "OPERATIONS",
+    action: "REFUSE",
+    reason,
+    entity: "Visit",
+    entityId: input.sourceVisitId,
+    entityLabel: proposal.visitNumber,
+    context: { extraVisit: "DISMISSED" },
+  });
+  // The job may now be over: same test as the sign-off's.
+  const visit = await ex
+    .selectFrom("Visit")
+    .select(["fileId", "status", "visitDate"])
+    .where("id", "=", input.sourceVisitId)
+    .executeTakeFirstOrThrow();
+  const stillProposed = (await listExtraVisitProposals(ex, ctx, { fileId: visit.fileId })).length > 0;
+  if (stillProposed || !(await onDemandJobFinished(ex, visit.fileId))) return { jobClosed: false };
+  const last = await ex
+    .selectFrom("Visit")
+    .select((eb) => eb.fn.max("visitDate").as("lastDate"))
+    .where("fileId", "=", visit.fileId)
+    .where("status", "=", "DONE")
+    .executeTakeFirst();
+  const result = await closeFile(ex, ctx, {
+    fileId: visit.fileId,
+    reason: "JOB_DONE",
+    endedDate: last?.lastDate ?? visit.visitDate,
+  });
+  return { jobClosed: result.closed };
+}
+
 export const listExtraVisitProposalsQuery = query(listExtraVisitProposals);
+export const dismissExtraVisitProposalAction = action(dismissExtraVisitProposal, {
+  revalidate: [VISITS_PATH, "/dashboard/files"],
+});
 export const planExtraVisitAction = action(planExtraVisit, { revalidate: [VISITS_PATH, "/dashboard/files"] });

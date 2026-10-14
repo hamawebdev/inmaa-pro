@@ -1,6 +1,7 @@
 import { getHandOutsForVisit } from "@/features/stock/services/handouts";
 import { UNIT_LABEL } from "@/features/stock/sheets/print-labels";
 import { requireSection } from "@/lib/access/session";
+import { phoneText } from "@/lib/text/phone";
 import { logDisclose } from "@/lib/log";
 import { action, query } from "@/lib/service/action";
 import type { Executor, ServiceContext } from "@/lib/service/context";
@@ -217,7 +218,7 @@ async function buildOrder(
     contact: {
       name: site?.personOnSite?.name ?? null,
       role: site?.personOnSite?.role ?? null,
-      phone: site?.personOnSite?.phone ?? null,
+      phone: site?.personOnSite?.phone ? phoneText(site.personOnSite.phone) : null,
       meetingPoint: site?.meetingPoint ?? null,
       receiver: site?.personOnSite?.name ?? null,
     },
@@ -229,7 +230,7 @@ async function buildOrder(
     team: workers,
     supervisor: {
       name: supervisor ? staffName(supervisor) : null,
-      phone: supervisor?.phone ?? null,
+      phone: supervisor?.phone ? phoneText(supervisor.phone) : null,
     },
     taskGroups: groupsOf(lines),
     specialTasks: lines

@@ -1,5 +1,7 @@
 import type { CodeLabelCase } from "@/i18n/code-labels";
 
+import { VISIT_STATUS_REASONS } from "./services/visit-status";
+
 import { ABSENCE_CATEGORIES, ABSENCE_STATUSES, ABSENCE_VIAS, REPLACEMENT_REASONS } from "./services/absences";
 
 import {
@@ -51,4 +53,5 @@ export const codeLabelCases: readonly CodeLabelCase[] = [
   ["WorkerAttendance.Vias", ABSENCE_VIAS],
   ["WorkerAttendance.PresenceProofs", PRESENCE_PROOFS],
   ["WorkerAttendance.SeatStatuses", SEAT_STATUSES],
+  ["VisitStatus.Reasons", VISIT_STATUS_REASONS],
 ];

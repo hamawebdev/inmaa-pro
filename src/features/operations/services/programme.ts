@@ -54,6 +54,8 @@ export interface GenerationSummary {
   missing: number;
   /** The file is «متعاقد» and open: its visits may be made. */
   canGenerate: boolean;
+  /** The form's days, times, dates or headcount changed since the programme was built (preview only). */
+  formChanged?: boolean;
   firstDate: IsoDate | null;
   lastDate: IsoDate | null;
   /** Visits per weekday, Saturday first. */
@@ -510,11 +512,17 @@ export async function previewVisitGeneration(
   const site = await readSiteForOrder(ex, { siteId: file.siteId, securityTicked: false });
   const missing = visitsToCreate(planned, await existingKeys(ex, file.id));
   const stage = await ex.selectFrom("File").select(["stage", "closedAt"]).where("id", "=", file.id).executeTakeFirst();
-  return summarise(
+  const programmeRow = await ex
+    .selectFrom("FileProgramme")
+    .select("formChangedAt")
+    .where("fileId", "=", file.id)
+    .executeTakeFirst();
+  const summary = summarise(
     planned,
     { created: 0, missing: missing.length, canGenerate: stage?.stage === "CONTRACTED" && !stage.closedAt },
     [...programme.warnings, ...siteWarnings(planned, site)],
   );
+  return { ...summary, formChanged: Boolean(programmeRow?.formChangedAt) };
 }
 
 /** The button on File › الزيارات: every missing visit of a contracted file. */

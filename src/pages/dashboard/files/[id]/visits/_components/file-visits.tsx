@@ -34,6 +34,9 @@ import { useSectionLevel } from "@/hooks/use-session";
 import { useErrorMessage } from "@/i18n/errors";
 import { useCodeLabel } from "@/i18n/use-code-label";
 import { pathKey } from "@/lib/compat/revalidate";
+
+import { ExtraVisitProposals } from "./extra-visit-proposals";
+import { FutureVisitsUpdate } from "./future-visits-update";
 import { WEEKDAYS } from "@/lib/options";
 
 /**
@@ -184,12 +187,15 @@ export function FileVisits({ fileId }: { fileId: string }) {
         <CardHeader>
           <CardTitle>{t("ProgrammeTitle")}</CardTitle>
           <CardDescription>{t("ProgrammeHint")}</CardDescription>
-          {mayWrite && summary?.canGenerate && summary.missing > 0 && (
-            <CardAction>
-              <Button variant="add" onClick={() => void makeVisits()} loading={making}>
-                <CalendarPlus />
-                {t("Generate", { count: summary.missing })}
-              </Button>
+          {mayWrite && summary?.canGenerate && (
+            <CardAction className="flex flex-wrap gap-2">
+              <FutureVisitsUpdate fileId={fileId} changed={summary.formChanged ?? false} />
+              {summary.missing > 0 && (
+                <Button variant="add" onClick={() => void makeVisits()} loading={making}>
+                  <CalendarPlus />
+                  {t("Generate", { count: summary.missing })}
+                </Button>
+              )}
             </CardAction>
           )}
         </CardHeader>
@@ -245,6 +251,8 @@ export function FileVisits({ fileId }: { fileId: string }) {
           )}
         </CardContent>
       </Card>
+
+      <ExtraVisitProposals fileId={fileId} mayWrite={mayWrite} />
 
       <div className="space-y-4">
         <DataTable

@@ -168,15 +168,15 @@ describe("the mission order", () => {
       startTime: "08:00",
       endTime: "11:00",
       site: { label: "مكتب المحامي بن صالح", address: "حي 500 مسكن" },
-      contact: { name: "ليلى حمدي", phone: "0661203142" },
+      contact: { name: "ليلى حمدي", phone: "0661 20 31 42" },
       access: { ways: ["VIA_GUARD"], guardName: "عمار" },
-      supervisor: { name: "سميرة حداد" },
+      supervisor: { name: "حداد سميرة" },
       materialsBy: "CENTRE",
       returned: null,
     });
     expect(order.team.map((worker) => [worker.name, worker.role])).toEqual([
-      ["أمال بن علي", "TEAM_LEADER"],
-      ["نادية قاسمي", "CLEANER"],
+      ["بن علي أمال", "TEAM_LEADER"],
+      ["قاسمي نادية", "CLEANER"],
     ]);
     expect(order.taskGroups).toEqual([
       {
