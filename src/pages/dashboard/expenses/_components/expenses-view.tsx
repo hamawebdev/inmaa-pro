@@ -8,7 +8,7 @@ import { DivisionTiles } from "@/features/money/components/division-tiles";
 import { FigureStrip, type Figure } from "@/features/money/components/figure-strip";
 import { PeriodChart } from "@/features/money/components/period-chart";
 import { PeriodFilter } from "@/features/money/components/period-filter";
-import { useMoneyText } from "@/features/money/components/use-money-text";
+import { MoneyValue } from "@/features/money/components/money-value";
 import type { IsoDate } from "@/features/money/rules/dates";
 import { expensesByDivision } from "@/features/money/rules/income";
 import { bucketTotals, granularityOf, isInPeriod, readPeriod } from "@/features/money/rules/period";
@@ -40,7 +40,6 @@ export function ExpensesView({ expenses, today }: { expenses: readonly ExpenseVi
   const tCommon = useTranslations("MoneyCommon");
   const divisionLabel = useDivisionLabel();
   const categoryLabel = useCodeLabel("MoneyCodes.ExpenseCategories");
-  const money = useMoneyText();
   const count = new Intl.NumberFormat(intlLocaleFor(useLocale()));
   const period = readPeriod(useSearchParams(), today);
   const division = useDivisionParam(EXPENSE_DIVISIONS);
@@ -72,13 +71,13 @@ export function ExpensesView({ expenses, today }: { expenses: readonly ExpenseVi
   );
 
   const strip: Figure[] = [
-    { label: t("Figures.Total"), value: money(shownTotal) },
-    { label: t("Figures.Monthly"), value: money(monthly), muted: true },
+    { label: t("Figures.Total"), value: <MoneyValue amount={shownTotal} /> },
+    { label: t("Figures.Monthly"), value: <MoneyValue amount={monthly} />, muted: true },
     { label: t("Figures.Count"), value: count.format(shown.length), muted: true },
     topCategory
       ? {
           label: t("Figures.TopCategory", { category: categoryLabel(topCategory) }),
-          value: money(topAmount),
+          value: <MoneyValue amount={topAmount} />,
           muted: true,
         }
       : { label: t("Figures.NoTopCategory"), value: "—", muted: true },
@@ -101,11 +100,11 @@ export function ExpensesView({ expenses, today }: { expenses: readonly ExpenseVi
         <DivisionTiles
           section="money"
           tiles={[
-            { id: ALL, label: t("TotalExpenses"), value: money(total) },
+            { id: ALL, label: t("TotalExpenses"), amount: total },
             ...EXPENSE_DIVISIONS.map((code) => ({
               id: code,
               label: divisionLabel(code),
-              value: money(totals[code]),
+              amount: totals[code],
             })),
           ]}
         />

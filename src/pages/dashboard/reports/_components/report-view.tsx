@@ -6,6 +6,7 @@ import { SectionHeading } from "@/components/screen";
 import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { FigureStrip } from "@/features/money/components/figure-strip";
 import { useDivisionLabel } from "@/features/money/components/labels";
+import { MoneyValue } from "@/features/money/components/money-value";
 import { useDateText, useMoneyText } from "@/features/money/components/use-money-text";
 import type { PeriodReport } from "@/features/money/services/reports";
 import { DIVISIONS } from "@/features/money/validators/option-codes";
@@ -43,9 +44,9 @@ export function ReportView({ report }: { report: PeriodReport }) {
         {/* A period's totals run to six and seven figures: the strip's type keeps them whole, as on the income screen. */}
         <FigureStrip
           figures={[
-            { label: t("Income"), value: money(result.totalIncome) },
-            { label: t("Expenses"), value: money(result.totalExpenses) },
-            { label: t("Profit"), value: money(result.profit) },
+            { label: t("Income"), value: <MoneyValue amount={result.totalIncome} /> },
+            { label: t("Expenses"), value: <MoneyValue amount={result.totalExpenses} /> },
+            { label: t("Profit"), value: <MoneyValue amount={result.profit} /> },
           ]}
         />
       </section>
@@ -90,10 +91,16 @@ export function ReportView({ report }: { report: PeriodReport }) {
         <SectionHeading>{t("Indicators")}</SectionHeading>
         <FigureStrip
           figures={[
-            { label: t("Figures.Invoiced", { count: counts.invoices }), value: money(report.invoiced) },
-            { label: t("Figures.Received", { count: counts.payments }), value: money(report.received) },
-            { label: t("Figures.Outstanding"), value: money(report.outstanding), muted: true },
-            { label: t("Figures.Overdue"), value: money(report.overdue), muted: true },
+            {
+              label: t("Figures.Invoiced", { count: counts.invoices }),
+              value: <MoneyValue amount={report.invoiced} />,
+            },
+            {
+              label: t("Figures.Received", { count: counts.payments }),
+              value: <MoneyValue amount={report.received} />,
+            },
+            { label: t("Figures.Outstanding"), value: <MoneyValue amount={report.outstanding} />, muted: true },
+            { label: t("Figures.Overdue"), value: <MoneyValue amount={report.overdue} />, muted: true },
           ]}
         />
         <FigureStrip

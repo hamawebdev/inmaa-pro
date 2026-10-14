@@ -20,6 +20,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useDivisionLabel } from "@/features/money/components/labels";
 import { ScreenSkeleton } from "@/features/money/components/screen-skeleton";
 import { DueStateChip } from "@/features/money/components/state-chips";
+import { MoneyValue } from "@/features/money/components/money-value";
 import { useDateText, useMoneyText } from "@/features/money/components/use-money-text";
 import { listOpenDuesQuery, type OpenDueRow } from "@/features/money/services/debts";
 import { PAYMENTS_PATH } from "@/features/money/services/paths";
@@ -204,21 +205,21 @@ export function DuesView({ onRecord }: { onRecord?: (fileId: string) => void }) 
           tone="money"
           icon={Wallet}
           label={t("Figures.Owed")}
-          value={money(owed)}
+          value={<MoneyValue amount={owed} compact />}
           hint={t("Figures.Files", { count: files })}
         />
         <StatCard
           tone="money"
           icon={CircleAlert}
           label={t("Figures.Overdue")}
-          value={money(overdue)}
+          value={<MoneyValue amount={overdue} compact />}
           href="/dashboard/payments?view=dues&state=OVERDUE"
         />
         <StatCard
           tone="money"
           icon={AlarmClock}
           label={t("Figures.DueSoon")}
-          value={money(soon)}
+          value={<MoneyValue amount={soon} compact />}
           href="/dashboard/payments?view=dues&state=DUE_SOON"
         />
       </div>

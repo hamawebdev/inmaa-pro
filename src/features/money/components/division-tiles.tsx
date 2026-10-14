@@ -7,6 +7,7 @@ import type { SectionId } from "@/navigation/sections";
 import type { ExpenseDivision } from "../validators/option-codes";
 
 import { ALL, divisionSearch } from "./division-param";
+import { MoneyValue } from "./money-value";
 
 /** One icon per line, the same on every money screen. */
 const ICONS: Record<ExpenseDivision | typeof ALL, LucideIcon> = {
@@ -21,8 +22,8 @@ const ICONS: Record<ExpenseDivision | typeof ALL, LucideIcon> = {
 export interface DivisionTile {
   id: ExpenseDivision | typeof ALL;
   label: string;
-  /** The figure as written, in the one money format: «277.238,46 دج». */
-  value: string;
+  /** In centimes: written by `MoneyValue`, whole, the currency on its own line when the tile is narrow. */
+  amount: number;
 }
 
 /**
@@ -39,7 +40,7 @@ export function DivisionTiles({ section, tiles }: { section: SectionId; tiles: r
         <StatCard
           key={tile.id}
           label={tile.label}
-          value={tile.value}
+          value={<MoneyValue amount={tile.amount} compact />}
           icon={ICONS[tile.id]}
           tone={section}
           href={`?${divisionSearch(search, tile.id)}`}

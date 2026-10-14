@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { usePaymentMethodLabel } from "@/features/money/components/labels";
 import { DueStateChip, PaymentStateChip } from "@/features/money/components/state-chips";
+import { MoneyValue } from "@/features/money/components/money-value";
 import { useDateText, useMoneyText } from "@/features/money/components/use-money-text";
 import type { FileMoney } from "@/features/money/services/debts";
 import type { DueLine } from "@/features/money/services/dues";
@@ -45,13 +46,23 @@ export function FileMoneyView({ money: file }: { money: FileMoney }) {
           {summary.amount > 0 && <PaymentStateChip state={summary.state} />}
         </div>
         <div className="grid min-w-0 grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 tall:gap-6">
-          <StatCard tone="requests" icon={CircleDollarSign} label={t("Amount")} value={money(summary.amount)} />
-          <StatCard tone="requests" icon={Wallet} label={t("Paid")} value={money(summary.paid)} />
+          <StatCard
+            tone="requests"
+            icon={CircleDollarSign}
+            label={t("Amount")}
+            value={<MoneyValue amount={summary.amount} compact />}
+          />
+          <StatCard
+            tone="requests"
+            icon={Wallet}
+            label={t("Paid")}
+            value={<MoneyValue amount={summary.paid} compact />}
+          />
           <StatCard
             tone="requests"
             icon={Scale}
             label={t("Remaining")}
-            value={money(summary.remaining)}
+            value={<MoneyValue amount={summary.remaining} compact />}
             hint={summary.overdue > 0 ? t("OverdueHint", { amount: money(summary.overdue) }) : undefined}
           />
         </div>

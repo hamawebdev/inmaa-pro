@@ -10,7 +10,7 @@ import { DivisionTiles } from "@/features/money/components/division-tiles";
 import { FigureStrip, type Figure } from "@/features/money/components/figure-strip";
 import { PeriodChart } from "@/features/money/components/period-chart";
 import { PeriodFilter } from "@/features/money/components/period-filter";
-import { useMoneyText } from "@/features/money/components/use-money-text";
+import { MoneyValue } from "@/features/money/components/money-value";
 import type { BasisPoints } from "@/features/money/rules/centimes";
 import type { IsoDate } from "@/features/money/rules/dates";
 import {
@@ -62,7 +62,6 @@ export function IncomeView({
   const t = useTranslations("Income");
   const tCommon = useTranslations("MoneyCommon");
   const divisionLabel = useDivisionLabel();
-  const money = useMoneyText();
   const search = useSearchParams();
   const period = readPeriod(search, today);
   const division = useDivisionParam(DIVISIONS);
@@ -124,16 +123,22 @@ export function IncomeView({
   const strip: Figure[] = [
     {
       label: taxMode === "VAT" ? t("Figures.CollectedBeforeTax") : t("Figures.Collected"),
-      value: money(figures.collected),
+      value: <MoneyValue amount={figures.collected} />,
     },
-    ...(taxMode === "VAT" ? [{ label: t("Figures.VatCollected"), value: money(figures.vatCollected) }] : []),
+    ...(taxMode === "VAT"
+      ? [{ label: t("Figures.VatCollected"), value: <MoneyValue amount={figures.vatCollected} /> }]
+      : []),
     {
       label: taxMode === "VAT" ? t("Figures.InvoicedBeforeTax") : t("Figures.Invoiced"),
-      value: money(sumOver((code) => invoiced[code].beforeTax)),
+      value: <MoneyValue amount={sumOver((code) => invoiced[code].beforeTax)} />,
       muted: true,
     },
-    { label: t("Figures.Outstanding"), value: money(sumOver((code) => outstanding[code])), muted: true },
-    { label: t("Figures.StampCollected"), value: money(figures.stampCollected), muted: true },
+    {
+      label: t("Figures.Outstanding"),
+      value: <MoneyValue amount={sumOver((code) => outstanding[code])} />,
+      muted: true,
+    },
+    { label: t("Figures.StampCollected"), value: <MoneyValue amount={figures.stampCollected} />, muted: true },
   ];
 
   const buckets = bucketTotals(
@@ -156,11 +161,11 @@ export function IncomeView({
         <DivisionTiles
           section="money"
           tiles={[
-            { id: ALL, label: t("TotalIncome"), value: money(report.total.collected) },
+            { id: ALL, label: t("TotalIncome"), amount: report.total.collected },
             ...DIVISIONS.map((code) => ({
               id: code,
               label: divisionLabel(code),
-              value: money(report.byDivision[code].collected),
+              amount: report.byDivision[code].collected,
             })),
           ]}
         />

@@ -20,6 +20,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useDivisionLabel, usePaymentMethodLabel } from "@/features/money/components/labels";
 import { ReasonDialog } from "@/features/money/components/reason-dialog";
 import { PaymentStateChip } from "@/features/money/components/state-chips";
+import { MoneyValue } from "@/features/money/components/money-value";
 import { useDateText, useMoneyText } from "@/features/money/components/use-money-text";
 import { voidInvoiceAction, type InvoiceListRow } from "@/features/money/services/invoices";
 import { useCan, useSectionLevel } from "@/hooks/use-session";
@@ -190,9 +191,19 @@ export function InvoicesView({ invoices }: { invoices: readonly InvoiceListRow[]
     <div className="space-y-6 tall:space-y-8">
       {/* A money figure is long: three to a row, as on the income screen. The count is over the list. */}
       <div className="grid min-w-0 grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 tall:gap-6">
-        <StatCard tone="money" icon={CircleDollarSign} label={t("Figures.Invoiced")} value={money(invoiced)} />
-        <StatCard tone="money" icon={Wallet} label={t("Figures.Paid")} value={money(paid)} />
-        <StatCard tone="money" icon={FileText} label={t("Figures.Remaining")} value={money(remaining)} />
+        <StatCard
+          tone="money"
+          icon={CircleDollarSign}
+          label={t("Figures.Invoiced")}
+          value={<MoneyValue amount={invoiced} compact />}
+        />
+        <StatCard tone="money" icon={Wallet} label={t("Figures.Paid")} value={<MoneyValue amount={paid} compact />} />
+        <StatCard
+          tone="money"
+          icon={FileText}
+          label={t("Figures.Remaining")}
+          value={<MoneyValue amount={remaining} compact />}
+        />
       </div>
 
       <div className="space-y-5">

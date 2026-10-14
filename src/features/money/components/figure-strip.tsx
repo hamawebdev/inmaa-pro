@@ -1,9 +1,12 @@
+import type * as React from "react";
+
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
 export interface Figure {
   label: string;
-  value: string;
+  /** A count as text, or an amount as `<MoneyValue />`: neither is ever cut. */
+  value: React.ReactNode;
   /** Muted: a figure shown beside the main ones, never added to them. */
   muted?: boolean;
 }
@@ -22,7 +25,7 @@ export function FigureStrip({ figures }: { figures: readonly Figure[] }) {
               <dt className="truncate text-sm text-muted-foreground">{figure.label}</dt>
               <dd
                 className={cn(
-                  "truncate text-xl font-bold tabular-nums tall:text-2xl",
+                  "text-xl font-bold break-words tabular-nums tall:text-2xl",
                   figure.muted && "text-muted-foreground",
                 )}
               >

@@ -22,6 +22,7 @@ import { useDivisionLabel, usePaymentMethodLabel } from "@/features/money/compon
 import { PeriodFilter } from "@/features/money/components/period-filter";
 import { ReasonDialog } from "@/features/money/components/reason-dialog";
 import { ScreenSkeleton } from "@/features/money/components/screen-skeleton";
+import { MoneyValue } from "@/features/money/components/money-value";
 import { useDateText, useMoneyText } from "@/features/money/components/use-money-text";
 import type { IsoDate } from "@/features/money/rules/dates";
 import { readPeriod } from "@/features/money/rules/period";
@@ -214,9 +215,24 @@ export function PaymentsView({ today }: { today: IsoDate }) {
       ) : (
         <>
           <div className="grid min-w-0 grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 tall:gap-6">
-            <StatCard tone="money" icon={Wallet} label={t("Figures.Received")} value={money(received)} />
-            <StatCard tone="money" icon={Banknote} label={t("Figures.Cash")} value={money(cash)} />
-            <StatCard tone="money" icon={Stamp} label={t("Figures.Stamp")} value={money(stamps)} />
+            <StatCard
+              tone="money"
+              icon={Wallet}
+              label={t("Figures.Received")}
+              value={<MoneyValue amount={received} compact />}
+            />
+            <StatCard
+              tone="money"
+              icon={Banknote}
+              label={t("Figures.Cash")}
+              value={<MoneyValue amount={cash} compact />}
+            />
+            <StatCard
+              tone="money"
+              icon={Stamp}
+              label={t("Figures.Stamp")}
+              value={<MoneyValue amount={stamps} compact />}
+            />
           </div>
           <div className="space-y-5">
             <div className="flex flex-wrap items-center gap-3">
