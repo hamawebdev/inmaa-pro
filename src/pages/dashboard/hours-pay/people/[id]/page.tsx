@@ -54,7 +54,7 @@ export default function StaffPayPage() {
   return (
     <DetailScreen
       section="workers"
-      title={`${t("Ledger.Title")} · ${ledger.data.name}`}
+      title={ledger.data.name}
       back={back}
       actions={
         writesPay && (
