@@ -276,9 +276,13 @@ export function ViolationsView({ entries, staffId }: { entries: Entries; staffId
       {
         id: "number",
         header: t("Table.Number"),
-        cell: ({ row }) => <Ltr className="font-bold whitespace-nowrap">{row.original.number}</Ltr>,
+        cell: ({ row }) => (
+          <div className="whitespace-nowrap">
+            <Ltr className="block font-bold">{row.original.number}</Ltr>
+            <DayDate date={row.original.date} className="text-muted-foreground" />
+          </div>
+        ),
       },
-      { id: "date", header: t("Table.Date"), cell: ({ row }) => <DayDate date={row.original.date} /> },
       {
         id: "worker",
         header: t("Table.Name"),
@@ -303,7 +307,7 @@ export function ViolationsView({ entries, staffId }: { entries: Entries; staffId
               />
               {row.original.article && <span>{t(`Articles.${row.original.article}`)}</span>}
             </div>
-            <p className="max-w-80 truncate text-muted-foreground" title={row.original.description}>
+            <p className="max-w-60 truncate text-muted-foreground" title={row.original.description}>
               {row.original.description}
             </p>
           </div>
