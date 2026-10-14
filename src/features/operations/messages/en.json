@@ -342,7 +342,40 @@
     "VisitDroppedByProgramme": "This visit was dropped by a programme change.",
     "WriteWhy": "Write why.",
     "NoExtraVisitWaiting": "This visit has no extra visit waiting to be planned.",
-    "ExtraVisitDismissNeedsReason": "Write why no extra visit is needed."
+    "ExtraVisitDismissNeedsReason": "Write why no extra visit is needed.",
+    "DiscountNeedsFile": "A discount needs the client file the complaint is about.",
+    "RedoNeedsVisit": "A redo visit needs a visit of this client file to repeat.",
+    "ComplaintSettleFirst": "Settle or reject the complaint first.",
+    "ClientAlreadyTold": "The client has already been told.",
+    "ComplaintNamesNoWorker": "This complaint names no worker.",
+    "VisitOfAnotherFile": "This visit belongs to another client file.",
+    "ComplaintSettleNeedsNote": "Write how the complaint was settled.",
+    "ComplaintRejectNeedsReason": "Write why the complaint is rejected.",
+    "CorrectiveNeedsEmployee": "Choose an employee as the person responsible.",
+    "CorrectiveNeedsResponsible": "Name who is responsible for this task first.",
+    "CorrectiveInvalid": "This corrective task cannot be saved as it is typed.",
+    "CorrectiveNotFound": "This corrective task does not exist.",
+    "CorrectiveClosed": "This corrective task is already closed.",
+    "CorrectiveUnderWay": "This corrective task is already under way.",
+    "CorrectiveNeedsDescription": "Write what is to be corrected.",
+    "InspectionDoneCannotCancel": "A done inspection cannot be cancelled.",
+    "InspectionScoresIncomplete": "Give every point a mark from 0 to 10, or tick does not apply.",
+    "InspectionContractedOnly": "Inspections are made for a contracted file only.",
+    "InspectionPlanTooFar": "Inspections are planned at most a year ahead.",
+    "InspectionNeedsSupervisor": "Name the supervisor who inspected.",
+    "InspectionOnlyPlannedMissed": "Only a planned inspection can be marked missed.",
+    "InspectionDateInFuture": "The inspection date cannot be after today.",
+    "InspectionNotFound": "This inspection does not exist.",
+    "InspectionCancelled": "This inspection is cancelled.",
+    "InspectionInvalid": "This inspection sheet cannot be saved as it is typed.",
+    "InspectionPointUnknown": "This point is not on this inspection's sheet.",
+    "ReportOnlyResidentComplaint": "Only a resident's complaint becomes a complaint.",
+    "ReportNotFound": "This report does not exist.",
+    "ReportAlreadyComplaint": "This report is already a complaint.",
+    "ReportInHand": "This report is already being dealt with.",
+    "ReportAlreadyHandedOver": "This report is already handed over.",
+    "ReportClosed": "This report is closed.",
+    "ReportNotHandedOver": "This report was not handed over."
   },
   "FileVisits": {
     "ProgrammeTitle": "Programme",
@@ -821,5 +854,283 @@
     "TodayVisitsHint": "Every visit of the day, on the board",
     "NoArrival": "Arrival not reported",
     "NoArrivalHint": "Started past their grace and nobody has said the team is there"
+  },
+  "Inspections": {
+    "Plan": {
+      "Button": "Plan inspections",
+      "Title": "Plan the inspections",
+      "Description": "One inspection per week or month of each contracted file's plan, on its preferred day or the first visit day, with the plan's or the zone's supervisor. What is already planned is never planned twice.",
+      "UpTo": "Plan up to",
+      "Hint": "Every week or month that starts by this date is planned whole.",
+      "UpToInvalid": "Choose a date from today on.",
+      "Submit": "Plan",
+      "Done": "{count, plural, one {# inspection planned} other {# inspections planned}}.",
+      "Nothing": "Nothing new to plan: those weeks and months already have their inspection.",
+      "Failed": "The inspections could not be planned."
+    },
+    "New": {
+      "Button": "New inspection",
+      "Title": "New inspection",
+      "Description": "An inspection outside the plan: to check a complaint or follow a site. Its sheet is then printed from its page.",
+      "File": "File",
+      "ChooseFile": "Choose the file",
+      "NoFiles": "No contracted file",
+      "Required": "This field is required.",
+      "Visit": "Visit inspected",
+      "NoVisit": "No visit",
+      "VisitHint": "The file's visits of the two weeks before and after today.",
+      "PlannedDate": "Planned date",
+      "Supervisor": "Supervisor",
+      "SupervisorAuto": "The plan's or the zone's",
+      "Submit": "Add the inspection",
+      "Done": "Inspection {number} added.",
+      "Failed": "The inspection could not be added."
+    },
+    "List": {
+      "Search": "Search by site, client, supervisor or number",
+      "StateLabel": "Inspections shown",
+      "States": {
+        "planned": "Planned",
+        "due": "Due today or late",
+        "done": "Done",
+        "missed": "Missed",
+        "all": "All"
+      },
+      "Columns": {
+        "Number": "Number",
+        "Site": "Site",
+        "Date": "Date",
+        "Supervisor": "Supervisor",
+        "Status": "Status",
+        "Score": "Score"
+      },
+      "NoSupervisor": "Not named",
+      "BelowThreshold": "Under {threshold}",
+      "Open": "Open",
+      "Print": "Print the sheet",
+      "Loading": "Loading…",
+      "None": {
+        "planned": "No inspection is planned.",
+        "due": "No inspection is due.",
+        "done": "No inspection typed in yet.",
+        "missed": "No missed inspection.",
+        "all": "No inspection yet."
+      },
+      "NoMatch": "Nothing matches the search.",
+      "Late": "Late",
+      "Today": "Today"
+    },
+    "Statuses": {
+      "PLANNED": "Planned",
+      "DONE": "Done",
+      "MISSED": "Missed",
+      "CANCELLED": "Cancelled"
+    },
+    "Levels": {
+      "EXCELLENT": "Excellent",
+      "VERY_GOOD": "Very good",
+      "GOOD": "Good",
+      "ACCEPTABLE": "Acceptable",
+      "REDO": "Needs redoing"
+    },
+    "Page": {
+      "Title": "Inspection {number}",
+      "TitleLoading": "Supervisor inspection",
+      "Description": "The sheet the supervisor brought back, typed in one pass.",
+      "Missed": "Not carried out",
+      "Cancel": "Cancel the inspection",
+      "PrintSheet": "Print the sheet",
+      "MissedTitle": "The inspection was not carried out",
+      "MissedDescription": "Inspection {number} stays on record as not carried out.",
+      "MissedConfirm": "Record it",
+      "CancelTitle": "Cancel the inspection",
+      "CancelDescription": "Inspection {number} is cancelled and stays on record.",
+      "CancelConfirm": "Cancel the inspection",
+      "Reason": "Reason",
+      "Keep": "Go back",
+      "MissedDone": "Recorded as not carried out.",
+      "CancelledDone": "Inspection cancelled.",
+      "Failed": "Nothing was saved."
+    },
+    "Form": {
+      "Cards": {
+        "Details": "1. Inspection details",
+        "DetailsHint": "As at the head of the sheet: the supervisor, the visit inspected, the day and time.",
+        "Marks": "2. Points marked",
+        "MarksHint": "A mark from 0 to 10 for each point, or does not apply. The program works out the score out of 100.",
+        "Level": "3. Quality of the work",
+        "LevelHint": "As the supervisor ticked it.",
+        "Workers": "4. Workers present",
+        "WorkersHint": "The team of the visit inspected.",
+        "Correction": "5. Corrective action",
+        "CorrectionHint": "Under the threshold, or when the supervisor ticked yes, saving makes a corrective task.",
+        "SupervisorNotes": "6. Supervisor's notes",
+        "ClientRemark": "7. Remark of the person on site"
+      },
+      "Fields": {
+        "Number": "Inspection number",
+        "PlannedDate": "Planned date",
+        "Status": "Status",
+        "Origin": "Origin",
+        "FromPlan": "The file's plan",
+        "ByHand": "Added by hand",
+        "Site": "Site",
+        "File": "File",
+        "Division": "Division",
+        "Supervisor": "Supervisor's name",
+        "ChooseSupervisor": "Choose the supervisor",
+        "Visit": "Mission order number",
+        "NoVisit": "No visit",
+        "DoneDate": "Date of the inspection",
+        "DoneTime": "Time",
+        "No": "No.",
+        "Point": "Point",
+        "Mark": "Mark out of 10",
+        "NotApplicable": "Does not apply",
+        "Note": "Notes",
+        "Total": "Quality score out of 100",
+        "TotalPending": "Worked out once every point has its mark",
+        "Below": "Under {threshold}",
+        "Above": "{threshold} or more",
+        "ThresholdNote": "Under {threshold}: the service is redone, the worker trained or changed.",
+        "Present": "Present",
+        "Remark": "Supervisor's remark",
+        "NoTeam": "No team: name the visit inspected in the first card.",
+        "NeedsCorrection": "Does the work need correcting?",
+        "ProposedAction": "Proposed action"
+      },
+      "TaskExists": "This inspection has a corrective task: {action}, due",
+      "OpenTasks": "Corrective tasks",
+      "TaskWillBeMade": "Saving makes a corrective task in the supervisor's name.",
+      "Cancel": "Cancel",
+      "Save": "Save the inspection",
+      "Saved": "Inspection saved: {total} out of 100.",
+      "SavedWithTask": "Inspection saved: {total} out of 100. A corrective task was made.",
+      "SaveFailed": "The inspection could not be saved.",
+      "FixMarkedFields": "Correct the marked fields.",
+      "MissingMarks": "{count, plural, one {# point without a mark} other {# points without a mark}}"
+    },
+    "Print": {
+      "NotRecorded": "The print could not be recorded.",
+      "Back": "The inspection"
+    }
+  },
+  "CorrectiveTasks": {
+    "Statuses": {
+      "OPEN": "Open",
+      "IN_PROGRESS": "Under way",
+      "DONE": "Done",
+      "CANCELLED": "Cancelled"
+    },
+    "Sources": {
+      "INSPECTION": "Inspection",
+      "COMPLAINT": "Complaint",
+      "PROBLEM_REPORT": "Problem report",
+      "SIGNOFF": "Client's sign-off",
+      "MANUAL": "Added by hand"
+    },
+    "List": {
+      "Search": "Search by site, client, task or person responsible",
+      "StateLabel": "Tasks shown",
+      "States": {
+        "open": "To do",
+        "overdue": "Overdue",
+        "done": "Done",
+        "all": "All"
+      },
+      "Columns": {
+        "Site": "Site",
+        "Task": "Task",
+        "Responsible": "Responsible",
+        "Due": "Due",
+        "Status": "Status"
+      },
+      "Nobody": "Not named",
+      "Overdue": "Overdue",
+      "Start": "Start",
+      "Complete": "Done",
+      "Cancel": "Cancel",
+      "Loading": "Loading…",
+      "None": {
+        "open": "No corrective task to do.",
+        "overdue": "No task is overdue.",
+        "done": "No task done yet.",
+        "all": "No corrective task yet."
+      },
+      "NoMatch": "Nothing matches the search."
+    },
+    "Dialog": {
+      "Responsible": "Person responsible",
+      "ChooseResponsible": "Choose the person responsible",
+      "Required": "This field is required.",
+      "Failed": "Nothing was saved.",
+      "StartTitle": "Start the corrective task",
+      "StartDescription": "The person responsible takes the task on; it is then under way.",
+      "StartSubmit": "Start the task",
+      "Started": "Task started.",
+      "CompleteTitle": "Complete the corrective task",
+      "CompleteDescription": "Write what was done: the task is then closed.",
+      "Result": "What was done?",
+      "CompleteSubmit": "Mark as done",
+      "Completed": "Task done.",
+      "CancelTitle": "Cancel the corrective task",
+      "CancelDescription": "The task at {site} is cancelled and stays on record.",
+      "CancelReason": "Reason for cancelling",
+      "CancelConfirm": "Cancel the task",
+      "Keep": "Go back",
+      "Cancelled": "Task cancelled."
+    }
+  },
+  "Alerts": {
+    "NoArrival": {
+      "Title": "Arrival not reported",
+      "Hint": "Today's visits past their start with no word that the team is there"
+    },
+    "ComplaintLate": {
+      "Title": "Complaints past their time",
+      "Hint": "Not answered, the target time passed or near"
+    },
+    "OrdersNotReturned": {
+      "Title": "Orders not returned",
+      "Hint": "Past visits whose order is not typed in"
+    },
+    "SeatsOpen": {
+      "Title": "Visits waiting for confirmation",
+      "Hint": "A seat to fill or the client to reach"
+    },
+    "CorrectiveOverdue": {
+      "Title": "Corrective tasks late",
+      "Hint": "Open past their date"
+    },
+    "ContractNoVisits": {
+      "Title": "Contracts without visits",
+      "Hint": "Signed, and no visit made yet"
+    },
+    "InspectionDue": {
+      "Title": "Inspections due",
+      "Hint": "Planned for today or before"
+    },
+    "CallsTomorrow": {
+      "Title": "Calls for tomorrow",
+      "Hint": "Clients to remind of the next working day's visits"
+    }
+  },
+  "VisitsToAct": {
+    "Date": "Date",
+    "Time": "Time",
+    "Site": "Client / site",
+    "Team": "Workers",
+    "Status": "Status",
+    "Open": "Open",
+    "Title": {
+      "not-returned": "Orders not returned",
+      "awaiting": "Visits waiting for confirmation"
+    },
+    "BackToBoard": "The day's board",
+    "Loading": "Reading the visits…",
+    "Empty": {
+      "not-returned": "Every past order is typed in.",
+      "awaiting": "No visit waits for confirmation."
+    }
   }
 }

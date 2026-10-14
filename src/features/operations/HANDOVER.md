@@ -73,6 +73,20 @@ Blank sheets: `visits/blank-<division>/print`, `visits/calls/blank/print`, `supe
 - Checker's audit (docs/checker/screens.md): the rules under "Screens" above; the heading row's `actions` slot
   keeps the print action.
 
+## Round 3 status (in progress)
+
+Done: visit lifecycle (`services/visit-status.ts`: postpone with make-up visit, cancel, reopen; menu on the visit
+page), extra-visit proposals with dismissal (`dismissExtraVisitProposal`, card on File › الزيارات), «تحديث
+الزيارات القادمة» dialog (update calls Money's `syncDues`), generation leaves suspended or departed members' seats
+open, names surname first (`staffName`), phones grouped (`phoneText`), S-03 (counts in the visits tab's heading
+row; 3.8 rows in view at 1024×640, the academy's attendance list 3.7), the 30 inspection criteria seeded
+(`seeds.ts`), `alerts.ts` (eight tiles), `home.tsx` (`homeSlots`), the visits tab's lists `?list=not-returned` and
+`?list=awaiting`, the quality services (`inspections.ts`, `corrective-tasks.ts`, `complaints.ts`,
+`problem-reports.ts`, `ratings.ts`), the demo (inspections, complaints, a proposal waiting, a postponed visit, a
+seat short today). Helpers at work: the quality screens (inspections and corrective; complaints, problems and
+ratings) and the Checker's S-18 to S-21. Left: الموظفون › المشرفون (only `assignZoneSupervisor` exists), the
+day-start job (`markMissedInspections`, `planInspections`), final shots and checks.
+
 ## Open items
 
 - Round 3 (next): quality screens (supervisor inspections with the sheet printed from a stored inspection,

@@ -2,6 +2,8 @@ import type { CodeLabelCase } from "@/i18n/code-labels";
 
 import { VISIT_STATUS_REASONS } from "./services/visit-status";
 
+import { CORRECTIVE_SOURCES, INSPECTION_STATUSES, TASK_STATUSES } from "./validators/inspection";
+
 import { ABSENCE_CATEGORIES, ABSENCE_STATUSES, ABSENCE_VIAS, REPLACEMENT_REASONS } from "./services/absences";
 
 import {
@@ -11,6 +13,7 @@ import {
   PRESENCE_PROOFS,
   PROBLEM_KINDS,
   PROGRAMME_WARNINGS,
+  QUALITY_LEVELS,
   REPLACEMENT_EXCLUSIONS,
   REPLACEMENT_TIERS,
   SEAT_STATUSES,
@@ -54,4 +57,8 @@ export const codeLabelCases: readonly CodeLabelCase[] = [
   ["WorkerAttendance.PresenceProofs", PRESENCE_PROOFS],
   ["WorkerAttendance.SeatStatuses", SEAT_STATUSES],
   ["VisitStatus.Reasons", VISIT_STATUS_REASONS],
+  ["Inspections.Statuses", INSPECTION_STATUSES],
+  ["Inspections.Levels", QUALITY_LEVELS],
+  ["CorrectiveTasks.Statuses", TASK_STATUSES],
+  ["CorrectiveTasks.Sources", CORRECTIVE_SOURCES],
 ];

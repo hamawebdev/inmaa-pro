@@ -295,7 +295,8 @@ export async function listCorrectiveTasks(
     file: { id: row.fileId, number: row.fileNumber, division: row.division },
     site: row.commonName ?? row.address,
     clientName: row.clientName,
-    inspection: row.inspectionId && row.inspectionNumber ? { id: row.inspectionId, number: row.inspectionNumber } : null,
+    inspection:
+      row.inspectionId && row.inspectionNumber ? { id: row.inspectionId, number: row.inspectionNumber } : null,
     complaint: row.complaintId && row.complaintNumber ? { id: row.complaintId, number: row.complaintNumber } : null,
     visit: row.visitId && row.visitNumber ? { id: row.visitId, number: row.visitNumber } : null,
     assignee:
@@ -367,10 +368,7 @@ export async function listEmployeeChoices(ex: Executor, ctx: ServiceContext): Pr
       jobPosition: employee.jobPosition,
       supervisor: employee.jobPosition === "SUPERVISOR" || supervising.has(employee.id),
     }))
-    .sort(
-      (a, b) =>
-        Number(b.supervisor) - Number(a.supervisor) || staffName(a).localeCompare(staffName(b), "ar"),
-    );
+    .sort((a, b) => Number(b.supervisor) - Number(a.supervisor) || staffName(a).localeCompare(staffName(b), "ar"));
 }
 
 // ── Changing ────────────────────────────────────────────────────────────────

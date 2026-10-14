@@ -148,9 +148,9 @@ describe("a task's life", () => {
       "This corrective task is already under way.",
     );
 
-    await expect(test.transact((ex, ctx) => completeCorrectiveTask(ex, ctx, { taskId, resultNote: " " }))).rejects.toThrow(
-      "Write what was done.",
-    );
+    await expect(
+      test.transact((ex, ctx) => completeCorrectiveTask(ex, ctx, { taskId, resultNote: " " })),
+    ).rejects.toThrow("Write what was done.");
     await test.transact((ex, ctx) =>
       completeCorrectiveTask(ex, ctx, { taskId, resultNote: "أعيد تنظيف الحمام يوم الثلاثاء" }),
     );
@@ -160,9 +160,9 @@ describe("a task's life", () => {
       doneAt: "2026-10-12T08:00:00.000Z",
       doneByUserId: "user-manager",
     });
-    await expect(
-      test.transact((ex, ctx) => cancelCorrectiveTask(ex, ctx, { taskId, reason: "خطأ" })),
-    ).rejects.toThrow("This corrective task is already closed.");
+    await expect(test.transact((ex, ctx) => cancelCorrectiveTask(ex, ctx, { taskId, reason: "خطأ" }))).rejects.toThrow(
+      "This corrective task is already closed.",
+    );
   });
 
   it("is completed straight from open when somebody responsible is named", async () => {

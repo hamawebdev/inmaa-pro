@@ -15,7 +15,10 @@ import { reportArrivalAction } from "@/features/operations/services/visit-entry"
 import { useSectionLevel } from "@/hooks/use-session";
 import { useErrorMessage } from "@/i18n/errors";
 import { pathKey } from "@/lib/compat/revalidate";
+import { useSearchParams } from "@/lib/compat/navigation";
 import { localDate } from "@/lib/units";
+
+import { VisitsToAct, type VisitList } from "./_components/visits-to-act";
 
 /**
  * Section «طلبات الخدمة», tab «الزيارات»: the day board, one day of visits from
@@ -32,6 +35,8 @@ export default function VisitsPage() {
   const clock = useCentreClock();
   const mayWrite = useSectionLevel("REQUESTS") === "WRITE";
   const [date, setDate] = useState(clock.today);
+  const listParam = useSearchParams().get("list");
+  const list: VisitList | null = listParam === "not-returned" || listParam === "awaiting" ? listParam : null;
   const board = useQuery({
     queryKey: [...pathKey(VISITS_PATH), "board", date],
     queryFn: () => listDayBoardQuery({ date: localDate(date) }),
@@ -47,9 +52,11 @@ export default function VisitsPage() {
     <SectionScreen
       section="requests"
       title={tNav("Visits")}
-      actions={board.data ? <DayBoardCounts visits={board.data} clock={clock} /> : undefined}
+      actions={!list && board.data ? <DayBoardCounts visits={board.data} clock={clock} /> : undefined}
     >
-      {board.isError ? (
+      {list ? (
+        <VisitsToAct kind={list} />
+      ) : board.isError ? (
         <ErrorState onRetry={() => void board.refetch()} />
       ) : (
         <DayBoard

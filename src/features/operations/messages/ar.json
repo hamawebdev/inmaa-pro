@@ -342,7 +342,40 @@
     "VisitDroppedByProgramme": "أُسقطت هذه الزيارة بتغيير البرنامج.",
     "WriteWhy": "اذكر السبب.",
     "NoExtraVisitWaiting": "لا توجد لهذه الزيارة زيارة إضافية تنتظر البرمجة.",
-    "ExtraVisitDismissNeedsReason": "اذكر سبب عدم الحاجة إلى زيارة إضافية."
+    "ExtraVisitDismissNeedsReason": "اذكر سبب عدم الحاجة إلى زيارة إضافية.",
+    "DiscountNeedsFile": "الخصم يحتاج إلى ملف العميل الذي تخصه الشكوى.",
+    "RedoNeedsVisit": "إعادة الخدمة تحتاج إلى زيارة من هذا الملف تُعاد.",
+    "ComplaintSettleFirst": "عالج الشكوى أو ارفضها أولاً.",
+    "ClientAlreadyTold": "أُبلغ العميل من قبل.",
+    "ComplaintNamesNoWorker": "هذه الشكوى لا تذكر أي عامل.",
+    "VisitOfAnotherFile": "هذه الزيارة تخص ملفاً آخر.",
+    "ComplaintSettleNeedsNote": "اذكر كيف عولجت الشكوى.",
+    "ComplaintRejectNeedsReason": "اذكر سبب رفض الشكوى.",
+    "CorrectiveNeedsEmployee": "اختر موظفاً مسؤولاً.",
+    "CorrectiveNeedsResponsible": "عيّن المسؤول عن هذه المهمة أولاً.",
+    "CorrectiveInvalid": "لا يمكن حفظ هذه المهمة التصحيحية كما أُدخلت.",
+    "CorrectiveNotFound": "هذه المهمة التصحيحية غير موجودة.",
+    "CorrectiveClosed": "هذه المهمة التصحيحية مغلقة من قبل.",
+    "CorrectiveUnderWay": "هذه المهمة التصحيحية جارية من قبل.",
+    "CorrectiveNeedsDescription": "اذكر ما يجب تصحيحه.",
+    "InspectionDoneCannotCancel": "لا يُلغى تفتيش منجز.",
+    "InspectionScoresIncomplete": "أعطِ كل عنصر علامة من 0 إلى 10، أو أشّر على «لا ينطبق».",
+    "InspectionContractedOnly": "يُجرى التفتيش لملف متعاقد فقط.",
+    "InspectionPlanTooFar": "يُخطَّط التفتيش لسنة قادمة على الأكثر.",
+    "InspectionNeedsSupervisor": "اذكر المشرف الذي قام بالتفتيش.",
+    "InspectionOnlyPlannedMissed": "لا يُسجَّل فائتاً إلا تفتيش مخطط.",
+    "InspectionDateInFuture": "لا يمكن أن يكون تاريخ التفتيش بعد اليوم.",
+    "InspectionNotFound": "هذا التفتيش غير موجود.",
+    "InspectionCancelled": "هذا التفتيش ملغى.",
+    "InspectionInvalid": "لا يمكن حفظ استمارة التفتيش كما أُدخلت.",
+    "InspectionPointUnknown": "هذا العنصر ليس في استمارة هذا التفتيش.",
+    "ReportOnlyResidentComplaint": "لا تتحول إلى شكوى إلا شكوى أحد السكان.",
+    "ReportNotFound": "هذا البلاغ غير موجود.",
+    "ReportAlreadyComplaint": "هذا البلاغ تحول إلى شكوى من قبل.",
+    "ReportInHand": "هذا البلاغ قيد المعالجة من قبل.",
+    "ReportAlreadyHandedOver": "هذا البلاغ أُحيل من قبل.",
+    "ReportClosed": "هذا البلاغ مغلق.",
+    "ReportNotHandedOver": "هذا البلاغ لم يُحَل."
   },
   "FileVisits": {
     "ProgrammeTitle": "برنامج الزيارات",
@@ -821,5 +854,283 @@
     "TodayVisitsHint": "كل زيارات اليوم في جدول العمليات",
     "NoArrival": "لم يُبلَّغ عن الوصول",
     "NoArrivalHint": "تجاوزت موعدها ولم يُبلغ أحد بوصول الفريق"
+  },
+  "Inspections": {
+    "Plan": {
+      "Button": "تخطيط التفتيش",
+      "Title": "تخطيط التفتيش",
+      "Description": "يضع البرنامج تفتيشاً واحداً في كل أسبوع أو شهر حسب خطة كل ملف متعاقد، في اليوم المفضل أو في أول يوم زيارة، مع مشرف الخطة أو مشرف المنطقة. ما خُطط من قبل لا يتكرر.",
+      "UpTo": "التخطيط حتى تاريخ",
+      "Hint": "يُخطَّط كاملاً كل أسبوع أو شهر يبدأ قبل هذا التاريخ.",
+      "UpToInvalid": "اختر تاريخاً من اليوم فما بعد.",
+      "Submit": "تخطيط",
+      "Done": "{count, plural, zero {لم يُخطَّط أي تفتيش} one {خُطِّط تفتيش واحد} two {خُطِّط تفتيشان} few {خُطِّطت # عمليات تفتيش} many {خُطِّط # تفتيشاً} other {خُطِّط # تفتيش}}.",
+      "Nothing": "لا جديد للتخطيط: لكل أسبوع وشهر تفتيشه.",
+      "Failed": "تعذّر تخطيط التفتيش."
+    },
+    "New": {
+      "Button": "تفتيش جديد",
+      "Title": "تفتيش جديد",
+      "Description": "تفتيش خارج الخطة: لمراجعة شكوى أو لمتابعة موقع. تُطبع استمارته بعدها من صفحته.",
+      "File": "الملف",
+      "ChooseFile": "اختر الملف",
+      "NoFiles": "لا يوجد ملف متعاقد",
+      "Required": "هذا الحقل مطلوب.",
+      "Visit": "الزيارة المراقبة",
+      "NoVisit": "بدون زيارة",
+      "VisitHint": "زيارات الملف في الأسبوعين السابقين والقادمين.",
+      "PlannedDate": "التاريخ المبرمج",
+      "Supervisor": "المشرف",
+      "SupervisorAuto": "مشرف الخطة أو المنطقة",
+      "Submit": "إضافة التفتيش",
+      "Done": "أُضيف التفتيش {number}.",
+      "Failed": "تعذّرت إضافة التفتيش."
+    },
+    "List": {
+      "Search": "ابحث بالمكان أو العميل أو المشرف أو الرقم",
+      "StateLabel": "التفتيش المعروض",
+      "States": {
+        "planned": "المبرمجة",
+        "due": "المستحقة والمتأخرة",
+        "done": "المنجزة",
+        "missed": "التي لم تتم",
+        "all": "الكل"
+      },
+      "Columns": {
+        "Number": "الرقم",
+        "Site": "المكان",
+        "Date": "التاريخ",
+        "Supervisor": "المشرف",
+        "Status": "الحالة",
+        "Score": "الدرجة"
+      },
+      "NoSupervisor": "لم يُعيَّن",
+      "BelowThreshold": "أقل من {threshold}",
+      "Open": "فتح",
+      "Print": "طباعة الاستمارة",
+      "Loading": "جارٍ التحميل…",
+      "None": {
+        "planned": "لا يوجد تفتيش مبرمج.",
+        "due": "لا يوجد تفتيش مستحق.",
+        "done": "لم يُدخل أي تفتيش بعد.",
+        "missed": "لا يوجد تفتيش لم يتم.",
+        "all": "لا يوجد تفتيش بعد."
+      },
+      "NoMatch": "لا شيء يطابق البحث.",
+      "Late": "متأخر",
+      "Today": "اليوم"
+    },
+    "Statuses": {
+      "PLANNED": "مبرمج",
+      "DONE": "منجز",
+      "MISSED": "لم يتم",
+      "CANCELLED": "ملغى"
+    },
+    "Levels": {
+      "EXCELLENT": "ممتاز",
+      "VERY_GOOD": "جيد جداً",
+      "GOOD": "جيد",
+      "ACCEPTABLE": "مقبول",
+      "REDO": "يحتاج إلى إعادة"
+    },
+    "Page": {
+      "Title": "تفتيش رقم {number}",
+      "TitleLoading": "تفتيش المشرف",
+      "Description": "استمارة التفتيش كما عادت من الموقع، تُدخل في مرة واحدة.",
+      "Missed": "لم يتم التفتيش",
+      "Cancel": "إلغاء التفتيش",
+      "PrintSheet": "طباعة الاستمارة",
+      "MissedTitle": "التفتيش لم يتم",
+      "MissedDescription": "يبقى التفتيش {number} في السجل على أنه لم يتم.",
+      "MissedConfirm": "تسجيل",
+      "CancelTitle": "إلغاء التفتيش",
+      "CancelDescription": "يُلغى التفتيش {number} ويبقى في السجل.",
+      "CancelConfirm": "إلغاء التفتيش",
+      "Reason": "السبب",
+      "Keep": "تراجع",
+      "MissedDone": "سُجّل أن التفتيش لم يتم.",
+      "CancelledDone": "أُلغي التفتيش.",
+      "Failed": "لم يُحفظ شيء."
+    },
+    "Form": {
+      "Cards": {
+        "Details": "1- بيانات التفتيش",
+        "DetailsHint": "كما في رأس الاستمارة: المشرف، الزيارة المراقبة، تاريخ التفتيش وساعته.",
+        "Marks": "2- عناصر التقييم",
+        "MarksHint": "علامة لكل عنصر من 0 إلى 10، أو لا ينطبق. يحسب البرنامج درجة الجودة من 100.",
+        "Level": "3- مستوى جودة العمل",
+        "LevelHint": "كما أشّر عليه المشرف.",
+        "Workers": "4- ملاحظات حول العمال الحاضرين",
+        "WorkersHint": "فريق الزيارة المراقبة.",
+        "Correction": "5- الإجراء التصحيحي",
+        "CorrectionHint": "تحت الحد، أو إذا أشّر المشرف على نعم، تُنشأ مهمة تصحيحية عند الحفظ.",
+        "SupervisorNotes": "6- ملاحظات المشرف",
+        "ClientRemark": "7- ملاحظة المسؤول في الموقع"
+      },
+      "Fields": {
+        "Number": "رقم التفتيش",
+        "PlannedDate": "التاريخ المبرمج",
+        "Status": "الحالة",
+        "Origin": "المصدر",
+        "FromPlan": "خطة الملف",
+        "ByHand": "أُضيف يدوياً",
+        "Site": "المكان",
+        "File": "الملف",
+        "Division": "القسم",
+        "Supervisor": "اسم المشرف",
+        "ChooseSupervisor": "اختر المشرف",
+        "Visit": "رقم أمر المهمة",
+        "NoVisit": "بدون زيارة",
+        "DoneDate": "تاريخ التفتيش",
+        "DoneTime": "الساعة",
+        "No": "الرقم",
+        "Point": "العنصر",
+        "Mark": "العلامة من 10",
+        "NotApplicable": "لا ينطبق",
+        "Note": "ملاحظات",
+        "Total": "درجة الجودة من 100",
+        "TotalPending": "تُحسب بعد إدخال كل العلامات",
+        "Below": "أقل من {threshold}",
+        "Above": "{threshold} أو أكثر",
+        "ThresholdNote": "إذا كانت الجودة أقل من {threshold}: إعادة الخدمة أو تدريب العاملة أو تغيير العاملة.",
+        "Present": "حاضر(ة)",
+        "Remark": "ملاحظة المشرف",
+        "NoTeam": "لا فريق: اختر الزيارة المراقبة في البطاقة الأولى.",
+        "NeedsCorrection": "هل يحتاج العمل إلى تصحيح؟",
+        "ProposedAction": "الإجراء المقترح"
+      },
+      "TaskExists": "لهذا التفتيش مهمة تصحيحية: {action}، موعدها",
+      "OpenTasks": "المهام التصحيحية",
+      "TaskWillBeMade": "عند الحفظ تُنشأ مهمة تصحيحية باسم المشرف.",
+      "Cancel": "إلغاء",
+      "Save": "حفظ التفتيش",
+      "Saved": "حُفظ التفتيش: الدرجة {total} من 100.",
+      "SavedWithTask": "حُفظ التفتيش: الدرجة {total} من 100، وأُنشئت مهمة تصحيحية.",
+      "SaveFailed": "تعذّر حفظ التفتيش.",
+      "FixMarkedFields": "صحّح الحقول المؤشَّر عليها.",
+      "MissingMarks": "{count, plural, zero {لا عنصر بلا علامة} one {عنصر واحد بلا علامة} two {عنصران بلا علامة} few {# عناصر بلا علامة} many {# عنصراً بلا علامة} other {# عنصر بلا علامة}}"
+    },
+    "Print": {
+      "NotRecorded": "تعذّر تسجيل الطباعة.",
+      "Back": "التفتيش"
+    }
+  },
+  "CorrectiveTasks": {
+    "Statuses": {
+      "OPEN": "مفتوحة",
+      "IN_PROGRESS": "جارية",
+      "DONE": "منجزة",
+      "CANCELLED": "ملغاة"
+    },
+    "Sources": {
+      "INSPECTION": "تفتيش",
+      "COMPLAINT": "شكوى",
+      "PROBLEM_REPORT": "بلاغ مشكلة",
+      "SIGNOFF": "استلام العميل",
+      "MANUAL": "أُضيفت يدوياً"
+    },
+    "List": {
+      "Search": "ابحث بالمكان أو العميل أو المهمة أو المسؤول",
+      "StateLabel": "المهام المعروضة",
+      "States": {
+        "open": "المفتوحة",
+        "overdue": "المتأخرة",
+        "done": "المنجزة",
+        "all": "الكل"
+      },
+      "Columns": {
+        "Site": "المكان",
+        "Task": "المهمة",
+        "Responsible": "المسؤول",
+        "Due": "الموعد",
+        "Status": "الحالة"
+      },
+      "Nobody": "لم يُعيَّن",
+      "Overdue": "متأخرة",
+      "Start": "بدء",
+      "Complete": "إنجاز",
+      "Cancel": "إلغاء",
+      "Loading": "جارٍ التحميل…",
+      "None": {
+        "open": "لا توجد مهمة تصحيحية مفتوحة.",
+        "overdue": "لا توجد مهمة متأخرة.",
+        "done": "لم تُنجز أي مهمة بعد.",
+        "all": "لا توجد مهمة تصحيحية بعد."
+      },
+      "NoMatch": "لا شيء يطابق البحث."
+    },
+    "Dialog": {
+      "Responsible": "المسؤول",
+      "ChooseResponsible": "اختر المسؤول",
+      "Required": "هذا الحقل مطلوب.",
+      "Failed": "لم يُحفظ شيء.",
+      "StartTitle": "بدء المهمة التصحيحية",
+      "StartDescription": "يتولى المسؤول المهمة فتصبح جارية.",
+      "StartSubmit": "بدء المهمة",
+      "Started": "بدأت المهمة.",
+      "CompleteTitle": "إنجاز المهمة التصحيحية",
+      "CompleteDescription": "اكتب ما أُنجز، فتُغلق المهمة.",
+      "Result": "ما الذي أُنجز؟",
+      "CompleteSubmit": "تم الإنجاز",
+      "Completed": "أُنجزت المهمة.",
+      "CancelTitle": "إلغاء المهمة التصحيحية",
+      "CancelDescription": "تُلغى مهمة {site} وتبقى في السجل.",
+      "CancelReason": "سبب الإلغاء",
+      "CancelConfirm": "إلغاء المهمة",
+      "Keep": "تراجع",
+      "Cancelled": "أُلغيت المهمة."
+    }
+  },
+  "Alerts": {
+    "NoArrival": {
+      "Title": "لم يُبلَّغ عن الوصول",
+      "Hint": "زيارات اليوم تجاوزت موعدها ولم يُبلَّغ بوصول الفريق"
+    },
+    "ComplaintLate": {
+      "Title": "شكاوى تجاوزت مهلتها",
+      "Hint": "لم يُرد عليها، والمهلة انقضت أو أوشكت"
+    },
+    "OrdersNotReturned": {
+      "Title": "أوامر لم تُرجع",
+      "Hint": "زيارات سابقة لم يُدخل أمرها"
+    },
+    "SeatsOpen": {
+      "Title": "زيارات بانتظار التأكيد",
+      "Hint": "عامل يُعيَّن أو عميل يُتصل به"
+    },
+    "CorrectiveOverdue": {
+      "Title": "مهام تصحيحية متأخرة",
+      "Hint": "مفتوحة بعد موعدها"
+    },
+    "ContractNoVisits": {
+      "Title": "عقود بلا زيارات",
+      "Hint": "متعاقدة ولم تُنشأ زياراتها بعد"
+    },
+    "InspectionDue": {
+      "Title": "تفتيش مستحق",
+      "Hint": "مخطط لليوم أو قبله"
+    },
+    "CallsTomorrow": {
+      "Title": "اتصالات الغد",
+      "Hint": "عملاء يُذكَّرون بزيارات يوم العمل القادم"
+    }
+  },
+  "VisitsToAct": {
+    "Date": "التاريخ",
+    "Time": "الوقت",
+    "Site": "العميل / المكان",
+    "Team": "العمال",
+    "Status": "الحالة",
+    "Open": "فتح",
+    "Title": {
+      "not-returned": "أوامر لم تُرجع",
+      "awaiting": "زيارات بانتظار التأكيد"
+    },
+    "BackToBoard": "جدول اليوم",
+    "Loading": "جارٍ قراءة الزيارات…",
+    "Empty": {
+      "not-returned": "أُدخلت كل الأوامر السابقة.",
+      "awaiting": "لا توجد زيارة بانتظار التأكيد."
+    }
   }
 }

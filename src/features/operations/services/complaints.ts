@@ -1012,7 +1012,11 @@ export interface ComplaintChoiceClient {
 }
 
 /** The clients a complaint may be about, by name, each with its files (current ones first). */
-export async function listComplaintChoices(ex: Executor, ctx: ServiceContext): Promise<ComplaintChoiceClient[]> {
+export async function listComplaintChoices(
+  ex: Executor,
+  ctx: ServiceContext,
+  _input: Record<string, never> = {},
+): Promise<ComplaintChoiceClient[]> {
   requireSection(ctx, "REQUESTS", "READ");
   const clients = await ex
     .selectFrom("Client")

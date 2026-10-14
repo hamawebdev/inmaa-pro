@@ -49,13 +49,19 @@ export function DateRange({ from, to }: { from: string; to: string }) {
 
 // ── The worker ──────────────────────────────────────────────────────────────
 
-/** The name, then the worker's number under it. */
+/** The name on one line, cut when too long (whole in its tooltip), then the worker's number under it. */
 export function WorkerCell({ worker }: { worker: AttendanceWorker | null }) {
   if (!worker) return <span className="text-muted-foreground">—</span>;
+  const name = workerName(worker);
   return (
-    <div className="min-w-0">
-      <bdi className="block font-bold">{workerName(worker)}</bdi>
-      <Ltr className="block text-sm text-muted-foreground">{worker.number}</Ltr>
+    <div className="max-w-40 min-w-0 xl:max-w-52">
+      <span className="block truncate font-bold" title={name}>
+        <bdi>{name}</bdi>
+      </span>
+      {/* The number inline in a line of the page's direction: it stays under the name, at the start. */}
+      <span className="block truncate text-xs leading-4 text-muted-foreground">
+        <Ltr>{worker.number}</Ltr>
+      </span>
     </div>
   );
 }
@@ -133,7 +139,7 @@ export function LateChip({ lateMin, graceMin }: { lateMin: number | null; graceM
 
 // ── An absence, in two cells ────────────────────────────────────────────────
 
-/** Its dates, then its length (and the hours of a half day or some hours, the days of a leave). */
+/** Its dates, then its length under them (and the hours of a half day or some hours, the days of a leave). */
 export function AbsenceWhen({ line }: { line: AbsenceLine }) {
   const t = useTranslations("WorkerAttendance");
   const typeLabel = useCodeLabel("Options.AbsenceType");
@@ -141,11 +147,11 @@ export function AbsenceWhen({ line }: { line: AbsenceLine }) {
   const days =
     line.days === null ? null : (line.days / 1000).toLocaleString(intlLocaleFor(locale), { maximumFractionDigits: 3 });
   return (
-    <div className="min-w-0">
-      <span className="block font-bold">
+    <div className="max-w-56 min-w-0 xl:max-w-72">
+      <span className="block font-bold whitespace-nowrap">
         <DateRange from={line.startDate} to={line.endDate} />
       </span>
-      <span className="block text-sm text-muted-foreground">
+      <span className="block truncate text-xs leading-4 text-muted-foreground">
         {typeLabel(line.type)}
         {line.startTime && line.endTime && (
           <>
@@ -166,37 +172,44 @@ export function AbsenceWhen({ line }: { line: AbsenceLine }) {
   );
 }
 
-/** What kind of absence (the kind of leave for a leave), how it was reported, and the reason typed. */
+/** What kind of absence (the kind of leave for a leave), then how it was reported and the reason typed. */
 export function AbsenceKind({ line }: { line: AbsenceLine }) {
   const categoryLabel = useCodeLabel("WorkerAttendance.Categories");
   const leaveLabel = useCodeLabel("Options.LeaveType");
   const viaLabel = useCodeLabel("WorkerAttendance.Vias");
+  const first = [categoryLabel(line.category), line.leaveType ? leaveLabel(line.leaveType) : null]
+    .filter(Boolean)
+    .join(" · ");
   const second = [line.reportedVia ? viaLabel(line.reportedVia) : null, line.reason].filter(Boolean).join(" · ");
   return (
-    <div className="max-w-72 min-w-0">
-      <span className="block font-bold">
-        {categoryLabel(line.category)}
-        {line.leaveType && <span className="font-normal"> · {leaveLabel(line.leaveType)}</span>}
+    <div className="max-w-48 min-w-0 xl:max-w-72">
+      <span className="block truncate font-bold" title={first}>
+        {first}
       </span>
       {second && (
-        <bdi className="block truncate text-sm text-muted-foreground" title={second}>
-          {second}
-        </bdi>
+        <span className="block truncate text-xs leading-4 text-muted-foreground" title={second}>
+          <bdi>{second}</bdi>
+        </span>
       )}
     </div>
   );
 }
 
-/** People's treatment for pay: paid, justified. */
+/** People's treatment for pay: paid, then justified under it. */
 export function AbsencePay({ line }: { line: AbsenceLine }) {
   const paidLabel = useCodeLabel("WorkerAttendance.Paid");
   const justifiedLabel = useCodeLabel("WorkerAttendance.Justified");
   return (
-    <div className="min-w-0 text-sm">
+    <div className="min-w-0">
       <span className={cn("block whitespace-nowrap", line.paid === "NO" && "text-muted-foreground")}>
         {paidLabel(line.paid)}
       </span>
-      <span className={cn("block whitespace-nowrap", line.justified === "NO" && "text-muted-foreground")}>
+      <span
+        className={cn(
+          "block text-xs leading-4 whitespace-nowrap",
+          line.justified === "NO" ? "text-muted-foreground" : "text-foreground/80",
+        )}
+      >
         {justifiedLabel(line.justified)}
       </span>
     </div>
@@ -207,7 +220,9 @@ export function AbsencePay({ line }: { line: AbsenceLine }) {
 
 /**
  * The academy's week switch (staff-check-history.tsx): previous, the period
- * in words, next, and a way back to the present when away from it.
+ * in words, next, and a way back to the present when away from it. Below the
+ * `xl` width the two arrows go without their words, as on the day board, so
+ * that the switch shares its row with the view's tabs and search.
  */
 export function PeriodSwitch({
   label,
@@ -228,19 +243,17 @@ export function PeriodSwitch({
   onPresent?: () => void;
 }) {
   return (
-    <div className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-3">
-      <div className="flex min-w-0 flex-wrap items-center gap-2">
-        <Button variant="outline" size="sm" onClick={onPrevious}>
-          {/* "Previous" points left in English and right in Arabic. */}
-          <ChevronLeft className="rtl:rotate-180" />
-          {previousLabel}
-        </Button>
-        <span className="min-w-56 text-center text-base font-bold">{label}</span>
-        <Button variant="outline" size="sm" onClick={onNext}>
-          {nextLabel}
-          <ChevronRight className="rtl:rotate-180" />
-        </Button>
-      </div>
+    <div className="flex min-w-0 flex-wrap items-center gap-2">
+      <Button variant="outline" size="sm" onClick={onPrevious} title={previousLabel}>
+        {/* "Previous" points left in English and right in Arabic. */}
+        <ChevronLeft className="rtl:rotate-180" />
+        <span className="sr-only xl:not-sr-only">{previousLabel}</span>
+      </Button>
+      <span className="min-w-48 text-center text-base font-bold xl:min-w-56">{label}</span>
+      <Button variant="outline" size="sm" onClick={onNext} title={nextLabel}>
+        <span className="sr-only xl:not-sr-only">{nextLabel}</span>
+        <ChevronRight className="rtl:rotate-180" />
+      </Button>
       {presentLabel && onPresent && (
         <Button variant="outline" size="sm" onClick={onPresent}>
           {presentLabel}

@@ -163,5 +163,87 @@ export async function listFileVisits(
   }));
 }
 
+/** A visit an alert tile points at: what it is, where, and how far its team and its order are. */
+export interface VisitToAct extends FileVisitLine {
+  siteName: string;
+  fileId: string;
+}
+
+/**
+ * The lists behind two home tiles: past visits whose order is not typed in
+ * («أوامر لم تُرجع»), and visits still to come that wait for their team or
+ * the client's confirmation («بانتظار التأكيد»).
+ */
+export async function listVisitsToAct(
+  ex: Executor,
+  ctx: ServiceContext,
+  input: { kind: "not-returned" | "awaiting" },
+): Promise<VisitToAct[]> {
+  requireSection(ctx, "REQUESTS", "READ");
+  let rows = ex
+    .selectFrom("Visit")
+    .innerJoin("File", "File.id", "Visit.fileId")
+    .innerJoin("Site", "Site.id", "File.siteId")
+    .leftJoin("VisitReport", "VisitReport.visitId", "Visit.id")
+    .select([
+      "Visit.id",
+      "Visit.number",
+      "Visit.origin",
+      "Visit.visitDate",
+      "Visit.plannedStartTime",
+      "Visit.plannedDurationMin",
+      "Visit.workersNeeded",
+      "Visit.status",
+      "Visit.orderPrintedAt",
+      "Visit.fileId",
+      "VisitReport.entryState",
+      "Site.commonName",
+      "Site.address",
+      (eb) =>
+        eb
+          .selectFrom("VisitWorker")
+          .select((inner) => inner.fn.countAll<number>().as("count"))
+          .whereRef("VisitWorker.visitId", "=", "Visit.id")
+          .where("VisitWorker.seatStatus", "=", "ASSIGNED")
+          .as("seated"),
+    ]);
+  if (input.kind === "awaiting") {
+    rows = rows.where("Visit.visitDate", ">=", ctx.today).where("Visit.status", "=", "AWAITING_CONFIRMATION");
+  } else {
+    rows = rows
+      .where("Visit.visitDate", "<", ctx.today)
+      .where((eb) =>
+        eb.or([
+          eb("Visit.status", "in", ["CONFIRMED", "AWAITING_CONFIRMATION", "IN_PROGRESS"]),
+          eb.and([
+            eb("Visit.status", "=", "DONE"),
+            eb.or([eb("VisitReport.entryState", "is", null), eb("VisitReport.entryState", "!=", "COMPLETE")]),
+          ]),
+        ]),
+      );
+  }
+  const found = await rows
+    .orderBy("Visit.visitDate", input.kind === "awaiting" ? "asc" : "desc")
+    .orderBy("Visit.plannedStartTime")
+    .limit(500)
+    .execute();
+  return found.map((row) => ({
+    id: row.id,
+    number: row.number,
+    origin: row.origin,
+    visitDate: row.visitDate,
+    plannedStartTime: row.plannedStartTime,
+    plannedDurationMin: row.plannedDurationMin,
+    workersNeeded: row.workersNeeded,
+    seated: Number(row.seated ?? 0),
+    status: row.status,
+    orderPrinted: row.orderPrintedAt !== null,
+    entryState: row.entryState,
+    siteName: row.commonName ?? row.address,
+    fileId: row.fileId,
+  }));
+}
+
 export const listDayBoardQuery = query(listDayBoard);
+export const listVisitsToActQuery = query(listVisitsToAct);
 export const listFileVisitsQuery = query(listFileVisits);

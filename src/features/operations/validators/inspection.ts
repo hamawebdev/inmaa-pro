@@ -42,11 +42,14 @@ export type TaskStatus = (typeof TASK_STATUSES)[number];
 /** A task still to be done: it can be started, completed, cancelled, and it falls overdue. */
 export const OPEN_TASK_STATUSES: readonly TaskStatus[] = ["OPEN", "IN_PROGRESS"];
 
-/** The inspections list, filtered in the address (`?state=`). `due`: planned for today or a day already past. */
-export const INSPECTION_FILTERS = ["all", "planned", "due", "done", "missed"] as const;
+/**
+ * The inspections list, filtered in the address (`?state=`); the first is the
+ * default. `due`: still planned for today or a day already past.
+ */
+export const INSPECTION_FILTERS = ["planned", "due", "done", "missed", "all"] as const;
 export type InspectionFilter = (typeof INSPECTION_FILTERS)[number];
 
-/** The corrective tasks list (`?view=corrective&state=`). `overdue`: still to be done, its date past. */
+/** The corrective tasks list (`?view=corrective&state=`); the first is the default. `overdue`: still to be done, its date past. */
 export const CORRECTIVE_FILTERS = ["open", "overdue", "done", "all"] as const;
 export type CorrectiveFilter = (typeof CORRECTIVE_FILTERS)[number];
 
@@ -65,7 +68,9 @@ export function markOf(typed: string): number | null {
 export const inspectionMarkSchema = z.object({
   criterionCode: z.string().min(1),
   /** The mark out of 10, as typed; "" when the box is empty. */
-  score: z.string().refine((value) => value.trim() === "" || MARK.test(value.trim()), "A score is a whole number from 0 to 10."),
+  score: z
+    .string()
+    .refine((value) => value.trim() === "" || MARK.test(value.trim()), "A score is a whole number from 0 to 10."),
   /** «لا ينطبق»: the site has no such thing. Its mark is then ignored. */
   notApplicable: z.boolean(),
   note: z.string().max(500),

@@ -110,7 +110,10 @@ export async function ensureInspectionCriteria(ex: Executor, ctx: ServiceContext
   const rows = DIVISIONS.flatMap((division) =>
     SEED_INSPECTION_CRITERIA[division]
       .map((criterion, index) => ({ criterion, index }))
-      .filter(({ criterion }) => !have.has(criterionId(division, criterion.code)) && !have.has(`${division}:${criterion.code}`))
+      .filter(
+        ({ criterion }) =>
+          !have.has(criterionId(division, criterion.code)) && !have.has(`${division}:${criterion.code}`),
+      )
       .map(({ criterion, index }) => ({
         id: criterionId(division, criterion.code),
         code: criterion.code,
@@ -157,7 +160,13 @@ async function divisionPoints(ex: Executor, division: string): Promise<Inspectio
     rows.length > 0
       ? rows
           .filter((row) => row.isActive === 1)
-          .map((row) => ({ code: row.code, label: row.labelAr, labelFr: row.labelFr, labelEn: row.labelEn, weight: row.weight }))
+          .map((row) => ({
+            code: row.code,
+            label: row.labelAr,
+            labelFr: row.labelFr,
+            labelEn: row.labelEn,
+            weight: row.weight,
+          }))
       : seeded.map((criterion) => ({
           code: criterion.code,
           label: criterion.label,
@@ -649,7 +658,8 @@ export async function listInspections(
     ]);
   const statuses = input.status === undefined ? null : typeof input.status === "string" ? [input.status] : input.status;
   if (statuses) rows = rows.where("Inspection.status", "in", statuses.length > 0 ? [...statuses] : [""]);
-  if (input.due) rows = rows.where("Inspection.status", "=", "PLANNED").where("Inspection.plannedDate", "<=", ctx.today);
+  if (input.due)
+    rows = rows.where("Inspection.status", "=", "PLANNED").where("Inspection.plannedDate", "<=", ctx.today);
   if (input.from && isIsoDate(input.from)) rows = rows.where("Inspection.plannedDate", ">=", localDate(input.from));
   if (input.to && isIsoDate(input.to)) rows = rows.where("Inspection.plannedDate", "<=", localDate(input.to));
   const direction = input.latestFirst ? "desc" : "asc";
@@ -936,9 +946,7 @@ export async function planInspections(
   }
 
   // Numbered in date order, file by file within a day.
-  toCreate.sort(
-    (a, b) => a.plannedDate.localeCompare(b.plannedDate) || a.fileNumber.localeCompare(b.fileNumber, "en"),
-  );
+  toCreate.sort((a, b) => a.plannedDate.localeCompare(b.plannedDate) || a.fileNumber.localeCompare(b.fileNumber, "en"));
   const made: PlannedInspection[] = [];
   for (const planned of toCreate) {
     const plannedDate = localDate(planned.plannedDate);
@@ -1016,13 +1024,7 @@ export async function createInspection(
     .selectFrom("File")
     .innerJoin("Site", "Site.id", "File.siteId")
     .leftJoin("FileProgramme", "FileProgramme.fileId", "File.id")
-    .select([
-      "File.id",
-      "File.number",
-      "File.stage",
-      "Site.zoneId",
-      "FileProgramme.inspectionSupervisorEmployeeId",
-    ])
+    .select(["File.id", "File.number", "File.stage", "Site.zoneId", "FileProgramme.inspectionSupervisorEmployeeId"])
     .where("File.id", "=", input.fileId)
     .where("File.deletedAt", "is", null)
     .executeTakeFirst();
@@ -1567,8 +1569,13 @@ export async function demoInspections(ex: Executor, ctx: ServiceContext, _tools:
     .orderBy("Visit.visitDate", "desc")
     .orderBy("Visit.plannedStartTime", "desc")
     .execute();
-  const ordered = [...recent.filter((visit) => visit.status === "DONE"), ...recent.filter((visit) => visit.status !== "DONE")];
-  const chosen = ordered.filter((visit, index) => ordered.findIndex((other) => other.fileId === visit.fileId) === index);
+  const ordered = [
+    ...recent.filter((visit) => visit.status === "DONE"),
+    ...recent.filter((visit) => visit.status !== "DONE"),
+  ];
+  const chosen = ordered.filter(
+    (visit, index) => ordered.findIndex((other) => other.fileId === visit.fileId) === index,
+  );
   const fallbackSupervisor = (await listEmployeeChoices(ex, ctx))[0]?.id ?? "";
 
   const typeIn = async (visit: (typeof chosen)[number], low: boolean) => {

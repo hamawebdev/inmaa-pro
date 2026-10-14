@@ -43,6 +43,7 @@ export function AbsencesList({
   onMonthChange,
   historyHref,
   onCancel,
+  tabs,
 }: {
   month: string;
   thisMonth: string;
@@ -50,6 +51,8 @@ export function AbsencesList({
   historyHref: (workerId: string) => string;
   /** Left out when the reader may not cancel an absence. */
   onCancel?: (line: AbsenceLine) => void;
+  /** The tab's view switch, first in the month switch's row. */
+  tabs?: React.ReactNode;
 }) {
   const t = useTranslations("WorkerAttendance");
   const statusLabel = useCodeLabel("WorkerAttendance.AbsenceStatuses");
@@ -86,10 +89,12 @@ export function AbsencesList({
         id: "status",
         header: t("Absences.Columns.Status"),
         cell: ({ row }) => (
-          <div className="flex min-w-0 flex-col items-start gap-1">
+          <div className="flex min-w-0 flex-col items-start gap-0.5">
             <AbsenceStatusChip status={row.original.status} />
             {row.original.status === "REQUESTED" && (
-              <span className="text-sm text-muted-foreground">{t("Absences.HrDecides")}</span>
+              <span className="block max-w-48 truncate text-xs leading-4 text-muted-foreground">
+                {t("Absences.HrDecides")}
+              </span>
             )}
           </div>
         ),
@@ -100,16 +105,16 @@ export function AbsencesList({
         header: "",
         cell: ({ row }) => (
           <div className="flex items-center justify-end gap-2">
-            <Button variant="outline" size="sm" asChild>
+            <Button variant="outline" size="sm" asChild title={t("OpenHistory")}>
               <Link to={historyHref(row.original.workerId)}>
                 <History />
-                {t("OpenHistory")}
+                <span className="sr-only 2xl:not-sr-only">{t("OpenHistory")}</span>
               </Link>
             </Button>
             {onCancel && CANCELLABLE.includes(row.original.status) && (
-              <Button variant="outline" size="sm" onClick={() => onCancel(row.original)}>
+              <Button variant="outline" size="sm" title={t("Absences.Cancel")} onClick={() => onCancel(row.original)}>
                 <Ban />
-                {t("Absences.Cancel")}
+                <span className="sr-only 2xl:not-sr-only">{t("Absences.Cancel")}</span>
               </Button>
             )}
           </div>
@@ -134,24 +139,27 @@ export function AbsencesList({
   };
 
   return (
-    <div className="space-y-5">
-      <PeriodSwitch
-        label={dates.month(month)}
-        previousLabel={t("Month.Previous")}
-        nextLabel={t("Month.Next")}
-        onPrevious={() => goTo(shiftMonth(month, -1))}
-        onNext={() => goTo(shiftMonth(month, 1))}
-        presentLabel={month !== thisMonth ? t("Month.Current") : undefined}
-        onPresent={() => goTo(thisMonth)}
-      />
+    <div className="space-y-3 tall:space-y-5">
+      <div className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-3">
+        {tabs}
+        <PeriodSwitch
+          label={dates.month(month)}
+          previousLabel={t("Month.Previous")}
+          nextLabel={t("Month.Next")}
+          onPrevious={() => goTo(shiftMonth(month, -1))}
+          onNext={() => goTo(shiftMonth(month, 1))}
+          presentLabel={month !== thisMonth ? t("Month.Current") : undefined}
+          onPresent={() => goTo(thisMonth)}
+        />
+      </div>
 
       {list.isError ? (
         <ErrorState onRetry={() => void list.refetch()} />
       ) : (
         <>
-          <div className="flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-center">
+          <div className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-3">
             <TableSearch
-              className="w-full lg:max-w-sm lg:flex-1"
+              className="min-w-48 flex-1 sm:max-w-sm"
               placeholder={t("Search")}
               value={search}
               onChange={(value) => {
@@ -166,7 +174,7 @@ export function AbsencesList({
                 firstPage();
               }}
             >
-              <SelectTrigger className="w-full sm:w-56" aria-label={t("Absences.Columns.Status")}>
+              <SelectTrigger className="w-56" aria-label={t("Absences.Columns.Status")}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>

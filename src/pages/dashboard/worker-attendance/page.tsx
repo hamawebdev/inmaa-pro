@@ -1,6 +1,6 @@
 import * as React from "react";
 
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -25,8 +25,8 @@ import {
   readAttendanceParams,
   type AttendanceParams,
 } from "./_components/attendance-params";
-import { ATTENDANCE_KEY } from "./_components/attendance-queries";
-import { DaySheet } from "./_components/day-sheet";
+import { ATTENDANCE_KEY, dayQuery } from "./_components/attendance-queries";
+import { DayCounts, DaySheet } from "./_components/day-sheet";
 import { useReasonConfirm } from "./_components/reason-confirm";
 import { WorkerHistory } from "./_components/worker-history";
 
@@ -44,6 +44,12 @@ const isolate = (text: string) => `⁦${text}⁩`;
  * The header button records an absence, as the academy's adds one; a row
  * button opens the worker's history, as the academy's person pages do. The
  * view, the day, the month and the worker are kept in the address.
+ *
+ * The academy sets its second switch beside its first, above the search; the
+ * first switch here is the section's strip, so the view switch opens the
+ * view's own row of controls instead (the day or month switch, the search),
+ * and the day's counts stand in the heading row, as on the visits tab: the
+ * first worker of the day shows where the academy's first person does.
  */
 export default function WorkerAttendancePage() {
   const tNav = useTranslations("Nav");
@@ -58,6 +64,9 @@ export default function WorkerAttendancePage() {
   const thisMonth = monthOfDate(clock.today);
   const month = params.month ?? monthOfDate(day);
   const canWrite = mayRecordAbsence();
+  const showsDay = params.view === "records" && !params.worker;
+  // The day sheet reads the same day under the same key: TanStack Query asks once.
+  const daySheet = useQuery({ ...dayQuery(day), enabled: showsDay });
 
   const { view, day: dayParam, month: monthParam } = params;
   const go = (next: Partial<AttendanceParams>) => navigate(attendanceHref({ ...params, ...next }), { replace: true });
@@ -124,24 +133,32 @@ export default function WorkerAttendancePage() {
     label: t(`Views.${each}`),
     href: attendanceHref({ view: each, day: dayParam, month: monthParam }),
   }));
+  const viewTabs = <ScreenTabs section="workers" items={views} value={view} ariaLabel={t("ViewsLabel")} />;
+
+  const counts = showsDay && daySheet.data ? <DayCounts rows={daySheet.data.rows} /> : null;
+  const addButton = canWrite ? (
+    <Button variant="add" onClick={() => recordAbsence()}>
+      <Plus />
+      {t("RecordAbsence")}
+    </Button>
+  ) : null;
 
   return (
     <SectionScreen
       section="workers"
       title={tNav("WorkerAttendance")}
       actions={
-        canWrite ? (
-          <Button variant="add" onClick={() => recordAbsence()}>
-            <Plus />
-            {t("RecordAbsence")}
-          </Button>
+        counts || addButton ? (
+          <>
+            {counts}
+            {addButton}
+          </>
         ) : undefined
       }
     >
-      <div className="space-y-5 tall:space-y-6">
-        <ScreenTabs section="workers" items={views} value={view} ariaLabel={t("ViewsLabel")} />
-
-        {params.worker ? (
+      {params.worker ? (
+        <div className="space-y-5 tall:space-y-6">
+          {viewTabs}
           <WorkerHistory
             key={params.worker}
             workerId={params.worker}
@@ -152,24 +169,26 @@ export default function WorkerAttendancePage() {
             onRecordAbsence={canWrite ? recordAbsence : undefined}
             onCancel={canWrite ? cancelAbsence : undefined}
           />
-        ) : view === "absences" ? (
-          <AbsencesList
-            month={month}
-            thisMonth={thisMonth}
-            onMonthChange={(next) => go({ month: next === thisMonth ? null : next })}
-            historyHref={historyHref}
-            onCancel={canWrite ? cancelAbsence : undefined}
-          />
-        ) : (
-          <DaySheet
-            day={day}
-            today={clock.today}
-            onDayChange={(next) => go({ day: next === clock.today ? null : next })}
-            historyHref={historyHref}
-            onRecordAbsence={canWrite ? recordAbsence : undefined}
-          />
-        )}
-      </div>
+        </div>
+      ) : view === "absences" ? (
+        <AbsencesList
+          month={month}
+          thisMonth={thisMonth}
+          onMonthChange={(next) => go({ month: next === thisMonth ? null : next })}
+          historyHref={historyHref}
+          onCancel={canWrite ? cancelAbsence : undefined}
+          tabs={viewTabs}
+        />
+      ) : (
+        <DaySheet
+          day={day}
+          today={clock.today}
+          onDayChange={(next) => go({ day: next === clock.today ? null : next })}
+          historyHref={historyHref}
+          onRecordAbsence={canWrite ? recordAbsence : undefined}
+          tabs={viewTabs}
+        />
+      )}
 
       <AddAbsenceDialog
         open={absence.open}

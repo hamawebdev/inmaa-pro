@@ -4,10 +4,13 @@ import type { DemoNames, DemoTools } from "@/testing/demo";
 import { entryValuesOf } from "./components/visit-entry/visit-entry-data";
 import { addDays, clockOf, minutesOf } from "./rules/calendar";
 import { assignVisitWorker, listSeatCandidates } from "./services/assignment";
+import { demoInspections } from "./services/inspections";
 import { recordOrderPrinted } from "./services/mission-order";
+import { demoComplaints } from "./services/problem-reports";
 import { assignZoneSupervisor } from "./services/supervisors";
 import { generateFileVisits, OPEN_STATUSES } from "./services/programme";
 import { getVisitEntry, reportArrival, saveReturnedOrder } from "./services/visit-entry";
+import { postponeVisit } from "./services/visit-status";
 import type { ReturnedOrderValues } from "./validators/returned-order";
 
 /**
@@ -65,6 +68,8 @@ export async function seedDemo(ex: Executor, ctx: ServiceContext, tools: DemoToo
   names.fileWithVisits = visits[0].fileId;
 
   // Teams: the first workers the rules let through, visit by visit. Without People's workers, seats stay open.
+  // Today's second visit is left a seat short, so the seat picker has a seat to fill.
+  const shortVisitId = visits.filter((visit) => visit.visitDate === ctx.today)[1]?.id ?? null;
   for (const visit of visits) {
     const candidates = await listSeatCandidates(ex, ctx, { visitId: visit.id });
     const free = candidates
@@ -72,7 +77,7 @@ export async function seedDemo(ex: Executor, ctx: ServiceContext, tools: DemoToo
         (candidate) =>
           !candidate.sanctioned && candidate.worstLevel !== "REFUSED" && candidate.worstLevel !== "NEEDS_MANAGER",
       )
-      .slice(0, visit.workersNeeded);
+      .slice(0, visit.id === shortVisitId ? Math.max(0, visit.workersNeeded - 1) : visit.workersNeeded);
     for (const candidate of free) await assignVisitWorker(ex, ctx, { visitId: visit.id, workerId: candidate.id });
   }
 
@@ -103,7 +108,21 @@ export async function seedDemo(ex: Executor, ctx: ServiceContext, tools: DemoToo
     names.visitInProgress = today[0].id;
   }
   if (today[1]) names.visitToday = today[1].id;
+  Object.assign(names, await demoInspections(ex, ctx, tools));
+  Object.assign(names, await demoComplaints(ex, ctx, tools));
   if (coming[0]) names.visitTomorrow = coming[0].id;
+  // A coming visit postponed at the client's request, with its make-up visit two days later.
+  const toPostpone = coming.find((visit) => visit.visitDate > addDays(ctx.today, 1));
+  if (toPostpone) {
+    const { makeupVisitId } = await postponeVisit(ex, ctx, {
+      visitId: toPostpone.id,
+      reason: "CLIENT_REQUEST",
+      note: "العميل مسافر هذا الأسبوع",
+      newDate: addDays(toPostpone.visitDate, 2) as typeof ctx.today,
+    });
+    names.visitPostponed = toPostpone.id;
+    if (makeupVisitId) names.visitMakeup = makeupVisitId;
+  }
   return names;
 }
 
@@ -136,7 +155,8 @@ function returnedSheet(
     completion: withNotes ? "PARTIAL" : "FULL",
     completionPercent: withNotes ? 90 : 100,
     incompleteReason: withNotes ? "مكان مغلق ولم يتوفر المفتاح" : "",
-    needsExtraVisit: false,
+    // The order with notes asks for an extra visit: a proposal waits on File › الزيارات.
+    needsExtraVisit: withNotes,
     needsSupervisor: false,
     signoffStatus: withNotes ? "ACCEPTED_WITH_NOTES" : "ACCEPTED",
     signoffName: "المسؤول في الموقع",

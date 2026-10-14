@@ -32,11 +32,21 @@ afterEach(() => test.close());
 // The test clock stands on Monday 12 October 2026 (weekday 2, Saturday being 0).
 
 async function employee(lastName = "بوزيد", firstName = "كمال") {
-  return test.rows.insert("StaffMember", { kind: "EMPLOYEE", lastName, firstName, engagementStatus: "ACCEPTED" } as never);
+  return test.rows.insert("StaffMember", {
+    kind: "EMPLOYEE",
+    lastName,
+    firstName,
+    engagementStatus: "ACCEPTED",
+  } as never);
 }
 
 async function worker(lastName: string, firstName: string) {
-  return test.rows.insert("StaffMember", { kind: "WORKER", lastName, firstName, engagementStatus: "ACCEPTED" } as never);
+  return test.rows.insert("StaffMember", {
+    kind: "WORKER",
+    lastName,
+    firstName,
+    engagementStatus: "ACCEPTED",
+  } as never);
 }
 
 /** A contracted file in a zone with a supervisor, its plan, and visits on the dates given (each with a team). */
@@ -98,12 +108,7 @@ async function contractFile(options: {
 }
 
 const inspectionsOf = (fileId: string) =>
-  test.db
-    .selectFrom("Inspection")
-    .selectAll()
-    .where("fileId", "=", fileId)
-    .orderBy("plannedDate")
-    .execute();
+  test.db.selectFrom("Inspection").selectAll().where("fileId", "=", fileId).orderBy("plannedDate").execute();
 
 /** The returned sheet with every point marked `mark` (or as `marks` says), and the team present. */
 async function sheetValues(
@@ -130,6 +135,10 @@ async function sheetValues(
 
 describe("the criteria", () => {
   it("inserts the thirty seeded points once, with fixed ids, and never overwrites an edited one", async () => {
+    // First run already seeds them (src/features/operations/seeds.ts): start from a database without seeds.
+    test.close();
+    test = await createTestDatabase({ seeds: false });
+    expect(await test.db.selectFrom("InspectionCriterion").select("id").execute()).toEqual([]);
     const first = await test.transact((ex, ctx) => ensureInspectionCriteria(ex, ctx));
     expect(first.inserted).toBe(30);
     const rows = await test.db.selectFrom("InspectionCriterion").selectAll().execute();
@@ -289,7 +298,11 @@ describe("one inspection", () => {
 
   it("is added by hand on a visit, on its day, with the zone's supervisor", async () => {
     const { inspectionId, number, supervisor, visits } = await inspectedVisit();
-    const row = await test.db.selectFrom("Inspection").selectAll().where("id", "=", inspectionId).executeTakeFirstOrThrow();
+    const row = await test.db
+      .selectFrom("Inspection")
+      .selectAll()
+      .where("id", "=", inspectionId)
+      .executeTakeFirstOrThrow();
     expect(row).toMatchObject({
       number,
       status: "PLANNED",
@@ -304,7 +317,12 @@ describe("one inspection", () => {
       .orderBy("chainSeq", "desc")
       .limit(1)
       .executeTakeFirstOrThrow();
-    expect(entry).toMatchObject({ operation: "CHANGE", action: "CREATE", entity: "Inspection", entityId: inspectionId });
+    expect(entry).toMatchObject({
+      operation: "CHANGE",
+      action: "CREATE",
+      entity: "Inspection",
+      entityId: inspectionId,
+    });
   });
 
   it("is refused on a file that is not contracted, or on another file's visit", async () => {
@@ -345,9 +363,17 @@ describe("one inspection", () => {
     ]);
 
     await test.transact((ex, ctx) => recordInspectionPrinted(ex, ctx, { inspectionId }));
-    const row = await test.db.selectFrom("Inspection").selectAll().where("id", "=", inspectionId).executeTakeFirstOrThrow();
+    const row = await test.db
+      .selectFrom("Inspection")
+      .selectAll()
+      .where("id", "=", inspectionId)
+      .executeTakeFirstOrThrow();
     expect(row.sheetPrintedAt).toBe("2026-10-12T08:00:00.000Z");
-    const lines = await test.db.selectFrom("InspectionScore").selectAll().where("inspectionId", "=", inspectionId).execute();
+    const lines = await test.db
+      .selectFrom("InspectionScore")
+      .selectAll()
+      .where("inspectionId", "=", inspectionId)
+      .execute();
     expect(lines).toHaveLength(8);
     const entry = await test.db
       .selectFrom("AuditLog")
@@ -355,7 +381,12 @@ describe("one inspection", () => {
       .orderBy("chainSeq", "desc")
       .limit(1)
       .executeTakeFirstOrThrow();
-    expect(entry).toMatchObject({ operation: "DISCLOSE", action: "PRINT", entity: "Inspection", entityId: inspectionId });
+    expect(entry).toMatchObject({
+      operation: "DISCLOSE",
+      action: "PRINT",
+      entity: "Inspection",
+      entityId: inspectionId,
+    });
     expect(JSON.parse(entry.context ?? "{}").workers).toEqual([samira.id, nadia.id]);
 
     // A point renamed after the print: the inspection keeps the words on its paper.
@@ -376,7 +407,11 @@ describe("one inspection", () => {
     const saved = await test.transact((ex, ctx) => saveInspectionResult(ex, ctx, { inspectionId, values }));
     expect(saved).toEqual({ total: 90, threshold: 80, belowThreshold: false, correctiveTask: null });
 
-    const row = await test.db.selectFrom("Inspection").selectAll().where("id", "=", inspectionId).executeTakeFirstOrThrow();
+    const row = await test.db
+      .selectFrom("Inspection")
+      .selectAll()
+      .where("id", "=", inspectionId)
+      .executeTakeFirstOrThrow();
     expect(row).toMatchObject({
       status: "DONE",
       doneDate: "2026-10-10",
@@ -467,7 +502,11 @@ describe("one inspection", () => {
     const task = await test.db.selectFrom("CorrectiveTask").selectAll().executeTakeFirstOrThrow();
     // The only worker present is the one the training is about.
     expect(task).toMatchObject({ action: "TRAIN_WORKER", workerId: samira.id, dueDate: "2026-10-14" });
-    const row = await test.db.selectFrom("Inspection").selectAll().where("id", "=", inspectionId).executeTakeFirstOrThrow();
+    const row = await test.db
+      .selectFrom("Inspection")
+      .selectAll()
+      .where("id", "=", inspectionId)
+      .executeTakeFirstOrThrow();
     expect(row.correctionNeeded).toBe(1);
   });
 
@@ -513,7 +552,11 @@ describe("one inspection", () => {
     await expect(
       save({ workers: [...values.workers, { workerId: stranger.id, present: true, remark: "" }] }),
     ).rejects.toThrow("This worker is not on the visit.");
-    const row = await test.db.selectFrom("Inspection").selectAll().where("id", "=", inspectionId).executeTakeFirstOrThrow();
+    const row = await test.db
+      .selectFrom("Inspection")
+      .selectAll()
+      .where("id", "=", inspectionId)
+      .executeTakeFirstOrThrow();
     expect(row.status).toBe("PLANNED");
   });
 
@@ -521,7 +564,9 @@ describe("one inspection", () => {
     const { inspectionId, visits, samira } = await inspectedVisit();
     const values = await sheetValues(inspectionId, { visitId: visits[1].id });
     await expect(
-      test.transact((ex, ctx) => saveInspectionResult(ex, ctx, { inspectionId, values: { ...values, doneDate: "2026-10-12" } })),
+      test.transact((ex, ctx) =>
+        saveInspectionResult(ex, ctx, { inspectionId, values: { ...values, doneDate: "2026-10-12" } }),
+      ),
     ).resolves.toMatchObject({ total: 90 });
     const detail = await test.transact((ex, ctx) => getInspection(ex, ctx, { inspectionId }));
     expect(detail.inspection.visitId).toBe(visits[1].id);
@@ -535,7 +580,11 @@ describe("one inspection", () => {
       test.transact((ex, ctx) => markInspectionMissed(ex, ctx, { inspectionId, reason: "  " })),
     ).rejects.toThrow("A reason is required.");
     await test.transact((ex, ctx) => markInspectionMissed(ex, ctx, { inspectionId, reason: "المشرف في عطلة مرضية" }));
-    const missed = await test.db.selectFrom("Inspection").selectAll().where("id", "=", inspectionId).executeTakeFirstOrThrow();
+    const missed = await test.db
+      .selectFrom("Inspection")
+      .selectAll()
+      .where("id", "=", inspectionId)
+      .executeTakeFirstOrThrow();
     expect(missed.status).toBe("MISSED");
     const entry = await test.db
       .selectFrom("AuditLog")
@@ -546,13 +595,19 @@ describe("one inspection", () => {
     expect(entry).toMatchObject({ action: "STATUS_CHANGE", reason: "المشرف في عطلة مرضية" });
 
     await test.transact((ex, ctx) => cancelInspection(ex, ctx, { inspectionId, reason: "العميل رفض الزيارة" }));
-    const cancelled = await test.db.selectFrom("Inspection").selectAll().where("id", "=", inspectionId).executeTakeFirstOrThrow();
+    const cancelled = await test.db
+      .selectFrom("Inspection")
+      .selectAll()
+      .where("id", "=", inspectionId)
+      .executeTakeFirstOrThrow();
     expect(cancelled.status).toBe("CANCELLED");
     await expect(test.transact((ex, ctx) => recordInspectionPrinted(ex, ctx, { inspectionId }))).rejects.toThrow(
       "This inspection is cancelled.",
     );
 
-    const done = await test.transact((ex, ctx) => createInspection(ex, ctx, { fileId: file.id, plannedDate: "2026-10-11" }));
+    const done = await test.transact((ex, ctx) =>
+      createInspection(ex, ctx, { fileId: file.id, plannedDate: "2026-10-11" }),
+    );
     await test.transact(async (ex: Executor, ctx: ServiceContext) => {
       const values = await sheetValuesIn(ex, ctx, done.id);
       await saveInspectionResult(ex, ctx, { inspectionId: done.id, values });
@@ -566,7 +621,11 @@ describe("one inspection", () => {
 /** The same as `sheetValues`, inside a transaction already open. */
 async function sheetValuesIn(ex: Executor, ctx: ServiceContext, inspectionId: string): Promise<InspectionResultValues> {
   const detail = await getInspection(ex, ctx, { inspectionId });
-  const fallback = await ex.selectFrom("StaffMember").select("id").where("kind", "=", "EMPLOYEE").executeTakeFirstOrThrow();
+  const fallback = await ex
+    .selectFrom("StaffMember")
+    .select("id")
+    .where("kind", "=", "EMPLOYEE")
+    .executeTakeFirstOrThrow();
   return {
     visitId: detail.inspection.visitId ?? "",
     supervisorEmployeeId: detail.inspection.supervisorEmployeeId ?? fallback.id,
@@ -606,9 +665,13 @@ describe("lists and the day-start job", () => {
 
     const missed = await test.transact((ex, ctx) => listInspections(ex, ctx, { status: "MISSED" }));
     expect(missed.map((line) => line.id)).toEqual([longAgo.id]);
-    const planned = await test.transact((ex, ctx) => listInspections(ex, ctx, { status: "PLANNED", latestFirst: true }));
+    const planned = await test.transact((ex, ctx) =>
+      listInspections(ex, ctx, { status: "PLANNED", latestFirst: true }),
+    );
     expect(planned.map((line) => line.id)).toEqual([tomorrow.id, today.id, lastWeek.id]);
-    const inOctober = await test.transact((ex, ctx) => listInspections(ex, ctx, { from: "2026-10-06", to: "2026-10-12" }));
+    const inOctober = await test.transact((ex, ctx) =>
+      listInspections(ex, ctx, { from: "2026-10-06", to: "2026-10-12" }),
+    );
     expect(inOctober.map((line) => line.id)).toEqual([lastWeek.id, today.id]);
   });
 });
