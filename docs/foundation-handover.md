@@ -26,6 +26,8 @@ manual for builders), then this page. Updated at the end of every round. **Last 
 | Notifications (F3b) | Each alert said once a day on the desktop, again that day only if it concerns more; kept in `system.alertsNotified` | `src/lib/alerts/announce.ts`, `src/components/alert-notifier.tsx` |
 | Idle lock (F3b) | `security.idleLockMinutes` (15; 0 off), signs out to the sign-in window, LOCK with cause IDLE, said once on the window | `src/components/security/idle-lock.tsx`, `src/lib/access/idle.ts` |
 | Smaller items (F3b) | `CommunePicker` and `ZonePicker`; `logConsultOnce` (ruling 29); `staffName` (surname then first name); the save-text command for exports; tab pages headed with their tab's label and given a line, record pages none (S-13, S-14); today's tiles three to a row (S-15); the sign-in names scroll inside their box (S-17) | `src/components/{commune,zone}-picker.tsx`, `src/lib/log`, `src/lib/text/names.ts`, `src/components/{section,detail}-screen.tsx` |
+| Owner seeds (F3b) | A registry like events, alerts and daily: each owner's `seeds.ts` exports `registerSeeds(seed)`; first run runs every step in owner order, in its transaction, as the program, after Foundation's rows; the day-start job runs each owner's steps again first in its day transaction (catch-up); steps idempotent; `createTestDatabase({ seeds: false })` for an empty database | `src/lib/seeds`, `first-run.ts`, `src/lib/daily` |
+| Names and phones (F3b) | `staffName` (surname then first name); an account goes by its linked employee's name, or its display name written surname first (`accountName`): sign-in window, `ctx.userName`, the log; `phoneText` (4-2-2-2 or 3-2-2-2) | `src/lib/text/{names,phone}.ts`, `src/lib/access/session.ts` |
 | Harness (F3b) | A queue of a few runs at once (`HARNESS_SLOTS`), a longer settle time (`HARNESS_SETTLE_MS`), `pdf --routes <file>` and `--before`, `shot --anchor <file>` | `scripts/harness/lib/slots.mjs`, `pdf.mjs`, README |
 | Data-model documents | DESIGN (section 19: what changed while building), CONTRACTS, OPTION-CODES, RULINGS, BUILD-NOTES | `docs/data-model` (mine to keep in step) |
 
@@ -42,6 +44,8 @@ manual for builders), then this page. Updated at the end of every round. **Last 
 - F3: the manager answers sanction decisions while signed in. My reading was accepted: no dialog takes his password
   inside another user's session, `requestManagerApproval` is not built (DESIGN.md sections 12 and 19 say so). No
   lockout on wrong passwords; the recovery code and the demo password `inmaa-demo` are accepted.
+- F3b: the IRG scale on قواعد العمل with a clear empty state, `centre.cnasEmployerNumber` with a demo value; owner
+  seeds through a registry; demo accounts and every account name surname first; one phone format in `src/lib/text`.
 - F3b: S-12 (save: `success`, default size, in `PageActions`), S-13 (a tab page is headed with its tab's label, the
   first tab keeps the section's heading), S-14 (the line under the heading on tab pages, none on record pages), S-15
   (home tiles three to a row), S-17 (the sign-in window never grows past the window; its list scrolls inside), one

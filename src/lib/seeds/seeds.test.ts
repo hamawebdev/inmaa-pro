@@ -28,7 +28,7 @@ const seedZone: SeedStep = async (ex, ctx) => {
     .execute();
 };
 
-let tests: TestDatabase[] = [];
+const tests: TestDatabase[] = [];
 beforeEach(() => {
   // Only this file's steps: the folders' own are tested by their owners.
   resetFeatureSeeds({ loadFolders: false });
