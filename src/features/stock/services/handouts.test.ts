@@ -358,6 +358,73 @@ describe("what comes back", () => {
   });
 });
 
+describe("equipment lost or damaged", () => {
+  it("goes on the worker's ledger at what it cost the store", async () => {
+    const worker = await workerOnFile(test);
+    const buckets = await stockItem(test, {
+      nameAr: "دلاء",
+      kind: "EQUIPMENT",
+      category: "TOOL",
+      unit: "PIECE",
+      openingQty: 0,
+    });
+    const { id: supplierId } = await test.transact((ex, ctx) => createSupplier(ex, ctx, { name: "مؤسسة الصفاء" }));
+    await test.transact((ex, ctx) =>
+      recordPurchase(ex, ctx, {
+        date: "2026-10-12",
+        supplierId,
+        division: "COMMON",
+        method: "CASH",
+        lines: [{ itemId: buckets.id, qty: 4, unitPrice: 45_000 }],
+      }),
+    );
+    const handOut = await test.transact((ex, ctx) =>
+      createHandOut(ex, ctx, {
+        date: "2026-10-12",
+        purpose: "WORKER_KIT",
+        workerId: worker.id,
+        lines: [{ itemId: buckets.id, qty: 3, condition: "GOOD" }],
+      }),
+    );
+    const [line] = await test.db.selectFrom("HandOutLine").select("id").where("handOutId", "=", handOut.id).execute();
+    const back = await test.transact((ex, ctx) =>
+      recordHandOutReturn(ex, ctx, {
+        handOutLineId: line.id,
+        date: "2026-10-12",
+        qtyReturned: 1,
+        condition: "GOOD",
+        qtyLost: 1,
+        qtyDamaged: 1,
+        note: "سقط دلو من السطح وانكسر آخر",
+      }),
+    );
+    const debts = await test.db
+      .selectFrom("StaffDebtEntry")
+      .select(["staffId", "direction", "reason", "amount", "balanceAfter", "handOutReturnId"])
+      .where("handOutReturnId", "=", back.id)
+      .orderBy("seq")
+      .execute();
+    expect(debts).toEqual([
+      {
+        staffId: worker.id,
+        direction: "INCREASE",
+        reason: "LOSS",
+        amount: 45_000,
+        balanceAfter: 45_000,
+        handOutReturnId: back.id,
+      },
+      {
+        staffId: worker.id,
+        direction: "INCREASE",
+        reason: "DAMAGE",
+        amount: 45_000,
+        balanceAfter: 90_000,
+        handOutReturnId: back.id,
+      },
+    ]);
+  });
+});
+
 describe("what the hand-out form offers", () => {
   it("lists the jobs in hand, the workers on file and what the store holds", async () => {
     const { file, worker, cleaner } = await arrange();

@@ -2,7 +2,7 @@ import { useState } from "react";
 
 import { useQuery } from "@tanstack/react-query";
 import { CalendarClock, Wrench } from "lucide-react";
-import { useTranslations } from "use-intl";
+import { useLocale, useTranslations } from "use-intl";
 
 import { Ltr } from "@/components/ltr";
 import { SectionScreen } from "@/components/section-screen";
@@ -39,6 +39,9 @@ export default function MaintenancePage() {
   const tNav = useTranslations("Nav");
   const t = useTranslations("Maintenance");
   const dates = useDateText();
+  const locale = useLocale();
+  const nameOf = (unit: EquipmentUnitRow) =>
+    (locale === "fr" ? unit.itemNameFr : locale === "en" ? unit.itemNameEn : null) ?? unit.itemName;
   const conditionLabel = useCodeLabel("StockCodes.Conditions");
   const locationLabel = useCodeLabel("StockCodes.Locations");
   const level = useSectionLevel("STOCK");
@@ -85,7 +88,7 @@ export default function MaintenancePage() {
                   <TableRow key={unit.id}>
                     <TableCell>
                       <div className="max-w-36 min-w-0 xl:max-w-64">
-                        <p className="truncate leading-tight font-bold">{unit.itemName}</p>
+                        <p className="truncate leading-tight font-bold">{nameOf(unit)}</p>
                         <p className="truncate text-sm leading-tight text-muted-foreground">
                           <Ltr>{unit.number}</Ltr> · {locationLabel(unit.location)}
                         </p>

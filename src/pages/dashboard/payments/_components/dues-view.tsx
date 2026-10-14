@@ -82,7 +82,7 @@ export function DuesView({ onRecord }: { onRecord?: (fileId: string) => void }) 
         id: "client",
         header: t("Table.Client"),
         cell: ({ row }) => (
-          <div className="max-w-36 min-w-0 xl:max-w-56">
+          <div className="max-w-32 min-w-0 xl:max-w-56">
             <p className="truncate leading-tight font-bold">{row.original.clientName}</p>
             <p className="truncate text-sm leading-tight text-muted-foreground">
               {divisionLabel(row.original.division)} · <Ltr>{row.original.fileNumber}</Ltr>
@@ -94,7 +94,7 @@ export function DuesView({ onRecord }: { onRecord?: (fileId: string) => void }) 
         id: "payer",
         header: t("Table.Payer"),
         cell: ({ row }) => (
-          <div className="max-w-36 min-w-0 xl:max-w-56">
+          <div className="max-w-32 min-w-0 xl:max-w-56">
             <p className="truncate leading-tight">{row.original.payerName ?? row.original.clientName}</p>
             {row.original.payerPhone && (
               <p className="truncate text-sm leading-tight text-muted-foreground">
@@ -108,7 +108,7 @@ export function DuesView({ onRecord }: { onRecord?: (fileId: string) => void }) 
         id: "what",
         header: t("Table.What"),
         cell: ({ row }) => (
-          <div className="max-w-36 min-w-0 xl:max-w-56">
+          <div className="max-w-32 min-w-0 xl:max-w-56">
             <p className="truncate leading-tight">{what(row.original)}</p>
             <p className="truncate text-sm leading-tight text-muted-foreground">
               {t("DueOn", { date: dates.long(row.original.dueDate) })}
@@ -126,7 +126,7 @@ export function DuesView({ onRecord }: { onRecord?: (fileId: string) => void }) 
         id: "remaining",
         header: t("Table.Remaining"),
         cell: ({ row }) => (
-          <div className="max-w-36 min-w-0 xl:max-w-56">
+          <div className="max-w-32 min-w-0 xl:max-w-56">
             <p className="leading-tight font-bold whitespace-nowrap tabular-nums">{money(row.original.remaining)}</p>
             {row.original.paidAmount > 0 && (
               <p className="truncate text-sm leading-tight text-muted-foreground">

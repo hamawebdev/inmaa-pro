@@ -36,7 +36,10 @@ export interface EquipmentUnitRow {
   id: string;
   number: string;
   itemId: string;
+  /** The item's name; the screen picks the reader's language, Arabic when it has none. */
   itemName: string;
+  itemNameFr: string | null;
+  itemNameEn: string | null;
   serialNumber: string | null;
   condition: ItemCondition;
   location: EquipmentLocation;
@@ -62,6 +65,8 @@ export async function listEquipmentUnits(ex: Executor, ctx: ServiceContext): Pro
       "EquipmentUnit.number",
       "EquipmentUnit.itemId",
       "StockItem.nameAr as itemName",
+      "StockItem.nameFr as itemNameFr",
+      "StockItem.nameEn as itemNameEn",
       "EquipmentUnit.serialNumber",
       "EquipmentUnit.condition",
       "EquipmentUnit.locationKind",
@@ -80,6 +85,8 @@ export async function listEquipmentUnits(ex: Executor, ctx: ServiceContext): Pro
         number: row.number,
         itemId: row.itemId,
         itemName: row.itemName,
+        itemNameFr: row.itemNameFr,
+        itemNameEn: row.itemNameEn,
         serialNumber: row.serialNumber,
         condition,
         location: oneOf<EquipmentLocation>(EQUIPMENT_LOCATIONS, row.locationKind, "STORE"),

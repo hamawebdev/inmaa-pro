@@ -6,20 +6,20 @@ Features 19, 20, 22, 30, 31, 32, 34, 35, 39, 41, 48; the division expense and in
 
 **Services** (all tested on `createTestDatabase()`):
 
-| Service | What it does |
-|---|---|
-| `money/services/dues.ts` | `syncDues` builds and keeps a file's dues from its terms (events below); `listFileDues`, `getFilePaymentSummary` (the hub tile, «حالة الدفع») |
-| `money/services/invoices.ts` | `listInvoiceCandidates`, `prepareInvoice` (lines, totals, visit statement, blockers), `issueInvoice` (legal number, chain, digest), `voidInvoice` (a `VOIDED` event), `listInvoices`, `getInvoiceSheet`, `recordInvoicePrinted` |
-| `money/services/payments.ts` | `recordPayment` (allocation oldest first, stamp duty on cash, receipt), `voidPayment`, `listPayments`, `listPayableFiles`, `issueReceiptBatch` + `getReceiptBatch` (numbered blanks for a collector), `listCollectors`, `getReceiptSheet`, `recordReceiptPrinted` |
-| `money/services/debts.ts` | `listOpenDues` (the debt list), `getFileMoney` (a file's part «التسديد»), `getPaymentReminder` + `recordReminderPrinted` |
-| `money/services/reports.ts` | `getIncomeData` (income screen), `getPeriodReport` (result per division, indicators, forecast, per file) |
-| `money/services/expenses.ts` | list, create, update, soft delete (manual rows only) |
-| `money/services/wages.ts` | `postPayoutExpenses` / `removePayoutExpenses`: People's payouts in the expenses (RULINGS A1) |
-| `stock/services/items.ts`, `movements.ts` | the inventory; every quantity moves through the ledger |
-| `stock/services/handouts.ts` | create (against a file, a visit and a named worker), return (lost or damaged → `handout.returnedShort`), cancel, list, slip, `getHandOutsForVisit` (Operations' mission order), the form's choices (with the store's pieces) |
-| `stock/services/purchases.ts` | suppliers, purchases (stock in, pieces numbered, average cost, one expense per kind) |
-| `stock/services/counts.ts` | counts and their adjustments (no screen yet) |
-| `stock/services/maintenance.ts` | the pieces, their schedule, maintenance records (the cost becomes an expense on «عام») |
+| Service                                   | What it does                                                                                                                                                                                                                                                      |
+| ----------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `money/services/dues.ts`                  | `syncDues` builds and keeps a file's dues from its terms (events below); `listFileDues`, `getFilePaymentSummary` (the hub tile, «حالة الدفع»)                                                                                                                     |
+| `money/services/invoices.ts`              | `listInvoiceCandidates`, `prepareInvoice` (lines, totals, visit statement, blockers), `issueInvoice` (legal number, chain, digest), `voidInvoice` (a `VOIDED` event), `listInvoices`, `getInvoiceSheet`, `recordInvoicePrinted`                                   |
+| `money/services/payments.ts`              | `recordPayment` (allocation oldest first, stamp duty on cash, receipt), `voidPayment`, `listPayments`, `listPayableFiles`, `issueReceiptBatch` + `getReceiptBatch` (numbered blanks for a collector), `listCollectors`, `getReceiptSheet`, `recordReceiptPrinted` |
+| `money/services/debts.ts`                 | `listOpenDues` (the debt list), `getFileMoney` (a file's part «التسديد»), `getPaymentReminder` + `recordReminderPrinted`                                                                                                                                          |
+| `money/services/reports.ts`               | `getIncomeData` (income screen), `getPeriodReport` (result per division, indicators, forecast, per file)                                                                                                                                                          |
+| `money/services/expenses.ts`              | list, create, update, soft delete (manual rows only)                                                                                                                                                                                                              |
+| `money/services/wages.ts`                 | `postPayoutExpenses` / `removePayoutExpenses`: People's payouts in the expenses (RULINGS A1)                                                                                                                                                                      |
+| `stock/services/items.ts`, `movements.ts` | the inventory; every quantity moves through the ledger                                                                                                                                                                                                            |
+| `stock/services/handouts.ts`              | create (against a file, a visit and a named worker), return (lost or damaged → `handout.returnedShort`), cancel, list, slip, `getHandOutsForVisit` (Operations' mission order), the form's choices (with the store's pieces)                                      |
+| `stock/services/purchases.ts`             | suppliers, purchases (stock in, pieces numbered, average cost, one expense per kind)                                                                                                                                                                              |
+| `stock/services/counts.ts`                | counts and their adjustments (no screen yet)                                                                                                                                                                                                                      |
+| `stock/services/maintenance.ts`           | the pieces, their schedule, maintenance records (the cost becomes an expense on «عام»)                                                                                                                                                                            |
 
 **Events** (`money/events.ts`): `file.contracted`, `file.termsChanged`, `file.ended`, `visit.signedOff`, `visit.statusChanged` → `syncDues`; `payout.recorded` → `postPayoutExpenses`; `payout.voided` → `removePayoutExpenses`.
 
@@ -31,13 +31,13 @@ Features 19, 20, 22, 30, 31, 32, 34, 35, 39, 41, 48; the division expense and in
 
 **Demo** (`money/demo.ts`, `stock/demo.ts`). On Monday 12 October 2026 each tile is lit by a named record:
 
-| Tile | Record |
-|---|---|
-| `contract.ending` | `money.pastContract` (ends 31 October) |
+| Tile              | Record                                                                            |
+| ----------------- | --------------------------------------------------------------------------------- |
+| `contract.ending` | `money.pastContract` (ends 31 October)                                            |
 | `payment.overdue` | `money.dueOverdue` (15 September, invoiced as `money.invoiceOutstanding`, unpaid) |
-| `payment.dueSoon` | `money.dueSoon` (15 October) |
-| `stock.low` | `stock.itemLow`, and the other sample items below their minimum |
-| `maintenance.due` | `stock.unitMaintenanceDue` (next service 15 October) |
+| `payment.dueSoon` | `money.dueSoon` (15 October)                                                      |
+| `stock.low`       | `stock.itemLow`, and the other sample items below their minimum                   |
+| `maintenance.due` | `stock.unitMaintenanceDue` (next service 15 October)                              |
 
 `money.invoicePaid` is paid in cash (`money.paymentCash`, receipt `money.receiptPaid`) and shows in the income and the reports under المنازل. `money/demo.test.ts` checks all of this.
 
@@ -69,6 +69,8 @@ Features 19, 20, 22, 30, 31, 32, 34, 35, 39, 41, 48; the division expense and in
 - The reports keep «عام» as its own line: the common expenses are not spread over the divisions.
 
 ## Open items
+
+- The 29 stock items of BUILD-NOTES "Owner seeds" move to Foundation's seed registry (`stock/seeds.ts`) when it lands; the demo will then use the seeded items.
 
 - Not built: the daily cash reconciliation of receipts (#32 `receipts.unreconciled`), the stock count screen (service exists), per-contract profitability with labour cost (#30, rule exists, needs `cost.read` and People's hours), the accountant's export (#48, format not named), renewals in the forecast.
 - A collector's payment typed against a blank receipt (`receiptId` in `recordPayment`) has no screen yet.

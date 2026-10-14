@@ -1,10 +1,8 @@
-import { CircleDollarSign, ReceiptText, Scale } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useLocale, useTranslations } from "use-intl";
 
 import { Ltr } from "@/components/ltr";
 import { SectionHeading } from "@/components/screen";
-import { StatCard } from "@/components/stat-card";
 import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { FigureStrip } from "@/features/money/components/figure-strip";
 import { useDivisionLabel } from "@/features/money/components/labels";
@@ -42,23 +40,14 @@ export function ReportView({ report }: { report: PeriodReport }) {
     <div className="space-y-8 tall:space-y-10">
       <section className="space-y-4 tall:space-y-5">
         <SectionHeading>{t("Result")}</SectionHeading>
-        <div className="grid min-w-0 grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 tall:gap-6">
-          <StatCard
-            tone="money"
-            icon={CircleDollarSign}
-            label={t("Income")}
-            value={money(result.totalIncome)}
-            href="/dashboard/income"
-          />
-          <StatCard
-            tone="money"
-            icon={ReceiptText}
-            label={t("Expenses")}
-            value={money(result.totalExpenses)}
-            href="/dashboard/expenses"
-          />
-          <StatCard tone="money" icon={Scale} label={t("Profit")} value={<Ltr>{money(result.profit)}</Ltr>} />
-        </div>
+        {/* A period's totals run to six and seven figures: the strip's type keeps them whole, as on the income screen. */}
+        <FigureStrip
+          figures={[
+            { label: t("Income"), value: money(result.totalIncome) },
+            { label: t("Expenses"), value: money(result.totalExpenses) },
+            { label: t("Profit"), value: money(result.profit) },
+          ]}
+        />
       </section>
 
       <section className="space-y-4 tall:space-y-5">
@@ -139,7 +128,7 @@ export function ReportView({ report }: { report: PeriodReport }) {
           <TableBody>
             {forecast.months.map((month) => (
               <TableRow key={month.month}>
-                <TableCell className="font-bold whitespace-nowrap">{dates.month(`${month.month}-01`)}</TableCell>
+                <TableCell className="font-bold whitespace-nowrap">{dates.month(month.month)}</TableCell>
                 <TableCell>{signed(month.receipts)}</TableCell>
                 <TableCell>{signed(month.expenses)}</TableCell>
                 <TableCell>{signed(month.net, true)}</TableCell>
