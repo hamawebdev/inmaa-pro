@@ -5,6 +5,7 @@ import { newId } from "@/lib/db/rows";
 import { emit } from "@/lib/events";
 import { logChange, logDisclose } from "@/lib/log";
 import { peekLegalNumber } from "@/lib/numbering";
+import { MISSING_FOR_INVOICE } from "@/features/clients/rules/client-identifiers";
 import { WEEKDAY_AR, weekdayOf } from "@/lib/options";
 import { action, query } from "@/lib/service/action";
 import type { Executor, ServiceContext } from "@/lib/service/context";
@@ -47,7 +48,7 @@ import {
 } from "../validators/option-codes";
 
 import { readInvoiceSettings, readStampSettings, readTaxSettings } from "./money-settings";
-import { readFileParty, readSeller } from "./parties";
+import { readFileParty, readSeller, type FileParty } from "./parties";
 import { rebalanceFile } from "./credit";
 import { MONEY_PATHS } from "./paths";
 import { readFileBilling, type FileBilling } from "./terms";
@@ -220,7 +221,8 @@ export const INVOICE_BLOCKERS = [
   "BUYER_NO_ADDRESS",
   "BUYER_TRADE_REGISTER_UNANSWERED",
   "BUYER_NO_TRADE_REGISTER",
-  "BUYER_NO_TAX_IDS",
+  "BUYER_NO_NIF",
+  "BUYER_NO_NIS",
   "NOTHING_TO_INVOICE",
 ] as const;
 export type InvoiceBlocker = (typeof INVOICE_BLOCKERS)[number];
@@ -238,10 +240,11 @@ export const INVOICE_REFUSALS: Readonly<Record<InvoiceBlocker, string>> = {
   SELLER_INCOMPLETE:
     "The centre's trade register, NIS, NIF, article number and address are needed before the first invoice.",
   BUYER_NO_ADDRESS: "This client has no address to print on the invoice.",
-  BUYER_TRADE_REGISTER_UNANSWERED:
-    "Say on the client card whether this organisation has a trade register before its first invoice.",
-  BUYER_NO_TRADE_REGISTER: "This client's trade register number is needed on the invoice.",
-  BUYER_NO_TAX_IDS: "This organisation's NIF and NIS are needed on the invoice: type them on the client card.",
+  // An organisation's identifiers: Clients' own sentences, the ones its card shows (INV-4).
+  BUYER_TRADE_REGISTER_UNANSWERED: MISSING_FOR_INVOICE.tradeRegisterAnswer,
+  BUYER_NO_TRADE_REGISTER: MISSING_FOR_INVOICE.rcNumber,
+  BUYER_NO_NIF: MISSING_FOR_INVOICE.nif,
+  BUYER_NO_NIS: MISSING_FOR_INVOICE.nis,
   NOTHING_TO_INVOICE: "There is nothing to invoice: the total is zero.",
 };
 
@@ -343,7 +346,7 @@ async function prepare(ex: Executor, ctx: ServiceContext, input: InvoiceInput): 
   const block = (blocker: InvoiceBlocker) => {
     if (!blockers.includes(blocker)) blockers.push(blocker);
   };
-  const file = await readFileBilling(ex, input.fileId);
+  const file = await readFileBilling(ex, ctx, input.fileId);
   const empty: Prepared = {
     fileId: input.fileId,
     fileNumber: file?.number ?? "",
@@ -377,22 +380,22 @@ async function prepare(ex: Executor, ctx: ServiceContext, input: InvoiceInput): 
     throw new Error(`money: unknown payment method ${empty.paymentMethod}`);
   }
 
-  const party = await readFileParty(ex, file);
+  const party = await readFileParty(ex, ctx, file);
   const seller = await readSeller(ex);
   const tax = await readTaxSettings(ex);
   const settings = await readInvoiceSettings(ex);
   if (tax.mode === null) block("NO_TAX_MODE");
   // Decree 05-468 and DESIGN.md section 11: the seller's identifiers, article number and address (INV-3).
   if (!seller.rc || !seller.nis || !seller.nif || !seller.articleNumber || !seller.address) block("SELLER_INCOMPLETE");
-  if (!party.buyer.address) block("BUYER_NO_ADDRESS");
-  if (file.division === "ORGANISATION") {
-    // An organisation: «السجل التجاري» answered, its RC when نعم, its NIF and NIS always (INV-4).
-    if (party.tradeRegister === null) block("BUYER_TRADE_REGISTER_UNANSWERED");
-    else if (party.tradeRegister && !party.buyer.rc) block("BUYER_NO_TRADE_REGISTER");
-    if (!party.buyer.nif || !party.buyer.nis) block("BUYER_NO_TAX_IDS");
-  } else if (party.buyer.hasTradeRegister && !party.buyer.rc) {
-    block("BUYER_NO_TRADE_REGISTER");
-  }
+  // What the client lacks, as Clients' card says it (`getClientForInvoice().missing`).
+  const BLOCKER_OF: Record<FileParty["missing"][number], InvoiceBlocker> = {
+    ADDRESS: "BUYER_NO_ADDRESS",
+    tradeRegisterAnswer: "BUYER_TRADE_REGISTER_UNANSWERED",
+    rcNumber: "BUYER_NO_TRADE_REGISTER",
+    nif: "BUYER_NO_NIF",
+    nis: "BUYER_NO_NIS",
+  };
+  for (const code of party.missing) block(BLOCKER_OF[code]);
 
   const wanted = [...new Set(input.dueIds)];
   if (wanted.length === 0) block("NO_DUE_CHOSEN");

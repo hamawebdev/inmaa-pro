@@ -54,7 +54,11 @@ describe("INV-3: the centre's identity", () => {
 describe("INV-4: an organisation's identifiers", () => {
   async function organisation(client: Record<string, unknown>) {
     const ready = await novemberReady({ division: "ORGANISATION", formKind: "ORG_CONTRACT" });
-    await test.db.updateTable("Client").set(client).where("id", "=", ready.file.clientId).execute();
+    await test.db
+      .updateTable("Client")
+      .set({ clientType: "ORGANISATION", ...client })
+      .where("id", "=", ready.file.clientId)
+      .execute();
     return ready;
   }
 
@@ -79,7 +83,7 @@ describe("INV-4: an organisation's identifiers", () => {
     test = await createTestDatabase();
     await centreReady(test);
     ready = await organisation({ hasTradeRegister: 0, rcNumber: null, nif: "000416012345678", nis: null });
-    expect(await blockers(ready.file.id, ready.november.id)).toEqual(["BUYER_NO_TAX_IDS"]);
+    expect(await blockers(ready.file.id, ready.november.id)).toEqual(["BUYER_NO_NIS"]);
   });
 
   it("issues once all is there", async () => {

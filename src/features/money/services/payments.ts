@@ -131,9 +131,9 @@ export async function recordPayment(
   const collectorStaffId = collectorKind === "OFFICE" ? null : text(input.collectorStaffId);
   if (collectorKind !== "OFFICE" && !collectorStaffId) throw new ServiceError("Choose who collected the money.");
 
-  const file = await readFileBilling(ex, input.fileId);
+  const file = await readFileBilling(ex, ctx, input.fileId);
   if (!file) throw new ServiceError("This file does not exist.");
-  const party = await readFileParty(ex, file);
+  const party = await readFileParty(ex, ctx, file);
 
   // ── Which dues it settles ──
   // The file's credit goes first: money already received is placed before this payment is (INV-2).

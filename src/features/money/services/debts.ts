@@ -210,7 +210,7 @@ export async function getPaymentReminder(
   input: { fileId: string },
 ): Promise<PaymentReminderData> {
   if (!can(ctx, "payment.record")) requireSection(ctx, "MONEY", "READ");
-  const file = await readFileBilling(ex, input.fileId);
+  const file = await readFileBilling(ex, ctx, input.fileId);
   if (!file) throw new ServiceError("This file does not exist.");
   const client = await ex.selectFrom("Client").select("name").where("id", "=", file.clientId).executeTakeFirstOrThrow();
   const dues = (await listFileDues(ex, ctx, { fileId: file.id })).filter((due) => !due.cancelled && due.remaining > 0);

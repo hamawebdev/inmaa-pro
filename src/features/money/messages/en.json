@@ -215,9 +215,7 @@
     "CashDifferenceNote": "Say why the cash differs or a receipt is missing.",
     "DayNotCome": "A day cannot be closed before it has come.",
     "AmountNotNegative": "An amount cannot be negative.",
-    "PeriodStartAfterEndMoney": "The start of the period cannot be after its end.",
-    "BuyerTradeRegisterUnanswered": "Say on the client card whether this organisation has a trade register before its first invoice.",
-    "BuyerNoTaxIds": "This organisation's NIF and NIS are needed on the invoice: type them on the client card."
+    "PeriodStartAfterEndMoney": "The start of the period cannot be after its end."
   },
   "Alerts": {
     "ContractEnding": {
@@ -512,7 +510,7 @@
   },
   "Reconciliation": {
     "Title": "Daily reconciliation",
-    "DayTitle": "Reconciliation of {date}",
+    "DayTitle": "Reconciliation of {date} · {collector}",
     "Office": "The office",
     "CouldNotLoad": "This day could not be read.",
     "DayCount": "{count, plural, =0 {No day to reconcile} one {# day} other {# days}}",
@@ -534,7 +532,7 @@
       "Actions": "Actions",
       "Receipt": "Receipt",
       "Client": "Client",
-      "Received": "Received",
+      "Received": "Amount received",
       "Outcome": "What became of it"
     },
     "Receipts": "The day's receipts",

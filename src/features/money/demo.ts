@@ -12,7 +12,7 @@ import type { DemoNames, DemoTools } from "@/testing/demo";
 import { addMinutesToTime } from "./rules/dates";
 import { createExpense } from "./services/expenses";
 import { issueInvoice } from "./services/invoices";
-import { recordPayment } from "./services/payments";
+import { issueReceiptBatch, recordPayment } from "./services/payments";
 import type { ExpenseFormValues } from "./validators/expense";
 
 /**
@@ -31,7 +31,10 @@ import type { ExpenseFormValues } from "./validators/expense";
  * October 2026: it ends on 31 October (`contract.ending`, inside the 30 days
  * of `alerts.contractEndLeadDays`), its September due of 15 September is not
  * paid (`payment.overdue`), and its October due falls on Thursday 15
- * (`payment.dueSoon`, inside the 7 days of `alerts.paymentDueLeadDays`).
+ * (`payment.dueSoon`, inside the 7 days of `alerts.paymentDueLeadDays`). A
+ * block of blank receipts handed to a worker this morning lights
+ * `receipts.unreconciled` from the next day (`--now 2026-10-13`) until his day
+ * is reconciled.
  *
  * Until Clients' demo holds a contract old enough to be invoiced, this is the
  * one; the numbers, the history and the log are what the program would hold.
@@ -295,6 +298,18 @@ export async function seedDemo(ex: Executor, ctx: ServiceContext, tools: DemoToo
     paymentMethod: "CASH",
   });
   names.invoiceOutstanding = owed.id;
+
+  // ── This morning: a block of three blank receipts goes with a worker who collects at clients' doors ──
+  // They are his until tonight; from tomorrow, until the day is reconciled, the receipts tile counts them.
+  const collector = tools.names.people?.workerLeader ?? tools.names.people?.workerSenior;
+  if (collector) {
+    const block = await issueReceiptBatch(ex, accountant, {
+      count: 3,
+      collectorKind: "WORKER",
+      collectorStaffId: collector,
+    });
+    names.receiptBlock = block.batchId;
+  }
   names.dueOverdue = september.id;
   const october = dues.find((due) => due.periodStart === "2026-10-01");
   if (october) names.dueSoon = october.id;

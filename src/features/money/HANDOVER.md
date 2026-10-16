@@ -2,7 +2,7 @@
 
 Features 19, 20, 22, 30, 31, 32, 34, 35, 39, 41, 48; the division expense and income lines; hand-outs per job; the contract-end and payment-due alerts. Folders `src/features/money/**`, `src/features/stock/**`; pages `expenses/`, `income/`, `invoices/`, `payments/`, `reports/`, `inventory/`, `handouts/`, `purchases/`, `maintenance/`, `files/[id]/handouts/`, `files/[id]/payments/`. Stock's screens are in money's route list.
 
-## What exists (end of round 2)
+## What exists (end of round 3)
 
 **Services** (all tested on `createTestDatabase()`):
 
@@ -21,11 +21,22 @@ Features 19, 20, 22, 30, 31, 32, 34, 35, 39, 41, 48; the division expense and in
 | `stock/services/counts.ts`                | counts and their adjustments (no screen yet)                                                                                                                                                                                                                      |
 | `stock/services/maintenance.ts`           | the pieces, their schedule, maintenance records (the cost becomes an expense on «عام»)                                                                                                                                                                            |
 
+Round 3 added:
+
+| Service                            | What it does                                                                                                                                                                                  |
+| ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `money/services/reconciliation.ts` | «المطابقة اليومية»: a collector's day (its receipts USED, VOIDED or MISSING, the cash expected), `declareReceipt`, `closeReconciliation` (final; one correction), `countUnreconciledReceipts` |
+| `money/services/credit.ts`         | INV-2: `rebalanceFile` after an invoice or its void, `settleCredit` before a payment, `fileCredit`                                                                                            |
+| `money/services/profitability.ts`  | #30: `getFileProfitability` (estimate against actual, `cost.read`, CONSULT logged once a day)                                                                                                 |
+| `money/services/exports.ts`        | #48: `buildAccountantExport` (four CSV files, `ExportBatch`, DISCLOSE logged)                                                                                                                 |
+| `stock/services/counts.ts`         | `listCounts` beside open, type, close                                                                                                                                                         |
+| `stock/seeds.ts`                   | the 29 seeded items (fixed ids `stock-item-<code>`, inserts what is missing)                                                                                                                  |
+
 **Events** (`money/events.ts`): `file.contracted`, `file.termsChanged`, `file.ended`, `visit.signedOff`, `visit.statusChanged` → `syncDues`; `payout.recorded` → `postPayoutExpenses`; `payout.voided` → `removePayoutExpenses`.
 
-**Alerts**: `money/alerts.ts` (`contract.ending`, `payment.overdue`, `payment.dueSoon`), `stock/alerts.ts` (`stock.low`, `maintenance.due`).
+**Alerts**: `money/alerts.ts` (`contract.ending`, `payment.overdue`, `payment.dueSoon`, `receipts.unreconciled`), `stock/alerts.ts` (`stock.low`, `maintenance.due`).
 
-**Screens**: المصاريف حسب القسم, المداخيل حسب القسم, الفواتير (list, `invoices/new`), التسديد والديون (payments, debts, payment dialog, blank receipts), التقارير والمؤشرات; جرد المخزون (item dialog), التسليم (list, `handouts/new`, return dialog), المشتريات (list, `purchases/new`), الصيانة; a file's parts التسديد and التسليم.
+**Screens**: المصاريف حسب القسم, المداخيل حسب القسم, الفواتير (list, `invoices/new`), التسديد والديون (payments, debts, payment dialog, blank receipts), التقارير والمؤشرات; جرد المخزون (item dialog), التسليم (list, `handouts/new`, return dialog), المشتريات (list, `purchases/new`), الصيانة; a file's parts التسديد (with «ربحية العقد» for `cost.read`) and التسليم. Round 3: the third view of التسديد والديون, «المطابقة اليومية», and a collector's day (`payments/reconciliation`), where a blank receipt's payment is typed from his copy; «الجرد» (`inventory/counts`, `inventory/counts/:id`); the forecast's renewals and «ملفات المحاسب» on the reports.
 
 **Sheets**, all from stored rows: the invoice and its visit statement, the cash receipt (and a block of blank ones), the payment reminder, the hand-out slip.
 
@@ -40,6 +51,32 @@ Features 19, 20, 22, 30, 31, 32, 34, 35, 39, 41, 48; the division expense and in
 | `maintenance.due` | `stock.unitMaintenanceDue` (next service 15 October)                              |
 
 `money.invoicePaid` is paid in cash (`money.paymentCash`, receipt `money.receiptPaid`) and shows in the income and the reports under المنازل. `money/demo.test.ts` checks all of this.
+
+The block of blank receipts handed to `people.workerLeader` this morning (`money.receiptBlock`) lights `receipts.unreconciled` from the next day (`--now 2026-10-13`). The demo's store is the 29 seeded items: the office sets his four minimums, counts the materials on 1 October, buys on 5 October.
+
+## The accountant's files (#48)
+
+CSV, UTF-8 with a byte-order mark, `;` between columns, Windows line ends; amounts `12000,00` (comma before two decimals, no thousands mark), dates `DD/MM/YYYY`, codes in his words. From «التقارير والمؤشرات» for `export.run`, over the period on screen. Every file is an `ExportBatch` row (kind, period, rows, SHA-256) and a DISCLOSE entry.
+
+| File                       | Columns                                                                                                                                                                                                                                |
+| -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Sales journal (`INVOICES`) | رقم الفاتورة; تاريخ الفاتورة; العميل; NIF العميل; RC العميل; رقم الملف; القسم; طريقة السداد; المجموع خارج الرسم; الرسم على القيمة المضافة; المبلغ المستحق; حق الطابع; الصافي للدفع; الحالة (صادرة / ملغاة); تاريخ الإلغاء; سبب الإلغاء |
+| Cash receipts (`RECEIPTS`) | رقم السند; تاريخ السند; المحصِّل; رقم الملف; العميل; مسدد أتعاب; المبلغ; حق الطابع; المجموع المقبوض; الحالة (مستعمل / فارغ / ملغى / مفقود); السبب                                                                                      |
+| Payments (`PAYMENTS`)      | تاريخ الدفع; رقم الملف; العميل; القسم; طريقة الدفع; رقم المرجع; المبلغ; حق الطابع; المجموع المقبوض; رقم السند; الفواتير; الحالة (صحيح / ملغى)                                                                                          |
+| Expenses (`EXPENSES`)      | التاريخ; القسم; البند; المبلغ; طريقة الدفع; المستفيد; المصدر (يدوي / شراء / صيانة / أجور); ملاحظة                                                                                                                                      |
+
+## The invoicing audit (scratchpad/audit/for-money.md)
+
+| Finding | State                                                                                                                                                                                                                                                                                                                   |
+| ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| INV-2   | Fixed: `credit.ts`. An invoice or a void that brings a due below what was paid moves the excess to the next open dues, oldest first; the rest is the file's credit, shown on its part, the debt list and the reminder, and placed first at the next payment. `voidPayment` reverses only the allocations still in force |
+| INV-3   | Fixed: `SELLER_INCOMPLETE` also asks for the centre's article number and address                                                                                                                                                                                                                                        |
+| INV-4   | Fixed: an organisation's invoice waits for «السجل التجاري» (`BUYER_TRADE_REGISTER_UNANSWERED`), its RC when نعم, its NIF and NIS always (`BUYER_NO_TAX_IDS`)                                                                                                                                                            |
+| INV-6   | Fixed: a missed-visit deduction is so many visits at a negative unit price when it divides into whole centimes, else one lump-sum line («جزافي»), the count in its words                                                                                                                                                |
+| INV-7   | Fixed: the city is frozen in `sellerSnapshot.city`; a reprint prints it                                                                                                                                                                                                                                                 |
+| INV-8   | Fixed: a billing address prints alone; the site's commune and wilaya go only with the site's address                                                                                                                                                                                                                    |
+| INV-X1  | Fixed: `buyerSnapshot.siteAddress` and `.fileNumber` frozen at issue; the statement prints them                                                                                                                                                                                                                         |
+| INV-X2  | Not fixed: needs two columns on `Payment` (Foundation, below); the receipt still reads the client's name and file number from today's rows                                                                                                                                                                              |
 
 ## Conventions I follow
 
@@ -70,13 +107,12 @@ Features 19, 20, 22, 30, 31, 32, 34, 35, 39, 41, 48; the division expense and in
 
 ## Open items
 
-- The 29 stock items of BUILD-NOTES "Owner seeds" move to Foundation's seed registry (`stock/seeds.ts`) when it lands; the demo will then use the seeded items.
-
-- Not built: the daily cash reconciliation of receipts (#32 `receipts.unreconciled`), the stock count screen (service exists), per-contract profitability with labour cost (#30, rule exists, needs `cost.read` and People's hours), the accountant's export (#48, format not named), renewals in the forecast.
-- A collector's payment typed against a blank receipt (`receiptId` in `recordPayment`) has no screen yet.
+- Not built: the per-worker report; renewals of contracts paid visit by visit in the forecast (their next visits are not planned).
+- INV-X2 waits for Foundation's columns.
+- «ربحية العقد» is drawn on the file's part التسديد; the hub can draw it too (`FileProfitabilityCard`, below).
 
 ## What I need from others
 
-- Foundation: drop lines 101–102 of `src/lib/chain/canonical.ts` (they name my removed `hash-chain.ts`).
-- Clients: the files list should read `?ids=` (the `contract.ending` tile opens `/dashboard/files?ids=…` when several contracts end).
+- Foundation: two snapshot columns on `Payment`, `clientName` and `fileNumber` (filled when the payment is recorded), for INV-X2; the export kind `RECEIPTS` in OPTION-CODES `EXPORT_KIND` (the ruling's four files; the column is not checked); drop lines 101–102 of `src/lib/chain/canonical.ts`.
+- Clients: draw `<FileProfitabilityCard fileId={…} />` (`src/features/money/components/file-profitability-card.tsx`) on the file hub if the hub is where #30 belongs; it draws nothing for a reader without `cost.read`.
 - Operations: `listVisitsForBilling` and `listVisitWorkers` as exported reads (I read `Visit`, `VisitReport`, `VisitWorker` directly until then).

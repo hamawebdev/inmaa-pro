@@ -95,7 +95,7 @@ export interface SyncDuesResult {
  */
 export async function syncDues(ex: Executor, ctx: ServiceContext, input: { fileId: string }): Promise<SyncDuesResult> {
   const result: SyncDuesResult = { created: 0, updated: 0, cancelled: 0 };
-  const file = await readFileBilling(ex, input.fileId);
+  const file = await readFileBilling(ex, ctx, input.fileId);
   if (!file) return result;
 
   const dues = await readDues(ex, file.id);

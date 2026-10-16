@@ -215,9 +215,7 @@
     "CashDifferenceNote": "اذكر سبب الفارق في النقد أو فقدان السند.",
     "DayNotCome": "لا يُغلق يوم قبل حلوله.",
     "AmountNotNegative": "لا يمكن أن يكون المبلغ سالبًا.",
-    "PeriodStartAfterEndMoney": "لا يمكن أن تكون بداية الفترة بعد نهايتها.",
-    "BuyerTradeRegisterUnanswered": "حدد في بطاقة العميل هل لهذه المؤسسة سجل تجاري قبل فاتورتها الأولى.",
-    "BuyerNoTaxIds": "يلزم رقم التعريف الجبائي والإحصائي لهذه المؤسسة في الفاتورة: أدخلهما في بطاقة العميل."
+    "PeriodStartAfterEndMoney": "لا يمكن أن تكون بداية الفترة بعد نهايتها."
   },
   "Alerts": {
     "ContractEnding": {
@@ -512,7 +510,7 @@
   },
   "Reconciliation": {
     "Title": "المطابقة اليومية",
-    "DayTitle": "مطابقة يوم {date}",
+    "DayTitle": "مطابقة يوم {date} · {collector}",
     "Office": "المكتب",
     "CouldNotLoad": "تعذرت قراءة هذا اليوم.",
     "DayCount": "{count, plural, =0 {لا يوجد يوم للمطابقة} one {يوم واحد} two {يومان} few {# أيام} many {# يومًا} other {# يوم}}",

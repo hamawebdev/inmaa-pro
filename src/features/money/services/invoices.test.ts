@@ -119,7 +119,11 @@ describe("issuing an invoice", () => {
     });
     expect(invoice.amountWordsAr).toContain("خمسة وأربعون ألف");
     expect(JSON.parse(invoice.sellerSnapshot)).toMatchObject({ nameAr: "مركز إنماء برو", rc: "04/00-0123456A21" });
-    expect(JSON.parse(invoice.buyerSnapshot)).toMatchObject({ address: "حي النصر، عمارة B7", payerName: "رشيد بوزيد" });
+    // Clients' buyer block: the site's address with its commune (getClientForInvoice).
+    expect(JSON.parse(invoice.buyerSnapshot)).toMatchObject({
+      address: expect.stringContaining("حي النصر، عمارة B7"),
+      payerName: "رشيد بوزيد",
+    });
     expect(JSON.parse(invoice.ifuMention ?? "{}")).toHaveProperty("ar");
 
     const lines = await test.db.selectFrom("InvoiceLine").selectAll().where("invoiceId", "=", issued.id).execute();
@@ -313,12 +317,19 @@ describe("issuing an invoice", () => {
   it("is refused until the centre's tax file and the client's are complete", async () => {
     const { file, november } = await novemberDone();
     await test.transact((ex, ctx) => setSetting(ex, ctx, "centre.nif", ""));
-    await expect(issue(file.id, [november.id])).rejects.toThrow("NIS and NIF numbers are needed");
+    await expect(issue(file.id, [november.id])).rejects.toThrow("NIS, NIF, article number and address are needed");
     await test.transact((ex, ctx) => setSetting(ex, ctx, "centre.nif", "198104010012345"));
 
     await test.db
       .updateTable("Client")
-      .set({ hasTradeRegister: 1, rcNumber: null })
+      // An organisation with a trade register and its NIF and NIS, but no RC typed: Clients' card says it lacks the RC.
+      .set({
+        clientType: "ORGANISATION",
+        hasTradeRegister: 1,
+        rcNumber: null,
+        nif: "000416012345678",
+        nis: "000416012345678",
+      })
       .where("id", "=", file.clientId)
       .execute();
     await expect(issue(file.id, [november.id])).rejects.toThrow("trade register number is needed");

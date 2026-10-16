@@ -1,4 +1,5 @@
-import type { Executor } from "@/lib/service/context";
+import { getClientForInvoice, type ClientForInvoice } from "@/features/clients/services/exports";
+import type { Executor, ServiceContext } from "@/lib/service/context";
 import { getSettings } from "@/lib/settings";
 
 import type { BuyerSnapshot, SellerSnapshot } from "../sheets/invoice-sheet";
@@ -7,8 +8,8 @@ import type { FileBilling } from "./terms";
 
 /**
  * The two parties of a legal document, as they are frozen on it when it is
- * issued: the centre from Settings, the client from Clients' tables (read
- * only: CONTRACTS.md section 2, "M (buyer block of an invoice, payer)").
+ * issued: the centre from Settings, the client through Clients'
+ * `getClientForInvoice` (CONTRACTS.md section 3).
  */
 
 const orNull = (text: string | null | undefined) => (text && text.trim() !== "" ? text.trim() : null);
@@ -58,57 +59,51 @@ export interface FileParty {
   /** The site's address with its commune: what a statement and a slip print. */
   siteAddress: string;
   siteName: string | null;
-  /** «السجل التجاري»: نعم, لا, or not answered yet (null). An organisation's invoice waits for the answer (INV-4). */
-  tradeRegister: boolean | null;
+  /**
+   * What the client still lacks before an invoice, as Clients' card says it (`getClientForInvoice`):
+   * the address, an organisation's answer to «السجل التجاري», its RC, NIF and NIS.
+   */
+  missing: ClientForInvoice["missing"];
   buyer: BuyerSnapshot;
 }
 
-/** The client of a file as an invoice names it: the billing name and address when the office wrote them. */
-export async function readFileParty(ex: Executor, file: FileBilling): Promise<FileParty> {
-  const client = await ex
-    .selectFrom("Client")
-    .select([
-      "id",
-      "number",
-      "name",
-      "legalForm",
-      "hasTradeRegister",
-      "rcNumber",
-      "nis",
-      "nif",
-      "articleNumber",
-      "billingName",
-      "billingAddress",
-    ])
-    .where("id", "=", file.clientId)
-    .executeTakeFirst();
+/**
+ * The client of a file as an invoice names it, through Clients' own read
+ * (`getClientForInvoice`): the billing name, the billing address alone or the
+ * site's with its commune and wilaya, the identifiers. The site's address is
+ * read beside it for the visit statement, which names the place cleaned.
+ */
+export async function readFileParty(ex: Executor, ctx: ServiceContext, file: FileBilling): Promise<FileParty> {
+  const client = await getClientForInvoice(ex, ctx, { clientId: file.clientId, fileId: file.id });
   if (!client) throw new Error(`money: file ${file.id} has no client`);
+  const own = await ex
+    .selectFrom("Client")
+    .select(["name", "number"])
+    .where("id", "=", file.clientId)
+    .executeTakeFirstOrThrow();
   const site = await ex
     .selectFrom("Site")
     .leftJoin("Commune", "Commune.id", "Site.communeId")
-    .select(["Site.address", "Site.commonName", "Commune.nameAr as commune", "Commune.wilayaCode as wilayaCode"])
+    .select(["Site.address", "Site.commonName", "Commune.nameAr as commune"])
     .where("Site.id", "=", file.siteId)
     .executeTakeFirst();
-
-  // A billing address the office typed stands alone; the site's commune and wilaya go only with the site's address (INV-8).
-  const billing = orNull(client.billingAddress);
-  const address = billing ?? orNull(site?.address);
   const siteAddress = [orNull(site?.address), orNull(site?.commune)].filter(Boolean).join("، ");
   return {
     clientId: client.id,
-    clientName: client.name,
-    clientNumber: client.number,
+    clientName: own.name,
+    clientNumber: own.number,
     siteAddress,
     siteName: orNull(site?.commonName),
-    tradeRegister: client.hasTradeRegister === null ? null : client.hasTradeRegister === 1,
+    missing: client.missing,
     buyer: {
-      name: orNull(client.billingName) ?? client.name,
+      name: client.name,
       legalForm: orNull(client.legalForm),
-      address,
-      commune: billing ? null : orNull(site?.commune),
-      wilayaCode: billing ? null : orNull(site?.wilayaCode),
-      hasTradeRegister: client.hasTradeRegister === 1,
-      rc: orNull(client.rcNumber),
+      // Clients' address carries its own commune and wilaya when it is the site's (INV-8): nothing is added to it.
+      address: orNull(client.address),
+      commune: null,
+      wilayaCode: null,
+      hasTradeRegister: client.hasTradeRegister,
+      rc: orNull(client.rc),
       nis: orNull(client.nis),
       nif: orNull(client.nif),
       articleNumber: orNull(client.articleNumber),

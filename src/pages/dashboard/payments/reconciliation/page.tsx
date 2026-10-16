@@ -42,8 +42,9 @@ export default function ReconciliationDayPage() {
   return (
     <DetailScreen
       section="money"
-      title={day ? t("DayTitle", { date: dates.long(day.date) }) : t("Title")}
-      description={day ? (day.collectorName ?? t("Office")) : undefined}
+      title={
+        day ? t("DayTitle", { date: dates.long(day.date), collector: day.collectorName ?? t("Office") }) : t("Title")
+      }
       back={{ href: "/dashboard/payments?view=reconciliation", label: tNav("Payments") }}
     >
       {day ? (

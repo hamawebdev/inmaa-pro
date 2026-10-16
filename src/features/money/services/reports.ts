@@ -434,7 +434,7 @@ async function renewalDues(ex: Executor, ctx: ServiceContext, horizon: string) {
     .execute();
   const dues: { dueDate: string; remaining: number }[] = [];
   for (const { id } of ending) {
-    const billing = await readFileBilling(ex, id);
+    const billing = await readFileBilling(ex, ctx, id);
     const terms = billing ? dueTermsOf(billing) : null;
     const renewed = terms ? renewedTerms(terms) : null;
     if (!renewed || renewed.frequency === "PER_VISIT") continue;

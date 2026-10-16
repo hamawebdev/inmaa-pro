@@ -215,9 +215,7 @@
     "CashDifferenceNote": "Dites pourquoi les espèces diffèrent ou un reçu manque.",
     "DayNotCome": "Une journée ne peut être clôturée avant d'être venue.",
     "AmountNotNegative": "Un montant ne peut pas être négatif.",
-    "PeriodStartAfterEndMoney": "Le début de la période ne peut pas être après sa fin.",
-    "BuyerTradeRegisterUnanswered": "Indiquez sur la fiche client si cet organisme a un registre de commerce avant sa première facture.",
-    "BuyerNoTaxIds": "Le NIF et le NIS de cet organisme sont requis sur la facture : saisissez-les sur la fiche client."
+    "PeriodStartAfterEndMoney": "Le début de la période ne peut pas être après sa fin."
   },
   "Alerts": {
     "ContractEnding": {
@@ -512,7 +510,7 @@
   },
   "Reconciliation": {
     "Title": "Rapprochement quotidien",
-    "DayTitle": "Rapprochement du {date}",
+    "DayTitle": "Rapprochement du {date} · {collector}",
     "Office": "Le bureau",
     "CouldNotLoad": "Cette journée n'a pas pu être lue.",
     "DayCount": "{count, plural, =0 {Aucune journée à rapprocher} one {# journée} other {# journées}}",
@@ -534,7 +532,7 @@
       "Actions": "Actions",
       "Receipt": "Reçu",
       "Client": "Client",
-      "Received": "Reçu",
+      "Received": "Montant reçu",
       "Outcome": "Devenir"
     },
     "Receipts": "Les reçus du jour",

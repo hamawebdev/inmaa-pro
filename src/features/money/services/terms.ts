@@ -1,7 +1,7 @@
-import type { Executor } from "@/lib/service/context";
+import { getFileBillingTerms } from "@/features/clients/services/exports";
+import type { Executor, ServiceContext } from "@/lib/service/context";
 import type { LocalDate } from "@/lib/units";
 
-import { parseCodes } from "../rules/codes";
 import type { DueTerms } from "../rules/due-schedule";
 import {
   AMOUNT_BASES,
@@ -19,8 +19,7 @@ import {
 /**
  * What Money reads of a file: its billing terms and who pays.
  *
- * `File` is Clients' table; CONTRACTS.md section 2 lets Money read its billing
- * columns directly ("M (the billing terms)") until Clients exports
+ * `File` is Clients' table: its terms are read through Clients'
  * `getFileBillingTerms`. Nothing here writes.
  */
 export interface FileBilling {
@@ -53,37 +52,9 @@ export interface FileBilling {
 const oneOf = <T extends string>(list: readonly T[], value: string | null): T | null =>
   value !== null && (list as readonly string[]).includes(value) ? (value as T) : null;
 
-export async function readFileBilling(ex: Executor, fileId: string): Promise<FileBilling | null> {
-  const file = await ex
-    .selectFrom("File")
-    .select([
-      "id",
-      "number",
-      "formKind",
-      "division",
-      "serviceType",
-      "stage",
-      "clientId",
-      "siteId",
-      "branchId",
-      "startDate",
-      "endDate",
-      "endedDate",
-      "endKind",
-      "closedAt",
-      "paymentFrequency",
-      "totalAmount",
-      "amountBasis",
-      "firstDueDate",
-      "paymentMethods",
-      "payerName",
-      "payerPhone",
-      "paymentPlace",
-      "amountIncludesVat",
-    ])
-    .where("id", "=", fileId)
-    .where("deletedAt", "is", null)
-    .executeTakeFirst();
+/** A file's billing terms, through Clients' own read (`getFileBillingTerms`, CONTRACTS.md section 3). */
+export async function readFileBilling(ex: Executor, ctx: ServiceContext, fileId: string): Promise<FileBilling | null> {
+  const file = await getFileBillingTerms(ex, ctx, { fileId });
   if (!file) return null;
   const division = oneOf(DIVISIONS, file.division);
   const serviceType = oneOf(SERVICE_TYPES, file.serviceType);
@@ -103,18 +74,18 @@ export async function readFileBilling(ex: Executor, fileId: string): Promise<Fil
     endedDate: (file.endedDate as LocalDate | null) ?? null,
     endKind: file.endKind,
     closedAt: file.closedAt,
-    frequency: oneOf(PAYMENT_FREQUENCIES, file.paymentFrequency),
+    frequency: oneOf(PAYMENT_FREQUENCIES, file.frequency),
     totalAmount: file.totalAmount,
     // His form leaves it to the office; a contract with none is billed per payment period (A7).
     amountBasis: oneOf(AMOUNT_BASES, file.amountBasis) ?? "PER_PAYMENT_PERIOD",
     firstDueDate: (file.firstDueDate as LocalDate | null) ?? null,
-    paymentMethods: parseCodes(file.paymentMethods).filter((code): code is PaymentMethod =>
+    paymentMethods: file.paymentMethods.filter((code): code is PaymentMethod =>
       (PAYMENT_METHODS as readonly string[]).includes(code),
     ),
     payerName: file.payerName,
     payerPhone: file.payerPhone,
     paymentPlace: file.paymentPlace,
-    amountIncludesVat: file.amountIncludesVat === null ? null : Boolean(file.amountIncludesVat),
+    amountIncludesVat: file.amountIncludesVat,
   };
 }
 

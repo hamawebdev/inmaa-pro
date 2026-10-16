@@ -53,7 +53,7 @@ export async function getFileProfitability(
   input: { fileId: string; from?: string | null; to?: string | null },
 ): Promise<FileProfitability> {
   requireCapability(ctx, "cost.read");
-  const file = await readFileBilling(ex, input.fileId);
+  const file = await readFileBilling(ex, ctx, input.fileId);
   if (!file) throw new ServiceError("This file does not exist.");
   const start = file.startDate ?? ctx.today;
   const end = file.endedDate ?? file.endDate ?? ctx.today;
