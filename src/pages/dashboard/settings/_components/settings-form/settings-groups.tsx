@@ -11,7 +11,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import { readSettingValuesQuery, saveSettingValuesAction, SETTINGS_PATH } from "@/features/core/services/settings-form";
+import {
+  readCostSettingsAction,
+  readSettingValuesQuery,
+  saveSettingValuesAction,
+  SETTINGS_PATH,
+} from "@/features/core/services/settings-form";
 import {
   SETTING_GROUPS,
   settingMessageKey,
@@ -21,7 +26,7 @@ import {
 import { useCan, useSectionLevel } from "@/hooks/use-session";
 import { useErrorMessage } from "@/i18n/errors";
 import { pathKey } from "@/lib/compat/revalidate";
-import type { SettingKey } from "@/lib/settings";
+import { isCostSetting, type SettingKey } from "@/lib/settings";
 
 import { SettingFieldInput } from "./setting-field";
 
@@ -36,15 +41,32 @@ const settingValuesKey = (tab: SettingsTab) => [...pathKey(SETTINGS_PATH), "valu
  * academy's identity card does: the fields of a group are typed together and only make sense saved
  * together, and only what changed is sent (one log entry per key). Without
  * the right to change them, the values are shown and the button is not.
+ *
+ * The centre's costs are read apart, only by a reader who holds `cost.read`
+ * (each read is a line in the log, audit LOG-7); anyone else does not see
+ * those fields at all.
  */
 export function SettingsGroups({ tab, only }: { tab: SettingsTab; only?: readonly string[] }) {
-  const values = useQuery({ queryKey: settingValuesKey(tab), queryFn: () => readSettingValuesQuery({ tab }) });
+  const readsCost = useCan("cost.read");
+  const groups = SETTING_GROUPS.filter((group) => group.tab === tab && (!only || only.includes(group.id))).map(
+    (group) => (readsCost ? group : { ...group, fields: group.fields.filter(({ key }) => !isCostSetting(key)) }),
+  );
+  const needsCost = readsCost && groups.some((group) => group.fields.some(({ key }) => isCostSetting(key)));
+  const plain = useQuery({ queryKey: settingValuesKey(tab), queryFn: () => readSettingValuesQuery({ tab }) });
+  const cost = useQuery({
+    queryKey: [...settingValuesKey(tab), "cost"],
+    enabled: needsCost,
+    queryFn: async () => {
+      const result = await readCostSettingsAction(undefined);
+      if (!result.success) throw new Error(result.error);
+      return result.data;
+    },
+  });
   const writesSettings = useSectionLevel("SETTINGS") === "WRITE";
   const writesRules = useCan("settings.rules");
   const mayWrite = writesSettings && (tab === "general" || writesRules);
-  const groups = SETTING_GROUPS.filter((group) => group.tab === tab && (!only || only.includes(group.id)));
 
-  if (values.isPending) {
+  if (plain.isPending || (needsCost && cost.isPending)) {
     return (
       <>
         {groups.map((group) => (
@@ -53,11 +75,21 @@ export function SettingsGroups({ tab, only }: { tab: SettingsTab; only?: readonl
       </>
     );
   }
-  if (values.isError) return <ErrorState onRetry={() => void values.refetch()} />;
+  if (plain.isError || (needsCost && cost.isError)) {
+    return (
+      <ErrorState
+        onRetry={() => {
+          void plain.refetch();
+          if (needsCost) void cost.refetch();
+        }}
+      />
+    );
+  }
+  const stored = { ...plain.data, ...(needsCost ? cost.data : undefined) };
   return (
     <>
       {groups.map((group) => (
-        <SettingsGroupCard key={group.id} group={group} stored={values.data} mayWrite={mayWrite} />
+        <SettingsGroupCard key={group.id} group={group} stored={stored} mayWrite={mayWrite} />
       ))}
     </>
   );

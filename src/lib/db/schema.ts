@@ -505,6 +505,14 @@ export interface SanctionDecisionTable {
   updatedAt: string;
 }
 
+export interface SanctionDecisionMatchTable {
+  id: string;
+  decisionId: string;
+  sanctionId: string;
+  matchBasis: string;
+  createdAt: string;
+}
+
 export interface PeriodicEvaluationTable {
   id: string;
   staffId: string;
@@ -1483,6 +1491,8 @@ export interface ProblemReportTable {
   updatedAt: string;
   createdByUserId: string | null;
   updatedByUserId: string | null;
+  deletedAt: string | null;
+  deletedByUserId: string | null;
 }
 
 export interface WorkerAbsenceTable {
@@ -1865,7 +1875,9 @@ export interface VisitBillingTable {
 export interface PaymentTable {
   id: string;
   fileId: string;
+  fileNumber: string;
   clientId: string;
+  clientName: string;
   division: string;
   branchId: string;
   receivedDate: LocalDate;
@@ -2302,6 +2314,7 @@ export interface DB {
   Violation: ViolationTable;
   Sanction: SanctionTable;
   SanctionDecision: SanctionDecisionTable;
+  SanctionDecisionMatch: SanctionDecisionMatchTable;
   PeriodicEvaluation: PeriodicEvaluationTable;
   EmployeeLeave: EmployeeLeaveTable;
   EmployeeCheckRecord: EmployeeCheckRecordTable;

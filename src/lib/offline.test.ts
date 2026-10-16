@@ -29,7 +29,21 @@ const htmlEntries = raw(
 );
 
 /** Plugins and crates whose whole purpose is to reach outside the program. */
-const FORBIDDEN_PLUGINS = ["opener", "shell", "http", "updater", "websocket", "upload", "deep-link"];
+const FORBIDDEN_PLUGINS = [
+  "opener",
+  "shell",
+  "http",
+  "updater",
+  "websocket",
+  "upload",
+  "deep-link",
+  "localhost",
+  // No position, face or fingerprint is taken (scope section 5; audit OFF-5, OFF-6).
+  "geolocation",
+  "biometric",
+  "barcode-scanner",
+  "nfc",
+];
 const FORBIDDEN_CRATES = [
   "reqwest",
   "ureq",

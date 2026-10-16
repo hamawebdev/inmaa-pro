@@ -1,3 +1,5 @@
+import { sql } from "kysely";
+
 import { MANAGER_ROLE } from "@/lib/access/catalogue";
 import { logSecurity } from "@/lib/log";
 import type { Executor, ServiceContext } from "@/lib/service/context";
@@ -12,15 +14,17 @@ export class ClockJumpError extends ServiceError {
   }
 }
 
-const CLOCK_BEHIND =
+export const CLOCK_BEHIND =
   "The date of this PC is earlier than the last recorded operation. Correct the date and time of the PC first.";
 
 /**
- * Entries that say somebody came or left, not that work was done. A session
- * starts with one at whatever date the PC shows, so they are never a reference
- * for the clock: measured against them, a mistyped year looks like minutes.
+ * Entries that say somebody came, left or changed a key, not that work was
+ * done. A session starts with them at whatever date the PC shows (a password
+ * chosen at the sign-in window is written just before the sign-in), so they
+ * are never a reference for the clock: measured against them, a mistyped year
+ * looks like minutes.
  */
-const SESSION_ACTIONS = ["SIGN_IN", "SIGN_IN_FAILED", "LOCK"] as const;
+const SESSION_ACTIONS = ["SIGN_IN", "SIGN_IN_FAILED", "LOCK", "PASSWORD_CHANGE"] as const;
 
 export type ClockState =
   | { state: "ok"; lastAt: string | null; jumpDays: number }
@@ -28,43 +32,105 @@ export type ClockState =
   | { state: "jump"; lastAt: string; jumpDays: number };
 
 /**
- * The newest instant the clock is measured against: the newest work recorded
- * before the reader's present session began, or the manager's latest
- * confirmation of the date (CLOCK_WARNING), whichever is later. What the
- * present session itself wrote is left out: it was written at the date in
- * question. For the program itself (`ctx.userId` null) and for a session that
- * has no sign-in of its own, every entry but the comings and goings counts.
+ * What a sign-in records of a clock it found out of order (in its entry's
+ * `context.clock`). The work of that session is then never a reference for the
+ * clock: it was done at the date in question.
+ */
+export type SessionClockNote = { state: "behind" | "jump"; lastAt: string; jumpDays: number };
+
+/**
+ * The newest instant the clock is measured against: the work recorded since
+ * the manager's latest word on the date (CLOCK_WARNING, itself a reference),
+ * leaving out
+ *
+ *  - the comings and goings (`SESSION_ACTIONS`);
+ *  - what the reader's present session wrote (a person signed in): it was
+ *    written at the date in question;
+ *  - what was written in a session that began on a clock out of order, from
+ *    its sign-in to the next one. Without this, a day of ordinary work at a
+ *    mistyped year would make that year look ordinary the next morning.
+ *
+ * The manager's word is a fresh start: what was written before it no longer
+ * counts, so a date he confirmed after a wrong one was recorded is measured
+ * from his confirmation, not from the wrong date.
  */
 async function clockReference(ex: Executor, ctx: ServiceContext): Promise<string | null> {
-  const start =
+  const confirmed = await ex
+    .selectFrom("AuditLog")
+    .select(["chainSeq", "occurredAt"])
+    .where("operation", "=", "SECURITY")
+    .where("action", "=", "CLOCK_WARNING")
+    .orderBy("localDate", "desc")
+    .orderBy("chainSeq", "desc")
+    .limit(1)
+    .executeTakeFirst();
+  const from = confirmed?.chainSeq ?? 0;
+
+  const present =
     ctx.userId === null
       ? undefined
       : await ex
           .selectFrom("AuditLog")
-          .select((eb) => eb.fn.max("chainSeq").as("seq"))
+          .select("chainSeq")
+          .where("operation", "=", "SECURITY")
           .where("action", "=", "SIGN_IN")
           .where("userId", "=", ctx.userId)
+          .orderBy("localDate", "desc")
+          .orderBy("chainSeq", "desc")
+          .limit(1)
           .executeTakeFirst();
-  const sessionStart = start?.seq ?? null;
+
+  const doubtful = await ex
+    .selectFrom("AuditLog as s")
+    .select((eb) => [
+      "s.chainSeq as fromSeq",
+      eb
+        .selectFrom("AuditLog as n")
+        .select((inner) => inner.fn.min("n.chainSeq").as("seq"))
+        .where("n.operation", "=", "SECURITY")
+        .where("n.action", "=", "SIGN_IN")
+        .whereRef("n.chainSeq", ">", "s.chainSeq")
+        .as("untilSeq"),
+    ])
+    .where("s.operation", "=", "SECURITY")
+    .where("s.action", "=", "SIGN_IN")
+    .where("s.chainSeq", ">", from)
+    .where(sql<boolean>`json_extract(s.context, '$.clock') is not null`)
+    .execute();
+
+  const presentSeq = present?.chainSeq ?? null;
   const newest = await ex
     .selectFrom("AuditLog")
-    .select((eb) => eb.fn.max("occurredAt").as("at"))
-    .where((eb) =>
-      eb.or([
-        eb("action", "=", "CLOCK_WARNING"),
-        eb.and([
-          eb("action", "not in", SESSION_ACTIONS),
-          ...(sessionStart === null ? [] : [eb("chainSeq", "<", sessionStart)]),
-        ]),
-      ]),
+    .select("occurredAt")
+    .where("action", "not in", SESSION_ACTIONS)
+    .where("chainSeq", ">", from)
+    .$if(presentSeq !== null, (qb) => qb.where("chainSeq", "<", presentSeq ?? 0))
+    .$if(doubtful.length > 0, (qb) =>
+      qb.where((eb) =>
+        eb.and(
+          doubtful.map((session) =>
+            session.untilSeq === null
+              ? eb("chainSeq", "<", session.fromSeq)
+              : eb.or([eb("chainSeq", "<", session.fromSeq), eb("chainSeq", ">=", session.untilSeq)]),
+          ),
+        ),
+      ),
     )
+    .orderBy("localDate", "desc")
+    .orderBy("occurredAt", "desc")
+    .limit(1)
     .executeTakeFirst();
-  return (newest?.at as string | null | undefined) ?? null;
+
+  const candidates = [confirmed?.occurredAt, newest?.occurredAt].filter((at): at is string => typeof at === "string");
+  if (candidates.length === 0) return null;
+  return candidates.reduce((latest, at) => (Date.parse(at) > Date.parse(latest) ? at : latest));
 }
 
 /**
  * Where the PC's clock stands: behind the reference (it is wrong), more than
- * `system.clockJumpDays` days after it (somebody must look), or fine.
+ * `system.clockJumpDays` days after it (somebody must look), or fine. A read:
+ * it runs at start-up (as the program, before the day-start job), at every
+ * sign-in, before each day's own work, and before a legal document is issued.
  */
 export async function checkClock(ex: Executor, ctx: ServiceContext): Promise<ClockState> {
   const lastAt = await clockReference(ex, ctx);
@@ -76,18 +142,41 @@ export async function checkClock(ex: Executor, ctx: ServiceContext): Promise<Clo
   return jumpDays > allowed ? { state: "jump", lastAt, jumpDays } : { state: "ok", lastAt, jumpDays };
 }
 
-/** The manager confirms that the PC's date is right after a jump forward (the centre was closed). Logged. */
-export async function confirmClockJump(ex: Executor, ctx: ServiceContext): Promise<void> {
+/**
+ * The manager's word on the PC's date, logged as CLOCK_WARNING:
+ *
+ *  - after a jump forward (the centre was closed), that the date is right.
+ *    No typed reason is needed: the jump and its size are in the entry;
+ *  - with the clock behind the recorded work, that it is the recorded date
+ *    that was wrong (a year mistyped, then confirmed by mistake). Rare, and it
+ *    is the one way out of a program nobody could sign in to: it needs his
+ *    typed reason. It does not move the legal sequences: an invoice dated
+ *    before the last one is still refused by the database.
+ *
+ * Only the manager answers, signed in himself (DESIGN.md section 12).
+ */
+export async function confirmClockJump(
+  ex: Executor,
+  ctx: ServiceContext,
+  input: { reason?: string } = {},
+): Promise<ClockState> {
   if (ctx.userId !== null && ctx.roleId !== MANAGER_ROLE)
     throw new ServiceError("You do not have permission to do this.");
   const found = await checkClock(ex, ctx);
-  if (found.state === "behind") throw new ServiceError(CLOCK_BEHIND);
-  if (found.state === "ok") return;
+  if (found.state === "ok") return found;
+  const reason = input.reason?.trim();
+  if (found.state === "behind" && !reason) throw new ServiceError(CLOCK_BEHIND);
   await logSecurity(ex, ctx, {
     owner: "FOUNDATION",
     action: "CLOCK_WARNING",
-    context: { lastOperationAt: found.lastAt, jumpDays: found.jumpDays },
+    reason,
+    context: {
+      direction: found.state === "behind" ? "BEHIND" : "AHEAD",
+      lastOperationAt: found.lastAt,
+      jumpDays: found.jumpDays,
+    },
   });
+  return { state: "ok", lastAt: ctx.now, jumpDays: 0 };
 }
 
 /**
@@ -102,10 +191,11 @@ export async function confirmClockJump(ex: Executor, ctx: ServiceContext): Promi
  *    somebody must look: the manager confirms (`confirmedJump`), and the log
  *    keeps a CLOCK_WARNING.
  *
- * The reference is the work recorded before the present session (see
- * `clockReference`): signing in at a mistyped date does not make that date
- * look ordinary. The same check runs at sign-in and when the program starts,
- * before the day-start job.
+ * The reference is the work recorded before the present session, outside any
+ * session opened on a clock out of order (see `clockReference`): signing in at
+ * a mistyped date, or working a day at it, does not make that date look
+ * ordinary. The same check runs at sign-in and when the program starts, before
+ * the day-start job.
  *
  * Call it first in a service that issues an invoice or a receipt.
  */

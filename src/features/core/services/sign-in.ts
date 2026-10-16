@@ -8,7 +8,7 @@ import {
   normalizeRecoveryCode,
   verifySecret,
 } from "@/lib/auth";
-import { checkClock } from "@/lib/clock/sanity";
+import { CLOCK_BEHIND, checkClock, type SessionClockNote } from "@/lib/clock/sanity";
 import { logSecurity } from "@/lib/log";
 import { action, asProgram, query } from "@/lib/service/action";
 import type { Executor, ServiceContext, Session } from "@/lib/service/context";
@@ -106,18 +106,27 @@ async function activeAccount(ex: Executor, userId: string) {
 }
 
 /**
- * Nobody signs in on a PC whose date is earlier than the work already
- * recorded: everything this person did would be logged at a wrong date. A date
- * that jumped forward does not stop the sign-in; the program asks the manager
- * before anything legal is issued, and before the day's own work runs.
+ * The PC's clock, checked before anybody signs in (src/lib/clock/sanity.ts).
+ *
+ *  - Earlier than the work already recorded: nobody signs in, everything they
+ *    did would be logged at a wrong date. The manager alone is let in, to the
+ *    screen that tells him so (src/components/security/clock-screen.tsx): he
+ *    corrects the PC's date, or, if the recorded date was the wrong one, says
+ *    so with his reason. Without him the program could not be opened at all.
+ *  - Several days later than the work recorded: the sign-in goes on, and its
+ *    entry says so (`context.clock`). Nothing that session writes is then a
+ *    reference for the clock, nothing legal is issued and the day's own work
+ *    waits until the manager confirms the date.
  */
-async function refuseClockBehind(ex: Executor, ctx: ServiceContext): Promise<void> {
+async function clockAtSignIn(
+  ex: Executor,
+  ctx: ServiceContext,
+  account: { roleId: string },
+): Promise<SessionClockNote | null> {
   const found = await checkClock(ex, ctx);
-  if (found.state === "behind") {
-    throw new ServiceError(
-      "The date of this PC is earlier than the last recorded operation. Correct the date and time of the PC first.",
-    );
-  }
+  if (found.state === "ok") return null;
+  if (found.state === "behind" && account.roleId !== MANAGER_ROLE) throw new ServiceError(CLOCK_BEHIND);
+  return { state: found.state, lastAt: found.lastAt, jumpDays: found.jumpDays };
 }
 
 async function recordSignIn(
@@ -125,6 +134,7 @@ async function recordSignIn(
   ctx: ServiceContext,
   account: { id: string; username: string; displayName: string },
   how: "PASSWORD" | "FIRST_PASSWORD" | "RECOVERY_CODE",
+  clock: SessionClockNote | null,
 ): Promise<Session> {
   await ex
     .updateTable("User")
@@ -138,7 +148,7 @@ async function recordSignIn(
     entityId: account.id,
     entityLabel: account.username,
     subject: { kind: "USER", id: account.id, label: account.displayName },
-    context: { how },
+    context: clock ? { how, clock } : { how },
   });
   return loadSession(ex, account.id);
 }
@@ -190,7 +200,7 @@ export async function signIn(
     await recordFailure(ex, ctx, account, "PASSWORD");
     return { ok: false, reason: "WRONG_PASSWORD" };
   }
-  await refuseClockBehind(ex, ctx);
+  const clock = await clockAtSignIn(ex, ctx, account);
   if (account.mustChangePassword === 1) {
     if (input.newPassword === undefined) return { ok: false, reason: "NEW_PASSWORD_NEEDED" };
     if (normalizePassword(input.newPassword) === normalizePassword(input.password)) {
@@ -201,7 +211,7 @@ export async function signIn(
       newRecoveryCode: false,
     });
   }
-  return { ok: true, session: await recordSignIn(ex, ctx, account, "PASSWORD") };
+  return { ok: true, session: await recordSignIn(ex, ctx, account, "PASSWORD", clock) };
 }
 
 export interface NewPasswordOptions {
@@ -259,12 +269,12 @@ export async function setFirstPassword(
 ): Promise<PasswordChosen> {
   const account = await activeAccount(ex, input.userId);
   if (account.passwordHash.trim() !== "") throw new ServiceError("This account already has a password.");
-  await refuseClockBehind(ex, ctx);
+  const clock = await clockAtSignIn(ex, ctx, account);
   const { recoveryCode } = await writePassword(ex, ctx, account, input.password, "FIRST", {
     iterations: input.iterations,
     newRecoveryCode: true,
   });
-  const session = await recordSignIn(ex, ctx, account, "FIRST_PASSWORD");
+  const session = await recordSignIn(ex, ctx, account, "FIRST_PASSWORD", clock);
   return { session, recoveryCode };
 }
 
@@ -307,12 +317,12 @@ export async function resetManagerPassword(
     await recordFailure(ex, ctx, account, "RECOVERY_CODE");
     return { ok: false, reason: "WRONG_CODE" };
   }
-  await refuseClockBehind(ex, ctx);
+  const clock = await clockAtSignIn(ex, ctx, account);
   const { recoveryCode } = await writePassword(ex, ctx, account, input.newPassword, "RECOVERY", {
     iterations: input.iterations,
     newRecoveryCode: true,
   });
-  const session = await recordSignIn(ex, ctx, account, "RECOVERY_CODE");
+  const session = await recordSignIn(ex, ctx, account, "RECOVERY_CODE", clock);
   return { ok: true, session, recoveryCode };
 }
 

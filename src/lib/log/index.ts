@@ -1,5 +1,6 @@
 import { appendChained } from "@/lib/chain";
 import { newId } from "@/lib/db/rows";
+import { COST_SETTING_KEYS } from "@/lib/settings/catalogue";
 import type { Executor, ServiceContext } from "@/lib/service/context";
 
 /**
@@ -66,6 +67,7 @@ export const ACTIONS_NEEDING_A_TYPED_REASON: ReadonlySet<LogAction> = new Set([
   "CANCEL",
   "SOFT_DELETE",
   "RESTORE",
+  "ANCHOR_REBASE",
   "OVERRIDE",
   "NUMBER_CLAIM",
   "SANCTION_SET",
@@ -88,6 +90,8 @@ export const WITHHELD = "§";
 const WITHHELD_TABLES: ReadonlySet<string> = new Set(["StaffConfidential", "CostStudy"]);
 const WITHHELD_COLUMNS: Readonly<Record<string, ReadonlySet<string>>> = {
   User: new Set(["passwordHash", "recoveryHash"]),
+  // A setting's change is keyed by the setting: the centre's costs are said to have changed, never to what.
+  Setting: new Set(COST_SETTING_KEYS),
 };
 
 export interface LogEntry {

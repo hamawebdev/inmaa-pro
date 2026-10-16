@@ -4,7 +4,7 @@ import { registerHandler, resetFeatureEvents } from "@/lib/events";
 import { UNEXPECTED_ERROR } from "@/lib/service/errors";
 import { createTestDatabase, type TestDatabase } from "@/testing/database";
 
-import { ensureCommune, ensureZoneForCommune, listCommunes, PLACES_PATH, remapCommune } from "./places";
+import { addCommune, ensureCommune, ensureZoneForCommune, listCommunes, PLACES_PATH, remapCommune } from "./places";
 
 /**
  * The worked example of a service test (CLAUDE.md, "A service"): a fresh
@@ -186,5 +186,20 @@ describe("listCommunes", () => {
 
     expect(rows.map((row) => row.nameAr)).toEqual(expect.arrayContaining(["عين البيضاء", "عين مليلة", "عين فكرون"]));
     expect(rows.every((row) => row.nameAr.includes("عين"))).toBe(true);
+  });
+});
+
+describe("addCommune, the picker's add (audit ACC-4)", () => {
+  it("needs a right that types a place: an account that only reads them adds nothing (ACC-4)", async () => {
+    const accountant = await test.sessionFor("ACCOUNTANT");
+    await expect(
+      test.transact((ex, ctx) => addCommune(ex, ctx, { wilayaCode: "25", nameAr: "الخروب" }), accountant),
+    ).rejects.toThrow("You do not have permission to do this.");
+    const reception = await test.sessionFor("RECEPTION_SALES");
+    const added = await test.transact(
+      (ex, ctx) => addCommune(ex, ctx, { wilayaCode: "25", nameAr: "الخروب" }),
+      reception,
+    );
+    expect(added.created).toBe(true);
   });
 });

@@ -1,7 +1,9 @@
 import { toLocal, type Clock } from "@/lib/clock";
+import { checkClock } from "@/lib/clock/sanity";
 import { revalidatePath } from "@/lib/compat/revalidate";
 import { runDayStart } from "@/lib/daily";
 import { db } from "@/lib/db";
+import { buildContext, SYSTEM_SESSION } from "@/lib/service/context";
 import { runAutomaticBackup } from "@/server/backup";
 
 /**
@@ -14,12 +16,23 @@ import { runAutomaticBackup } from "@/server/backup";
  * right after the day's work (src/server/backup.ts). What the handlers changed (a contract
  * ended, a suspension lifted) is on every screen at once: all of them are
  * refreshed.
+ *
+ * Each run checks the PC's clock first (src/lib/clock/sanity.ts): the program
+ * does not write its day at a date in question. A clock out of order is a run
+ * that failed, tried again with the hour, and at once when the manager has
+ * confirmed the date (startup.ts).
  */
 const RETRY_EVERY_MS = 60 * 60_000;
 
 let watch: number | null = null;
+let failed = false;
 
 async function run(clock: Clock): Promise<boolean> {
+  const found = await checkClock(db, buildContext(SYSTEM_SESSION, clock)).catch((error: unknown) => {
+    console.error("daily: the clock could not be checked", error);
+    return null;
+  });
+  if (found?.state !== "ok") return true;
   const report = await runDayStart(db, clock);
   if (report.ran.length > 0) revalidatePath("/dashboard");
   // After the day's own changes, so that today's copy holds them. Not due: nothing happens.
@@ -31,9 +44,13 @@ async function run(clock: Clock): Promise<boolean> {
   return report.failed.length > 0 || backup === "failed";
 }
 
-/** Starts the day now, then keeps watch for the next one. Called once, when the program opens. */
+/**
+ * Starts the day now, then keeps watch for the next one. Called when the
+ * program opens, and again when what held the day back (the anchor, the clock)
+ * has been answered.
+ */
 export async function startDayWatch(clock: Clock): Promise<void> {
-  let failed = await run(clock);
+  failed = await run(clock);
   if (watch !== null) return;
 
   let day = toLocal(clock.now(), clock.utcOffsetMin).date;

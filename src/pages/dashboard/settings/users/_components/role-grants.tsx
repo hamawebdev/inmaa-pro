@@ -9,10 +9,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { saveRoleGrantsAction, type RoleGrants } from "@/features/core/services/users";
+import { useSession } from "@/hooks/use-session";
 import { useErrorMessage } from "@/i18n/errors";
 import {
   CAPABILITY_KEYS,
   MANAGER_ONLY_CAPABILITY,
+  MANAGER_ROLE,
+  MANAGERS_OWN_CAPABILITIES,
   SECTION_CODES,
   type Capability,
   type SectionCode,
@@ -42,6 +45,7 @@ const CAPABILITY_GROUPS: ReadonlyArray<{ id: string; keys: readonly Capability[]
       "staff.health.read",
       "staff.hiringScore.read",
       "staff.printFilledForm",
+      "staff.documents.read",
       "hiring.decide",
       "attendance.employee.edit",
       "pay.read",
@@ -111,6 +115,8 @@ export function RoleGrantsCard({ roles }: { roles: RoleGrants[] }) {
     capabilities: Capability[];
   } | null>(null);
   const [busy, setBusy] = React.useState(false);
+  // The manager's own powers are his to give or take away (audit ACC-5): shown, not changed, by anyone else.
+  const isManager = useSession()?.roleId === MANAGER_ROLE;
   if (!stored) return null;
 
   // The draft belongs to one role: choosing another role shows that role as stored.
@@ -222,11 +228,12 @@ export function RoleGrantsCard({ roles }: { roles: RoleGrants[] }) {
                 <div className="grid min-w-0 gap-x-6 gap-y-2 md:grid-cols-2">
                   {group.keys.map((key) => {
                     const held = capabilities.includes(key);
+                    const locked = !isManager && MANAGERS_OWN_CAPABILITIES.includes(key);
                     return (
                       <label key={key} className="flex min-w-0 cursor-pointer items-start gap-3 py-1">
                         <Checkbox
                           checked={held}
-                          disabled={busy}
+                          disabled={busy || locked}
                           className="mt-0.5"
                           onCheckedChange={(checked) =>
                             change({

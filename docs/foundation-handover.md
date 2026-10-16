@@ -1,8 +1,8 @@
 # Foundation: handover
 
 For a teammate who continues Foundation's work. Read CLAUDE.md first (its last section is Foundation's and is the
-manual for builders), then this page. Updated at the end of every round. **Last update: end of F3b**
-(on top of the checkpoint 6ab2d78 and the coordinator's 8bca553; what changed since is not committed yet).
+manual for builders), then this page. Updated at the end of every round. **Last update: end of F4** (16 October, late; on top of e4a6db5 and the
+owners' commits since; what F4 changed is not committed yet). F3b was accepted.
 
 ## What exists, and where
 
@@ -30,6 +30,17 @@ manual for builders), then this page. Updated at the end of every round. **Last 
 | Names and phones (F3b) | `staffName` (surname then first name); an account goes by its linked employee's name, or its display name written surname first (`accountName`): sign-in window, `ctx.userName`, the log; `phoneText` (4-2-2-2 or 3-2-2-2) | `src/lib/text/{names,phone}.ts`, `src/lib/access/session.ts` |
 | Harness (F3b) | A queue of a few runs at once (`HARNESS_SLOTS`), a longer settle time (`HARNESS_SETTLE_MS`), `pdf --routes <file>` and `--before`, `shot --anchor <file>` | `scripts/harness/lib/slots.mjs`, `pdf.mjs`, README |
 | Data-model documents | DESIGN (section 19: what changed while building), CONTRACTS, OPTION-CODES, RULINGS, BUILD-NOTES | `docs/data-model` (mine to keep in step) |
+| The clock guard (F4, INV-1) | Measured against the work recorded since the manager's last CLOCK_WARNING, without SIGN_IN, SIGN_IN_FAILED, LOCK, PASSWORD_CHANGE, the reader's present session, or any session whose SIGN_IN found the clock out of order (`context.clock`, written by `clockAtSignIn`). Runs at start-up (as the program; the day-start waits), before each day's run, at every sign-in (behind: only the manager gets in), before every invoice and receipt. The manager answers on the clock screen (jump: one click; behind: with his reason) | `src/lib/clock/sanity.ts`, `src/features/core/services/{sign-in,startup,day-start,clock}.ts`, `src/components/security/{clock-screen,program-gate}.tsx` |
+| Test helper for days (F4) | `workUntil(test, instant)` (one logged operation a day) and `confirmDate(test, instant?)` (the manager's CLOCK_WARNING) | `src/testing/days.ts` |
+| Start-up fails closed (F4, LOG-11) | `reconcileAnchorAtStart`: a comparison that throws is "unchecked"; the anchor screen with «try again» for everybody | `src/lib/chain/anchor.ts`, `startup.ts`, `anchor-screen.tsx` |
+| Print guard (F4, LOG-2) | `installPrintGuard()` in both windows' entry: Ctrl+P presses the newest mounted `PrintButton` (a registry, `registerPrinter`) or does nothing; the context menu never opens | `src/components/print/print-flow.ts`, `print-sheet.tsx`, `src/main.tsx`, `src/lock/main.tsx` |
+| Disclosures (F4, LOG-3, LOG-5) | A copy of a stored file: `recordUploadCopy` (DISCLOSE EXPORT, capability, the signed form's reason and `staff.printFilledForm`) before `export_upload`. A backup: `beginBackup` (right + DISCLOSE BACKUP) before `backup_to`; `recordBackupRun({ runId })` after | `src/lib/attachments`, `src/server/{uploads,backup}.ts`, `backups.ts` |
+| Restores recorded (F4, LOG-4) | A note + foreign/unanchored answer records RESTORE (typed reason, both paths, PRE_RESTORE and RESTORE rows) beside ANCHOR_REBASE, which carries the reason and needs one | `anchor-answer.ts`, `backups.ts` (`recordCleanRestore`), `src/lib/chain/anchor.ts` |
+| Costs out of the log (F4, LOG-7) | `COST_SETTING_KEYS` withheld in `changes`; read apart (`readCostSettings`, an action: CONSULT) and changed with `cost.read`; the rules tab hides them otherwise | `src/lib/settings`, `src/lib/log`, `settings-form.ts`, `settings-groups.tsx` |
+| The manager's place (F4, ACC-5) | Only the manager gives/changes the MANAGER role or switches a manager's account; `MANAGERS_OWN_CAPABILITIES` (no default holder) given or taken only by him; nobody changes his own role or raises his own role | `users.ts`, `src/lib/access/catalogue.ts`, `account-dialogs.tsx`, `role-grants.tsx` |
+| Smaller F4 items | `numbering.legalSeries` frozen in a numbered year (INV-5); `addCommune` guarded (ACC-4); the default day board gates «report arrival» (ACC-12); anchor at close and when the minute is up (LOG-10; `core:window:allow-destroy` added); `fs:allow-remove` removed (LOG-13); offline lint/test forbid geolocation, biometric, barcode-scanner, nfc, localhost plugins (OFF-5, OFF-6); first sign-in and the identity card say what the first invoice needs (INV-3); `useDateText`; Arabic plurals on the anchor screen | see DESIGN.md section 19 |
+| Schema in F4 | `Payment.fileNumber`, `Payment.clientName` (@snap, chained v1); `SanctionDecisionMatch` (People's, append-only); `ProblemReport.deletedAt`, `deletedByUserId`; capability `staff.documents.read`; event `staff.unavailable` gains `reason`; EXPORT_KIND `RECEIPTS`. 107 tables, 206 indexes, 120 triggers | `prisma/`, `src-tauri/migrations`, `src-tauri/src/db.rs` (counts), `src-tauri/proof` |
+| Harness (F4) | One running clock per session across views (`continuousNow` in `lib/session.mjs`); the sign-in driver confirms a jumped date as the manager | `scripts/harness/lib/{session,sign-in}.mjs`, README |
 
 ## Rulings I was given (beyond docs/data-model/RULINGS.md)
 
@@ -57,6 +68,13 @@ manual for builders), then this page. Updated at the end of every round. **Last 
 - F3: the low-stock tile opens `/dashboard/inventory?kind=MATERIAL&state=TO_BUY` (or `EQUIPMENT`): an alert's `count`
   may answer `{ count, route }`.
 - Git: teammates run no git command that writes; the coordinator commits.
+- F4 rulings: LOG-1 (the signed form's scan opens with `staff.health.read` only); INV-5 (legal series frozen for a
+  numbered year, refused with a sentence); ACC-5 (only the manager gives the MANAGER role or a manager-only
+  capability; nobody raises his own role or grants); LOG-2 (printing only through `PrintButton`; shortcut and context
+  menu blocked); LOG-7 (costing settings logged as changed without values); INV-3 (Money refuses the first invoice
+  without address and article number besides RC, NIS, NIF; first run and the identity card say so); LOG-X1
+  (`staff.unavailable.reason`); LOG-14 (ProblemReport soft delete); one yes covers every matched sanction
+  (`SanctionDecisionMatch`, my choice of a join table). Put the audit id in the name of the test that proves a fix.
 
 ## What the builders depend on (do not break without telling the coordinator)
 
@@ -68,10 +86,22 @@ types. Contracts between owners: `docs/data-model/CONTRACTS.md`. Since F3b also:
 and `--anchor`. Since F3 also: the file names `alerts.ts`,
 `daily.ts` and `home.tsx` in a feature folder (found by name); `useSession`, `useCan`, `useSectionLevel`,
 `useCentreClock`, `useMoneyText`; the harness's `--user` names and the demo password; the sign-in window's
-`data-signin…` attributes, which the harness drives.
+`data-signin…` attributes, which the harness drives. Since F4 also: `useDateText`, `saveUploadCopy(url, title, log)` and
+`MediaUploadField`'s `copyLog` and `mayCopy`, `workUntil` and `confirmDate`, `registerPrinter`, `confirmClockJump`,
+`COST_SETTING_KEYS`, `MANAGERS_OWN_CAPABILITIES`, and `data-anchor-screen="clock-jump"`, which the harness answers.
 
 ## Open items
 
+- The clock guard's one remaining gap: a date changed by more than `system.clockJumpDays` while a session is open is
+  caught inside that session, but what that session wrote after the change counts for the next one (the reference
+  is computed per session, not per entry). Closing it needs a trusted checkpoint (a setting the day-start writes)
+  and a fold of the entries since it.
+- OFF-1 checks that a site photo's taker is a live centre employee, not a supervisor in particular: Clients' first
+  visit is made by an employee who need not be a supervisor. A ruling could narrow it to job positions.
+- WebView2's accelerator keys and default context menu are blocked in the page (`installPrintGuard`); Tauri 2.11 does
+  not expose the WebView2 switches, so nothing is set on the Rust side.
+- `ACC-12`'s live board is Operations' (`home.tsx`); Foundation's default board is gated too but unused while the
+  slot is filled.
 - Settings: the lists that are other owners' tables (training days and skills, inspection criteria, clause text) have
   no editor yet; a slot for them in قواعد العمل is to build when an owner asks. No branch editor. The letterhead
   pictures have no upload field.
@@ -88,4 +118,7 @@ and `--anchor`. Since F3 also: the file names `alerts.ts`,
 
 `cargo check --offline` and `cargo test --lib --offline` in `src-tauri/`; then `npx tsc --noEmit`, `npm run lint`,
 `npm test`, `npm run build`, `npm run format:check`, `npm run csp:check` (all routes), `npm run db:verify`,
-`npm run demo`. Judge by your own paths; report builders' failures to the coordinator.
+`npm run demo`. Judge by your own paths; report builders' failures to the coordinator. After a schema change:
+`npm run db:types`, `node scripts/db/model-proof.mjs` (the tape in `src-tauri/proof/`), the table and trigger counts
+in `src-tauri/src/db.rs` (`migrations_apply_on_the_shipped_engine`), the numbers in CLAUDE.md, then `npm run db:verify`
+and `cargo test --lib --offline`.

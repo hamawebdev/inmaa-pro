@@ -8,6 +8,7 @@ import { DayBoard } from "@/features/operations/components/day-board/day-board";
 import type { ArrivalVia } from "@/features/operations/components/day-board/day-board-data";
 import { reportArrivalAction } from "@/features/operations/services/visit-entry";
 import { useCentreClock } from "@/hooks/use-centre-clock";
+import { useSectionLevel } from "@/hooks/use-session";
 import { useErrorMessage } from "@/i18n/errors";
 
 import { useDayBoardVisits } from "./use-today-board";
@@ -18,6 +19,8 @@ import { useDayBoardVisits } from "./use-today-board";
  * (src/lib/home/slots.ts).
  */
 export function HomeDayBoard() {
+  // Reporting an arrival writes: a reader of the requests sees the bell, not the action (audit ACC-12).
+  const mayWrite = useSectionLevel("REQUESTS") === "WRITE";
   const t = useTranslations("Home");
   const errorMessage = useErrorMessage();
   const clock = useCentreClock();
@@ -38,7 +41,7 @@ export function HomeDayBoard() {
       visits={board.data ?? []}
       loading={board.isPending}
       clock={clock}
-      onReportArrival={reportArrival}
+      onReportArrival={mayWrite ? reportArrival : undefined}
     />
   );
 }

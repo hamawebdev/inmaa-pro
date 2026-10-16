@@ -112,6 +112,15 @@ npm run demo
 npm run pdf -- --demo --route "/dashboard/files/{clients.housingFile}/print" --png
 ```
 
+The clock and the program's clock guard (src/lib/clock/sanity.ts). One session keeps one clock: every tab starts at
+the fixed `now`, but a view opened after another (`pdf --routes`, two sizes) starts where the session's clock has got
+to, as if the PC's clock had kept running, so a sign-in is never earlier than what the last view wrote (a print's
+disclosure). Nobody needs to move `--now` by hand between views. A `--now` more than `system.clockJumpDays` (3) days
+after the data's last work opens, for the manager, on the screen where he confirms the date: the harness confirms it
+as he would after a closure. Another account signs in and works, but is refused an invoice or a receipt until the
+manager has confirmed. A `--now` earlier than the data's last work is refused at sign-in, as on the PC: every account
+but the manager's, who is shown the clock screen.
+
 `--keep` leaves the run's folder under `.harness/run/` for a day; other people's runs do not sweep it before then.
 
 ## Where things go

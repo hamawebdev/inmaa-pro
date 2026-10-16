@@ -103,7 +103,8 @@
     "ChangePasswordDesc": "Type your current password, then the new one twice.",
     "RegenerateRecoveryPassword": "Type your password to get the new code.",
     "RegenerateRecoveryAction": "Show the new code",
-    "LockedIdle": "Locked after {minutes} minutes without use."
+    "LockedIdle": "Locked after {minutes} minutes without use.",
+    "FirstRunIdentity": "Before the first invoice, fill in Settings › General: the centre's address, its trade register (RC), NIS, NIF and tax article number, and choose the tax mode. An invoice is refused while one of them is missing."
   },
   "Common": {
     "Cancel": "Cancel",
@@ -188,7 +189,13 @@
     "BackupFolderSynced": "This folder is synchronised by {client}. Choose a folder that stays on this PC or on a USB drive.",
     "BackupFolderMissing": "This folder does not exist.",
     "BackupFolderReadOnly": "The program cannot write in this folder.",
-    "PhotoTakenByEmployee": "A photo at a client's site is taken by one of the centre's employees."
+    "PhotoTakenByEmployee": "A photo at a client's site is taken by one of the centre's employees.",
+    "LegalSeriesFormat": "The series is a short code of up to four capital letters or digits.",
+    "LegalSeriesFrozen": "The series cannot change during a year in which an invoice or a receipt has been numbered. Change it from 1 January.",
+    "ManagerRoleByManager": "Only the manager gives or changes the manager's role.",
+    "OwnRoleUnchanged": "Nobody changes the role of the account he is signed in with.",
+    "ManagerRightsByManager": "Only the manager gives or takes away the manager's own rights.",
+    "OwnRoleNotRaised": "Nobody raises the rights of his own role."
   },
   "Table": {
     "ScrollLeft": "Scroll left",
@@ -610,7 +617,7 @@
       },
       "taxIds": {
         "Title": "Tax and registration numbers",
-        "Description": "Required on every invoice: an invoice is refused while the register, NIS, NIF or article number is missing."
+        "Description": "Required on every invoice, with the centre's address: an invoice is refused while the register, NIS, NIF or article number is missing."
       },
       "bank": {
         "Title": "Bank and postal account",
@@ -665,7 +672,8 @@
         "Label": "Legal form"
       },
       "centre_address": {
-        "Label": "Address"
+        "Label": "Address",
+        "Hint": "Printed on every invoice: required before the first one."
       },
       "centre_city": {
         "Label": "City",
@@ -690,7 +698,8 @@
         "Label": "Tax number (NIF)"
       },
       "centre_articleNumber": {
-        "Label": "Tax article number"
+        "Label": "Tax article number",
+        "Hint": "Required before the first invoice, with the register, NIS and NIF."
       },
       "centre_nin": {
         "Label": "National number (NIN)",
@@ -1158,6 +1167,7 @@
     "staff_health_read": "Read the health answers and open restricted files (logged)",
     "staff_hiringScore_read": "Read and write the confidential hiring score (logged)",
     "staff_printFilledForm": "Print a filled worker form",
+    "staff_documents_read": "Open the restricted scans of staff documents: medical certificate, criminal record (logged)",
     "hiring_decide": "Record «قرار الإدارة» on a candidate",
     "attendance_employee_edit": "Edit or delete an employee's check record or absence",
     "pay_read": "See hours, pay runs, payslips, payouts and advances",
@@ -1201,7 +1211,7 @@
       "Anchor": "Last invoice recorded on this PC:",
       "Database": "This copy stops at:",
       "None": "no invoice",
-      "Lost": "{count} invoice or receipt numbers issued since are not in this copy."
+      "Lost": "{count, plural, one {# invoice or receipt number issued since is not in this copy.} other {# invoice or receipt numbers issued since are not in this copy.}}"
     },
     "States": {
       "behind": {
@@ -1233,8 +1243,15 @@
         "Title": "The database is in order",
         "Body": "Nothing to answer.",
         "Consequence": "—"
+      },
+      "unchecked": {
+        "Title": "The database could not be checked",
+        "Body": "The program could not compare the data with what it last recorded on this PC. Nothing can be worked on until it can. Try again; if it happens again, close the program, open it again, and call support if it still fails.",
+        "Consequence": "—",
+        "FailedAgain": "It could not be checked this time either."
       }
-    }
+    },
+    "TryAgain": "Try again"
   },
   "LogTab": {
     "TheProgram": "The program",
@@ -1378,5 +1395,24 @@
     "Handouts": "Materials and tools handed to workers, and what came back.",
     "Purchases": "Purchase requests, purchases and what suppliers were paid.",
     "Maintenance": "The upkeep of machines and equipment, done and due."
+  },
+  "ClockScreen": {
+    "Today": "Date on this PC:",
+    "LastWork": "Last recorded work:",
+    "Days": "{count, plural, one {# day later} other {# days later}}",
+    "Reason": "Your reason",
+    "Failed": "Could not record the answer. Nothing was changed.",
+    "Jump": {
+      "Title": "The date of this PC has moved forward",
+      "Body": "Several days have passed since the last recorded work. If the centre was closed, confirm the date. If the date is wrong, lock, correct the date and time of the PC, and sign in again.",
+      "Consequence": "Until you confirm, no invoice or receipt can be issued, and the day's own work (contracts ending, the daily copy) waits.",
+      "Confirm": "The date is right"
+    },
+    "Behind": {
+      "Title": "The date of this PC is behind",
+      "Body": "The date of this PC is earlier than the last recorded work. Lock, correct the date and time of the PC, and sign in again. Nobody else can sign in meanwhile.",
+      "Consequence": "Only if the recorded date was itself wrong: confirm today's date with your reason. The work is then measured from today. An invoice dated before the last one stays refused.",
+      "Confirm": "Today's date is right"
+    }
   }
 }

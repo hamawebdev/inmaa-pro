@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { DEFAULT_SECTION_LEVELS } from "@/lib/access/catalogue";
 import { loadSession } from "@/lib/access/session";
+import { SYSTEM_SESSION } from "@/lib/service/context";
 import { createTestDatabase, type TestDatabase } from "@/testing/database";
 
 import { FIRST_MANAGER_ID } from "./first-run";
@@ -58,8 +59,16 @@ describe("accounts", () => {
       roleId: ["ADMINISTRATION", "SUPERVISOR"],
     });
 
+    // Nobody changes his own role (audit ACC-5)...
     await expect(
       test.transact((ex, ctx) => updateAccount(ex, ctx, { userId: FIRST_MANAGER_ID, roleId: "ACCOUNTANT" })),
+    ).rejects.toThrow("Nobody changes the role of the account he is signed in with.");
+    // ...and whoever asks, the database keeps one active manager.
+    await expect(
+      test.transact(
+        (ex, ctx) => updateAccount(ex, ctx, { userId: FIRST_MANAGER_ID, roleId: "ACCOUNTANT" }),
+        SYSTEM_SESSION,
+      ),
     ).rejects.toThrow("LAST_MANAGER");
   });
 

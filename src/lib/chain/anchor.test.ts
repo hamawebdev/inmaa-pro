@@ -14,6 +14,7 @@ import {
   acceptRestoredDatabase,
   compareAnchor,
   memoryAnchorStore,
+  reconcileAnchorAtStart,
   reconcileAnchor,
   snapshotAnchor,
   writeAnchor,
@@ -179,7 +180,7 @@ describe("the anchor in a file", () => {
 });
 
 describe("an anchor that cannot be followed (B8)", () => {
-  it("another database's anchor is answered by the manager, and only then replaced", async () => {
+  it("another database's anchor is answered by the manager, with his words as the reason, and only then replaced (LOG-4)", async () => {
     const now = test.ctx().now;
     await test.anchor.write({ ...(await snapshotAnchor(test.db, now)), databaseId: "another-database" });
 
@@ -195,11 +196,9 @@ describe("an anchor that cannot be followed (B8)", () => {
       .selectAll()
       .where("action", "=", "ANCHOR_REBASE")
       .executeTakeFirstOrThrow();
-    expect(JSON.parse(entry.context ?? "{}")).toMatchObject({
-      state: "foreign",
-      typedReason: "تثبيت جديد للنظام",
-      anchorDatabaseId: "another-database",
-    });
+    // His words are the entry's reason, the column the law reads (audit LOG-4).
+    expect(entry.reason).toBe("تثبيت جديد للنظام");
+    expect(JSON.parse(entry.context ?? "{}")).toMatchObject({ state: "foreign", anchorDatabaseId: "another-database" });
   });
 
   it("a database that holds rows and has no anchor is not anchored without the manager", async () => {
@@ -234,5 +233,23 @@ describe("the anchor at start", () => {
     await test.rows.insert("Invoice");
     expect((await reconcileAnchor(test.db, test.anchor, now)).state).toBe("altered");
     expect((await test.anchor.read())?.heads.Invoice.hash).toBe("f".repeat(64));
+  });
+});
+
+describe("the comparison at start-up", () => {
+  it("fails closed: a comparison that throws is 'unchecked', never 'normal' (LOG-11)", async () => {
+    const test = await createTestDatabase();
+    try {
+      const broken = {
+        read: () => Promise.reject(new Error("anchor_read: the command failed")),
+        write: () => Promise.reject(new Error("anchor_write: the command failed")),
+      };
+      const found = await reconcileAnchorAtStart(test.db, broken, test.ctx().now);
+      expect(found).toEqual({ state: "unchecked", error: "anchor_read: the command failed" });
+      // With a store that answers, the same database is in order.
+      expect((await reconcileAnchorAtStart(test.db, test.anchor, test.ctx().now)).state).toBe("normal");
+    } finally {
+      test.close();
+    }
   });
 });

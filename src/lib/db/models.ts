@@ -499,6 +499,14 @@ export interface SanctionDecisionRow {
   updatedAt: Date;
 }
 
+export interface SanctionDecisionMatchRow {
+  id: string;
+  decisionId: string;
+  sanctionId: string;
+  matchBasis: string;
+  createdAt: Date;
+}
+
 export interface PeriodicEvaluationRow {
   id: string;
   staffId: string;
@@ -1477,6 +1485,8 @@ export interface ProblemReportRow {
   updatedAt: Date;
   createdByUserId: string | null;
   updatedByUserId: string | null;
+  deletedAt: Date | null;
+  deletedByUserId: string | null;
 }
 
 export interface WorkerAbsenceRow {
@@ -1859,7 +1869,9 @@ export interface VisitBillingRow {
 export interface PaymentRow {
   id: string;
   fileId: string;
+  fileNumber: string;
   clientId: string;
+  clientName: string;
   division: string;
   branchId: string;
   receivedDate: LocalDate;

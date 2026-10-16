@@ -3,12 +3,19 @@ import * as React from "react";
 import { RouterProvider } from "react-router-dom";
 
 import { AnchorScreen } from "@/components/security/anchor-screen";
+import { ClockScreen } from "@/components/security/clock-screen";
 import { IdleLock } from "@/components/security/idle-lock";
 import { SignInScreen } from "@/components/security/sign-in-screen";
 import { recordCleanRestoreAction } from "@/features/core/services/backups";
-import { startupAnchor, subscribeToStartupAnchor } from "@/features/core/services/startup";
+import {
+  recheckStartupClock,
+  startupAnchor,
+  startupClock,
+  subscribeToStartupAnchor,
+  subscribeToStartupClock,
+} from "@/features/core/services/startup";
 import { useCan, useSession } from "@/hooks/use-session";
-import { MANAGER_ONLY_CAPABILITY } from "@/lib/access/catalogue";
+import { MANAGER_ONLY_CAPABILITY, MANAGER_ROLE } from "@/lib/access/catalogue";
 import { router } from "@/routes";
 import { clearRestoreNote, readRestoreNote, type RestoreNote } from "@/server/backup";
 
@@ -19,14 +26,27 @@ import { clearRestoreNote, readRestoreNote, type RestoreNote } from "@/server/ba
  *    so no page is mounted, none of their queries runs, and there is nothing
  *    behind the window to reach. «قفل الآن» and the idle lock come back here.
  *  - Signed in, but the database does not agree with its anchor (an older copy
- *    was restored, a record was altered): the screen that asks the manager.
- *    Nothing is written to a database in question.
+ *    was restored, a record was altered), or it could not be compared: the
+ *    screen that asks the manager, or offers to try again. Nothing is written
+ *    to a database in question.
+ *  - The manager signed in on a PC whose date is in question (several days
+ *    after the last recorded work, or earlier than it): the screen where he
+ *    confirms or corrects it. Anyone else goes on to the program after a jump
+ *    (nothing legal is issued meanwhile); with the clock behind, nobody else
+ *    gets past the sign-in.
  *  - Otherwise, the program.
  */
 export function ProgramGate() {
   const session = useSession();
   const anchor = React.useSyncExternalStore(subscribeToStartupAnchor, startupAnchor, startupAnchor);
+  const clock = React.useSyncExternalStore(subscribeToStartupClock, startupClock, startupClock);
   const note = useRestoreNote(session !== null);
+
+  // Each sign-in may change what the clock is measured against (a session opened on a date in question).
+  const userId = session?.userId ?? null;
+  React.useEffect(() => {
+    if (userId) void recheckStartupClock();
+  }, [userId]);
 
   if (!session) return <SignInScreen />;
   if (anchor && anchor.state !== "normal") {
@@ -34,6 +54,14 @@ export function ProgramGate() {
       <>
         <IdleLock />
         <AnchorScreen comparison={anchor} note={note} />
+      </>
+    );
+  }
+  if (clock && clock.state !== "ok" && session.roleId === MANAGER_ROLE) {
+    return (
+      <>
+        <IdleLock />
+        <ClockScreen clock={clock} />
       </>
     );
   }

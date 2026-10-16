@@ -1,6 +1,7 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 
+import { installPrintGuard } from "@/components/print/print-flow";
 import { I18nProvider } from "@/i18n/provider";
 import { PreferencesStoreProvider } from "@/stores/preferences/preferences-provider";
 
@@ -20,6 +21,9 @@ import "@/index.css";
  * able to read the screen: the theme they chose and the language they chose.
  * Both live in localStorage, and neither touches the database.
  */
+// As in the main window: no print shortcut, no window menu (audit LOG-2).
+installPrintGuard();
+
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>
     <PreferencesStoreProvider>

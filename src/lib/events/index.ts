@@ -40,6 +40,12 @@ export interface EventPayloads {
     fromDate: LocalDate;
     toDate?: LocalDate | null;
     cause: "LEFT" | "SANCTION_SET" | "SANCTION_LIFTED";
+    /**
+     * The reason typed for the act that caused it (her leaving, the sanction
+     * set or lifted): what Operations writes on the ERASE entries of the
+     * assignments it takes away (F4, the coordinator's ruling on LOG-X1).
+     */
+    reason: string;
   };
   "sanction.changed": { sanctionId: string };
   "invoice.issued": { invoiceId: string };

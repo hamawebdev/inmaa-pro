@@ -369,10 +369,10 @@ model BackupRun {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// OWNER: PEOPLE (25 models)
+// OWNER: PEOPLE (26 models)
 // StaffMember, StaffConfidential, StaffEvent, HiringInterview,
 // HiringDecision, StaffDocument, TrainingModule, TrainingSession,
-// TrainingAttendance, Skill, Violation, Sanction, SanctionDecision,
+// TrainingAttendance, Skill, Violation, Sanction, SanctionDecision, SanctionDecisionMatch,
 // PeriodicEvaluation, EmployeeLeave, EmployeeCheckRecord, EmployeeAbsence,
 // HoursAdjustment, StaffPayItem, PayRun, Payslip, PayslipItem, PayslipSeat,
 // StaffPayout, StaffDebtEntry
@@ -792,6 +792,24 @@ model SanctionDecision {
   attemptClient Client?      @relation(fields: [attemptClientId], references: [id], onDelete: Restrict)
 
   @@index([status, requestedAt])
+  @@index([sanctionId])
+}
+
+/// Every sanction one request matched, at the moment it was made: one yes from the manager covers them all (the
+/// coordinator's ruling). Written with the request, never changed; SanctionDecision.sanctionId is the first of them,
+/// the one the screens name, and has its row here too.
+/// @trigger appendOnly
+model SanctionDecisionMatch {
+  id         String   @id
+  decisionId String
+  sanctionId String
+  matchBasis String   // @code MATCH_BASIS
+  createdAt  DateTime
+
+  decision SanctionDecision @relation(fields: [decisionId], references: [id], onDelete: Restrict)
+  sanction Sanction         @relation(fields: [sanctionId], references: [id], onDelete: Restrict)
+
+  @@unique([decisionId, sanctionId])
   @@index([sanctionId])
 }
 
@@ -2105,7 +2123,7 @@ model VisitCall {
   @@index([calledAt])
 }
 
-/// #14. One row per kind ticked on the sheet, or per phoned report.
+/// #14. One row per kind ticked on the sheet, or per phoned report. Soft-deleted, never deleted.
 model ProblemReport {
   id                   String    @id
   fileId               String
@@ -2130,6 +2148,8 @@ model ProblemReport {
   updatedAt            DateTime
   createdByUserId      String?
   updatedByUserId      String?
+  deletedAt            DateTime? // a re-typed order takes a report away without deleting it (F4, LOG-14); logged as ERASE with its reason
+  deletedByUserId      String?
 
   file           File            @relation(fields: [fileId], references: [id], onDelete: Restrict)
   visit          Visit?          @relation(fields: [visitId], references: [id], onDelete: Restrict)
@@ -2731,7 +2751,9 @@ model VisitBilling {
 model Payment {
   id               String   @id
   fileId           String
+  fileNumber       String   // @snap «رقم التسجيل» of the file when the payment was recorded: the receipt reprints as issued
   clientId         String   // @snap
+  clientName       String   // @snap the client's name as the receipt gave it when the payment was recorded
   division         String   // @code DIVISION @snap: what puts it in a division's income
   branchId         String   // @snap
   receivedDate     String   // @date; «تاريخ الدفع»; decides the income period

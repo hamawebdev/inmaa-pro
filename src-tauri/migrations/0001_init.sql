@@ -615,6 +615,18 @@ CREATE TABLE "SanctionDecision" (
 CREATE INDEX "SanctionDecision_status_requestedAt_idx" ON "SanctionDecision" ("status", "requestedAt");
 CREATE INDEX "SanctionDecision_sanctionId_idx" ON "SanctionDecision" ("sanctionId");
 
+CREATE TABLE "SanctionDecisionMatch" (
+  "id" TEXT PRIMARY KEY NOT NULL,
+  "decisionId" TEXT NOT NULL,
+  "sanctionId" TEXT NOT NULL,
+  "matchBasis" TEXT NOT NULL,
+  "createdAt" TEXT NOT NULL,
+  FOREIGN KEY ("decisionId") REFERENCES "SanctionDecision" ("id") ON DELETE RESTRICT,
+  FOREIGN KEY ("sanctionId") REFERENCES "Sanction" ("id") ON DELETE RESTRICT,
+  UNIQUE ("decisionId", "sanctionId")
+) STRICT;
+CREATE INDEX "SanctionDecisionMatch_sanctionId_idx" ON "SanctionDecisionMatch" ("sanctionId");
+
 CREATE TABLE "PeriodicEvaluation" (
   "id" TEXT PRIMARY KEY NOT NULL,
   "staffId" TEXT NOT NULL,
@@ -1836,6 +1848,8 @@ CREATE TABLE "ProblemReport" (
   "updatedAt" TEXT NOT NULL,
   "createdByUserId" TEXT,
   "updatedByUserId" TEXT,
+  "deletedAt" TEXT,
+  "deletedByUserId" TEXT,
   FOREIGN KEY ("fileId") REFERENCES "File" ("id") ON DELETE RESTRICT,
   FOREIGN KEY ("visitId") REFERENCES "Visit" ("id") ON DELETE RESTRICT,
   FOREIGN KEY ("reportedByWorkerId") REFERENCES "StaffMember" ("id") ON DELETE RESTRICT,
@@ -1845,7 +1859,8 @@ CREATE TABLE "ProblemReport" (
   FOREIGN KEY ("loggedByUserId") REFERENCES "User" ("id") ON DELETE RESTRICT,
   FOREIGN KEY ("closedByUserId") REFERENCES "User" ("id") ON DELETE RESTRICT,
   FOREIGN KEY ("createdByUserId") REFERENCES "User" ("id") ON DELETE RESTRICT,
-  FOREIGN KEY ("updatedByUserId") REFERENCES "User" ("id") ON DELETE RESTRICT
+  FOREIGN KEY ("updatedByUserId") REFERENCES "User" ("id") ON DELETE RESTRICT,
+  FOREIGN KEY ("deletedByUserId") REFERENCES "User" ("id") ON DELETE RESTRICT
 ) STRICT;
 CREATE INDEX "ProblemReport_fileId_idx" ON "ProblemReport" ("fileId");
 CREATE INDEX "ProblemReport_visitId_idx" ON "ProblemReport" ("visitId");
@@ -2366,7 +2381,9 @@ CREATE TABLE "VisitBilling" (
 CREATE TABLE "Payment" (
   "id" TEXT PRIMARY KEY NOT NULL,
   "fileId" TEXT NOT NULL,
+  "fileNumber" TEXT NOT NULL,
   "clientId" TEXT NOT NULL,
+  "clientName" TEXT NOT NULL,
   "division" TEXT NOT NULL,
   "branchId" TEXT NOT NULL,
   "receivedDate" TEXT NOT NULL CHECK ("receivedDate" IS NULL OR "receivedDate" GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]'),
@@ -3020,6 +3037,12 @@ BEGIN SELECT RAISE(ABORT, 'NO_DELETE:Sanction'); END;
 
 CREATE TRIGGER "SanctionDecision_no_delete" BEFORE DELETE ON "SanctionDecision"
 BEGIN SELECT RAISE(ABORT, 'NO_DELETE:SanctionDecision'); END;
+
+CREATE TRIGGER "SanctionDecisionMatch_no_update" BEFORE UPDATE ON "SanctionDecisionMatch"
+BEGIN SELECT RAISE(ABORT, 'APPEND_ONLY:SanctionDecisionMatch:update'); END;
+
+CREATE TRIGGER "SanctionDecisionMatch_no_delete" BEFORE DELETE ON "SanctionDecisionMatch"
+BEGIN SELECT RAISE(ABORT, 'APPEND_ONLY:SanctionDecisionMatch:delete'); END;
 
 CREATE TRIGGER "Payslip_frozen_insert" BEFORE INSERT ON "Payslip"
 WHEN NOT EXISTS (SELECT 1 FROM "PayRun" r WHERE r."id" = NEW."payRunId" AND r."status" = 'DRAFT')

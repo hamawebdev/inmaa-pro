@@ -84,6 +84,21 @@ const DRIVER = async (username, password) => {
   const said = refusal();
   if (said) throw new Error(`sign-in: "${username}" was refused: ${said}`);
   await until(() => !root(), "the program did not open after the password");
+
+  // A clock set days after the data's last work (--now well after the demo's date) opens, for the manager,
+  // on the screen where he confirms the date. The harness answers it as he would after the centre was closed.
+  // A clock set behind the data is a mistake of the run: it is left on the screen, which says so.
+  const jump = await until(
+    () =>
+      document.querySelector("[data-anchor-screen='clock-jump']") ??
+      (document.querySelector("[data-app-main], [data-anchor-screen]") ? "none" : null),
+    "the program did not open after the password",
+  ).catch(() => "none");
+  if (jump !== "none") {
+    const confirm = jump.querySelector("button[type=submit]");
+    if (confirm) confirm.click();
+    await until(() => !document.querySelector("[data-anchor-screen='clock-jump']"), "the date could not be confirmed");
+  }
   return "signed-in";
 };
 

@@ -60,7 +60,7 @@ const OFFLINE_SYNTAX = [
   {
     // `import("@tauri-apps/plugin-opener")`, which no-restricted-imports does not see.
     selector:
-      "ImportExpression[source.value=/^@tauri-apps\\/plugin-(opener|shell|http|updater|websocket|upload|deep-link)/]",
+      "ImportExpression[source.value=/^@tauri-apps\\/plugin-(opener|shell|http|updater|websocket|upload|deep-link|localhost|geolocation|biometric|barcode-scanner|nfc)/]",
     message: "This plugin reaches outside the program, which is offline by rule.",
   },
   {
@@ -165,7 +165,8 @@ export default tseslint.config(
         {
           patterns: [
             {
-              regex: "^@tauri-apps/plugin-(opener|shell|http|updater|websocket|upload|deep-link)",
+              regex:
+                "^@tauri-apps/plugin-(opener|shell|http|updater|websocket|upload|deep-link|localhost|geolocation|biometric|barcode-scanner|nfc)",
               message: "This plugin reaches outside the program, which is offline by rule.",
             },
           ],

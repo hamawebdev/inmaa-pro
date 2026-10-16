@@ -19,12 +19,16 @@ import { createRunner } from "./runner";
  *
  * See "How this codebase works" in CLAUDE.md for the whole recipe.
  */
+/** The program's timer, for the log's anchor when its minute is up (src/lib/service/runner.ts). */
+const later = (work: () => void, ms: number) => void window.setTimeout(work, ms);
+
 const runner = createRunner({
   db,
   session: currentSession,
   clock: programClock,
   anchor: programAnchor,
   revalidate: revalidatePath,
+  later,
 });
 
 export const { action, query, transact, anchorNow } = runner;
@@ -40,6 +44,7 @@ const programRunner = createRunner({
   clock: programClock,
   anchor: programAnchor,
   revalidate: revalidatePath,
+  later,
 });
 
 export const asProgram = {

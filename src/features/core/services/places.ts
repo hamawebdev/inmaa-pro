@@ -1,4 +1,4 @@
-import { requireCapability } from "@/lib/access/session";
+import { can, requireCapability, sectionLevel } from "@/lib/access/session";
 import { newId } from "@/lib/db/rows";
 import { emit } from "@/lib/events";
 import { isWilayaCode } from "@/lib/geo/wilayas";
@@ -176,9 +176,27 @@ export async function listZones(ex: Executor) {
   return ex.selectFrom("Zone").select(["id", "name", "branchId"]).where("isActive", "=", 1).orderBy("name").execute();
 }
 
+/**
+ * The picker's «إضافة بلدية» (CommunePicker, the zones card). `ensureCommune`
+ * is called by Clients and People inside their own saves, which check their
+ * own rights; typed on its own it needs a right that types a place: the work
+ * rules, or WRITE on a section whose forms hold an address (audit ACC-4).
+ */
+export async function addCommune(
+  ex: Executor,
+  ctx: ServiceContext,
+  input: EnsureCommuneInput,
+): Promise<{ id: string; created: boolean }> {
+  const typesPlaces =
+    can(ctx, "settings.rules") ||
+    (["REQUESTS", "WORKERS", "EMPLOYEES"] as const).some((section) => sectionLevel(ctx, section) === "WRITE");
+  if (!typesPlaces) throw new ServiceError("You do not have permission to do this.");
+  return ensureCommune(ex, ctx, input);
+}
+
 // ── What the screens call ────────────────────────────────────────────────────
 
-export const addCommuneAction = action(ensureCommune, { revalidate: [PLACES_PATH] });
+export const addCommuneAction = action(addCommune, { revalidate: [PLACES_PATH] });
 export const remapCommuneAction = action(remapCommune, { revalidate: [PLACES_PATH, "/dashboard/settings"] });
 export const listCommunesQuery = query(listCommunes);
 export const listZonesQuery = query((ex: Executor) => listZones(ex));

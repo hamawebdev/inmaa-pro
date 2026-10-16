@@ -7,7 +7,7 @@ import { APP_CONFIG } from "@/config/app-config";
 import {
   assessRestoreQuery,
   backupAsProgram,
-  describeDatabaseQuery,
+  beginBackupAction,
   readBackupSettingsQuery,
   recordBackupRunAction,
   type BackupKind,
@@ -67,19 +67,24 @@ export async function chooseBackupFolder(title: string): Promise<{ dir: string; 
 
 /**
  * One copy, start to finish: the anchor first (it must not be behind the copy
- * it sits beside), the checkpoint, the copy, its manifest, then its row. A
- * copy that fails is recorded as tried.
+ * it sits beside); then who asks is checked and the copy is logged as a
+ * disclosure, before a byte moves (`beginBackup`, audit LOG-3); the
+ * checkpoint, the copy, its manifest, then its row. A copy that fails is
+ * recorded as tried.
  */
 async function copyDatabase(kind: BackupKind, target: string): Promise<BackupOutcome> {
   const automatic = kind === "AUTO";
   const startedAt = programClock().now().toISOString();
-  const describe = automatic ? backupAsProgram.describe : describeDatabaseQuery;
+  const begin = automatic ? backupAsProgram.begin : beginBackupAction;
   const record = automatic ? backupAsProgram.record : recordBackupRunAction;
 
+  let runId: string;
   let manifest: BackupManifest;
   try {
     await anchorNow();
-    manifest = await describe({ appVersion: APP_CONFIG.version });
+    const begun = await begin({ kind, targetPath: target, appVersion: APP_CONFIG.version });
+    if (!begun.success) return { done: false, cancelled: false, error: begun.error };
+    ({ runId, manifest } = begun.data);
   } catch (error) {
     return { done: false, cancelled: false, error: messageOf(error) };
   }
@@ -94,6 +99,7 @@ async function copyDatabase(kind: BackupKind, target: string): Promise<BackupOut
       contents: `${JSON.stringify(manifest, null, 2)}\n`,
     });
     const saved = await record({
+      runId,
       kind,
       targetPath: target,
       startedAt,
@@ -104,7 +110,7 @@ async function copyDatabase(kind: BackupKind, target: string): Promise<BackupOut
     return { done: true, path: target };
   } catch (error) {
     const reason = messageOf(error);
-    await record({ kind, targetPath: target, startedAt, manifest, result: { ok: false, error: reason } });
+    await record({ runId, kind, targetPath: target, startedAt, manifest, result: { ok: false, error: reason } });
     return { done: false, cancelled: false, error: sentenceOf(reason) };
   }
 }

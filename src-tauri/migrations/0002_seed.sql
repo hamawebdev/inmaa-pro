@@ -30,6 +30,7 @@ INSERT INTO "RoleGrant" ("id", "roleId", "kind", "key", "access", "createdAt", "
   ('grant-HR_OFFICER-capability-staff.health.read', 'HR_OFFICER', 'CAPABILITY', 'staff.health.read', 'GRANTED', '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z'),
   ('grant-HR_OFFICER-capability-staff.hiringScore.read', 'HR_OFFICER', 'CAPABILITY', 'staff.hiringScore.read', 'GRANTED', '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z'),
   ('grant-HR_OFFICER-capability-staff.printFilledForm', 'HR_OFFICER', 'CAPABILITY', 'staff.printFilledForm', 'GRANTED', '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z'),
+  ('grant-HR_OFFICER-capability-staff.documents.read', 'HR_OFFICER', 'CAPABILITY', 'staff.documents.read', 'GRANTED', '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z'),
   ('grant-HR_OFFICER-capability-attendance.employee.edit', 'HR_OFFICER', 'CAPABILITY', 'attendance.employee.edit', 'GRANTED', '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z'),
   ('grant-HR_OFFICER-capability-pay.read', 'HR_OFFICER', 'CAPABILITY', 'pay.read', 'GRANTED', '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z'),
   ('grant-HR_OFFICER-capability-pay.write', 'HR_OFFICER', 'CAPABILITY', 'pay.write', 'GRANTED', '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z'),

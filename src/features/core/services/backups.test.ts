@@ -7,6 +7,7 @@ import { createTestDatabase, type TestDatabase } from "@/testing/database";
 import { countStaleBackup } from "../alerts";
 import {
   assessRestore,
+  beginBackup,
   describeDatabase,
   isInsideFolder,
   listBackupRuns,
@@ -144,6 +145,55 @@ describe("the daily copy", () => {
     const administration = await test.sessionFor("ADMINISTRATION");
     await test.transact((ex, ctx) => recordBackupRun(ex, ctx, { kind: "MANUAL", ...run }), administration);
     expect(await test.transact((ex, ctx) => countStaleBackup(ex, ctx, { days: 3 }))).toBe(0);
+  });
+});
+
+describe("a copy begun (audit LOG-3)", () => {
+  it("is checked and disclosed before a byte is copied, and its row follows under the same id (LOG-3)", async () => {
+    const begin = (kind: "MANUAL" | "PRE_RESTORE") => ({ kind, targetPath: "E:/a.db", appVersion: "0.1.0" });
+    const reception = await test.sessionFor("RECEPTION_SALES");
+    const administration = await test.sessionFor("ADMINISTRATION");
+    const before = await test.db.selectFrom("AuditLog").select("id").execute();
+    await expect(test.transact((ex, ctx) => beginBackup(ex, ctx, begin("MANUAL")), reception)).rejects.toThrow(
+      "You do not have permission to do this.",
+    );
+    await expect(
+      test.transact((ex, ctx) => beginBackup(ex, ctx, begin("PRE_RESTORE")), administration),
+    ).rejects.toThrow("You do not have permission to do this.");
+    expect(await test.db.selectFrom("AuditLog").select("id").execute()).toHaveLength(before.length);
+
+    const { runId, manifest } = await test.transact((ex, ctx) => beginBackup(ex, ctx, begin("MANUAL")), administration);
+    const disclosed = await test.db
+      .selectFrom("AuditLog")
+      .selectAll()
+      .orderBy("chainSeq", "desc")
+      .limit(1)
+      .executeTakeFirstOrThrow();
+    expect(disclosed).toMatchObject({
+      operation: "DISCLOSE",
+      action: "BACKUP",
+      recipient: "E:/a.db",
+      entity: "BackupRun",
+      entityId: runId,
+    });
+
+    // The copy failed half way: the row says so, and the disclosure stays (something may be at the target).
+    await test.transact(
+      (ex, ctx) =>
+        recordBackupRun(ex, ctx, {
+          runId,
+          kind: "MANUAL",
+          targetPath: "E:/a.db",
+          startedAt: ctx.now,
+          manifest,
+          result: { ok: false, error: "the stick was pulled out" },
+        }),
+      administration,
+    );
+    const [run] = await test.transact((ex, ctx) => listBackupRuns(ex, ctx));
+    expect(run).toMatchObject({ id: runId, ok: false });
+    const disclosures = await test.db.selectFrom("AuditLog").select("id").where("operation", "=", "DISCLOSE").execute();
+    expect(disclosures).toHaveLength(1);
   });
 });
 

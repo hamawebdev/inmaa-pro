@@ -149,11 +149,50 @@ export async function describeDatabase(
 
 export type BackupKind = "AUTO" | "MANUAL" | "PRE_RESTORE";
 
-/** One row per backup made or tried. The automatic copy is the program's own (`ctx.userId` null). */
+/** A copy by hand needs `backup.run`, the copy before a restore `backup.restore`; the daily one is the program's. */
+function requireBackupRight(ctx: ServiceContext, kind: BackupKind): void {
+  if (kind === "PRE_RESTORE") requireCapability(ctx, "backup.restore");
+  else if (ctx.userId !== null) requireCapability(ctx, "backup.run");
+}
+
+/**
+ * Before a byte is copied: who asks is checked, and the copy is a disclosure
+ * in the log, to the place chosen (audit LOG-3; as exports do, src/server/exports.ts).
+ * Answers the manifest to write beside the copy and the id its `BackupRun` row
+ * will carry. A copy that then fails half way keeps this entry: something may
+ * have reached the target.
+ */
+export async function beginBackup(
+  ex: Executor,
+  ctx: ServiceContext,
+  input: { kind: BackupKind; targetPath: string; appVersion: string },
+): Promise<{ runId: string; manifest: BackupManifest }> {
+  requireBackupRight(ctx, input.kind);
+  const manifest = await describeDatabase(ex, ctx, { appVersion: input.appVersion });
+  const runId = newId();
+  await logDisclose(ex, ctx, {
+    owner: "FOUNDATION",
+    action: "BACKUP",
+    disclosure: "BACKUP",
+    recipient: input.targetPath,
+    entity: "BackupRun",
+    entityId: runId,
+    context: { kind: input.kind },
+  });
+  return { runId, manifest };
+}
+
+/**
+ * One row per backup made or tried. The automatic copy is the program's own
+ * (`ctx.userId` null). A copy begun with `beginBackup` (its `runId`) was
+ * disclosed then; one recorded without it (a copy refused before it began)
+ * is disclosed here only if it succeeded.
+ */
 export async function recordBackupRun(
   ex: Executor,
   ctx: ServiceContext,
   input: {
+    runId?: string;
     kind: BackupKind;
     targetPath: string;
     startedAt: string;
@@ -161,10 +200,9 @@ export async function recordBackupRun(
     result: { ok: true; sizeBytes: number } | { ok: false; error: string };
   },
 ): Promise<{ id: string }> {
-  if (input.kind === "PRE_RESTORE") requireCapability(ctx, "backup.restore");
-  else if (ctx.userId !== null) requireCapability(ctx, "backup.run");
+  requireBackupRight(ctx, input.kind);
 
-  const id = newId();
+  const id = input.runId ?? newId();
   await ex
     .insertInto("BackupRun")
     .values({
@@ -183,7 +221,7 @@ export async function recordBackupRun(
       userId: ctx.userId,
     })
     .execute();
-  if (input.result.ok) {
+  if (input.result.ok && !input.runId) {
     await logDisclose(ex, ctx, {
       owner: "FOUNDATION",
       action: "BACKUP",
@@ -270,7 +308,7 @@ export async function assessRestore(
 export async function recordCleanRestore(
   ex: Executor,
   ctx: ServiceContext,
-  input: { restoredFromPath: string; preRestorePath: string | null; reason: string },
+  input: { restoredFromPath: string; preRestorePath: string | null; reason: string; anchorState?: string },
 ): Promise<void> {
   requireCapability(ctx, "backup.restore");
   const reason = input.reason.trim();
@@ -282,8 +320,29 @@ export async function recordCleanRestore(
     reason,
     entity: "Database",
     entityId: record.databaseId,
-    context: { restoredFromPath: input.restoredFromPath, preRestorePath: input.preRestorePath, lostNumbers: [] },
+    context: {
+      restoredFromPath: input.restoredFromPath,
+      preRestorePath: input.preRestorePath,
+      lostNumbers: [],
+      ...(input.anchorState ? { anchorState: input.anchorState } : {}),
+    },
   });
+  // The copy of what was replaced was recorded in the database it replaced: it is said again here, in the one kept.
+  if (input.preRestorePath) {
+    await ex
+      .insertInto("BackupRun")
+      .values({
+        id: newId(),
+        kind: "PRE_RESTORE",
+        startedAt: ctx.now,
+        finishedAt: ctx.now,
+        targetPath: input.preRestorePath,
+        ok: 1,
+        isProtected: 1,
+        userId: ctx.userId,
+      })
+      .execute();
+  }
   await ex
     .insertInto("BackupRun")
     .values({
@@ -306,12 +365,14 @@ export const readBackupSettingsQuery = query(readBackupSettings);
 export const listBackupRunsQuery = query(listBackupRuns);
 export const saveBackupSettingsAction = action(saveBackupSettings, { revalidate: [SETTINGS_PATH] });
 export const recordBackupRunAction = action(recordBackupRun, { revalidate: [SETTINGS_PATH, "/dashboard/home"] });
+export const beginBackupAction = action(beginBackup);
 export const assessRestoreQuery = query(assessRestore);
 export const recordCleanRestoreAction = action(recordCleanRestore, { revalidate: [SETTINGS_PATH] });
 /** The automatic copy is the program's own act, whoever is signed in or nobody. */
 export const backupAsProgram = {
   plan: asProgram.query((ex: Executor, ctx: ServiceContext) => planAutomaticBackup(ex, ctx)),
   describe: asProgram.query(describeDatabase),
+  begin: asProgram.action(beginBackup),
   record: asProgram.action(recordBackupRun, { revalidate: [SETTINGS_PATH, "/dashboard/home"] }),
 };
 export const describeDatabaseQuery = query(describeDatabase);

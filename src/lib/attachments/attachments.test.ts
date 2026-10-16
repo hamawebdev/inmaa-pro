@@ -2,10 +2,19 @@ import { createHash } from "node:crypto";
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
+import type { Session } from "@/lib/service/context";
 import { CV_UPLOAD_RULE, isRestrictedUploadUrl, PHOTO_UPLOAD_RULE } from "@/lib/uploads";
 import { createTestDatabase, type TestDatabase } from "@/testing/database";
 
-import { linkUpload, listUploads, readRestrictedUpload, removeUpload, saveUpload, storagePathOf } from "./index";
+import {
+  linkUpload,
+  listUploads,
+  readRestrictedUpload,
+  recordUploadCopy,
+  removeUpload,
+  saveUpload,
+  storagePathOf,
+} from "./index";
 
 let test: TestDatabase;
 
@@ -133,9 +142,9 @@ describe("stored files", () => {
     expect(row.restrictedCapability).toBe("staff.health.read");
   });
 
-  it("open a restricted file only for a capability that may, and log every opening", async () => {
+  it("open a restricted file only for a capability that may, the signed form only with the health answers' (LOG-1), and log every opening", async () => {
     const saved = await saveSignedForm();
-    const open = async (role: "ACCOUNTANT" | "HR_OFFICER") =>
+    const openAs = (session: Session) =>
       test.transact(
         (ex, ctx) =>
           readRestrictedUpload(ex, ctx, test.files, {
@@ -143,11 +152,20 @@ describe("stored files", () => {
             owner: "PEOPLE",
             subject: { kind: "WORKER", id: "staff-1" },
           }),
-        await test.sessionFor(role),
+        session,
       );
+    const open = async (role: "ACCOUNTANT" | "HR_OFFICER") => openAs(await test.sessionFor(role));
 
     const before = await logCount();
     await expect(open("ACCOUNTANT")).rejects.toThrow("You do not have permission to do this.");
+    // The hiring score alone does not open the signed pages: the health answers are on them (audit LOG-1).
+    const hr = await test.sessionFor("HR_OFFICER");
+    const scoreOnly = {
+      ...hr,
+      capabilities: new Set([...hr.capabilities].filter((capability) => capability !== "staff.health.read")),
+    };
+    expect(scoreOnly.capabilities.has("staff.hiringScore.read")).toBe(true);
+    await expect(openAs(scoreOnly)).rejects.toThrow("You do not have permission to do this.");
     expect(await logCount()).toBe(before);
 
     const opened = await open("HR_OFFICER");
@@ -259,5 +277,59 @@ describe("stored files", () => {
     ]) {
       expect(() => storagePathOf(address), address).toThrow("Invalid upload path.");
     }
+  });
+});
+
+describe("a copy saved outside the program (audit LOG-5)", () => {
+  it("is a disclosure to the place chosen, written before the copy, for an ordinary file too (LOG-5)", async () => {
+    const saved = await savePhoto();
+    await test.transact((ex, ctx) =>
+      recordUploadCopy(ex, ctx, {
+        url: saved.url,
+        target: "F:/clé/صورة.png",
+        owner: "PEOPLE",
+        subject: { kind: "WORKER", id: "staff-1", label: "حمدي رضا" },
+      }),
+    );
+    expect(await last()).toMatchObject({
+      operation: "DISCLOSE",
+      action: "EXPORT",
+      disclosure: "EXPORT",
+      recipient: "F:/clé/صورة.png",
+      ownerCode: "PEOPLE",
+      entity: "StaffMember",
+      subjectKind: "WORKER",
+      reason: "STANDARD:EXPORT",
+    });
+  });
+
+  it("of the signed worker form needs the capability to print it and the reason typed, as its printing does (LOG-5)", async () => {
+    const saved = await saveSignedForm();
+    const copy = async (session: Session, reason?: string) =>
+      test.transact(
+        (ex, ctx) => recordUploadCopy(ex, ctx, { url: saved.url, target: "F:/استمارة.pdf", owner: "PEOPLE", reason }),
+        session,
+      );
+    const hr = await test.sessionFor("HR_OFFICER");
+    const healthWithoutPrint = {
+      ...hr,
+      capabilities: new Set([...hr.capabilities].filter((capability) => capability !== "staff.printFilledForm")),
+    };
+    const before = await logCount();
+    await expect(copy(await test.sessionFor("ACCOUNTANT"), "طلب المحامي")).rejects.toThrow(
+      "You do not have permission to do this.",
+    );
+    await expect(copy(healthWithoutPrint, "طلب المحامي")).rejects.toThrow("You do not have permission to do this.");
+    await expect(copy(hr, "  ")).rejects.toThrow("A reason is required.");
+    expect(await logCount()).toBe(before);
+
+    await copy(hr, "طلب مفتشية العمل");
+    expect(await last()).toMatchObject({
+      operation: "DISCLOSE",
+      action: "EXPORT",
+      recipient: "F:/استمارة.pdf",
+      reason: "طلب مفتشية العمل",
+      entity: "StaffConfidential",
+    });
   });
 });

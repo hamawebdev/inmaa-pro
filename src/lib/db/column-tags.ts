@@ -27,6 +27,7 @@ export const COLUMN_TAGS: Record<string, Record<string, string>> = {
   Violation: { date: "date", article: "code:REGULATION_ARTICLE", article14Item: "code:ARTICLE_14_ITEM", severity: "code:VIOLATION_SEVERITY", sourceKind: "code:VIOLATION_SOURCE", action: "code:VIOLATION_ACTION", status: "code:VIOLATION_STATUS", actionDate: "date", attachmentUrl: "url" },
   Sanction: { subjectKind: "code:SANCTION_SUBJECT", state: "code:SANCTION_STATE", startDate: "date", endDate: "date", nameKey: "key", nameLatinKey: "key", birthDate: "date", phoneKeys: "key", extraKeys: "json" },
   SanctionDecision: { context: "code:SANCTION_CONTEXT", attemptKind: "code:SANCTION_SUBJECT", attemptIdentity: "json", matchBasis: "code:MATCH_BASIS", status: "code:DECISION_STATUS", draftPayload: "json", consumedEntityKind: "code:CONSUMED_ENTITY" },
+  SanctionDecisionMatch: { matchBasis: "code:MATCH_BASIS" },
   PeriodicEvaluation: { periodStart: "date", periodEnd: "date", recommendation: "code:EVALUATION_RECOMMENDATION", figuresSnapshot: "json" },
   EmployeeLeave: { type: "code:LEAVE_TYPE", startDate: "date", endDate: "date", days: "qty", status: "code:LEAVE_STATUS", attachmentUrl: "url" },
   EmployeeCheckRecord: { type: "code:CHECK_TYPE", localDate: "date", localTime: "time" },

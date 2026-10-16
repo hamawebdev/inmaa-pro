@@ -195,6 +195,24 @@ export type SettingValue<K extends SettingKey> = (typeof SETTING_DEFAULTS)[K];
 
 export const SETTING_KEYS = Object.keys(SETTING_DEFAULTS) as SettingKey[];
 
+/**
+ * The centre's costs: what the cost study is made from (labour cost, margin,
+ * reserve, administration share). Read and changed only with `cost.read`, the
+ * read logged as a consultation, and never written in the log's `changes`: the
+ * log can be opened by people who may not see cost (audit LOG-7, coordinator's
+ * ruling).
+ */
+export const COST_SETTING_KEYS = [
+  "costing.hourlyLabourCost",
+  "costing.marginPercent",
+  "costing.reservePercent",
+  "costing.adminSharePercent",
+] as const satisfies readonly SettingKey[];
+
+export function isCostSetting(key: string): boolean {
+  return (COST_SETTING_KEYS as readonly string[]).includes(key);
+}
+
 /** Written by the program for itself: not a change a person made, so not a log entry. */
 export function isSystemSetting(key: SettingKey): boolean {
   return key.startsWith("system.");

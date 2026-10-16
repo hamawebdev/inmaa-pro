@@ -26,8 +26,9 @@ import {
   USERS_PATH,
   type AccountRow,
 } from "@/features/core/services/users";
+import { useSession } from "@/hooks/use-session";
 import { useErrorMessage } from "@/i18n/errors";
-import { ROLE_CODES, ROLE_LABELS, type RoleCode } from "@/lib/access/catalogue";
+import { MANAGER_ROLE, ROLE_CODES, ROLE_LABELS, type RoleCode } from "@/lib/access/catalogue";
 import { isPasswordLongEnough, MIN_PASSWORD_LENGTH } from "@/lib/auth";
 import { pathKey } from "@/lib/compat/revalidate";
 
@@ -50,11 +51,20 @@ function useEmployees(open: boolean) {
   });
 }
 
+/**
+ * The roles an account may be given. The manager's role is given, and a
+ * manager's account changed, by the manager alone (audit ACC-5): for anyone
+ * else it is left out of the list, and a manager's account shows its role
+ * without letting it be changed. The service refuses it all the same.
+ */
 function RoleSelect({ id, value, onChange }: { id: string; value: RoleCode; onChange: (role: RoleCode) => void }) {
   const roleLabel = useRoleLabel();
+  const isManager = useSession()?.roleId === MANAGER_ROLE;
+  const fixed = !isManager && value === MANAGER_ROLE;
+  const roles = isManager || fixed ? ROLE_CODES : ROLE_CODES.filter((role) => role !== MANAGER_ROLE);
   return (
-    <NativeSelect id={id} value={value} onChange={(event) => onChange(event.target.value as RoleCode)}>
-      {ROLE_CODES.map((role) => (
+    <NativeSelect id={id} value={value} disabled={fixed} onChange={(event) => onChange(event.target.value as RoleCode)}>
+      {roles.map((role) => (
         <NativeSelectOption key={role} value={role}>
           {roleLabel(role)}
         </NativeSelectOption>

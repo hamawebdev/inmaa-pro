@@ -6,6 +6,8 @@ import type { Executor, ServiceContext } from "@/lib/service/context";
 import { isSystemSetting, SETTING_DEFAULTS, type SettingKey, type SettingValue } from "./catalogue";
 
 export {
+  COST_SETTING_KEYS,
+  isCostSetting,
   SETTING_DEFAULTS,
   SETTING_KEYS,
   type IrgTable,

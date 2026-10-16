@@ -1,8 +1,8 @@
 import type { Capability } from "@/lib/access/catalogue";
-import { can } from "@/lib/access/session";
+import { can, requireCapability } from "@/lib/access/session";
 import { COLUMN_TAGS } from "@/lib/db/column-tags";
 import { newId } from "@/lib/db/rows";
-import { logConsult, logErase, type DataSubject, type LogOwner } from "@/lib/log";
+import { logConsult, logDisclose, logErase, type DataSubject, type LogOwner } from "@/lib/log";
 import type { Executor, ServiceContext } from "@/lib/service/context";
 import { ServiceError } from "@/lib/service/errors";
 import { checkUploadFile, MANAGED_UPLOAD_PREFIX, RESTRICTED_SEGMENT, type UploadRule } from "@/lib/uploads";
@@ -53,7 +53,9 @@ const SETTING_FILES: ReadonlySet<string> = new Set(["centre.logoUrl", "letterhea
  * `restrictedCapability` for those.)
  */
 const ALWAYS_RESTRICTED: Readonly<Record<string, readonly Capability[]>> = {
-  "StaffConfidential.signedFormScanUrl": ["staff.health.read", "staff.hiringScore.read"],
+  // Pages 1 and 2 of his form: the health answers are on them. The hiring
+  // score alone does not open them (audit LOG-1, coordinator's ruling).
+  "StaffConfidential.signedFormScanUrl": ["staff.health.read"],
 };
 
 /** Whether a table and a column name a place a file can be stored for: a `...Url` column of the model, a photo set, an image setting. */
@@ -355,4 +357,58 @@ export async function readRestrictedUpload(
     mimeType: upload.mimeType,
     originalName: upload.originalName,
   };
+}
+
+/** The signed worker form: a copy leaves only as the printed form does (ruling 31). */
+const SIGNED_FORM = "StaffConfidential.signedFormScanUrl";
+
+/**
+ * Records a copy of a stored file saved outside the program (`saveUploadCopy`
+ * in src/server/uploads.ts), before a byte is copied: every export is a
+ * disclosure (DESIGN.md section 9; audit LOG-5).
+ *
+ *  - Any stored file but the program's own pictures (logo, letterhead): a
+ *    DISCLOSE entry, `EXPORT`, to the place chosen, with the person it
+ *    concerns when the caller names him.
+ *  - A restricted file: only for a capability that opens it.
+ *  - The signed worker form (his pages 1 and 2, health answers on them): as
+ *    for printing the filled form, `staff.printFilledForm` and the reason the
+ *    user typed.
+ */
+export async function recordUploadCopy(
+  ex: Executor,
+  ctx: ServiceContext,
+  input: {
+    url: string;
+    /** Where the copy goes: the disclosure's recipient. */
+    target: string;
+    owner?: LogOwner;
+    reason?: string;
+    subject?: { kind: DataSubject; id: string; label?: string };
+  },
+): Promise<void> {
+  const upload = await ex
+    .selectFrom("Upload")
+    .select(["id", "entity", "field", "ownerId", "restrictedCapability", "purgedAt"])
+    .where("url", "=", input.url)
+    .executeTakeFirst();
+  if (!upload || upload.purgedAt) throw new ServiceError("This file was not found.");
+  if (!canOpenUpload(ctx, upload)) throw new ServiceError("You do not have permission to do this.");
+  const reason = input.reason?.trim() || undefined;
+  if (`${upload.entity}.${upload.field}` === SIGNED_FORM) {
+    requireCapability(ctx, "staff.printFilledForm");
+    if (!reason) throw new ServiceError("A reason is required.");
+  }
+  if (upload.entity === "Setting") return;
+  await logDisclose(ex, ctx, {
+    owner: input.owner ?? "FOUNDATION",
+    action: "EXPORT",
+    disclosure: "EXPORT",
+    recipient: input.target,
+    reason,
+    entity: upload.entity,
+    entityId: upload.ownerId ?? undefined,
+    subject: input.subject,
+    context: { field: upload.field, uploadId: upload.id },
+  });
 }

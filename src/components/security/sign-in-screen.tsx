@@ -56,7 +56,7 @@ type Step =
   | { kind: "first" }
   | { kind: "replace"; given: string }
   | { kind: "recovery" }
-  | { kind: "code"; session: Session; code: string };
+  | { kind: "code"; session: Session; code: string; first: boolean };
 
 const SIGN_IN_ACCOUNTS_KEY = ["sign-in", "accounts"] as const;
 
@@ -109,9 +109,9 @@ export function SignInScreen() {
     return null;
   }
 
-  function entered(session: Session, recoveryCode: string | null) {
+  function entered(session: Session, recoveryCode: string | null, first = false) {
     clearFields();
-    if (recoveryCode) setStep({ kind: "code", session, code: recoveryCode });
+    if (recoveryCode) setStep({ kind: "code", session, code: recoveryCode, first });
     else enterSession(session);
   }
 
@@ -133,7 +133,7 @@ export function SignInScreen() {
       if (form === "first") {
         const result = await setFirstPasswordAction({ userId: chosen.id, password: next });
         if (!result.success) return setError(errorMessage(result.error, t("SignInFailed")));
-        return entered(result.data.session, result.data.recoveryCode);
+        return entered(result.data.session, result.data.recoveryCode, true);
       }
 
       if (form === "recovery") {
@@ -177,7 +177,7 @@ export function SignInScreen() {
     return (
       <Shell step="code">
         <div className="flex min-h-0 flex-col gap-6 overflow-y-auto tight:gap-4">
-          <RecoveryCodePanel code={step.code} onContinue={() => enterSession(step.session)} />
+          <RecoveryCodePanel code={step.code} first={step.first} onContinue={() => enterSession(step.session)} />
         </div>
       </Shell>
     );
@@ -450,7 +450,7 @@ function Field({
  * destroy his only way back in, so here the friction is the feature (the
  * academy's `RecoveryRevealDialog`, as a panel of this window).
  */
-function RecoveryCodePanel({ code, onContinue }: { code: string; onContinue: () => void }) {
+function RecoveryCodePanel({ code, first, onContinue }: { code: string; first: boolean; onContinue: () => void }) {
   const t = useTranslations("Auth");
   const [acknowledged, setAcknowledged] = React.useState(false);
   const [copied, setCopied] = React.useState<"yes" | "no" | null>(null);
@@ -494,6 +494,13 @@ function RecoveryCodePanel({ code, onContinue }: { code: string; onContinue: () 
       {copied && (
         <p role="status" className={cn("text-center text-base font-semibold", copied === "no" && "text-destructive")}>
           {copied === "yes" ? t("RecoveryCopied") : t("RecoveryCopyFailed")}
+        </p>
+      )}
+
+      {/* The manager's very first sign-in: what the first invoice will need (audit INV-3). */}
+      {first && (
+        <p className="rounded-lg border-2 border-border-strong bg-card p-4 text-base leading-relaxed">
+          {t("FirstRunIdentity")}
         </p>
       )}
 

@@ -238,13 +238,33 @@ export async function openHarness({
     throw error;
   }
 
+  /**
+   * One clock for the whole session. Every tab starts its fixed `now` again,
+   * but the database goes on: a view opened after another (a list of routes,
+   * two sizes) would start before what the last one wrote (a print's
+   * disclosure, a sign-in), and the program's clock guard would refuse the
+   * sign-in. So a later view's `now` is moved on by the real time since the
+   * session's first view, as if the PC's clock had kept running.
+   */
+  let clockBase = null;
+  function continuousNow(now) {
+    if (!now) return now;
+    const fixed = Date.parse(`${now.length === 16 ? `${now}:00` : now.slice(0, 19)}Z`);
+    if (Number.isNaN(fixed)) return now;
+    if (!clockBase || clockBase.now !== now) {
+      clockBase = { now, realMs: Date.now() };
+      return now;
+    }
+    return new Date(fixed + (Date.now() - clockBase.realMs) + 1_000).toISOString().slice(0, 19);
+  }
+
   /** Opens a view in a fresh tab and leaves it settled. */
   async function open(view, firstSize) {
     const page = await chrome.newPage();
     await page.prepare({ origin: server.origin, timezone });
     await page.setColorScheme(view.theme === "dark" ? "dark" : "light");
     await page.setViewport(firstSize.width, firstSize.height);
-    const url = buildUrl(server.origin, view);
+    const url = buildUrl(server.origin, { ...view, now: continuousNow(view.now) });
     await page.goto(url);
     // The program opens on its sign-in window: what `view.wait` names is behind it.
     let { settled, state } = await page.waitUntilSettled({ quietMs: 250 });

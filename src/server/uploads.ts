@@ -6,6 +6,7 @@ import { BaseDirectory, mkdir, readFile, writeFile } from "@tauri-apps/plugin-fs
 import { currentSession } from "@/lib/access/session";
 import {
   readRestrictedUpload,
+  recordUploadCopy,
   saveUpload,
   storagePathOf,
   type ByteStore,
@@ -105,6 +106,9 @@ export async function openRestrictedUpload(
   return { src: URL.createObjectURL(new Blob([bytes as BlobPart], { type: mimeType })), mimeType };
 }
 
+/** What the log says of a copy: which part of the program asks, whose data it is, and the reason typed where one is needed. */
+export type UploadCopyLog = Partial<Omit<RestrictedUploadRequest, "url">>;
+
 export type SaveCopyResult =
   | { success: true; path: string }
   | { success: false; cancelled: true }
@@ -118,28 +122,29 @@ export type SaveCopyResult =
  * opened with whatever the PC reads PDFs with. Images are shown in the program
  * itself; a copy of one can be saved the same way.
  *
+ * The copy is a disclosure: it is checked and logged (`recordUploadCopy`,
+ * src/lib/attachments) after the place is chosen and before anything leaves
+ * the data folder. Name the person the file concerns in `log.subject`. The
+ * signed worker form also needs `log.reason`, typed by the user, and
+ * `staff.printFilledForm`, as its printing does.
+ *
  * The copying runs in Rust (`export_upload` in src-tauri/src/backup.rs), for the
  * same reason backup does: the destination is wherever the dialog points.
- *
- * A restricted file needs `restricted`: who asks is checked and the copy is
- * logged before anything leaves the data folder.
  */
 export async function saveUploadCopy(
   url: string | null | undefined,
   dialogTitle: string,
-  restricted?: Omit<RestrictedUploadRequest, "url">,
+  log: UploadCopyLog = {},
 ): Promise<SaveCopyResult> {
   try {
     const segments = getManagedUploadPathSegments(url);
     if (!url || !segments) return { success: false, cancelled: false, error: "Invalid upload path." };
     storagePathOf(url);
-    if (isRestrictedUploadUrl(url) && !restricted)
-      return { success: false, cancelled: false, error: "You do not have permission to do this." };
 
     const target = await save({ title: dialogTitle, defaultPath: getMediaFileName(url) });
     if (!target) return { success: false, cancelled: true };
 
-    if (restricted) await transact((ex, ctx) => readRestrictedUpload(ex, ctx, programStore, { ...restricted, url }));
+    await transact((ex, ctx) => recordUploadCopy(ex, ctx, { ...log, url, target }));
     await invoke("export_upload", { segments, target });
     return { success: true, path: target };
   } catch (error) {

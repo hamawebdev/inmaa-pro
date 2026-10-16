@@ -39,7 +39,6 @@ const GROUPS = {
     "evaluatedByUserId",
     "evaluatedDate",
     "evaluationNote",
-    "signedFormScanUrl",
   ],
 } as const satisfies Partial<Record<Capability, readonly Column[]>>;
 

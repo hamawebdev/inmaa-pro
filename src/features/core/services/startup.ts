@@ -1,4 +1,4 @@
-import { reconcileAnchor, writeAnchor, type AnchorComparison } from "@/lib/chain/anchor";
+import { reconcileAnchorAtStart, writeAnchor, type StartupAnchor } from "@/lib/chain/anchor";
 import { desktopAnchorStore } from "@/lib/chain/anchor-desktop";
 import { systemClock, type Clock } from "@/lib/clock";
 import { checkClock, type ClockState } from "@/lib/clock/sanity";
@@ -28,13 +28,15 @@ import { firstRun, isFirstRunDone } from "./first-run";
  *     manager (`startupAnchor`, `startupClock`); nothing is decided here;
  *  6. the day's own work, when neither found anything to ask about.
  */
+
 /**
  * What the anchor said when the program started: the comparison, or
- * "unchecked" when it could not be made (a read that failed). An unchecked
- * database is treated as one in question: nothing is worked on until the
- * comparison succeeds (the screen offers to try again).
+ * "unchecked" when it could not be made (a read or the anchor command failed).
+ * An unchecked database is treated as one in question (audit LOG-11): the
+ * anchor screen stands in front of the program, for everybody, until the
+ * comparison succeeds (its «try again»), and the day's own work waits.
  */
-export type StartupAnchor = AnchorComparison | { state: "unchecked"; error: string };
+export type { StartupAnchor };
 
 let anchorAtStart: StartupAnchor | null = null;
 let clockAtStart: ClockState | null = null;
@@ -56,31 +58,36 @@ function changed(): void {
 }
 
 async function compareAtStart(clock: Clock): Promise<void> {
-  try {
-    anchorAtStart = await reconcileAnchor(db, desktopAnchorStore, clock.now().toISOString());
-  } catch (error) {
-    console.error("anchor: could not be compared at start", error);
-    anchorAtStart = { state: "unchecked", error: error instanceof Error ? error.message : String(error) };
-  }
+  anchorAtStart = await reconcileAnchorAtStart(db, desktopAnchorStore, clock.now().toISOString());
 }
 
 async function checkClockAtStart(clock: Clock): Promise<void> {
   try {
     clockAtStart = await checkClock(db, buildContext(SYSTEM_SESSION, clock));
   } catch (error) {
+    // Unknown is not "in order": the day's own work waits (fail closed), and is tried again with the hour.
     console.error("clock: could not be checked at start", error);
     clockAtStart = null;
   }
 }
 
+const isClear = () => anchorAtStart?.state === "normal" && clockAtStart?.state === "ok";
+
 /**
  * The day's own work (contracts past their end, suspensions ending, the daily
  * copy) is the program writing by itself, at the PC's date. It waits while the
- * database is in question (anchor) or the date is (clock): the manager answers
- * first.
+ * database is in question (anchor), could not be checked, or the date is in
+ * question (clock): the manager answers first. It runs at start when things
+ * are clear, and again each time they become clear (the manager confirmed the
+ * date); a recheck that finds nothing new does not run it again. The watch
+ * then checks the clock itself before each day (day-start.ts).
  */
+let wasClear = false;
 async function startTheDayIfClear(clock: Clock): Promise<void> {
-  if (anchorAtStart?.state !== "normal" || clockAtStart?.state !== "ok") return;
+  const clear = isClear();
+  const becameClear = clear && !wasClear;
+  wasClear = clear;
+  if (!becameClear) return;
   try {
     await startDayWatch(clock);
   } catch (error) {
@@ -88,16 +95,25 @@ async function startTheDayIfClear(clock: Clock): Promise<void> {
   }
 }
 
-/** Compares the anchor again: after the manager's answer wrote a new one, or after a comparison that failed. */
+/**
+ * Compares the anchor and checks the clock again: after the manager's answer
+ * wrote a new anchor, or after a comparison that failed (the screen's «try
+ * again»).
+ */
 export async function recheckStartupAnchor(): Promise<StartupAnchor | null> {
   const clock = programClock();
   await compareAtStart(clock);
+  await checkClockAtStart(clock);
   changed();
   await startTheDayIfClear(clock);
   return anchorAtStart;
 }
 
-/** Checks the clock again: after the manager confirmed the date, or after the PC's date was corrected. */
+/**
+ * Checks the clock again: after each sign-in (a session opened on a date in
+ * question changes what the clock is measured against), after the manager
+ * confirmed the date, after the PC's date was corrected.
+ */
 export async function recheckStartupClock(): Promise<ClockState | null> {
   const clock = programClock();
   await checkClockAtStart(clock);

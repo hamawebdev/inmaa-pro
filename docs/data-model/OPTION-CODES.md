@@ -425,7 +425,7 @@ Money wrote every code in lower case; all are upper snake case here (coordinator
 | EXPENSE_CATEGORY | `WAGES` «أجور» · `CONTRIBUTIONS` «مساهمات والتزامات» · `TRANSPORT` «نقل» · `MATERIALS` «مواد» · `RENT` «إيجار» · `PHONE` «هاتف» · `ACCOUNTING` «محاسبة» · `MARKETING` «تسويق» · `EQUIPMENT` «معدات» · `MAINTENANCE` «صيانة» · `COMPENSATION` «تعويضات» · `TAXES` «ضرائب» · `LOSSES` «خسائر/إلغاءات» · `OTHER` «أخرى» (added) | D1 «نموذج ربحية شهري», his order |
 | EXPENSE_SOURCE | `MANUAL` · `PURCHASE` · `MAINTENANCE` · `PAYROLL` | Money |
 | RECURRENCE | `NONE` · `MONTHLY` | Money |
-| EXPORT_KIND | `INVOICES` · `PAYMENTS` · `EXPENSES` · `PURCHASES` | |
+| EXPORT_KIND | `INVOICES` · `PAYMENTS` · `RECEIPTS` · `EXPENSES` · `PURCHASES` | `RECEIPTS`: the receipts journal (F4, asked by Money) |
 | TAX_MODE (setting and `Invoice.taxMode`) | `VAT` · `IFU` | LAW, س16 |
 | STAMP_MODE (setting) | `WHOLE` · `PROGRESSIVE` | LAW |
 | MISSED_VISIT_RULE (setting) | `BILL_DONE_ONLY` · `FIXED_AMOUNT` (the amount is setting `invoice.missedVisitAmount`) | Money, س15 |

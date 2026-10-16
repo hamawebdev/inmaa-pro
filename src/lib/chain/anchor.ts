@@ -327,6 +327,26 @@ export async function acceptRestoredDatabase(
 }
 
 /**
+ * What the start-up made of the anchor: the comparison, or "unchecked" when it
+ * could not be made at all (a read or the anchor command failed).
+ */
+export type StartupAnchor = AnchorComparison | { state: "unchecked"; error: string };
+
+/**
+ * `reconcileAnchor` at start-up, failing closed (audit LOG-11): a comparison
+ * that throws is "unchecked", which the program treats as a database in
+ * question (the anchor screen, with «try again»), never as "normal".
+ */
+export async function reconcileAnchorAtStart(ex: Executor, store: AnchorStore, now: string): Promise<StartupAnchor> {
+  try {
+    return await reconcileAnchor(ex, store, now);
+  } catch (error) {
+    console.error("anchor: could not be compared at start", error);
+    return { state: "unchecked", error: error instanceof Error ? error.message : String(error) };
+  }
+}
+
+/**
  * The manager's answer to an anchor that cannot be followed: another
  * database's, none at all, or one this database disagrees with. He keeps this
  * database as it is; the log says so, with what both sides held. After the
@@ -346,11 +366,12 @@ export async function acceptDatabaseAsItIs(
   const auditLogId = await logSecurity(ex, ctx, {
     owner: "FOUNDATION",
     action: "ANCHOR_REBASE",
+    // His words in the reason column the law reads (audit LOG-4), not only in the details.
+    reason,
     entity: "Database",
     entityId: input.comparison.database.databaseId,
     context: {
       state: input.comparison.state,
-      typedReason: reason,
       anchorDatabaseId: input.comparison.anchor?.databaseId ?? null,
       anchorHeads: input.comparison.anchor?.heads ?? null,
       databaseHeads: input.comparison.database.heads,

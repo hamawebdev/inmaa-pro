@@ -3,6 +3,7 @@ import {
   CAPABILITY_KEYS,
   MANAGER_ONLY_CAPABILITY,
   MANAGER_ROLE,
+  MANAGERS_OWN_CAPABILITIES,
   ROLE_CODES,
   SECTION_CODES,
   type Capability,
@@ -31,7 +32,16 @@ import { staffName } from "@/lib/text/names";
  * `giveAccountPassword` is for the person who forgot his: the manager types a
  * password for him, and the sign-in window asks him to replace it at once.
  * The manager's own way back is his recovery code, never this.
+ *
+ * `users.manage` can be given to another role, but not the manager's place
+ * (coordinator's ruling on audit ACC-5): only the manager makes an account a
+ * manager's, changes a manager's role, or gives or takes away one of his own
+ * powers (`MANAGERS_OWN_CAPABILITIES`); and nobody changes his own role or
+ * raises his own role's rights.
  */
+
+/** The manager signed in, or the program itself (first run). */
+const actsAsManager = (ctx: ServiceContext) => ctx.userId === null || ctx.roleId === MANAGER_ROLE;
 export interface CreateAccountInput {
   /** The sign-in name. Stored in lower case. */
   username: string;
@@ -55,6 +65,9 @@ export async function createAccount(
   if (!username) throw new ServiceError("A sign-in name is required.");
   if (!displayName) throw new ServiceError("A name is required.");
   if (!(ROLE_CODES as readonly string[]).includes(input.roleId)) throw new ServiceError("This role does not exist.");
+  if (input.roleId === MANAGER_ROLE && !actsAsManager(ctx)) {
+    throw new ServiceError("Only the manager gives or changes the manager's role.");
+  }
   const role = await ex.selectFrom("Role").select(["id", "isActive"]).where("id", "=", input.roleId).executeTakeFirst();
   if (!role?.isActive) throw new ServiceError("This role does not exist.");
   const taken = await ex.selectFrom("User").select("id").where("username", "=", username).executeTakeFirst();
@@ -231,7 +244,12 @@ export async function updateAccount(
     if (!displayName) throw new ServiceError("A name is required.");
     patch.displayName = displayName;
   }
-  if (input.roleId !== undefined) {
+  if (input.roleId !== undefined && input.roleId !== before.roleId) {
+    if (before.id === ctx.userId)
+      throw new ServiceError("Nobody changes the role of the account he is signed in with.");
+    if ((input.roleId === MANAGER_ROLE || before.roleId === MANAGER_ROLE) && !actsAsManager(ctx)) {
+      throw new ServiceError("Only the manager gives or changes the manager's role.");
+    }
     const role = await ex
       .selectFrom("Role")
       .select(["id", "isActive"])
@@ -275,6 +293,10 @@ export async function setAccountActive(
     throw new ServiceError("You cannot switch off the account you are signed in with.");
   }
   if ((before.isActive === 1) === input.active) return { id: before.id };
+  // Switching a manager's account on gives the manager's place as surely as the role does.
+  if (before.roleId === MANAGER_ROLE && !actsAsManager(ctx)) {
+    throw new ServiceError("Only the manager gives or changes the manager's role.");
+  }
   await ex
     .updateTable("User")
     .set({
@@ -453,6 +475,21 @@ export async function saveRoleGrants(
   const before = describe(existing);
   const after = describe([...wanted.values()]);
   if (JSON.stringify(before) === JSON.stringify(after)) return { roleId: role.id };
+
+  if (!actsAsManager(ctx)) {
+    const ownPowers = (capabilities: readonly string[]) =>
+      capabilities.filter((key) => (MANAGERS_OWN_CAPABILITIES as readonly string[]).includes(key)).join(",");
+    if (ownPowers(before.capabilities) !== ownPowers(after.capabilities)) {
+      throw new ServiceError("Only the manager gives or takes away the manager's own rights.");
+    }
+    if (role.id === ctx.roleId) {
+      const rank = (level: unknown) => (level === "WRITE" ? 2 : level === "READ" ? 1 : 0);
+      const raised =
+        Object.entries(after.sections).some(([section, level]) => rank(level) > rank(before.sections[section])) ||
+        after.capabilities.some((key) => !before.capabilities.includes(key));
+      if (raised) throw new ServiceError("Nobody raises the rights of his own role.");
+    }
+  }
 
   for (const grant of existing) {
     const keep = wanted.get(`${grant.kind}:${grant.key}`);

@@ -25,6 +25,13 @@ export interface RunnerDeps {
   anchor: () => AnchorStore | null;
   /** Refreshes the screens that show a path: `revalidatePath`. */
   revalidate: (path: string) => void;
+  /**
+   * Runs `work` once `ms` have passed: the program's timer. With it, a log
+   * entry left unanchored by the once-a-minute rule is anchored when its
+   * minute is up, not only at the next action (audit LOG-10). Tests leave it
+   * out.
+   */
+  later?: (work: () => void, ms: number) => void;
 }
 
 export type Service<Input, Output> = (ex: Executor, ctx: ServiceContext, input: Input) => Promise<Output>;
@@ -39,6 +46,7 @@ const LOG_ANCHOR_EVERY_MS = 60_000;
 
 export function createRunner(deps: RunnerDeps) {
   let lastAnchorAt = 0;
+  let catchUpDue = false;
 
   /** After a commit: brings the anchor up to date when the action added to a chain. Never fails the action. */
   async function anchorAfter(ctx: ServiceContext): Promise<void> {
@@ -46,7 +54,11 @@ export function createRunner(deps: RunnerDeps) {
     if (!store || ctx.touchedChains.size === 0) return;
     const legal = [...ctx.touchedChains].some((table) => LEGAL_CHAINS.has(table));
     const at = Date.parse(ctx.now);
-    if (!legal && Math.abs(at - lastAnchorAt) < LOG_ANCHOR_EVERY_MS) return;
+    const sinceLast = Math.abs(at - lastAnchorAt);
+    if (!legal && sinceLast < LOG_ANCHOR_EVERY_MS) {
+      catchUp(LOG_ANCHOR_EVERY_MS - sinceLast);
+      return;
+    }
     try {
       await writeAnchor(deps.db, store, ctx.now);
       lastAnchorAt = at;
@@ -54,6 +66,18 @@ export function createRunner(deps: RunnerDeps) {
       // The data is committed. A missed anchor is found and repaired at the next start ("ahead").
       console.error("anchor: write failed", error);
     }
+  }
+
+  /** The log's head, anchored when its minute is up, if nothing anchored it meanwhile. One timer at a time. */
+  function catchUp(ms: number): void {
+    if (!deps.later || catchUpDue) return;
+    catchUpDue = true;
+    const anchoredBefore = lastAnchorAt;
+    deps.later(() => {
+      catchUpDue = false;
+      if (lastAnchorAt !== anchoredBefore) return;
+      anchorNow().catch((error: unknown) => console.error("anchor: write failed", error));
+    }, ms);
   }
 
   /**

@@ -385,9 +385,9 @@ mod tests {
                     .expect("the schema can be read")
                 }
             };
-            // The data model: 106 tables and 118 triggers.
-            assert_eq!(count("table").await, 106, "tables");
-            assert_eq!(count("trigger").await, 118, "triggers");
+            // The data model: 107 tables and 120 triggers.
+            assert_eq!(count("table").await, 107, "tables");
+            assert_eq!(count("trigger").await, 120, "triggers");
 
             let not_strict: i64 = sqlx::query_scalar(
                 "SELECT COUNT(*) FROM pragma_table_list WHERE schema = 'main' AND type = 'table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '\\_sqlx%' ESCAPE '\\' AND strict = 0",

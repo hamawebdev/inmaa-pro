@@ -103,7 +103,8 @@
     "ChangePasswordDesc": "Saisissez votre mot de passe actuel, puis le nouveau deux fois.",
     "RegenerateRecoveryPassword": "Saisissez votre mot de passe pour obtenir le nouveau code.",
     "RegenerateRecoveryAction": "Afficher le nouveau code",
-    "LockedIdle": "Verrouillé après {minutes} minutes sans utilisation."
+    "LockedIdle": "Verrouillé après {minutes} minutes sans utilisation.",
+    "FirstRunIdentity": "Avant la première facture, remplissez Paramètres › Général : l'adresse du centre, son registre du commerce (RC), le NIS, le NIF et le numéro d'article d'imposition, et choisissez le régime fiscal. Une facture est refusée tant que l'un d'eux manque."
   },
   "Common": {
     "Cancel": "Annuler",
@@ -188,7 +189,13 @@
     "BackupFolderSynced": "Ce dossier est synchronisé par {client}. Choisissez un dossier qui reste sur ce PC ou sur une clé USB.",
     "BackupFolderMissing": "Ce dossier n'existe pas.",
     "BackupFolderReadOnly": "Le programme ne peut pas écrire dans ce dossier.",
-    "PhotoTakenByEmployee": "Une photo sur le site d'un client est prise par un employé du centre."
+    "PhotoTakenByEmployee": "Une photo sur le site d'un client est prise par un employé du centre.",
+    "LegalSeriesFormat": "La série est un code court de quatre lettres majuscules ou chiffres au plus.",
+    "LegalSeriesFrozen": "La série ne peut pas changer pendant une année où une facture ou un reçu a été numéroté. Changez-la à partir du 1er janvier.",
+    "ManagerRoleByManager": "Seul le directeur donne ou modifie le rôle de directeur.",
+    "OwnRoleUnchanged": "Personne ne change le rôle du compte avec lequel il est connecté.",
+    "ManagerRightsByManager": "Seul le directeur donne ou retire ses propres droits.",
+    "OwnRoleNotRaised": "Personne n'élargit les droits de son propre rôle."
   },
   "Table": {
     "ScrollLeft": "Défiler à gauche",
@@ -610,7 +617,7 @@
       },
       "taxIds": {
         "Title": "Identifiants fiscaux et registre",
-        "Description": "Obligatoires sur chaque facture : aucune facture n'est émise tant que le RC, le NIS, le NIF ou l'article manque."
+        "Description": "Obligatoires sur chaque facture, avec l'adresse du centre : aucune facture n'est émise tant que le RC, le NIS, le NIF ou l'article manque."
       },
       "bank": {
         "Title": "Compte bancaire et postal",
@@ -665,7 +672,8 @@
         "Label": "Forme juridique"
       },
       "centre_address": {
-        "Label": "Adresse"
+        "Label": "Adresse",
+        "Hint": "Imprimée sur chaque facture : obligatoire avant la première."
       },
       "centre_city": {
         "Label": "Ville",
@@ -690,7 +698,8 @@
         "Label": "Numéro d'identification fiscale (NIF)"
       },
       "centre_articleNumber": {
-        "Label": "Numéro d'article d'imposition"
+        "Label": "Numéro d'article d'imposition",
+        "Hint": "Obligatoire avant la première facture, avec le RC, le NIS et le NIF."
       },
       "centre_nin": {
         "Label": "Numéro d'identification national (NIN)",
@@ -1158,6 +1167,7 @@
     "staff_health_read": "Lire les réponses de santé et ouvrir les fichiers restreints (journalisé)",
     "staff_hiringScore_read": "Lire et saisir la note confidentielle de recrutement (journalisé)",
     "staff_printFilledForm": "Imprimer un formulaire d'agent rempli",
+    "staff_documents_read": "Ouvrir les scans restreints des documents du personnel : certificat médical, casier judiciaire (journalisé)",
     "hiring_decide": "Enregistrer « قرار الإدارة » pour un candidat",
     "attendance_employee_edit": "Modifier ou supprimer un pointage ou une absence d'employé",
     "pay_read": "Voir les heures, paies, bulletins, versements et avances",
@@ -1201,7 +1211,7 @@
       "Anchor": "Dernière facture enregistrée sur ce PC :",
       "Database": "Cette copie s'arrête à :",
       "None": "aucune facture",
-      "Lost": "{count} numéros de facture ou de reçu émis depuis ne sont pas dans cette copie."
+      "Lost": "{count, plural, one {# numéro de facture ou de reçu émis depuis n'est pas dans cette copie.} other {# numéros de facture ou de reçu émis depuis ne sont pas dans cette copie.}}"
     },
     "States": {
       "behind": {
@@ -1233,8 +1243,15 @@
         "Title": "La base est en ordre",
         "Body": "Rien à répondre.",
         "Consequence": "—"
+      },
+      "unchecked": {
+        "Title": "La base n'a pas pu être vérifiée",
+        "Body": "Le programme n'a pas pu comparer les données avec ce qu'il a enregistré en dernier sur ce PC. Rien ne peut être fait avant. Réessayez ; si cela se reproduit, fermez le programme, rouvrez-le, et appelez l'assistance si cela échoue encore.",
+        "Consequence": "—",
+        "FailedAgain": "La vérification a encore échoué."
       }
-    }
+    },
+    "TryAgain": "Réessayer"
   },
   "LogTab": {
     "TheProgram": "Le programme",
@@ -1378,5 +1395,24 @@
     "Handouts": "Produits et outils remis aux agents, et ce qui est revenu.",
     "Purchases": "Demandes d'achat, achats et ce qui a été payé aux fournisseurs.",
     "Maintenance": "L'entretien des machines et du matériel, fait et à faire."
+  },
+  "ClockScreen": {
+    "Today": "Date de ce PC :",
+    "LastWork": "Dernier travail enregistré :",
+    "Days": "{count, plural, one {# jour plus tard} other {# jours plus tard}}",
+    "Reason": "Votre motif",
+    "Failed": "Impossible d'enregistrer la réponse. Rien n'a été modifié.",
+    "Jump": {
+      "Title": "La date de ce PC a avancé",
+      "Body": "Plusieurs jours ont passé depuis le dernier travail enregistré. Si le centre était fermé, confirmez la date. Si la date est fausse, verrouillez, corrigez la date et l'heure du PC, et reconnectez-vous.",
+      "Consequence": "Tant que vous n'avez pas confirmé, aucune facture ni aucun reçu ne peut être émis, et le travail automatique du jour (contrats échus, copie quotidienne) attend.",
+      "Confirm": "La date est juste"
+    },
+    "Behind": {
+      "Title": "La date de ce PC est en retard",
+      "Body": "La date de ce PC est antérieure au dernier travail enregistré. Verrouillez, corrigez la date et l'heure du PC, et reconnectez-vous. Personne d'autre ne peut se connecter entre-temps.",
+      "Consequence": "Seulement si c'est la date enregistrée qui était fausse : confirmez la date du jour avec votre motif. Le travail est alors mesuré à partir d'aujourd'hui. Une facture datée d'avant la dernière reste refusée.",
+      "Confirm": "La date du jour est juste"
+    }
   }
 }

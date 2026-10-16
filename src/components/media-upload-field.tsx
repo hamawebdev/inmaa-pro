@@ -7,8 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Field, FieldDescription, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { intlLocaleFor } from "@/i18n/config";
+import { useErrorMessage } from "@/i18n/errors";
 import { useUploadSrc } from "@/lib/use-upload-src";
-import { saveUploadCopy } from "@/server/uploads";
+import { saveUploadCopy, type UploadCopyLog } from "@/server/uploads";
 import {
   type UploadRule,
   checkUploadFile,
@@ -41,6 +42,18 @@ type Props = {
   removeLabel?: string;
   removeMessage?: string;
   colSpan2?: boolean;
+  /**
+   * What the log says when a copy of the stored file is saved (a disclosure,
+   * src/server/uploads.ts): the owner and the person the file concerns.
+   *
+   * A restricted file (saved with `restrictedCapability`) needs nothing more
+   * here: it is never previewed (the window cannot load it), and its copy is
+   * checked against the capability and logged by the service. Leave the copy
+   * out for a reader who may not open it with `mayCopy={false}`.
+   */
+  copyLog?: UploadCopyLog;
+  /** Whether the stored file's «save a copy» is offered (default yes). */
+  mayCopy?: boolean;
 };
 
 export function MediaUploadField({
@@ -56,8 +69,11 @@ export function MediaUploadField({
   removeLabel,
   removeMessage,
   colSpan2 = false,
+  copyLog,
+  mayCopy = true,
 }: Props) {
   const t = useTranslations("MediaUpload");
+  const errorMessage = useErrorMessage();
   const localeCode = intlLocaleFor(useLocale());
   const inputRef = React.useRef<HTMLInputElement>(null);
 
@@ -97,9 +113,9 @@ export function MediaUploadField({
   const displayName = showSelectedFile ? getMediaFileName(value.file) : getMediaFileName(existingUrl);
 
   const handleSaveCopy = async () => {
-    const result = await saveUploadCopy(existingUrl, saveCopyLabel ?? t("SaveCopy"));
+    const result = await saveUploadCopy(existingUrl, saveCopyLabel ?? t("SaveCopy"), copyLog);
     if (result.success) toast.success(t("CopySaved", { path: result.path }));
-    else if (!result.cancelled) toast.error(t("CopyFailed"));
+    else if (!result.cancelled) toast.error(errorMessage(result.error, t("CopyFailed")));
   };
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -171,7 +187,7 @@ export function MediaUploadField({
           </div>
           {/* No "open" link: nothing leaves the window. A stored file is read
               by saving a copy; a stored image is also shown above. */}
-          {showExistingFile && existingUrl ? (
+          {showExistingFile && existingUrl && mayCopy ? (
             <Button type="button" variant="outline" size="sm" onClick={handleSaveCopy}>
               {saveCopyLabel ?? t("SaveCopy")}
             </Button>

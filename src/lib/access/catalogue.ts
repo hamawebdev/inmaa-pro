@@ -65,6 +65,8 @@ export const CAPABILITIES = {
   "staff.health.read": ["HR_OFFICER"],
   "staff.hiringScore.read": ["HR_OFFICER"],
   "staff.printFilledForm": ["HR_OFFICER"],
+  // The restricted scans of staff documents (a medical certificate, a criminal record).
+  "staff.documents.read": ["HR_OFFICER"],
   "hiring.decide": ["ADMINISTRATION"],
   "attendance.employee.edit": ["HR_OFFICER"],
   "pay.read": ["HR_OFFICER", "ACCOUNTANT"],
@@ -109,3 +111,13 @@ export const CAPABILITY_KEYS = Object.keys(CAPABILITIES) as Capability[];
 
 /** The one capability no role can be granted. */
 export const MANAGER_ONLY_CAPABILITY: Capability = "backup.restore";
+
+/**
+ * The manager's own powers: the capabilities no role holds by default
+ * (approvals, voids, overrides, costs, accounts, rules, the log). Someone the
+ * manager let manage accounts may not hand them out: only the manager gives a
+ * role one of these, or takes it away (coordinator's ruling on audit ACC-5).
+ */
+export const MANAGERS_OWN_CAPABILITIES: readonly Capability[] = CAPABILITY_KEYS.filter(
+  (key) => CAPABILITIES[key].length === 0,
+);

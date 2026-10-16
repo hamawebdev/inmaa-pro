@@ -18,7 +18,7 @@ import {
   type SheetFont,
   type SheetMargins,
 } from "./sheet-constants";
-import { isPrintShortcut, printAfter, type OnPrint } from "./print-flow";
+import { printAfter, registerPrinter, type OnPrint } from "./print-flow";
 import { PageBreak } from "./sheet-elements";
 
 /**
@@ -239,9 +239,11 @@ export function PrintSheet({
  *       return result.success;
  *     }} />
  *
- * With `onPrint`, Ctrl+P on the page goes through the button too: a print the
- * law asks to record is never made by a shortcut that skips the record. A hook
- * that throws stops the print (src/components/print/print-flow.ts).
+ * Ctrl+P on the page goes through the button (the newest one, when there are
+ * several), and nowhere else: a print the law asks to record is never made by
+ * a shortcut that skips the record, and a page without a button cannot be
+ * printed at all (`installPrintGuard`). A hook that throws stops the print
+ * (src/components/print/print-flow.ts).
  */
 export function PrintButton({ label, onPrint }: { label?: string; onPrint?: OnPrint }) {
   const t = useTranslations("Print");
@@ -274,18 +276,8 @@ export function PrintButton({ label, onPrint }: { label?: string; onPrint?: OnPr
     }
   });
 
-  const hooked = onPrint !== undefined;
-  useEffect(() => {
-    if (!hooked) return;
-    const onKey = (event: KeyboardEvent) => {
-      // A second button on the page sees the first one's preventDefault, and leaves it.
-      if (event.defaultPrevented || !isPrintShortcut(event)) return;
-      event.preventDefault();
-      void print.current();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [hooked]);
+  // Ctrl+P presses this button (src/components/print/print-flow.ts, `installPrintGuard`).
+  useEffect(() => registerPrinter(() => void print.current()), []);
 
   return (
     <Button type="button" variant="info" loading={busy} onClick={() => void print.current()}>

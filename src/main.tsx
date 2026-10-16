@@ -2,14 +2,17 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 
 import { QueryClientProvider } from "@tanstack/react-query";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import { z } from "zod";
 
+import { installPrintGuard } from "@/components/print/print-flow";
 import { ProgramGate } from "@/components/security/program-gate";
 import { startProgram } from "@/features/core/services/startup";
 import { zodErrorMap } from "@/i18n/errors";
 import { I18nProvider } from "@/i18n/provider";
 import { registerRouter } from "@/lib/compat/router-instance";
 import { queryClient } from "@/lib/query-client";
+import { anchorNow } from "@/lib/service/action";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { PreferencesStoreProvider } from "@/stores/preferences/preferences-provider";
 
@@ -20,6 +23,9 @@ import { router } from "@/routes";
 import "@/index.css";
 
 registerRouter(router);
+
+// Before anything is drawn: printing goes through a print button only, and the window's own menu stays shut.
+installPrintGuard();
 
 // Before anything can parse: zod's own default messages are not translatable.
 z.setErrorMap(zodErrorMap);
@@ -65,9 +71,35 @@ function renderStartFailure(error: unknown) {
   );
 }
 
+/**
+ * The anchor follows the log's head at most once a minute; the last entries
+ * before the window closes are anchored as it closes (DESIGN.md section 8,
+ * audit LOG-10). Two seconds at most: a close is never held up for long.
+ */
+function anchorOnClose() {
+  try {
+    void getCurrentWindow()
+      .onCloseRequested(async () => {
+        await Promise.race([
+          anchorNow().catch((error: unknown) => console.error("anchor: not written at close", error)),
+          new Promise((resolve) => window.setTimeout(resolve, 2_000)),
+        ]);
+      })
+      .catch((error: unknown) => console.error("anchor: the close cannot be watched", error));
+  } catch (error) {
+    console.error("anchor: the close cannot be watched", error);
+  }
+}
+
 // First run and the event handlers come before the first screen, which is the
 // sign-in window: a page is drawn only once somebody has signed in.
-startProgram().then(renderProgram, (error: unknown) => {
-  console.error("start: failed", error);
-  renderStartFailure(error);
-});
+startProgram().then(
+  () => {
+    anchorOnClose();
+    renderProgram();
+  },
+  (error: unknown) => {
+    console.error("start: failed", error);
+    renderStartFailure(error);
+  },
+);
