@@ -359,3 +359,26 @@ describe("blank receipts for a collector", () => {
     expect(office.receiptNumber).toBe("000004/2026");
   });
 });
+
+describe("a reprinted cash receipt (INV-X2)", () => {
+  it("names the client and the file as the payment froze them, whatever the rows say since (INV-X2)", async () => {
+    const { file } = await invoicedNovember();
+    const paid = await pay({ fileId: file.id, receivedDate: "2026-12-03", method: "CASH", amount: da(45_000) });
+    const receiptId = paid.receiptId ?? "";
+    const before = await test.transact((ex, ctx) => getReceiptSheet(ex, ctx, { receiptId }));
+
+    await test.db.updateTable("Client").set({ name: "اسم جديد للعميل" }).where("id", "=", file.clientId).execute();
+    await test.db.updateTable("File").set({ number: "99/BLC" }).where("id", "=", file.id).execute();
+
+    const after = await test.transact((ex, ctx) => getReceiptSheet(ex, ctx, { receiptId }));
+    expect(after.receipt.clientName).toBe(before.receipt.clientName);
+    expect(after.receipt.fileNumber).toBe(before.receipt.fileNumber);
+    expect(after.receipt.clientName).not.toBe("اسم جديد للعميل");
+    const row = await test.db
+      .selectFrom("Payment")
+      .select(["clientName", "fileNumber"])
+      .where("id", "=", paid.id)
+      .executeTakeFirstOrThrow();
+    expect(row).toEqual({ clientName: before.receipt.clientName, fileNumber: before.receipt.fileNumber });
+  });
+});

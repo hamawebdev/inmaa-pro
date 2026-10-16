@@ -76,7 +76,13 @@ CSV, UTF-8 with a byte-order mark, `;` between columns, Windows line ends; amoun
 | INV-7   | Fixed: the city is frozen in `sellerSnapshot.city`; a reprint prints it                                                                                                                                                                                                                                                 |
 | INV-8   | Fixed: a billing address prints alone; the site's commune and wilaya go only with the site's address                                                                                                                                                                                                                    |
 | INV-X1  | Fixed: `buyerSnapshot.siteAddress` and `.fileNumber` frozen at issue; the statement prints them                                                                                                                                                                                                                         |
-| INV-X2  | Not fixed: needs two columns on `Payment` (Foundation, below); the receipt still reads the client's name and file number from today's rows                                                                                                                                                                              |
+| INV-X2  | Fixed: `Payment.clientName` and `.fileNumber` (Foundation's columns) are filled when the payment is recorded; the receipt prints them                                                                                                                                                                                   |
+
+## The Checker's screen and sheet audit
+
+- S-28: the forecast table on the reports fits in French at 1024×640 (shorter French column titles).
+- The visit statement keeps its last three rows, its counts and its signatures together (`KeepTogether`); the rows before them run on as they come, the title row repeated on each page.
+- Decree 05-468 under VAT (the coordinator's ruling): each line shows its unit price and amount before tax. A price typed with its tax in it is brought back line by line (`shareBeforeTax`): the totals are computed on what was typed, so the total with tax is the agreed one to the centime; each line takes its share of the total before tax, the rounding left over goes to the largest line, and a line that no longer multiplies out becomes one lump sum. `Invoice.pricesIncludeVat` says whether the lines carry the tax: under VAT it is now 0 (the database's check ties it to the lines), and the price agreed with its tax is the file's `amountIncludesVat` and the invoice's total with tax.
 
 ## Conventions I follow
 
@@ -108,11 +114,10 @@ CSV, UTF-8 with a byte-order mark, `;` between columns, Windows line ends; amoun
 ## Open items
 
 - Not built: the per-worker report; renewals of contracts paid visit by visit in the forecast (their next visits are not planned).
-- INV-X2 waits for Foundation's columns.
 - «ربحية العقد» is drawn on the file's part التسديد; the hub can draw it too (`FileProfitabilityCard`, below).
 
 ## What I need from others
 
-- Foundation: two snapshot columns on `Payment`, `clientName` and `fileNumber` (filled when the payment is recorded), for INV-X2; the export kind `RECEIPTS` in OPTION-CODES `EXPORT_KIND` (the ruling's four files; the column is not checked); drop lines 101–102 of `src/lib/chain/canonical.ts`.
+- Foundation: the export kind `RECEIPTS` in OPTION-CODES `EXPORT_KIND` (the ruling's four files; the column is not checked); drop lines 101–102 of `src/lib/chain/canonical.ts`.
 - Clients: draw `<FileProfitabilityCard fileId={…} />` (`src/features/money/components/file-profitability-card.tsx`) on the file hub if the hub is where #30 belongs; it draws nothing for a reader without `cost.read`.
 - Operations: `listVisitsForBilling` and `listVisitWorkers` as exported reads (I read `Visit`, `VisitReport`, `VisitWorker` directly until then).

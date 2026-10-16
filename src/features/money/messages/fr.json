@@ -447,15 +447,15 @@
       "Result": "Résultat",
       "Total": "Total",
       "Month": "Mois",
-      "Receipts": "Encaissements attendus",
-      "ExpectedExpenses": "Dépenses attendues",
+      "Receipts": "Encaissements",
+      "ExpectedExpenses": "Dépenses",
       "Net": "Net",
       "Running": "Solde cumulé",
       "File": "Dossier",
       "Invoiced": "Facturé",
       "Received": "Encaissé",
       "Outstanding": "Dû aujourd'hui",
-      "IfRenewed": "En cas de renouvellement"
+      "IfRenewed": "Si renouvelé"
     },
     "Figures": {
       "Invoiced": "{count, plural, =0 {Facturé} one {Facturé (# facture)} other {Facturé (# factures)}}",

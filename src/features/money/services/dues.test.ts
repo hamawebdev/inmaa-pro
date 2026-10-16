@@ -102,7 +102,13 @@ describe("the dues of a contract paid by period", () => {
     await test.transact(async (ex, ctx) => {
       const payment = await test.rows.insert(
         "Payment",
-        { fileId: file.id, amount: da(10_000), totalReceived: da(10_000) } as never,
+        {
+          fileId: file.id,
+          fileNumber: file.number,
+          clientName: "رشيد بوزيد",
+          amount: da(10_000),
+          totalReceived: da(10_000),
+        } as never,
         { ex, ctx },
       );
       await appendChained(ex, ctx, "PaymentAllocation", {

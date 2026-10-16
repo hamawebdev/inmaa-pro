@@ -157,3 +157,50 @@ describe("INV-7, INV-8, INV-X1: a reprint says what the invoice said", () => {
     });
   });
 });
+
+describe("Decree 05-468 under VAT: each line before tax, the totals as agreed", () => {
+  it("brings a price typed with its tax back before tax line by line, without moving the totals by a centime", async () => {
+    await test.transact(async (ex, ctx) => {
+      await setSetting(ex, ctx, "tax.mode", "VAT");
+      await setSetting(ex, ctx, "tax.pricesIncludeVat", true);
+    });
+    // 45 000,00 a month with its tax in it; one of four visits cancelled by the centre: 33 750,00 with tax.
+    const { file, november } = await novemberReady({}, ["SIGNED_OFF", "CANCELLED", "SIGNED_OFF", "SIGNED_OFF"]);
+    const proposal = await test.transact((ex, ctx) =>
+      prepareInvoice(ex, ctx, { fileId: file.id, dueIds: [november.id] }),
+    );
+    const totals = proposal.totals;
+    if (!totals) throw new Error("money: no totals");
+
+    expect(totals).toMatchObject({ totalTTC: da(33_750), totalHT: da(28_361.34), vatAmount: da(5_388.66) });
+    // The lines are before tax, add up to the total before tax, and each multiplies out.
+    expect(proposal.lines.reduce((sum, line) => sum + line.amount, 0)).toBe(totals.totalHT);
+    for (const line of proposal.lines) expect((line.quantity * line.unitPrice) / 1000).toBe(line.amount);
+    expect(proposal.lines.map((line) => [line.kind, line.amount])).toEqual([
+      ["SERVICE", da(37_815.12)],
+      ["MISSED_VISIT", -da(9_453.78)],
+    ]);
+    expect(totals.grossAmount - totals.discountAmount).toBe(totals.totalHT);
+
+    // Issued, the invoice holds the same: the agreed total with tax, its lines before tax.
+    const issued = await test.transact((ex, ctx) =>
+      issueInvoice(ex, ctx, { fileId: file.id, dueIds: [november.id], paymentMethod: "BANK_TRANSFER" }),
+    );
+    const sheet = await test.transact((ex, ctx) => getInvoiceSheet(ex, ctx, { invoiceId: issued.id }));
+    expect(sheet.invoice).toMatchObject({ totalTTC: da(33_750), totalHT: da(28_361.34), vatAmount: da(5_388.66) });
+    expect(sheet.invoice.lines.reduce((sum, line) => sum + line.amount, 0)).toBe(da(28_361.34));
+  });
+
+  it("leaves a price typed before tax as typed, the tax added on the total", async () => {
+    await test.transact(async (ex, ctx) => {
+      await setSetting(ex, ctx, "tax.mode", "VAT");
+      await setSetting(ex, ctx, "tax.pricesIncludeVat", false);
+    });
+    const { file, november } = await novemberReady();
+    const proposal = await test.transact((ex, ctx) =>
+      prepareInvoice(ex, ctx, { fileId: file.id, dueIds: [november.id] }),
+    );
+    expect(proposal.lines.map((line) => [line.unitPrice, line.amount])).toEqual([[da(45_000), da(45_000)]]);
+    expect(proposal.totals).toMatchObject({ totalHT: da(45_000), vatAmount: da(8_550), totalTTC: da(53_550) });
+  });
+});

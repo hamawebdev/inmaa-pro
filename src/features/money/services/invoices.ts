@@ -18,7 +18,12 @@ import { amountInWordsAr } from "../rules/amount-in-words-ar";
 import { amountInWordsFr } from "../rules/amount-in-words-fr";
 import { shareByWeights } from "../rules/centimes";
 import { formatDate } from "../rules/dates";
-import { computeInvoiceTotals, missedVisitDeduction, type InvoiceTotals } from "../rules/invoice-totals";
+import {
+  computeInvoiceTotals,
+  missedVisitDeduction,
+  shareBeforeTax,
+  type InvoiceTotals,
+} from "../rules/invoice-totals";
 import type { BuyerSnapshot, InvoiceSheetData, SellerSnapshot } from "../sheets/invoice-sheet";
 import {
   CLIENT_AT_FAULT_REMARK,
@@ -526,6 +531,17 @@ async function prepare(ex: Executor, ctx: ServiceContext, input: InvoiceInput): 
     });
     if (totals.totalTTC <= 0) block("NOTHING_TO_INVOICE");
   }
+  // Under VAT every line shows its price before tax (Decree 05-468). A price typed with the tax in it is
+  // brought back line by line from the totals above, which keep the agreed total to the centime.
+  const shown =
+    totals && tax.mode === "VAT" && pricesIncludeVat ? linesBeforeTax(lines, totals.totalTTC, totals.totalHT) : lines;
+  if (totals && shown !== lines) {
+    totals = {
+      ...totals,
+      grossAmount: shown.filter((line) => line.amount > 0).reduce((sum, line) => sum + line.amount, 0),
+      discountAmount: -shown.filter((line) => line.amount < 0).reduce((sum, line) => sum + line.amount, 0),
+    };
+  }
 
   const periodStarts = dues.flatMap((due) => (due.periodStart ? [due.periodStart] : [])).sort();
   const periodEnds = dues.flatMap((due) => (due.periodEnd ? [due.periodEnd] : [])).sort();
@@ -542,7 +558,7 @@ async function prepare(ex: Executor, ctx: ServiceContext, input: InvoiceInput): 
     // «تاريخ التسديد»: the due's own date, never before the invoice itself.
     dueDate: earliestDue && earliestDue > ctx.today ? earliestDue : ctx.today,
     taxMode: tax.mode,
-    lines: lines.map((line, index) => ({ seq: index + 1, ...line })),
+    lines: shown.map((line, index) => ({ seq: index + 1, ...line })),
     visits: statement.map((visit, index) => ({
       seq: index + 1,
       ...statementRow(visit, file.division, isBilled(visit, settings.requireSignOff), settings.requireSignOff),
@@ -579,6 +595,30 @@ export async function prepareInvoice(ex: Executor, ctx: ServiceContext, input: I
     totals: prepared.totals,
     blockers: prepared.blockers,
   };
+}
+
+/**
+ * The lines before tax of a price typed with its tax in it (`shareBeforeTax`). Each still multiplies
+ * out (INV-6): so many units at a price each when its amount divides by its quantity in whole
+ * centimes, else one lump sum.
+ */
+function linesBeforeTax<Line extends { quantity: number; unitPrice: number; amount: number; unitLabel: string }>(
+  lines: readonly Line[],
+  totalWithTax: number,
+  totalBeforeTax: number,
+): Line[] {
+  const amounts = shareBeforeTax(
+    lines.map((line) => money(line.amount)),
+    money(totalWithTax),
+    money(totalBeforeTax),
+  );
+  return lines.map((line, index) => {
+    const amount = amounts[index];
+    const each = (amount * 1000) / line.quantity;
+    return Number.isInteger(each)
+      ? { ...line, amount, unitPrice: each }
+      : { ...line, amount, quantity: 1000, unitPrice: amount, unitLabel: LUMP_SUM_UNIT_LABEL };
+  });
 }
 
 // ── Issuing ──────────────────────────────────────────────────────────────────
@@ -667,7 +707,9 @@ export async function issueInvoice(
     periodEnd: prepared.periodEnd,
     taxMode: prepared.taxMode,
     vatRate: totals.vatRate,
-    pricesIncludeVat: prepared.pricesIncludeVat ? 1 : 0,
+    // Whether the invoice's lines carry the tax: under VAT they never do any more (Decree 05-468, the coordinator's
+    // ruling); a price agreed with the tax in it is the file's (`File.amountIncludesVat`) and the total with tax.
+    pricesIncludeVat: prepared.pricesIncludeVat && prepared.taxMode !== "VAT" ? 1 : 0,
     grossAmount: totals.grossAmount,
     discountAmount: totals.discountAmount,
     totalHT: totals.totalHT,

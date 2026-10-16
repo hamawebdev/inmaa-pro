@@ -306,7 +306,8 @@ describe("issuing an invoice", () => {
     expect(invoice).toMatchObject({
       taxMode: "VAT",
       vatRate: 1900,
-      pricesIncludeVat: 1,
+      // The lines are before tax under VAT; the price agreed with its tax is the total with tax.
+      pricesIncludeVat: 0,
       totalTTC: da(45_000),
       totalHT: da(37_815.13),
       vatAmount: da(7_184.87),

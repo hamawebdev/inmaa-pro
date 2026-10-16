@@ -227,6 +227,9 @@ export async function recordPayment(
   await appendChained(ex, ctx, "Payment", {
     id: paymentId,
     fileId: file.id,
+    // What the receipt names, frozen with the payment: a reprint says what was given (INV-X2).
+    fileNumber: file.number,
+    clientName: party.clientName,
     clientId: party.clientId,
     division: file.division,
     branchId: file.branchId,
@@ -637,16 +640,18 @@ export async function getReceiptSheet(
     .where("receiptId", "=", receipt.id)
     .where("type", "in", ["VOIDED", "MISSING"])
     .executeTakeFirst();
-  // A receipt printed blank has no file of its own: it is its payment's, once one was typed in against it.
-  const fileId = receipt.fileId ?? payment?.fileId ?? null;
-  const file = fileId
-    ? await ex
-        .selectFrom("File")
-        .innerJoin("Client", "Client.id", "File.clientId")
-        .select(["File.number", "Client.name"])
-        .where("File.id", "=", fileId)
-        .executeTakeFirst()
-    : undefined;
+  // The client and the file as the payment froze them (INV-X2); a receipt no payment points at yet names the
+  // file it was written for, if any, as it stands.
+  const file = payment
+    ? { number: payment.fileNumber, name: payment.clientName }
+    : receipt.fileId
+      ? await ex
+          .selectFrom("File")
+          .innerJoin("Client", "Client.id", "File.clientId")
+          .select(["File.number", "Client.name"])
+          .where("File.id", "=", receipt.fileId)
+          .executeTakeFirst()
+      : undefined;
   const collector = receipt.collectorStaffId
     ? await ex
         .selectFrom("StaffMember")

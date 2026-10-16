@@ -149,3 +149,30 @@ export function missedVisitDeduction(input: {
       : Math.min(periodAmount, missedVisits * (input.fixedAmount ?? 0));
   return deduction === 0 ? 0 : -deduction;
 }
+
+/**
+ * The lines of a price typed with its tax in it (scope section 10, item 5),
+ * brought back before tax for the invoice (Decree 05-468: each line's unit
+ * price before tax). The totals are computed first on what was typed, so
+ * that the total with tax is exactly the agreed one; each line then takes
+ * its share of the total before tax, and the centimes rounding leaves over
+ * go to the largest line. The lines before tax add up to the total before
+ * tax to the centime, and the totals do not move.
+ */
+export function shareBeforeTax(
+  amountsWithTax: readonly Centimes[],
+  totalWithTax: Centimes,
+  totalBeforeTax: Centimes,
+): Centimes[] {
+  if (totalWithTax === 0) return amountsWithTax.map(() => 0);
+  const shares = amountsWithTax.map((amount) => mulDivRound(amount, totalBeforeTax, totalWithTax));
+  const residue = totalBeforeTax - shares.reduce((sum, share) => sum + share, 0);
+  if (residue !== 0) {
+    let largest = 0;
+    for (const [index, amount] of amountsWithTax.entries()) {
+      if (amount > amountsWithTax[largest]) largest = index;
+    }
+    shares[largest] += residue;
+  }
+  return shares;
+}

@@ -1,4 +1,11 @@
-import { PrintSheet, SHEET_MARGINS_CLEAR_OF_LETTERHEAD, SheetCell, SheetRow, SheetTable } from "@/components/print";
+import {
+  KeepTogether,
+  PrintSheet,
+  SHEET_MARGINS_CLEAR_OF_LETTERHEAD,
+  SheetCell,
+  SheetRow,
+  SheetTable,
+} from "@/components/print";
 
 import type { IsoDate } from "../rules/dates";
 import type { Division, ServiceType } from "../validators/option-codes";
@@ -74,6 +81,9 @@ function hoursText(minutes: number): string {
 export function VisitStatementBody({ data }: { data: VisitStatementData }) {
   const billed = data.rows.filter((row) => row.billable);
   const workedMin = data.rows.reduce((sum, row) => sum + (row.workedMin ?? 0), 0);
+  const split = Math.max(0, data.rows.length - ROWS_KEPT_WITH_SIGNATURES);
+  const body = data.rows.slice(0, split);
+  const tail = data.rows.slice(split);
 
   return (
     <div style={{ position: "relative" }}>
@@ -111,76 +121,95 @@ export function VisitStatementBody({ data }: { data: VisitStatementData }) {
       />
       <Gap mm={4} />
 
-      <SheetTable
-        columns={[12, 27, 16, 15, 15, 15, 27, 28, 32.3]}
-        // The title row is printed again at the top of every page a long statement runs onto.
-        head={
-          <SheetRow heightMm={9}>
-            {[
-              "الرقم",
-              "التاريخ",
-              "اليوم",
-              "وقت الوصول",
-              "المغادرة",
-              "عدد العمال",
-              "حالة الإنجاز",
-              "استلام الخدمة",
-              "ملاحظات",
-            ].map((label) => (
-              <SheetCell key={label} shaded align="center" style={{ ...TYPE.label, fontSize: "10.5pt" }}>
-                {label}
-              </SheetCell>
-            ))}
-          </SheetRow>
-        }
-      >
-        {data.rows.map((row) => (
-          <SheetRow key={row.seq} heightMm={7}>
-            <SheetCell align="center" style={CELL}>
-              <Num>{row.seq}</Num>
-            </SheetCell>
-            <SheetCell align="center" style={CELL}>
-              <DateText value={row.visitDate} />
-            </SheetCell>
-            <SheetCell align="center" style={CELL}>
-              {row.dayName}
-            </SheetCell>
-            <SheetCell align="center" style={CELL}>
-              {row.arrival ? <Num>{row.arrival}</Num> : "—"}
-            </SheetCell>
-            <SheetCell align="center" style={CELL}>
-              {row.departure ? <Num>{row.departure}</Num> : "—"}
-            </SheetCell>
-            <SheetCell align="center" style={CELL}>
-              <Num>{row.workersCount}</Num>
-            </SheetCell>
-            <SheetCell align="center" style={CELL}>
-              {row.completion}
-            </SheetCell>
-            <SheetCell align="center" style={CELL}>
-              {row.signOff ?? "—"}
-            </SheetCell>
-            <SheetCell style={TYPE.small}>{row.remark}</SheetCell>
-          </SheetRow>
-        ))}
-      </SheetTable>
-      <Gap mm={3} />
+      {body.length > 0 && (
+        <SheetTable
+          columns={STATEMENT_COLUMNS}
+          // The title row is printed again at the top of every page a long statement runs onto.
+          head={titleRow}
+        >
+          {body.map(visitRow)}
+        </SheetTable>
+      )}
+      {/* The last rows, the counts and the signatures stay together: a signature never stands on a page alone. */}
+      <KeepTogether>
+        <SheetTable columns={STATEMENT_COLUMNS} head={body.length === 0 ? titleRow : undefined}>
+          {tail.map(visitRow)}
+        </SheetTable>
+        <Gap mm={3} />
 
-      <FieldTable
-        widths={[37, 11, 37, 11, 30, 11, 28, 22.3]}
-        rows={[
-          [
-            ...field("الزيارات المبرمجة", <Num>{data.rows.length}</Num>),
-            ...field("الزيارات المحتسبة", <Num>{billed.length}</Num>),
-            ...field("غير المحتسبة", <Num>{data.rows.length - billed.length}</Num>),
-            ...field("ساعات العمل", <Num>{hoursText(workedMin)}</Num>),
-          ],
-        ]}
-      />
-      <Gap mm={6} />
+        <FieldTable
+          widths={[37, 11, 37, 11, 30, 11, 28, 22.3]}
+          rows={[
+            [
+              ...field("الزيارات المبرمجة", <Num>{data.rows.length}</Num>),
+              ...field("الزيارات المحتسبة", <Num>{billed.length}</Num>),
+              ...field("غير المحتسبة", <Num>{data.rows.length - billed.length}</Num>),
+              ...field("ساعات العمل", <Num>{hoursText(workedMin)}</Num>),
+            ],
+          ]}
+        />
+        <Gap mm={6} />
 
-      <SignatureBlock place={data.place} date={data.issueDate} boxes={["إمضاء العميل", "الإمضاء والختم"]} />
+        <SignatureBlock place={data.place} date={data.issueDate} boxes={["إمضاء العميل", "الإمضاء والختم"]} />
+      </KeepTogether>
     </div>
+  );
+}
+
+const STATEMENT_COLUMNS = [12, 27, 16, 15, 15, 15, 27, 28, 32.3];
+
+/** How many of the last rows go to the page of the counts and the signatures. */
+const ROWS_KEPT_WITH_SIGNATURES = 3;
+
+const titleRow = (
+  <SheetRow heightMm={9}>
+    {[
+      "الرقم",
+      "التاريخ",
+      "اليوم",
+      "وقت الوصول",
+      "المغادرة",
+      "عدد العمال",
+      "حالة الإنجاز",
+      "استلام الخدمة",
+      "ملاحظات",
+    ].map((label) => (
+      <SheetCell key={label} shaded align="center" style={{ ...TYPE.label, fontSize: "10.5pt" }}>
+        {label}
+      </SheetCell>
+    ))}
+  </SheetRow>
+);
+
+function visitRow(row: VisitStatementData["rows"][number]) {
+  return (
+    <SheetRow key={row.seq} heightMm={7}>
+      <SheetCell align="center" style={CELL}>
+        <Num>{row.seq}</Num>
+      </SheetCell>
+      <SheetCell align="center" style={CELL}>
+        <DateText value={row.visitDate} />
+      </SheetCell>
+      <SheetCell align="center" style={CELL}>
+        {row.dayName}
+      </SheetCell>
+      <SheetCell align="center" style={CELL}>
+        {row.arrival ? <Num>{row.arrival}</Num> : "—"}
+      </SheetCell>
+      <SheetCell align="center" style={CELL}>
+        {row.departure ? <Num>{row.departure}</Num> : "—"}
+      </SheetCell>
+      <SheetCell align="center" style={CELL}>
+        <Num>{row.workersCount}</Num>
+      </SheetCell>
+      <SheetCell align="center" style={CELL}>
+        {row.completion}
+      </SheetCell>
+      <SheetCell align="center" style={CELL}>
+        {row.signOff ?? "—"}
+      </SheetCell>
+      <SheetCell style={TYPE.small}>{row.remark}</SheetCell>
+    </SheetRow>
   );
 }
 

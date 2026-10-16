@@ -385,7 +385,15 @@ function InvoiceBody({ invoice }: { invoice: InvoiceSheetData }) {
 
       <SheetTable columns={[14, 79.3, 18, 18, 29, 29]}>
         <SheetRow heightMm={8}>
-          {["الرقم", "البيان", "الكمية", "الوحدة", `سعر الوحدة (${CURRENCY})`, `المبلغ (${CURRENCY})`].map((label) => (
+          {[
+            "الرقم",
+            "البيان",
+            "الكمية",
+            "الوحدة",
+            // Under VAT the lines are before tax (Decree 05-468); under the IFU there is no tax to say.
+            invoice.taxMode === "VAT" ? `سعر الوحدة خارج الرسم (${CURRENCY})` : `سعر الوحدة (${CURRENCY})`,
+            invoice.taxMode === "VAT" ? `المبلغ خارج الرسم (${CURRENCY})` : `المبلغ (${CURRENCY})`,
+          ].map((label) => (
             <SheetCell key={label} shaded align="center" style={{ ...TYPE.label, fontSize: DENSE }}>
               {label}
             </SheetCell>
@@ -412,9 +420,6 @@ function InvoiceBody({ invoice }: { invoice: InvoiceSheetData }) {
           </SheetRow>
         ))}
       </SheetTable>
-      {invoice.taxMode === "VAT" && invoice.pricesIncludeVat && (
-        <p style={{ ...TYPE.small, marginTop: "1mm" }}>الأسعار أعلاه تشمل الرسم على القيمة المضافة.</p>
-      )}
       <Gap mm={2} />
 
       <KeepTogether>
