@@ -85,21 +85,33 @@ export type BackupPlan =
   | { due: true; targetDir: string; keepCount: number; fileName: string }
   | { due: false; why: "DISABLED" | "NO_FOLDER" | "DONE_TODAY" };
 
-/** Whether today's automatic copy is still to make. One a day: a manual copy made today counts. */
+/** Whether `path` is inside the folder `dir`, whatever the separators and, on Windows, the case. */
+export function isInsideFolder(path: string, dir: string): boolean {
+  const norm = (text: string) => text.trim().replace(/\\/g, "/").replace(/\/+$/, "").toLowerCase();
+  const folder = norm(dir);
+  return folder !== "" && norm(path).startsWith(`${folder}/`);
+}
+
+/**
+ * Whether today's automatic copy is still to make. One a day. A copy made by
+ * hand today counts only when it went into the folder the manager chose and
+ * the program checked; one put anywhere else does not stand for the day's.
+ */
 export async function planAutomaticBackup(ex: Executor, ctx: ServiceContext): Promise<BackupPlan> {
   const settings = await getSettings(ex, ["backup.autoEnabled", "backup.targetDir", "backup.keepCount"]);
   if (!settings["backup.autoEnabled"]) return { due: false, why: "DISABLED" };
   const targetDir = settings["backup.targetDir"].trim();
   if (!targetDir) return { due: false, why: "NO_FOLDER" };
-  const done = await ex
+  const today = await ex
     .selectFrom("BackupRun")
-    .select("id")
+    .select(["kind", "targetPath"])
     .where("ok", "=", 1)
     .where("kind", "in", ["AUTO", "MANUAL"])
     .where("startedAt", ">=", ctx.toInstant(ctx.today, "00:00" as never))
-    .limit(1)
-    .executeTakeFirst();
-  if (done) return { due: false, why: "DONE_TODAY" };
+    .execute();
+  if (today.some((run) => run.kind === "AUTO" || isInsideFolder(run.targetPath, targetDir))) {
+    return { due: false, why: "DONE_TODAY" };
+  }
   return { due: true, targetDir, keepCount: settings["backup.keepCount"], fileName: `inmaa-auto-${ctx.today}.db` };
 }
 

@@ -1250,9 +1250,9 @@ model Site {
   district                 String?   // «الحي»
   landmark                 String?   // «أقرب معلم»
   directions               String?   // written directions, printed on the order
-  latitude                 Int?      // @udeg; optional QR on the order, off by default
+  latitude                 Int?      // @udeg; with longitude, the payload of the optional QR on the order (#26, off by default): geo:<lat>,<lng>
   longitude                Int?      // @udeg
-  mapLink                  String?   // office: the location link the client shared, kept as text (it cannot be opened offline); payload of the optional QR
+  mapLink                  String?   // office: the location link the client shared, kept as text on screen (it cannot be opened offline); never printed, never encoded in the QR
   floorAndDoor             String?   // D3 «الطابق»
   buildingsCount           Int?      // complexes only (D8)
   // office-only: keys and allowed hours (P14, #1)

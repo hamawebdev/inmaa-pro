@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import { appDataDir, join } from "@tauri-apps/api/path";
+import { appDataDir, dirname, join } from "@tauri-apps/api/path";
 import { open as openDialog, save } from "@tauri-apps/plugin-dialog";
 import { relaunch } from "@tauri-apps/plugin-process";
 
@@ -105,11 +105,24 @@ async function copyDatabase(kind: BackupKind, target: string): Promise<BackupOut
   } catch (error) {
     const reason = messageOf(error);
     await record({ kind, targetPath: target, startedAt, manifest, result: { ok: false, error: reason } });
-    return { done: false, cancelled: false, error: reason };
+    return { done: false, cancelled: false, error: sentenceOf(reason) };
   }
 }
 
-/** «نسخة احتياطية الآن»: a copy where the user says. */
+/**
+ * What stopped a copy, as a sentence the window translates (`Errors` in core's
+ * messages): Rust answers `FOLDER_SYNCED:<client>` when a cloud client
+ * synchronises the folder. Anything else is passed on as it is.
+ */
+function sentenceOf(reason: string): string {
+  if (reason.startsWith("FOLDER_SYNCED:")) {
+    const client = reason.slice("FOLDER_SYNCED:".length);
+    return `This folder is synchronised by ${client}. Choose a folder that stays on this PC or on a USB drive.`;
+  }
+  return reason;
+}
+
+/** «نسخة احتياطية الآن»: a copy where the user says, never into a folder a cloud client synchronises. */
 export async function backupDatabase(labels: DialogLabels): Promise<BackupOutcome> {
   try {
     const settings = await readBackupSettingsQuery(undefined).catch(() => null);
@@ -120,6 +133,9 @@ export async function backupDatabase(labels: DialogLabels): Promise<BackupOutcom
       filters: [{ name: labels.filterName, extensions: ["db"] }],
     });
     if (!target) return { done: false, cancelled: true };
+    // Checked before anything is written; Rust refuses it again in `backup_to`, for every caller.
+    const check = await checkBackupFolder(await dirname(target));
+    if (check.syncedBy) return { done: false, cancelled: false, error: sentenceOf(`FOLDER_SYNCED:${check.syncedBy}`) };
     return await copyDatabase("MANUAL", target);
   } catch (error) {
     return { done: false, cancelled: false, error: messageOf(error) };

@@ -28,7 +28,10 @@ function Checkbox({ className, ...props }: React.ComponentProps<typeof CheckboxP
         "focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/30",
         "disabled:cursor-not-allowed disabled:opacity-50 group-has-disabled/field:opacity-50",
         "aria-invalid:border-destructive aria-invalid:ring-[3px] aria-invalid:ring-destructive/25 aria-invalid:aria-checked:border-primary",
-        "data-checked:border-primary data-checked:bg-primary data-checked:text-primary-foreground dark:data-checked:bg-primary",
+        // Radix marks a ticked box `data-state="checked"`. The academy's `data-checked:` matched an attribute
+        // Radix never sets, so its ticked boxes never filled: an intended difference from the reference.
+        "data-[state=checked]:border-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground dark:data-[state=checked]:bg-primary",
+        "data-[state=indeterminate]:border-primary data-[state=indeterminate]:bg-primary data-[state=indeterminate]:text-primary-foreground",
         className,
       )}
       {...props}

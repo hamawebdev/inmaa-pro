@@ -75,6 +75,8 @@ pub async fn backup_to(app: tauri::AppHandle, target: String) -> Result<BackupCo
 
     let dir = app_data_dir(&app)?;
     let target = PathBuf::from(target);
+    // Every copy, whoever asks for it: a backup in a synchronised folder is the centre's data leaving the PC.
+    refuse_synced(&target)?;
     if let Some(parent) = target.parent() {
         std::fs::create_dir_all(parent)
             .map_err(|error| CommandError::new(format!("could not reach the backup folder: {error}")))?;
@@ -177,6 +179,29 @@ fn synced_by(path: &Path, onedrive_roots: &[PathBuf]) -> Option<String> {
     None
 }
 
+/** The folders Windows says OneDrive synchronises, whatever they are called. */
+fn onedrive_roots() -> Vec<PathBuf> {
+    ["OneDrive", "OneDriveConsumer", "OneDriveCommercial"]
+        .iter()
+        .filter_map(|name| std::env::var_os(name))
+        .map(PathBuf::from)
+        .collect()
+}
+
+/// Refuses a copy whose folder a cloud client synchronises. The error is
+/// `FOLDER_SYNCED:<client>`, which the window words in the reader's language.
+fn refuse_synced_with(target: &Path, onedrive: &[PathBuf]) -> Result<(), CommandError> {
+    let folder = target.parent().unwrap_or(target);
+    match synced_by(folder, onedrive) {
+        Some(client) => Err(CommandError::new(format!("FOLDER_SYNCED:{client}"))),
+        None => Ok(()),
+    }
+}
+
+fn refuse_synced(target: &Path) -> Result<(), CommandError> {
+    refuse_synced_with(target, &onedrive_roots())
+}
+
 #[tauri::command]
 #[specta::specta]
 pub async fn backup_folder_check(app: tauri::AppHandle, dir: String) -> Result<FolderCheck, CommandError> {
@@ -190,12 +215,7 @@ pub async fn backup_folder_check(app: tauri::AppHandle, dir: String) -> Result<F
         let _ = std::fs::remove_file(&probe);
         ok
     };
-    let onedrive_roots: Vec<PathBuf> = ["OneDrive", "OneDriveConsumer", "OneDriveCommercial"]
-        .iter()
-        .filter_map(|name| std::env::var_os(name))
-        .map(PathBuf::from)
-        .collect();
-    Ok(FolderCheck { exists, writable, synced_by: synced_by(&dir, &onedrive_roots) })
+    Ok(FolderCheck { exists, writable, synced_by: synced_by(&dir, &onedrive_roots()) })
 }
 
 /// The name of an automatic backup, `inmaa-auto-YYYY-MM-DD.db`: the only files
@@ -442,6 +462,18 @@ mod tests {
         // Windows names the folder itself, whatever it is called.
         let roots = [PathBuf::from("D:/Nuage")];
         assert_eq!(synced_by(Path::new("D:/Nuage/inmaa"), &roots), Some("OneDrive".to_string()));
+    }
+
+    #[test]
+    fn no_copy_is_written_into_a_synchronised_folder() {
+        let none: [PathBuf; 0] = [];
+        let refused = refuse_synced_with(Path::new("C:/Users/samir/OneDrive/sauvegardes/inmaa-backup-2026-10-14.db"), &none)
+            .expect_err("a OneDrive folder must be refused");
+        assert_eq!(refused.message, "FOLDER_SYNCED:OneDrive");
+        assert!(refuse_synced_with(Path::new("E:/sauvegardes/inmaa-backup-2026-10-14.db"), &none).is_ok());
+        // Wherever Windows puts OneDrive.
+        let roots = [PathBuf::from("D:/Nuage")];
+        assert!(refuse_synced_with(Path::new("D:/Nuage/inmaa/inmaa-auto-2026-10-14.db"), &roots).is_err());
     }
 
     #[test]

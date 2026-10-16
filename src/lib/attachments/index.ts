@@ -145,6 +145,15 @@ export async function saveUpload(
       .where("id", "=", input.photo.siteId)
       .executeTakeFirst();
     if (!site?.photoConsent) throw new ServiceError("The client has not agreed to photos at this site.");
+    // Taken by one of the centre's employees (a supervisor, the office), never by a cleaning worker.
+    const taker = await ex
+      .selectFrom("StaffMember")
+      .select(["kind", "engagementStatus", "deletedAt"])
+      .where("id", "=", input.photo.takenByEmployeeId)
+      .executeTakeFirst();
+    if (!taker || taker.kind !== "EMPLOYEE" || taker.deletedAt !== null || taker.engagementStatus === "LEFT") {
+      throw new ServiceError("A photo at a client's site is taken by one of the centre's employees.");
+    }
   }
 
   const forced = ALWAYS_RESTRICTED[`${input.entity}.${input.field}`];
@@ -187,16 +196,51 @@ async function sha256Bytes(bytes: Uint8Array): Promise<string> {
   return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
-/** Ties a stored file to the row that shows it. Inside the transaction that saves that row. */
+/**
+ * The site a photo of a set is taken at, read from the row it belongs to: a
+ * first visit, a visit or an inspection all belong to a file, and a file to
+ * one site. Null when the row does not exist.
+ */
+async function siteOfPhotoOwner(ex: Executor, entity: string, ownerId: string): Promise<string | null> {
+  const table = PHOTO_OWNERS[entity];
+  if (!table) return null;
+  const row = await ex
+    .selectFrom(`${table} as o` as "Visit as o")
+    .innerJoin("File as f", "f.id", "o.fileId")
+    .select("f.siteId")
+    .where("o.id", "=", ownerId)
+    .executeTakeFirst();
+  return row?.siteId ?? null;
+}
+
+/** The tables whose rows hold a set of photos, each a file's (DESIGN.md section 10). */
+const PHOTO_OWNERS: Readonly<Record<string, "FirstVisit" | "Visit" | "Inspection">> = {
+  FirstVisit: "FirstVisit",
+  Visit: "Visit",
+  Inspection: "Inspection",
+};
+
+/**
+ * Ties a stored file to the row that shows it. Inside the transaction that
+ * saves that row. A photo of a set is checked again here, against the row's
+ * own site: the site named when the bytes were stored is the caller's word,
+ * the row's file is the database's.
+ */
 export async function linkUpload(ex: Executor, _ctx: ServiceContext, url: string, ownerId: string): Promise<void> {
   const upload = await ex
     .selectFrom("Upload")
-    .select(["id", "ownerId", "removedAt"])
+    .select(["id", "entity", "field", "ownerId", "removedAt"])
     .where("url", "=", url)
     .executeTakeFirst();
   if (!upload || upload.removedAt) throw new ServiceError("This file was not found.");
   if (upload.ownerId === ownerId) return;
   if (upload.ownerId !== null) throw new ServiceError("This file already belongs to another record.");
+  if (upload.field === PHOTO_SET_FIELD) {
+    const siteId = await siteOfPhotoOwner(ex, upload.entity, ownerId);
+    if (!siteId) throw new Error(`uploads: ${upload.entity} ${ownerId} has no file to take its site from`);
+    const site = await ex.selectFrom("Site").select("photoConsent").where("id", "=", siteId).executeTakeFirst();
+    if (!site?.photoConsent) throw new ServiceError("The client has not agreed to photos at this site.");
+  }
   await ex.updateTable("Upload").set({ ownerId }).where("id", "=", upload.id).execute();
 }
 

@@ -187,7 +187,8 @@
     "RoleNoRestore": "La restauration d'une sauvegarde appartient au seul directeur.",
     "BackupFolderSynced": "Ce dossier est synchronisé par {client}. Choisissez un dossier qui reste sur ce PC ou sur une clé USB.",
     "BackupFolderMissing": "Ce dossier n'existe pas.",
-    "BackupFolderReadOnly": "Le programme ne peut pas écrire dans ce dossier."
+    "BackupFolderReadOnly": "Le programme ne peut pas écrire dans ce dossier.",
+    "PhotoTakenByEmployee": "Une photo sur le site d'un client est prise par un employé du centre."
   },
   "Table": {
     "ScrollLeft": "Défiler à gauche",

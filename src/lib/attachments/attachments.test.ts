@@ -187,6 +187,62 @@ describe("stored files", () => {
     });
   });
 
+  it("never record a cleaning worker as having taken a photo at a client's site (his form, article 8)", async () => {
+    const site = await test.rows.insert("Site");
+    test.raw.prepare(`UPDATE "Site" SET "photoConsent" = 1 WHERE "id" = ?`).run(site.id);
+    const worker = await test.rows.insert("StaffMember", { kind: "WORKER" });
+    const gone = await test.rows.insert("StaffMember", { kind: "EMPLOYEE", engagementStatus: "LEFT" });
+    const photoBy = (takenByEmployeeId: string) =>
+      saveUpload(test.db, test.ctx(), test.files, {
+        entity: "Visit",
+        field: "photos",
+        file: png,
+        rule: PHOTO_UPLOAD_RULE,
+        photo: { siteId: site.id, takenByEmployeeId },
+      });
+    for (const taker of [worker.id, gone.id, "nobody"]) {
+      await expect(photoBy(taker)).rejects.toThrow(
+        "A photo at a client's site is taken by one of the centre's employees.",
+      );
+    }
+    const supervisor = await test.rows.insert("StaffMember", { kind: "EMPLOYEE" });
+    await expect(photoBy(supervisor.id)).resolves.toMatchObject({ url: expect.any(String) });
+  });
+
+  it("check the client's agreement again against the site of the visit the photo is linked to", async () => {
+    const agreed = await test.rows.insert("Site");
+    test.raw.prepare(`UPDATE "Site" SET "photoConsent" = 1 WHERE "id" = ?`).run(agreed.id);
+    const supervisor = await test.rows.insert("StaffMember", { kind: "EMPLOYEE" });
+    // The bytes are stored under the site that agreed…
+    const saved = await saveUpload(test.db, test.ctx(), test.files, {
+      entity: "Visit",
+      field: "photos",
+      file: png,
+      rule: PHOTO_UPLOAD_RULE,
+      photo: { siteId: agreed.id, takenByEmployeeId: supervisor.id },
+    });
+    // …and linked to a visit of another site, whose client did not.
+    const visit = await test.rows.insert("Visit");
+    await expect(test.transact((ex, ctx) => linkUpload(ex, ctx, saved.url, visit.id))).rejects.toThrow(
+      "The client has not agreed to photos at this site.",
+    );
+    // Once that client agrees, the same photo links.
+    const file = await test.db
+      .selectFrom("Visit as v")
+      .innerJoin("File as f", "f.id", "v.fileId")
+      .select("f.siteId")
+      .where("v.id", "=", visit.id)
+      .executeTakeFirstOrThrow();
+    test.raw.prepare(`UPDATE "Site" SET "photoConsent" = 1 WHERE "id" = ?`).run(file.siteId);
+    await test.transact((ex, ctx) => linkUpload(ex, ctx, saved.url, visit.id));
+    const row = await test.db
+      .selectFrom("Upload")
+      .select("ownerId")
+      .where("id", "=", saved.id)
+      .executeTakeFirstOrThrow();
+    expect(row.ownerId).toBe(visit.id);
+  });
+
   it("refuse an address that is not one of ours or that leaves the uploads folder", () => {
     expect(storagePathOf("/uploads/StaffMember/photoUrl/a.png")).toBe("uploads/StaffMember/photoUrl/a.png");
     expect(storagePathOf("/uploads/restricted/StaffConfidential/signedFormScanUrl/a.pdf")).toBe(

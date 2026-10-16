@@ -8,6 +8,7 @@ import { countStaleBackup } from "../alerts";
 import {
   assessRestore,
   describeDatabase,
+  isInsideFolder,
   listBackupRuns,
   planAutomaticBackup,
   recordBackupRun,
@@ -88,6 +89,28 @@ describe("the daily copy", () => {
 
     await test.transact((ex, ctx) => saveBackupSettings(ex, ctx, { autoEnabled: false }));
     expect(await asProgram((ex, ctx) => planAutomaticBackup(ex, ctx))).toEqual({ due: false, why: "DISABLED" });
+  });
+
+  it("counts a copy made by hand only when it went into the chosen folder", async () => {
+    await test.transact((ex, ctx) => saveBackupSettings(ex, ctx, { folder: { dir: "E:\\sauvegardes", check: USB } }));
+    const manifest = await test.transact((ex, ctx) => describeDatabase(ex, ctx, { appVersion: "0.1.0" }));
+    const byHand = (targetPath: string) =>
+      test.transact((ex, ctx) =>
+        recordBackupRun(ex, ctx, {
+          kind: "MANUAL",
+          targetPath,
+          startedAt: ctx.now,
+          manifest,
+          result: { ok: true, sizeBytes: 1 },
+        }),
+      );
+    // On the desktop of the same PC: not the day's copy.
+    await byHand("C:/Users/samir/Desktop/inmaa-backup-2026-10-12-09-00-00.db");
+    expect(((await asProgram((ex, ctx) => planAutomaticBackup(ex, ctx))) as { due: boolean }).due).toBe(true);
+    // Into the chosen folder, written either way: it is.
+    await byHand("e:/sauvegardes/inmaa-backup-2026-10-12-09-30-00.db");
+    expect(await asProgram((ex, ctx) => planAutomaticBackup(ex, ctx))).toEqual({ due: false, why: "DONE_TODAY" });
+    expect(isInsideFolder("E:/sauvegardesX/a.db", "E:/sauvegardes")).toBe(false);
   });
 
   it("that failed is kept as tried, is not a backup, and leaves the stale alert up", async () => {

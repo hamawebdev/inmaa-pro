@@ -4,6 +4,72 @@ import reactHooks from "eslint-plugin-react-hooks";
 import reactRefresh from "eslint-plugin-react-refresh";
 import tseslint from "typescript-eslint";
 
+/**
+ * Offline, by rule (CLAUDE.md, rule 1): the syntax that reaches outside the
+ * program. The web-address rules apply to what ships; a test may hold an
+ * address as the input a refusal is tested with.
+ */
+const WEB_ADDRESS_SYNTAX = [
+  {
+    // A web address anywhere in a string, not only at its start. The XML
+    // namespaces of SVG and MathML are names, not addresses, and are the
+    // one exception.
+    selector: "Literal[value=/(https?|wss?|ftp):\\/\\/(?!www\\.w3\\.org\\/)/i]",
+    message: "No web address in the program: it is offline. A stored file is shown with useUploadSrc().",
+  },
+  {
+    selector: "TemplateElement[value.raw=/(https?|wss?|ftp):\\/\\/(?!www\\.w3\\.org\\/)/i]",
+    message: "No web address in the program: it is offline.",
+  },
+  {
+    // A protocol-relative address, at the start of a string.
+    selector: "Literal[value=/^\\/\\/[a-z0-9-]+\\./i]",
+    message: "No web address in the program: it is offline.",
+  },
+];
+const OFFLINE_SYNTAX = [
+  {
+    // `target="_blank"`, `target={"_blank"}`, `target={`_blank`}`.
+    selector: "JSXAttribute[name.name='target'] :matches(Literal[value='_blank'], TemplateElement[value.raw='_blank'])",
+    message:
+      "Nothing opens outside the program's window. Show an image in the page; offer a PDF with saveUploadCopy().",
+  },
+  {
+    selector: "JSXAttribute[name.name='target'][value.value='_blank']",
+    message:
+      "Nothing opens outside the program's window. Show an image in the page; offer a PDF with saveUploadCopy().",
+  },
+  {
+    // `href="tel:…"`, `href={"tel:" + phone}`, `href={`mailto:${email}`}`: any string in an href.
+    selector:
+      "JSXAttribute[name.name='href'] :matches(Literal[value=/^(https?:|mailto:|tel:|sms:|whatsapp:|geo:)/i], TemplateElement[value.raw=/^(https?:|mailto:|tel:|sms:|whatsapp:|geo:)/i])",
+    message: "No link that hands off to a browser, a mail client or a dialler. Show the value as text (see Ltr).",
+  },
+  {
+    selector: "JSXAttribute[name.name='href'][value.value=/^(https?:|mailto:|tel:|sms:|whatsapp:|geo:)/i]",
+    message: "No link that hands off to a browser, a mail client or a dialler. Show the value as text (see Ltr).",
+  },
+  {
+    selector: "Literal[value=/^(mailto:|tel:|sms:|whatsapp:)/i]",
+    message: "No link that hands off to a mail client or a dialler. Show the value as text (see Ltr).",
+  },
+  {
+    selector: "TemplateElement[value.raw=/^(mailto:|tel:|sms:|whatsapp:)/i]",
+    message: "No link that hands off to a mail client or a dialler. Show the value as text (see Ltr).",
+  },
+  {
+    // `import("@tauri-apps/plugin-opener")`, which no-restricted-imports does not see.
+    selector:
+      "ImportExpression[source.value=/^@tauri-apps\\/plugin-(opener|shell|http|updater|websocket|upload|deep-link)/]",
+    message: "This plugin reaches outside the program, which is offline by rule.",
+  },
+  {
+    selector:
+      "NewExpression[callee.name=/^(WebSocket|EventSource|XMLHttpRequest|RTCPeerConnection|Worker|SharedWorker)$/]",
+    message: "The program is offline. Nothing is fetched, sent or opened outside its own window.",
+  },
+];
+
 export default tseslint.config(
   {
     ignores: [
@@ -74,17 +140,24 @@ export default tseslint.config(
       ],
       "no-restricted-properties": [
         "error",
-        ...[
-          ["window", "fetch"],
-          ["globalThis", "fetch"],
-          ["window", "open"],
-          ["navigator", "sendBeacon"],
-          ["window", "XMLHttpRequest"],
-          ["window", "WebSocket"],
-        ].map(([object, property]) => ({
-          object,
+        // The same names reached through any of the global objects.
+        ...["window", "globalThis", "self", "top", "parent", "frames"].flatMap((object) =>
+          ["fetch", "open", "XMLHttpRequest", "WebSocket", "EventSource"].map((property) => ({
+            object,
+            property,
+            message: "The program is offline. Nothing is fetched, sent or opened outside its own window.",
+          })),
+        ),
+        {
+          object: "navigator",
+          property: "sendBeacon",
+          message: "The program is offline. Nothing is sent outside its own window.",
+        },
+        // What a desktop program for an office has no use for, and a webview would ask the user to allow.
+        ...["geolocation", "mediaDevices", "credentials", "serviceWorker", "share"].map((property) => ({
+          object: "navigator",
           property,
-          message: "The program is offline. Nothing is fetched, sent or opened outside its own window.",
+          message: "Not in this program: nothing reaches the PC's devices, location or credentials through the window.",
         })),
       ],
       "no-restricted-imports": [
@@ -98,32 +171,14 @@ export default tseslint.config(
           ],
         },
       ],
-      "no-restricted-syntax": [
-        "error",
-        {
-          // A web address in a string. The XML namespaces of SVG and MathML are
-          // names, not addresses, and are the one exception.
-          selector: "Literal[value=/^(https?:)?\\/\\/(?!www\\.w3\\.org\\/)/]",
-          message: "No web address in the program: it is offline. A stored file is shown with useUploadSrc().",
-        },
-        {
-          selector: "TemplateElement[value.raw=/^(https?:)?\\/\\/(?!www\\.w3\\.org\\/)/]",
-          message: "No web address in the program: it is offline.",
-        },
-        {
-          selector: "JSXAttribute[name.name='target'][value.value='_blank']",
-          message:
-            "Nothing opens outside the program's window. Show an image in the page; offer a PDF with saveUploadCopy().",
-        },
-        {
-          selector: "JSXAttribute[name.name='href'][value.value=/^(https?:|mailto:|tel:|sms:|whatsapp:)/]",
-          message: "No link that hands off to a browser, a mail client or a dialler. Show the value as text (see Ltr).",
-        },
-        {
-          selector: "TemplateElement[value.raw=/^(mailto:|tel:|sms:|whatsapp:)/]",
-          message: "No link that hands off to a mail client or a dialler. Show the value as text (see Ltr).",
-        },
-      ],
+      "no-restricted-syntax": ["error", ...WEB_ADDRESS_SYNTAX, ...OFFLINE_SYNTAX],
+    },
+  },
+  {
+    // Tests run under Node and never ship: an address may be the input a refusal is tested with.
+    files: ["src/**/*.test.ts"],
+    rules: {
+      "no-restricted-syntax": ["error", ...OFFLINE_SYNTAX],
     },
   },
   {

@@ -87,6 +87,7 @@ one another, screens "never settle" and the machine runs out of file handles. So
 it starts anything, and waits its turn when they are taken (`lib/slots.mjs`): it says so on stderr and goes on by
 itself. Nothing to do, except to leave your own time limit long enough for the wait.
 
+- The queue's only shared files are `.harness/slots/slot-<n>` (each holds the pid of the run that has it, touched every 20 s); nothing of the queue is written in anybody's scratchpad. Keep your own files in `scratchpad/<owner>/`.
 - `HARNESS_SLOTS=<n>` sets how many runs go at once (default: half the processors, between 2 and 6); `0` switches the
   queue off.
 - `HARNESS_SETTLE_MS=<ms>` sets how long a screen may take to settle (default 75 000).

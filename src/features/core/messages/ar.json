@@ -187,7 +187,8 @@
     "RoleNoRestore": "استرجاع النسخة الاحتياطية للمدير وحده.",
     "BackupFolderSynced": "هذا المجلد يُزامنه {client}. اختر مجلدًا يبقى في هذا الحاسوب أو في مفتاح USB.",
     "BackupFolderMissing": "هذا المجلد غير موجود.",
-    "BackupFolderReadOnly": "لا يستطيع البرنامج الكتابة في هذا المجلد."
+    "BackupFolderReadOnly": "لا يستطيع البرنامج الكتابة في هذا المجلد.",
+    "PhotoTakenByEmployee": "صورة موقع الزبون يلتقطها أحد موظفي المركز."
   },
   "Table": {
     "ScrollLeft": "مرّر لليسار",

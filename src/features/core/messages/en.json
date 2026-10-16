@@ -187,7 +187,8 @@
     "RoleNoRestore": "Restoring a backup is the manager's alone.",
     "BackupFolderSynced": "This folder is synchronised by {client}. Choose a folder that stays on this PC or on a USB drive.",
     "BackupFolderMissing": "This folder does not exist.",
-    "BackupFolderReadOnly": "The program cannot write in this folder."
+    "BackupFolderReadOnly": "The program cannot write in this folder.",
+    "PhotoTakenByEmployee": "A photo at a client's site is taken by one of the centre's employees."
   },
   "Table": {
     "ScrollLeft": "Scroll left",
