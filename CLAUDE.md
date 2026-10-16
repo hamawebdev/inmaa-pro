@@ -24,7 +24,7 @@ You are one teammate of six. You do not see the coordinator's conversation with 
 5. **The Algerian legal rules** in scope section 5 apply.
 6. **New documents win.** Where the plan and the client's six forms or notes disagree, the forms and notes win.
 7. **Read-only places.** Never write, build, install or run a git command that writes in `/mnt/data/academy-system-desktop`. Never change anything in `client docs/` or `plan/`.
-8. **Git.** This folder is a local repository with no remote. Never push, never add a remote. Teammates run no git command that writes (no add, commit, stash, reset, checkout, restore, clean); the coordinator commits.
+8. **Git.** This folder is a local repository with a private GitHub remote (`origin`, added by the developer after the data disk failed on 2026-10-16). Teammates run no git command that writes or uses the network (no add, commit, stash, reset, checkout, restore, clean, fetch, pull, push, remote); the coordinator commits, and pushes only when the developer asks.
 
 ## The team
 
