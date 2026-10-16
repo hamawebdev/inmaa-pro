@@ -234,9 +234,56 @@ export async function getCount(ex: Executor, ctx: ServiceContext, input: { count
   };
 }
 
+export interface CountListRow {
+  id: string;
+  number: string;
+  date: LocalDate;
+  kind: StockKind;
+  status: "OPEN" | "CLOSED";
+  lines: number;
+  /** Lines typed so far. */
+  typed: number;
+}
+
+/** The counts, the latest first: an open one is taken up again, a closed one is read. */
+export async function listCounts(ex: Executor, ctx: ServiceContext): Promise<CountListRow[]> {
+  requireSection(ctx, "STOCK", "READ");
+  const counts = await ex
+    .selectFrom("InventoryCount")
+    .select(["id", "number", "date", "kind", "status"])
+    .orderBy("date", "desc")
+    .orderBy("numberSeq", "desc")
+    .execute();
+  if (counts.length === 0) return [];
+  const lines = await ex
+    .selectFrom("InventoryCountLine")
+    .select(["countId", "countedQty"])
+    .where(
+      "countId",
+      "in",
+      counts.map((count) => count.id),
+    )
+    .execute();
+  return counts.map((count) => {
+    const own = lines.filter((line) => line.countId === count.id);
+    return {
+      id: count.id,
+      number: count.number,
+      date: count.date as LocalDate,
+      kind: count.kind as StockKind,
+      status: count.status === "CLOSED" ? "CLOSED" : "OPEN",
+      lines: own.length,
+      typed: own.filter((line) => line.countedQty !== null).length,
+    };
+  });
+}
+
 // ── What the screens call ────────────────────────────────────────────────────
 
+export const COUNTS_PATH = `${INVENTORY_PATH}/counts`;
+
 export const getCountQuery = query(getCount);
-export const openCountAction = action(openCount, { revalidate: [INVENTORY_PATH] });
-export const saveCountLineAction = action(saveCountLine, { revalidate: [INVENTORY_PATH] });
-export const closeCountAction = action(closeCount, { revalidate: [INVENTORY_PATH] });
+export const listCountsQuery = query((ex: Executor, ctx: ServiceContext) => listCounts(ex, ctx));
+export const openCountAction = action(openCount, { revalidate: [INVENTORY_PATH, COUNTS_PATH] });
+export const saveCountLineAction = action(saveCountLine, { revalidate: [COUNTS_PATH] });
+export const closeCountAction = action(closeCount, { revalidate: [INVENTORY_PATH, COUNTS_PATH] });

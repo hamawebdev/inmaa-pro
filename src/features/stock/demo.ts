@@ -2,50 +2,114 @@ import type { Executor, ServiceContext } from "@/lib/service/context";
 import { dinarsToMoney } from "@/lib/units";
 import type { DemoNames, DemoTools } from "@/testing/demo";
 
-import { sampleInventory } from "./samples/inventory";
 import { createHandOut } from "./services/handouts";
-import { createStockItem } from "./services/items";
+import { seededItemId } from "./seeds";
+import { closeCount, openCount, saveCountLine } from "./services/counts";
+import { updateStockItem } from "./services/items";
 import { setMaintenancePlan } from "./services/maintenance";
 import { createSupplier, recordPurchase } from "./services/purchases";
+import type { StockCategory, StockKind, StockTracking, Unit } from "./validators/option-codes";
 
 /**
- * Stock's demo data (CLAUDE.md, "Demo data"): his store, a purchase, and a
- * hand-out against today's job.
+ * Stock's demo data (CLAUDE.md, "Demo data"), on the 29 items the seeds put in
+ * every installation (./seeds.ts), as the office would start:
  *
- *  - The items of his lists (his first study's store table with its four
- *    minimums, the worker's kit, form 9's hand-out lines, form 8's equipment),
- *    each with what is on the shelf this morning. The machines followed one by
- *    one start empty and come in with the purchase, which numbers each piece.
- *  - One purchase from a supplier, which also writes its expense.
- *  - One hand-out: cleaner, bags and a bucket for the team of today's first
- *    visit (Operations' demo), to the first worker on its team.
+ *  - it sets the four minimums of his store table (D1) on the seeded items;
+ *  - it counts the materials on 1 October (the first count brings the record
+ *    to the shelf; glass cleaner is found below its minimum);
+ *  - one purchase from a supplier on 5 October brings the equipment, numbers
+ *    each vacuum cleaner, and writes its expense; the first one is due for its
+ *    service on Thursday;
+ *  - one hand-out this morning: cleaner, bags, gloves and a bucket for the
+ *    team of today's first visit (Operations' demo), to the first worker on it.
  *
- * Quantities are invented, a few at or below their minimum so the chip shows.
+ * Quantities are invented, except his table's.
  */
+
+const at = (localDate: string, localTime: string) => {
+  const [hours, minutes] = localTime.split(":").map(Number);
+  // The centre is at UTC+1 and keeps no summer time.
+  return `${localDate}T${String(hours - 1).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:00.000Z`;
+};
+
+/** His store table (D1): floor cleaner 10, glass cleaner 5, gloves 30, bags 100. */
+const DEMO_MINIMUMS: readonly (readonly [string, number])[] = [
+  ["FLOOR_CLEANER", 10],
+  ["GLASS_CLEANER", 5],
+  ["GLOVES", 30],
+  ["WASTE_BAGS", 100],
+];
+
+/** What the first count found, in each item's unit. Everything else of the materials: nothing. */
+const FIRST_COUNT: ReadonlyMap<string, number> = new Map([
+  ["FLOOR_CLEANER", 30],
+  ["GLASS_CLEANER", 4],
+  ["BATHROOM_CLEANER", 8],
+  ["DISINFECTANT", 15],
+  ["MULTI_CLEANER", 12],
+  ["WASTE_BAGS", 500],
+  ["CLOTHS", 30],
+  ["MICROFIBER", 25],
+  ["SPONGE", 40],
+  ["GLOVES", 100],
+  ["PPE_GLOVES", 20],
+  ["PPE_WORKWEAR", 10],
+  ["PPE_MASK", 50],
+]);
+
 export async function seedDemo(ex: Executor, ctx: ServiceContext, tools: DemoTools): Promise<DemoNames> {
   const names: DemoNames = {};
-  const ids = new Map<string, string>();
+  const item = (code: string) => seededItemId(code);
+  const seeded = async (code: string) => {
+    const row = await ex.selectFrom("StockItem").selectAll().where("id", "=", item(code)).executeTakeFirst();
+    if (!row) throw new Error(`stock: the seeded item ${code} is missing`);
+    return row;
+  };
 
-  for (const item of sampleInventory()) {
-    const pieces = item.tracking === "UNIT";
-    const made = await createStockItem(ex, ctx, {
-      code: item.code,
+  // ── The office sets the four minimums of his store table (D1) on the seeded items ──
+  for (const [code, minLevel] of DEMO_MINIMUMS) {
+    const row = await seeded(code);
+    await updateStockItem(ex, ctx, {
+      id: row.id,
       values: {
-        nameAr: item.nameAr,
-        nameFr: item.nameFr ?? undefined,
-        nameEn: item.nameEn ?? undefined,
-        kind: item.kind as "EQUIPMENT" | "MATERIAL",
-        category: (item.category ?? undefined) as never,
-        unit: item.unit as never,
-        tracking: item.tracking as "QUANTITY" | "UNIT",
-        minLevel: item.minLevel === null ? undefined : item.minLevel / 1000,
-        // A machine is counted by its pieces: they enter with the purchase below.
-        openingQty: pieces ? 0 : item.onHandQty / 1000,
+        nameAr: row.nameAr,
+        nameFr: row.nameFr ?? undefined,
+        nameEn: row.nameEn ?? undefined,
+        kind: row.kind as StockKind,
+        category: (row.category ?? undefined) as StockCategory | undefined,
+        unit: row.unit as Unit,
+        tracking: row.tracking as StockTracking,
+        minLevel,
+        note: row.note ?? undefined,
       },
     });
-    ids.set(item.code, made.id);
   }
-  names.floorCleaner = ids.get("FLOOR_CLEANER") ?? "";
+  names.floorCleaner = item("FLOOR_CLEANER");
+
+  // ── Thursday 1 October: the first count of the materials puts what is on the shelf in the record ──
+  const count = await openCount(ex, tools.at(at("2026-10-01", "08:30")), {
+    kind: "MATERIAL",
+    date: "2026-10-01",
+    note: "الجرد الأول للمخزن",
+  });
+  const lines = await ex
+    .selectFrom("InventoryCountLine")
+    .innerJoin("StockItem", "StockItem.id", "InventoryCountLine.itemId")
+    .select(["InventoryCountLine.id", "StockItem.code"])
+    .where("InventoryCountLine.countId", "=", count.id)
+    .execute();
+  const counting = tools.at(at("2026-10-01", "10:00"));
+  for (const line of lines) {
+    const found = FIRST_COUNT.get(line.code) ?? 0;
+    await saveCountLine(ex, counting, {
+      lineId: line.id,
+      countedQty: found,
+      note: found > 0 ? "الجرد الأول للمخزن" : null,
+    });
+  }
+  await closeCount(ex, counting, { countId: count.id });
+  // Glass cleaner was counted at 4 l for a minimum of 5: the low-stock tile lights for it.
+  names.itemLow = item("GLASS_CLEANER");
 
   // ── Monday 5 October: bought in bulk, the vacuum cleaners numbered piece by piece ──
   const supplier = await createSupplier(ex, ctx, {
@@ -54,11 +118,6 @@ export async function seedDemo(ex: Executor, ctx: ServiceContext, tools: DemoToo
     address: "المنطقة الصناعية، عين مليلة",
   });
   names.supplier = supplier.id;
-  const item = (code: string) => {
-    const id = ids.get(code);
-    if (!id) throw new Error(`stock: no demo item ${code}`);
-    return id;
-  };
   const purchase = await recordPurchase(ex, ctx, {
     date: "2026-10-05",
     supplierId: supplier.id,
@@ -67,9 +126,12 @@ export async function seedDemo(ex: Executor, ctx: ServiceContext, tools: DemoToo
     method: "CASH",
     lines: [
       { itemId: item("FLOOR_CLEANER"), qty: 20, unitPrice: dinarsToMoney(180) },
-      { itemId: item("BIN_BAGS"), qty: 200, unitPrice: dinarsToMoney(15) },
+      { itemId: item("WASTE_BAGS"), qty: 200, unitPrice: dinarsToMoney(15) },
       { itemId: item("VACUUM"), qty: 3, unitPrice: dinarsToMoney(24_000) },
       { itemId: item("LADDER"), qty: 2, unitPrice: dinarsToMoney(6_500) },
+      { itemId: item("BUCKET"), qty: 6, unitPrice: dinarsToMoney(450) },
+      { itemId: item("BROOM"), qty: 5, unitPrice: dinarsToMoney(350) },
+      { itemId: item("MOP"), qty: 5, unitPrice: dinarsToMoney(600) },
     ],
   });
   names.purchase = purchase.id;
@@ -86,17 +148,6 @@ export async function seedDemo(ex: Executor, ctx: ServiceContext, tools: DemoToo
     await setMaintenancePlan(ex, ctx, { unitId: firstVacuum.id, intervalDays: 90, nextDate: "2026-10-15" });
     names.unitMaintenanceDue = firstVacuum.id;
   }
-
-  // The item the low-stock tile counts first: one of his materials at or below its minimum.
-  const low = await ex
-    .selectFrom("StockItem")
-    .select("id")
-    .where("kind", "=", "MATERIAL")
-    .where("minLevel", "is not", null)
-    .whereRef("onHandQty", "<=", "minLevel")
-    .orderBy("code")
-    .executeTakeFirst();
-  if (low) names.itemLow = low.id;
 
   // ── This morning: the team of today's first visit takes its materials ──
   const visitId = tools.names.operations?.visitInProgress ?? tools.names.operations?.visitToday;
@@ -120,9 +171,9 @@ export async function seedDemo(ex: Executor, ctx: ServiceContext, tools: DemoToo
         workerId,
         lines: [
           { itemId: item("FLOOR_CLEANER"), qty: 2.5 },
-          { itemId: item("BIN_BAGS"), qty: 20 },
+          { itemId: item("WASTE_BAGS"), qty: 20 },
           { itemId: item("PPE_GLOVES"), qty: 2 },
-          { itemId: item("BUCKETS"), qty: 1, condition: "GOOD" },
+          { itemId: item("BUCKET"), qty: 1, condition: "GOOD" },
         ],
         note: "لتنظيف السلالم والمدخل",
       });

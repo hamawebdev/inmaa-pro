@@ -225,3 +225,23 @@ it("is closed to who does not read the money", async () => {
     "You do not have permission to do this.",
   );
 });
+
+it("counts in the forecast what an ending contract would bring if renewed, unless the office said it will not be", async () => {
+  await centreReady(test);
+  // November to January at 45 000,00 a month, paid on the 30th: it ends inside the three months of the forecast.
+  const file = await contractedFile(test);
+  await test.transact((ex, ctx) => syncDues(ex, ctx, { fileId: file.id }));
+  await openDay(test, "2026-12-03T09:00:00.000Z");
+
+  const report = await test.transact((ex, ctx) => getPeriodReport(ex, ctx, december));
+  // Renewed from 1 February to 30 April, paid on the 30th: February and March fall inside the horizon.
+  expect(report.forecast.months.map((month) => [month.month, month.receiptsIfRenewed])).toEqual([
+    ["2027-01", 0],
+    ["2027-02", da(45_000)],
+    ["2027-03", da(45_000)],
+  ]);
+
+  await test.raw.exec(`update "File" set "renewalDecision" = 'WILL_NOT_RENEW' where id = '${file.id}'`);
+  const declined = await test.transact((ex, ctx) => getPeriodReport(ex, ctx, december));
+  expect(declined.forecast.months.every((month) => month.receiptsIfRenewed === 0)).toBe(true);
+});

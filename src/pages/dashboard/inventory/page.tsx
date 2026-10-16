@@ -1,7 +1,8 @@
 import { useState } from "react";
 
 import { useQuery } from "@tanstack/react-query";
-import { Plus } from "lucide-react";
+import { ClipboardList, Plus } from "lucide-react";
+import { Link } from "react-router-dom";
 import { useTranslations } from "use-intl";
 
 import { SectionScreen } from "@/components/section-screen";
@@ -29,6 +30,7 @@ import { ItemFormDialog } from "./_components/item-form-dialog";
 export default function InventoryPage() {
   const tNav = useTranslations("Nav");
   const t = useTranslations("ItemForm");
+  const tCounts = useTranslations("Counts");
   const params = useSearchParams();
   const router = useRouter();
   const mayWrite = useSectionLevel("STOCK") === "WRITE";
@@ -57,18 +59,33 @@ export default function InventoryPage() {
       title={tNav("StockHeading")}
       actions={
         mayWrite ? (
-          <ItemFormDialog
-            kind={kind}
-            open={adding || askedNew}
-            onOpenChange={changeAdding}
-            trigger={
-              <Button variant="add">
-                <Plus />
-                {t("AddItem")}
-              </Button>
-            }
-          />
-        ) : undefined
+          <div className="flex flex-wrap items-center gap-2">
+            <Button asChild variant="outline">
+              <Link to="/dashboard/inventory/counts">
+                <ClipboardList />
+                {tCounts("ListTitle")}
+              </Link>
+            </Button>
+            <ItemFormDialog
+              kind={kind}
+              open={adding || askedNew}
+              onOpenChange={changeAdding}
+              trigger={
+                <Button variant="add">
+                  <Plus />
+                  {t("AddItem")}
+                </Button>
+              }
+            />
+          </div>
+        ) : (
+          <Button asChild variant="outline">
+            <Link to="/dashboard/inventory/counts">
+              <ClipboardList />
+              {tCounts("ListTitle")}
+            </Link>
+          </Button>
+        )
       }
     >
       {items ? <InventoryView items={items} canWrite={mayWrite} /> : <ScreenSkeleton />}

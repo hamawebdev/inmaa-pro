@@ -7,6 +7,8 @@ import HandoutPrintPage from "@/pages/dashboard/handouts/[id]/print/page";
 import NewHandoutPage from "@/pages/dashboard/handouts/new/page";
 import HandoutsPage from "@/pages/dashboard/handouts/page";
 import IncomePage from "@/pages/dashboard/income/page";
+import CountPage from "@/pages/dashboard/inventory/counts/[id]/page";
+import CountsPage from "@/pages/dashboard/inventory/counts/page";
 import InventoryPage from "@/pages/dashboard/inventory/page";
 import InvoicePrintPage from "@/pages/dashboard/invoices/[id]/print/page";
 import InvoiceStatementPrintPage from "@/pages/dashboard/invoices/[id]/print-statement/page";
@@ -14,6 +16,7 @@ import NewInvoicePage from "@/pages/dashboard/invoices/new/page";
 import InvoicesPage from "@/pages/dashboard/invoices/page";
 import MaintenancePage from "@/pages/dashboard/maintenance/page";
 import PaymentsPage from "@/pages/dashboard/payments/page";
+import ReconciliationDayPage from "@/pages/dashboard/payments/reconciliation/page";
 import ReceiptPrintPage from "@/pages/dashboard/payments/receipts/[id]/print/page";
 import ReceiptBatchPrintPage from "@/pages/dashboard/payments/receipts/batch/[id]/print/page";
 import ReminderPrintPage from "@/pages/dashboard/payments/reminders/[fileId]/print/page";
@@ -44,6 +47,9 @@ export const moneyRoutes: RouteObject[] = [
   { path: "invoices/new", element: <NewInvoicePage /> },
   { path: "handouts/new", element: <NewHandoutPage /> },
   { path: "purchases/new", element: <NewPurchasePage /> },
+  { path: "payments/reconciliation", element: <ReconciliationDayPage /> },
+  { path: "inventory/counts", element: <CountsPage /> },
+  { path: "inventory/counts/:id", element: <CountPage /> },
 
   // Printed sheets. Each is a page below the record it prints.
   { path: "invoices/:id/print", element: <InvoicePrintPage /> },

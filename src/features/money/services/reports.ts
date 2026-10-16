@@ -6,8 +6,9 @@ import { basisPoints, localDate, money, type LocalDate } from "@/lib/units";
 
 import { getClosedPayroll } from "@/features/people/services/payouts";
 
-import { addDays, addMonths, addToMonth, firstDayOfMonth, monthOf } from "../rules/dates";
-import { buildForecast, type Forecast } from "../rules/forecast";
+import { addDays, addMonths, addToMonth, firstDayOfMonth, lastDayOfMonth, monthOf } from "../rules/dates";
+import { buildDueSchedule } from "../rules/due-schedule";
+import { buildForecast, renewedTerms, type Forecast } from "../rules/forecast";
 import {
   divisionIncome,
   expensesByDivision,
@@ -26,6 +27,7 @@ import {
 import type { IncomeDueView, IncomeInvoiceView, IncomePaymentView } from "../views";
 
 import { readTaxSettings } from "./money-settings";
+import { dueTermsOf, readFileBilling } from "./terms";
 
 /**
  * What «المداخيل حسب القسم» is drawn from, read from the stored rows.
@@ -314,7 +316,7 @@ export async function getPeriodReport(
     today: ctx.today,
     months,
     dues: owed,
-    duesIfRenewed: [],
+    duesIfRenewed: await renewalDues(ex, ctx, lastDayOfMonth(addToMonth(thisMonth, months))),
     recurringExpenses,
     lastPayRun,
     otherExpensesOfLastMonths,
@@ -398,6 +400,47 @@ export async function getPeriodReport(
         ...lineOf(file.id),
       })),
   };
+}
+
+/**
+ * What the contracts ending before the forecast's horizon would bring in if
+ * each were renewed as it stands (`renewedTerms`): one more term from the day
+ * after its end. A contract already renewed, ended early, closed, or that the
+ * office said will not be renewed brings nothing. A contract paid visit by
+ * visit is left out: its next visits are not planned yet.
+ */
+async function renewalDues(ex: Executor, ctx: ServiceContext, horizon: string) {
+  const ending = await ex
+    .selectFrom("File")
+    .select(["File.id"])
+    .where("File.stage", "=", "CONTRACTED")
+    .where("File.serviceType", "=", "CONTRACT")
+    .where("File.deletedAt", "is", null)
+    .where("File.closedAt", "is", null)
+    .where("File.endKind", "is", null)
+    .where("File.endDate", ">=", ctx.today)
+    .where("File.endDate", "<=", localDate(horizon))
+    .where((eb) => eb.or([eb("File.renewalDecision", "is", null), eb("File.renewalDecision", "!=", "WILL_NOT_RENEW")]))
+    .where(({ not, exists, selectFrom }) =>
+      not(
+        exists(
+          selectFrom("File as Successor")
+            .select("Successor.id")
+            .whereRef("Successor.renewalOfFileId", "=", "File.id")
+            .where("Successor.deletedAt", "is", null),
+        ),
+      ),
+    )
+    .execute();
+  const dues: { dueDate: string; remaining: number }[] = [];
+  for (const { id } of ending) {
+    const billing = await readFileBilling(ex, id);
+    const terms = billing ? dueTermsOf(billing) : null;
+    const renewed = terms ? renewedTerms(terms) : null;
+    if (!renewed || renewed.frequency === "PER_VISIT") continue;
+    for (const due of buildDueSchedule(renewed, [])) dues.push({ dueDate: due.dueDate, remaining: due.expectedAmount });
+  }
+  return dues;
 }
 
 // ── What the screens call ────────────────────────────────────────────────────

@@ -15,9 +15,10 @@ import { SECTION_ACCENT } from "@/navigation/sections";
 
 import { DuesView } from "./_components/dues-view";
 import { PaymentsView } from "./_components/payments-view";
+import { ReconciliationView } from "./_components/reconciliation-view";
 import { ReceiptBatchDialog } from "./_components/receipt-batch-dialog";
 
-const VIEWS = ["payments", "dues"] as const;
+const VIEWS = ["payments", "dues", "reconciliation"] as const;
 type View = (typeof VIEWS)[number];
 
 /**
@@ -29,7 +30,8 @@ type View = (typeof VIEWS)[number];
  * (`/dashboard/academy/outstanding-debt`, payment-status-table.tsx) for the
  * debts. The switch between the two is the groups list's (outline pills in the
  * section's hue), kept in the address: the payment alerts on the home screen
- * open `?view=dues&state=OVERDUE` or `DUE_SOON`. `?new=1` opens the payment
+ * open `?view=dues&state=OVERDUE` or `DUE_SOON`; the receipts tile opens
+ * `?view=reconciliation`, «المطابقة اليومية». `?new=1` opens the payment
  * dialog: the Ctrl+K "record a payment" entry lands here.
  */
 export default function PaymentsPage() {
@@ -38,7 +40,8 @@ export default function PaymentsPage() {
   const today = centreToday();
   const params = useSearchParams();
   const router = useRouter();
-  const view: View = params.get("view") === "dues" ? "dues" : "payments";
+  const asked = params.get("view");
+  const view: View = (VIEWS as readonly string[]).includes(asked ?? "") ? (asked as View) : "payments";
   const records = useCan("payment.record");
   const askedNew = params.get("new") === "1";
   const [recording, setRecording] = useState(false);
@@ -111,6 +114,8 @@ export default function PaymentsPage() {
 
         {view === "payments" ? (
           <PaymentsView today={today} />
+        ) : view === "reconciliation" ? (
+          <ReconciliationView />
         ) : (
           <DuesView
             onRecord={

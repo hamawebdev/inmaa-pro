@@ -8,6 +8,7 @@ import { StatCard } from "@/components/stat-card";
 import { StatusChip } from "@/components/status-chip";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { FileProfitabilityCard } from "@/features/money/components/file-profitability-card";
 import { usePaymentMethodLabel } from "@/features/money/components/labels";
 import { DueStateChip, PaymentStateChip } from "@/features/money/components/state-chips";
 import { MoneyValue } from "@/features/money/components/money-value";
@@ -67,6 +68,9 @@ export function FileMoneyView({ money: file }: { money: FileMoney }) {
           />
         </div>
       </section>
+
+      {/* For whoever holds `cost.read`: what the contract really earns. Draws nothing for anybody else. */}
+      <FileProfitabilityCard fileId={file.fileId} />
 
       <section className="space-y-4 tall:space-y-5">
         <SectionHeading>{t("Dues")}</SectionHeading>

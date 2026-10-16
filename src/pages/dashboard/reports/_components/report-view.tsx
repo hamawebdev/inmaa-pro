@@ -14,6 +14,8 @@ import { intlLocaleFor } from "@/i18n/config";
 import { cn } from "@/lib/utils";
 import { filePartHref } from "@/navigation/file-parts";
 
+import { AccountantExport } from "./accountant-export";
+
 /**
  * The report of the period, top to bottom as the manager reads it: what is
  * left, where it came from, how the work went, what the coming months look
@@ -128,23 +130,32 @@ export function ReportView({ report }: { report: PeriodReport }) {
               <TableHead>{t("Table.Month")}</TableHead>
               <TableHead>{t("Table.Receipts")}</TableHead>
               <TableHead>{t("Table.ExpectedExpenses")}</TableHead>
-              <TableHead>{t("Table.Net")}</TableHead>
               <TableHead>{t("Table.Running")}</TableHead>
+              <TableHead>{t("Table.IfRenewed")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {forecast.months.map((month) => (
               <TableRow key={month.month}>
                 <TableCell className="font-bold whitespace-nowrap">{dates.month(month.month)}</TableCell>
-                <TableCell>{signed(month.receipts)}</TableCell>
+                <TableCell>
+                  {signed(month.receipts)}
+                  {month.receiptsIfRenewed > 0 && (
+                    <span className="block text-sm text-muted-foreground">
+                      {t("PlusRenewals", { amount: money(month.receiptsIfRenewed) })}
+                    </span>
+                  )}
+                </TableCell>
                 <TableCell>{signed(month.expenses)}</TableCell>
-                <TableCell>{signed(month.net, true)}</TableCell>
-                <TableCell>{signed(month.running)}</TableCell>
+                <TableCell>{signed(month.running, true)}</TableCell>
+                <TableCell>{signed(month.runningIfRenewed)}</TableCell>
               </TableRow>
             ))}
           </TableBody>
         </Table>
       </section>
+
+      <AccountantExport from={report.from} to={report.to} />
 
       <section className="space-y-4 tall:space-y-5">
         <SectionHeading>{t("ByFile")}</SectionHeading>

@@ -207,7 +207,15 @@
     "ExpenseNotFound": "هذا المصروف غير موجود.",
     "ExpenseFromProgram": "هذا المصروف سجّله البرنامج: يُعدَّل من مصدره.",
     "AmountTooLarge": "هذا المبلغ كبير جدًا.",
-    "NoReminderOwed": "هذا الملف ليس عليه أي مبلغ: لا يوجد تذكير للطباعة."
+    "NoReminderOwed": "هذا الملف ليس عليه أي مبلغ: لا يوجد تذكير للطباعة.",
+    "NoReceiptThatDay": "لم يُحرَّر أي سند في هذا اليوم لهذا المحصِّل.",
+    "DayAlreadyClosed": "هذا اليوم مغلق من قبل.",
+    "OnlyLastClosing": "لا يُصحَّح إلا آخر إغلاق لليوم.",
+    "EveryReceiptFirst": "حدد مآل كل سند قبل إغلاق اليوم.",
+    "CashDifferenceNote": "اذكر سبب الفارق في النقد أو فقدان السند.",
+    "DayNotCome": "لا يُغلق يوم قبل حلوله.",
+    "AmountNotNegative": "لا يمكن أن يكون المبلغ سالبًا.",
+    "PeriodStartAfterEndMoney": "لا يمكن أن تكون بداية الفترة بعد نهايتها."
   },
   "Alerts": {
     "ContractEnding": {
@@ -221,6 +229,10 @@
     "PaymentOverdue": {
       "Title": "استحقاقات متأخرة",
       "Hint": "فات موعدها ولم تُسدد"
+    },
+    "ReceiptsUnreconciled": {
+      "Title": "سندات قبض غير مطابَقة",
+      "Hint": "سندات فارغة من يوم مضى لم تُسجَّل دفعتها ولم تُرجع"
     }
   },
   "Invoices": {
@@ -331,7 +343,9 @@
     "SaveFailed": "تعذر تسجيل الدفعة.",
     "Recorded": "تم تسجيل الدفعة: المبلغ المستلم {amount}.",
     "ClockTitle": "تأكيد تاريخ هذا الحاسوب",
-    "ClockConfirm": "التاريخ صحيح"
+    "ClockConfirm": "التاريخ صحيح",
+    "ReceiptTitle": "تسجيل دفعة السند {number}",
+    "ReceiptDescription": "من نسخة المحصِّل: المبلغ النقدي الذي استلمه بهذا السند المرقم."
   },
   "Payments": {
     "BlankReceipts": "سندات قبض فارغة",
@@ -339,7 +353,8 @@
     "ViewSwitch": "المدفوعات أو الديون",
     "Views": {
       "payments": "المدفوعات",
-      "dues": "الديون"
+      "dues": "الديون",
+      "reconciliation": "المطابقة اليومية"
     },
     "Table": {
       "Date": "تاريخ الدفع",
@@ -438,7 +453,8 @@
       "File": "الملف",
       "Invoiced": "المفوتر",
       "Received": "المحصَّل",
-      "Outstanding": "الباقي اليوم"
+      "Outstanding": "الباقي اليوم",
+      "IfRenewed": "عند التجديد"
     },
     "Figures": {
       "Invoiced": "{count, plural, =0 {المفوتر} one {المفوتر (فاتورة واحدة)} two {المفوتر (فاتورتان)} few {المفوتر (# فواتير)} many {المفوتر (# فاتورة)} other {المفوتر (# فاتورة)}}",
@@ -449,7 +465,8 @@
       "VisitsDone": "المنفذة",
       "VisitsNotDone": "مؤجلة أو ملغاة أو بها مشكلة",
       "OrdersNotReturned": "أوامر مهمة لم تُسترجع"
-    }
+    },
+    "PlusRenewals": "+ {amount} عند التجديد"
   },
   "FileMoney": {
     "Of": "{client} · الملف {number}",
@@ -488,5 +505,101 @@
       "Payer": "مسدد أتعاب",
       "Receipt": "سند القبض"
     }
+  },
+  "Reconciliation": {
+    "Title": "المطابقة اليومية",
+    "DayTitle": "مطابقة يوم {date}",
+    "Office": "المكتب",
+    "CouldNotLoad": "تعذرت قراءة هذا اليوم.",
+    "DayCount": "{count, plural, =0 {لا يوجد يوم للمطابقة} one {يوم واحد} two {يومان} few {# أيام} many {# يومًا} other {# يوم}}",
+    "NoDays": "لم يُحرَّر أي سند قبض بعد.",
+    "ReceiptCount": "{count, plural, one {سند واحد} two {سندان} few {# سندات} many {# سندًا} other {# سند}}",
+    "Open": "فتح",
+    "States": {
+      "Closed": "مغلقة",
+      "ClosedWithDifference": "مغلقة بفارق",
+      "Pending": "{count, plural, one {سند واحد معلق} two {سندان معلقان} few {# سندات معلقة} many {# سندًا معلقًا} other {# سند معلق}}",
+      "ToClose": "للإغلاق"
+    },
+    "Table": {
+      "Date": "اليوم",
+      "Collector": "المحصِّل",
+      "Receipts": "السندات",
+      "Expected": "النقد المتوقع",
+      "State": "الحالة",
+      "Actions": "إجراءات",
+      "Receipt": "السند",
+      "Client": "العميل",
+      "Received": "المبلغ المستلم",
+      "Outcome": "مآل السند"
+    },
+    "Receipts": "سندات اليوم",
+    "Outcomes": {
+      "USED": "مستعمل",
+      "VOIDED": "أُرجع دون استعمال",
+      "MISSING": "مفقود",
+      "BLANK": "فارغ"
+    },
+    "TypePayment": "تسجيل الدفعة",
+    "ReturnedUnused": "أُرجع دون استعمال",
+    "DeclareMissing": "التصريح بالفقدان",
+    "ReturnedTitle": "هل أُرجع السند {number} دون استعمال؟",
+    "ReturnedDescription": "يُعلَّم ملغى في سلسلته مع السبب الذي تكتبه.",
+    "MissingTitle": "هل السند {number} مفقود؟",
+    "MissingDescription": "يُسجَّل السند المفقود بهذه الصفة مع ما حدث، ويستلزم إغلاق اليوم ملاحظة عنه.",
+    "Returned": "سُجِّل السند {number} مُرجعًا دون استعمال.",
+    "Missing": "سُجِّل السند {number} مفقودًا.",
+    "DeclareFailed": "تعذر التسجيل.",
+    "Cash": "النقد",
+    "Expected": "النقد المتوقع",
+    "Counted": "النقد المعدود",
+    "Difference": "الفارق",
+    "ClosedBy": "أغلقه {name}",
+    "PendingFirst": "حدد مآل كل سند، ثم اعدد النقد.",
+    "CountedInput": "النقد المسلَّم (دج)",
+    "DifferenceWillBe": "الفارق:",
+    "Note": "ملاحظة",
+    "NoteHint": "إلزامية عند وجود فارق أو سند مفقود.",
+    "Close": "إغلاق اليوم",
+    "Correct": "تسجيل التصحيح",
+    "CorrectClosing": "تصحيح الإغلاق",
+    "Closed": "أُغلق اليوم.",
+    "CloseFailed": "تعذر إغلاق اليوم."
+  },
+  "Profitability": {
+    "Title": "ربحية العقد",
+    "Period": "من {from} إلى {to}",
+    "NotSet": "دون تكلفة ساعية",
+    "Flags": {
+      "NegativeMargin": "خسارة",
+      "HoursOver": "ساعات تفوق التقدير",
+      "NoHourlyCost": "التكلفة الساعية غير محددة",
+      "OnTrack": "ضمن التقدير"
+    },
+    "Line": "البند",
+    "Estimate": "التقدير",
+    "Actual": "الفعلي",
+    "Hours": "الساعات",
+    "Labour": "اليد العاملة",
+    "Materials": "المواد",
+    "Transport": "النقل",
+    "Other": "مصاريف أخرى",
+    "Cost": "التكلفة الإجمالية",
+    "Revenue": "الإيراد",
+    "Margin": "الهامش",
+    "Visits": "{done} من {planned} زيارة مبرمجة منفذة"
+  },
+  "AccountantExport": {
+    "Title": "ملفات المحاسب",
+    "Description": "ملفات CSV للفترة من {from} إلى {to}، تُفتح في جدول بيانات أو تُستورد في برنامج المحاسبة. يُسجَّل كل تصدير.",
+    "Files": {
+      "INVOICES": "سجل المبيعات",
+      "RECEIPTS": "سندات القبض",
+      "PAYMENTS": "المدفوعات",
+      "EXPENSES": "المصاريف"
+    },
+    "FileKind": "ملف CSV",
+    "Saved": "حُفظ: {path}",
+    "Failed": "تعذر حفظ الملف."
   }
 }

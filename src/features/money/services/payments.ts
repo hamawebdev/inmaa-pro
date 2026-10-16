@@ -624,12 +624,14 @@ export async function getReceiptSheet(
     .where("receiptId", "=", receipt.id)
     .where("type", "in", ["VOIDED", "MISSING"])
     .executeTakeFirst();
-  const file = receipt.fileId
+  // A receipt printed blank has no file of its own: it is its payment's, once one was typed in against it.
+  const fileId = receipt.fileId ?? payment?.fileId ?? null;
+  const file = fileId
     ? await ex
         .selectFrom("File")
         .innerJoin("Client", "Client.id", "File.clientId")
         .select(["File.number", "Client.name"])
-        .where("File.id", "=", receipt.fileId)
+        .where("File.id", "=", fileId)
         .executeTakeFirst()
     : undefined;
   const collector = receipt.collectorStaffId

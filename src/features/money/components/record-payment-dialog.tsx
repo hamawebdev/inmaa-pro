@@ -32,18 +32,30 @@ import { dinarsToMoney, moneyToDinars, type Money } from "@/lib/units";
 import type { IsoDate } from "../rules/dates";
 import { PAYMENTS_PATH } from "../services/paths";
 import { listPayableFilesQuery, recordPaymentAction, type PayableFile } from "../services/payments";
-import { PAYMENT_METHODS, type PaymentMethod } from "../validators/option-codes";
+import { PAYMENT_METHODS, type CollectorKind, type PaymentMethod } from "../validators/option-codes";
 import { paymentFormSchema, type PaymentFormValues } from "../validators/payment";
 
 import { asksClockConfirmation } from "./clock-jump";
 import { usePaymentMethodLabel } from "./labels";
 import { useDateText, useMoneyText } from "./use-money-text";
 
+/** A receipt printed blank for a collector, whose payment is typed in from his copy. */
+export interface BlankReceipt {
+  id: string;
+  number: string;
+  collectorKind: CollectorKind;
+  collectorStaffId: string | null;
+  /** The day the block was handed out: the payment is dated that day unless the office says otherwise. */
+  date: string;
+}
+
 interface DialogProps {
   /** The centre's today: the latest date a payment can carry. */
   today: IsoDate;
   /** A file to record for, from its own part or a row of the debt list. Absent: the office chooses. */
   fileId?: string;
+  /** The blank receipt it fills in: cash, collected by the receipt's holder. */
+  receipt?: BlankReceipt;
 }
 
 /**
@@ -80,6 +92,8 @@ export function RecordPaymentDialog({
 
 function PaymentLoader(props: DialogProps & { onDone: () => void }) {
   const t = useTranslations("PaymentForm");
+  const title = props.receipt ? t("ReceiptTitle", { number: props.receipt.number }) : t("Title");
+  const description = props.receipt ? t("ReceiptDescription") : t("Description");
   const { data: files } = useQuery({
     queryKey: [...pathKey(PAYMENTS_PATH), "payable"],
     queryFn: () => listPayableFilesQuery(undefined),
@@ -87,8 +101,8 @@ function PaymentLoader(props: DialogProps & { onDone: () => void }) {
   return (
     <>
       <DialogHeader>
-        <DialogTitle>{t("Title")}</DialogTitle>
-        <DialogDescription>{t("Description")}</DialogDescription>
+        <DialogTitle>{title}</DialogTitle>
+        <DialogDescription>{description}</DialogDescription>
       </DialogHeader>
       {files ? (
         <PaymentForm {...props} files={files} />
@@ -102,12 +116,16 @@ function PaymentLoader(props: DialogProps & { onDone: () => void }) {
 const remainingOf = (file: PayableFile | undefined, dueIds: readonly string[]) =>
   (file?.dues ?? []).filter((due) => dueIds.includes(due.id)).reduce((sum, due) => sum + due.remaining, 0);
 
-function startingValues(today: IsoDate, file: PayableFile | undefined): Partial<PaymentFormValues> {
+function startingValues(
+  today: IsoDate,
+  file: PayableFile | undefined,
+  receipt?: BlankReceipt,
+): Partial<PaymentFormValues> {
   const dueIds = file?.dues.map((due) => due.id) ?? [];
   return {
     fileId: file?.fileId ?? "",
-    receivedDate: today,
-    method: file?.methods[0] ?? "CASH",
+    receivedDate: receipt?.date ?? today,
+    method: receipt ? "CASH" : (file?.methods[0] ?? "CASH"),
     amount: file ? moneyToDinars(remainingOf(file, dueIds) as Money) : undefined,
     dueIds,
     payerName: "",
@@ -116,7 +134,13 @@ function startingValues(today: IsoDate, file: PayableFile | undefined): Partial<
   };
 }
 
-function PaymentForm({ today, fileId, files, onDone }: DialogProps & { files: PayableFile[]; onDone: () => void }) {
+function PaymentForm({
+  today,
+  fileId,
+  receipt,
+  files,
+  onDone,
+}: DialogProps & { files: PayableFile[]; onDone: () => void }) {
   const t = useTranslations("PaymentForm");
   const tCommon = useTranslations("Common");
   const errorMessage = useErrorMessage();
@@ -131,7 +155,7 @@ function PaymentForm({ today, fileId, files, onDone }: DialogProps & { files: Pa
 
   const form = useForm<PaymentFormValues>({
     resolver: zodResolver(schema),
-    defaultValues: startingValues(today, preset),
+    defaultValues: startingValues(today, preset, receipt),
   });
   const { control, setValue } = form;
   const chosenId = useWatch({ control, name: "fileId" });
@@ -141,7 +165,7 @@ function PaymentForm({ today, fileId, files, onDone }: DialogProps & { files: Pa
   // A new file starts from its own dues, method and payer; ticking dues proposes what they still owe.
   function chooseFile(next: string) {
     const file = files.find((candidate) => candidate.fileId === next);
-    const values = startingValues(today, file);
+    const values = startingValues(today, file, receipt);
     setValue("fileId", next, { shouldValidate: true });
     setValue("dueIds", values.dueIds ?? []);
     setValue("method", values.method ?? "CASH");
@@ -168,6 +192,13 @@ function PaymentForm({ today, fileId, files, onDone }: DialogProps & { files: Pa
         payerName: values.payerName ?? null,
         reference: values.reference ?? null,
         note: values.note ?? null,
+        ...(receipt
+          ? {
+              receiptId: receipt.id,
+              collectorKind: receipt.collectorKind,
+              collectorStaffId: receipt.collectorStaffId,
+            }
+          : {}),
       };
       let result = await recordPaymentAction(input);
       if (!result.success && asksClockConfirmation(result.error, session)) {
@@ -184,7 +215,8 @@ function PaymentForm({ today, fileId, files, onDone }: DialogProps & { files: Pa
       }
       toast.success(t("Recorded", { amount: money(result.data.totalReceived) }));
       onDone();
-      if (result.data.receiptId) navigate(`/dashboard/payments/receipts/${result.data.receiptId}/print`);
+      // A receipt made now is printed at once; one filled in from a collector's copy is already on paper.
+      if (result.data.receiptId && !receipt) navigate(`/dashboard/payments/receipts/${result.data.receiptId}/print`);
     } finally {
       setSaving(false);
     }
@@ -311,7 +343,7 @@ function PaymentForm({ today, fileId, files, onDone }: DialogProps & { files: Pa
           render={({ field, fieldState }) => (
             <Field data-invalid={fieldState.invalid}>
               <FieldLabel htmlFor="payment-method">{t("Method")}</FieldLabel>
-              <Select value={field.value ?? ""} onValueChange={field.onChange}>
+              <Select value={field.value ?? ""} onValueChange={field.onChange} disabled={receipt !== undefined}>
                 <SelectTrigger id="payment-method" aria-invalid={fieldState.invalid}>
                   <SelectValue />
                 </SelectTrigger>

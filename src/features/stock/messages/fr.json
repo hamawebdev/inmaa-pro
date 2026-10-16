@@ -316,5 +316,39 @@
     "SaveFailed": "L'achat n'a pas pu être enregistré.",
     "Saved": "Achat {number} enregistré.",
     "ReadOnly": "Votre compte consulte le stock sans enregistrer d'achats."
+  },
+  "Counts": {
+    "ListTitle": "Inventaires",
+    "ListDescription": "Chaque inventaire fige le registre, relève ce qui est en rayon et ajuste chaque écart avec son motif.",
+    "Start": "Inventorier : {kind}",
+    "OpenFailed": "L'inventaire n'a pas pu être ouvert.",
+    "NoCounts": "Aucun inventaire pour l'instant.",
+    "Open": "Ouvrir",
+    "Title": "Inventaire {number}",
+    "Of": "{kind} · {date}",
+    "Typed": "{typed} lignes saisies sur {lines}",
+    "States": {
+      "OPEN": "Ouvert",
+      "CLOSED": "Clôturé"
+    },
+    "Table": {
+      "Number": "Inventaire",
+      "Kind": "Type",
+      "Progress": "Lignes",
+      "State": "État",
+      "Actions": "Actions",
+      "Item": "Article",
+      "Record": "Au registre",
+      "Counted": "En rayon",
+      "Difference": "Écart",
+      "Reason": "Motif"
+    },
+    "CountedOf": "Compté : {item}",
+    "ReasonOf": "Motif : {item}",
+    "SaveFailed": "La ligne n'a pas pu être enregistrée.",
+    "ReadOnly": "Seul le magasinier clôture un inventaire.",
+    "CloseCount": "Clôturer l'inventaire",
+    "CloseFailed": "L'inventaire n'a pas pu être clôturé.",
+    "Closed": "{count, plural, =0 {Inventaire clôturé : aucun écart.} one {Inventaire clôturé : # article ajusté.} other {Inventaire clôturé : # articles ajustés.}}"
   }
 }

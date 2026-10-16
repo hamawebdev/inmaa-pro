@@ -207,7 +207,15 @@
     "ExpenseNotFound": "This expense does not exist.",
     "ExpenseFromProgram": "This expense was written by the program: it is changed where it came from.",
     "AmountTooLarge": "This amount is too large.",
-    "NoReminderOwed": "This file owes nothing: there is no reminder to print."
+    "NoReminderOwed": "This file owes nothing: there is no reminder to print.",
+    "NoReceiptThatDay": "No receipt was written on this day for this collector.",
+    "DayAlreadyClosed": "This day is already closed.",
+    "OnlyLastClosing": "Only the last closing of a day can be corrected.",
+    "EveryReceiptFirst": "Say what became of every receipt before closing the day.",
+    "CashDifferenceNote": "Say why the cash differs or a receipt is missing.",
+    "DayNotCome": "A day cannot be closed before it has come.",
+    "AmountNotNegative": "An amount cannot be negative.",
+    "PeriodStartAfterEndMoney": "The start of the period cannot be after its end."
   },
   "Alerts": {
     "ContractEnding": {
@@ -221,6 +229,10 @@
     "PaymentOverdue": {
       "Title": "Overdue payments",
       "Hint": "Past their date and not paid"
+    },
+    "ReceiptsUnreconciled": {
+      "Title": "Receipts not accounted for",
+      "Hint": "Blank receipts of a past day with no payment typed and not returned"
     }
   },
   "Invoices": {
@@ -331,7 +343,9 @@
     "SaveFailed": "The payment could not be recorded.",
     "Recorded": "Payment recorded: {amount} received.",
     "ClockTitle": "Confirm the date of this PC",
-    "ClockConfirm": "The date is right"
+    "ClockConfirm": "The date is right",
+    "ReceiptTitle": "Type the payment of receipt {number}",
+    "ReceiptDescription": "From the collector's copy: the cash he took against this numbered receipt."
   },
   "Payments": {
     "BlankReceipts": "Blank receipts",
@@ -339,7 +353,8 @@
     "ViewSwitch": "Payments or debts",
     "Views": {
       "payments": "Payments",
-      "dues": "Debts"
+      "dues": "Debts",
+      "reconciliation": "Daily reconciliation"
     },
     "Table": {
       "Date": "Date",
@@ -438,7 +453,8 @@
       "File": "File",
       "Invoiced": "Invoiced",
       "Received": "Received",
-      "Outstanding": "Owed today"
+      "Outstanding": "Owed today",
+      "IfRenewed": "If renewed"
     },
     "Figures": {
       "Invoiced": "{count, plural, =0 {Invoiced} one {Invoiced (# invoice)} other {Invoiced (# invoices)}}",
@@ -449,7 +465,8 @@
       "VisitsDone": "Done",
       "VisitsNotDone": "Postponed, cancelled or with a problem",
       "OrdersNotReturned": "Orders not returned yet"
-    }
+    },
+    "PlusRenewals": "+ {amount} if renewed"
   },
   "FileMoney": {
     "Of": "{client} · file {number}",
@@ -488,5 +505,101 @@
       "Payer": "Paid by",
       "Receipt": "Receipt"
     }
+  },
+  "Reconciliation": {
+    "Title": "Daily reconciliation",
+    "DayTitle": "Reconciliation of {date}",
+    "Office": "The office",
+    "CouldNotLoad": "This day could not be read.",
+    "DayCount": "{count, plural, =0 {No day to reconcile} one {# day} other {# days}}",
+    "NoDays": "No cash receipt has been written yet.",
+    "ReceiptCount": "{count, plural, one {# receipt} other {# receipts}}",
+    "Open": "Open",
+    "States": {
+      "Closed": "Closed",
+      "ClosedWithDifference": "Closed with a difference",
+      "Pending": "{count, plural, one {# receipt to account for} other {# receipts to account for}}",
+      "ToClose": "To close"
+    },
+    "Table": {
+      "Date": "Day",
+      "Collector": "Collector",
+      "Receipts": "Receipts",
+      "Expected": "Cash expected",
+      "State": "State",
+      "Actions": "Actions",
+      "Receipt": "Receipt",
+      "Client": "Client",
+      "Received": "Received",
+      "Outcome": "What became of it"
+    },
+    "Receipts": "The day's receipts",
+    "Outcomes": {
+      "USED": "Used",
+      "VOIDED": "Returned unused",
+      "MISSING": "Missing",
+      "BLANK": "Still blank"
+    },
+    "TypePayment": "Type its payment",
+    "ReturnedUnused": "Returned unused",
+    "DeclareMissing": "Declare missing",
+    "ReturnedTitle": "Receipt {number} came back unused?",
+    "ReturnedDescription": "It is marked void on its chain, with the reason you type.",
+    "MissingTitle": "Receipt {number} is missing?",
+    "MissingDescription": "A missing receipt is recorded as such, with what happened; the day's closing will need a word on it.",
+    "Returned": "Receipt {number} recorded as returned unused.",
+    "Missing": "Receipt {number} recorded as missing.",
+    "DeclareFailed": "It could not be recorded.",
+    "Cash": "The cash",
+    "Expected": "Cash expected",
+    "Counted": "Cash counted",
+    "Difference": "Difference",
+    "ClosedBy": "Closed by {name}",
+    "PendingFirst": "Say what became of every receipt, then count the cash.",
+    "CountedInput": "Cash handed in (DA)",
+    "DifferenceWillBe": "Difference:",
+    "Note": "Note",
+    "NoteHint": "Required when the cash differs or a receipt is missing.",
+    "Close": "Close the day",
+    "Correct": "Record the correction",
+    "CorrectClosing": "Correct the closing",
+    "Closed": "The day is closed.",
+    "CloseFailed": "The day could not be closed."
+  },
+  "Profitability": {
+    "Title": "Contract profitability",
+    "Period": "{from} to {to}",
+    "NotSet": "No hourly cost",
+    "Flags": {
+      "NegativeMargin": "Loss",
+      "HoursOver": "Hours over the estimate",
+      "NoHourlyCost": "Hourly cost not set",
+      "OnTrack": "Within the estimate"
+    },
+    "Line": "Line",
+    "Estimate": "Estimate",
+    "Actual": "Actual",
+    "Hours": "Hours",
+    "Labour": "Labour",
+    "Materials": "Materials",
+    "Transport": "Transport",
+    "Other": "Other expenses",
+    "Cost": "Total cost",
+    "Revenue": "Revenue",
+    "Margin": "Margin",
+    "Visits": "{done} of {planned} planned visits done"
+  },
+  "AccountantExport": {
+    "Title": "The accountant's files",
+    "Description": "CSV files of the period from {from} to {to}, to open in a spreadsheet or import in the accounting program. Each export is logged.",
+    "Files": {
+      "INVOICES": "Sales journal",
+      "RECEIPTS": "Cash receipts",
+      "PAYMENTS": "Payments",
+      "EXPENSES": "Expenses"
+    },
+    "FileKind": "CSV file",
+    "Saved": "Saved: {path}",
+    "Failed": "The file could not be saved."
   }
 }

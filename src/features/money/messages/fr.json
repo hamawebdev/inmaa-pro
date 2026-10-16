@@ -207,7 +207,15 @@
     "ExpenseNotFound": "Cette dépense n'existe pas.",
     "ExpenseFromProgram": "Cette dépense a été écrite par le programme : elle se modifie à sa source.",
     "AmountTooLarge": "Ce montant est trop élevé.",
-    "NoReminderOwed": "Ce dossier ne doit rien : aucun rappel à imprimer."
+    "NoReminderOwed": "Ce dossier ne doit rien : aucun rappel à imprimer.",
+    "NoReceiptThatDay": "Aucun reçu n'a été établi ce jour-là pour cet encaisseur.",
+    "DayAlreadyClosed": "Cette journée est déjà clôturée.",
+    "OnlyLastClosing": "Seule la dernière clôture d'une journée peut être corrigée.",
+    "EveryReceiptFirst": "Indiquez le devenir de chaque reçu avant de clôturer la journée.",
+    "CashDifferenceNote": "Dites pourquoi les espèces diffèrent ou un reçu manque.",
+    "DayNotCome": "Une journée ne peut être clôturée avant d'être venue.",
+    "AmountNotNegative": "Un montant ne peut pas être négatif.",
+    "PeriodStartAfterEndMoney": "Le début de la période ne peut pas être après sa fin."
   },
   "Alerts": {
     "ContractEnding": {
@@ -221,6 +229,10 @@
     "PaymentOverdue": {
       "Title": "Paiements en retard",
       "Hint": "Date passée, non payés"
+    },
+    "ReceiptsUnreconciled": {
+      "Title": "Reçus non rapprochés",
+      "Hint": "Reçus vierges d'un jour passé, sans paiement saisi ni retour"
     }
   },
   "Invoices": {
@@ -331,7 +343,9 @@
     "SaveFailed": "Le paiement n'a pas pu être enregistré.",
     "Recorded": "Paiement enregistré : {amount} reçus.",
     "ClockTitle": "Confirmer la date de ce PC",
-    "ClockConfirm": "La date est exacte"
+    "ClockConfirm": "La date est exacte",
+    "ReceiptTitle": "Saisir le paiement du reçu {number}",
+    "ReceiptDescription": "D'après la copie de l'encaisseur : l'espèce reçue contre ce reçu numéroté."
   },
   "Payments": {
     "BlankReceipts": "Reçus vierges",
@@ -339,7 +353,8 @@
     "ViewSwitch": "Paiements ou dettes",
     "Views": {
       "payments": "Paiements",
-      "dues": "Dettes"
+      "dues": "Dettes",
+      "reconciliation": "Rapprochement quotidien"
     },
     "Table": {
       "Date": "Date",
@@ -438,7 +453,8 @@
       "File": "Dossier",
       "Invoiced": "Facturé",
       "Received": "Encaissé",
-      "Outstanding": "Dû aujourd'hui"
+      "Outstanding": "Dû aujourd'hui",
+      "IfRenewed": "En cas de renouvellement"
     },
     "Figures": {
       "Invoiced": "{count, plural, =0 {Facturé} one {Facturé (# facture)} other {Facturé (# factures)}}",
@@ -449,7 +465,8 @@
       "VisitsDone": "Réalisées",
       "VisitsNotDone": "Reportées, annulées ou en problème",
       "OrdersNotReturned": "Ordres non encore retournés"
-    }
+    },
+    "PlusRenewals": "+ {amount} si renouvelé"
   },
   "FileMoney": {
     "Of": "{client} · dossier {number}",
@@ -488,5 +505,101 @@
       "Payer": "Payé par",
       "Receipt": "Reçu"
     }
+  },
+  "Reconciliation": {
+    "Title": "Rapprochement quotidien",
+    "DayTitle": "Rapprochement du {date}",
+    "Office": "Le bureau",
+    "CouldNotLoad": "Cette journée n'a pas pu être lue.",
+    "DayCount": "{count, plural, =0 {Aucune journée à rapprocher} one {# journée} other {# journées}}",
+    "NoDays": "Aucun reçu d'espèces n'a encore été établi.",
+    "ReceiptCount": "{count, plural, one {# reçu} other {# reçus}}",
+    "Open": "Ouvrir",
+    "States": {
+      "Closed": "Clôturée",
+      "ClosedWithDifference": "Clôturée avec écart",
+      "Pending": "{count, plural, one {# reçu à justifier} other {# reçus à justifier}}",
+      "ToClose": "À clôturer"
+    },
+    "Table": {
+      "Date": "Jour",
+      "Collector": "Encaisseur",
+      "Receipts": "Reçus",
+      "Expected": "Espèces attendues",
+      "State": "État",
+      "Actions": "Actions",
+      "Receipt": "Reçu",
+      "Client": "Client",
+      "Received": "Reçu",
+      "Outcome": "Devenir"
+    },
+    "Receipts": "Les reçus du jour",
+    "Outcomes": {
+      "USED": "Utilisé",
+      "VOIDED": "Rendu inutilisé",
+      "MISSING": "Manquant",
+      "BLANK": "Encore vierge"
+    },
+    "TypePayment": "Saisir le paiement",
+    "ReturnedUnused": "Rendu inutilisé",
+    "DeclareMissing": "Déclarer manquant",
+    "ReturnedTitle": "Le reçu {number} est-il revenu inutilisé ?",
+    "ReturnedDescription": "Il est marqué annulé dans sa chaîne, avec le motif saisi.",
+    "MissingTitle": "Le reçu {number} est-il manquant ?",
+    "MissingDescription": "Un reçu manquant est enregistré comme tel, avec ce qui s'est passé ; la clôture du jour demandera une remarque.",
+    "Returned": "Reçu {number} enregistré comme rendu inutilisé.",
+    "Missing": "Reçu {number} enregistré comme manquant.",
+    "DeclareFailed": "L'enregistrement a échoué.",
+    "Cash": "Les espèces",
+    "Expected": "Espèces attendues",
+    "Counted": "Espèces comptées",
+    "Difference": "Écart",
+    "ClosedBy": "Clôturé par {name}",
+    "PendingFirst": "Indiquez le devenir de chaque reçu, puis comptez les espèces.",
+    "CountedInput": "Espèces remises (DA)",
+    "DifferenceWillBe": "Écart :",
+    "Note": "Remarque",
+    "NoteHint": "Obligatoire en cas d'écart ou de reçu manquant.",
+    "Close": "Clôturer la journée",
+    "Correct": "Enregistrer la correction",
+    "CorrectClosing": "Corriger la clôture",
+    "Closed": "La journée est clôturée.",
+    "CloseFailed": "La journée n'a pas pu être clôturée."
+  },
+  "Profitability": {
+    "Title": "Rentabilité du contrat",
+    "Period": "Du {from} au {to}",
+    "NotSet": "Sans coût horaire",
+    "Flags": {
+      "NegativeMargin": "Perte",
+      "HoursOver": "Heures au-delà de l'estimation",
+      "NoHourlyCost": "Coût horaire non défini",
+      "OnTrack": "Dans l'estimation"
+    },
+    "Line": "Poste",
+    "Estimate": "Estimation",
+    "Actual": "Réel",
+    "Hours": "Heures",
+    "Labour": "Main-d'œuvre",
+    "Materials": "Produits",
+    "Transport": "Transport",
+    "Other": "Autres dépenses",
+    "Cost": "Coût total",
+    "Revenue": "Recette",
+    "Margin": "Marge",
+    "Visits": "{done} visites réalisées sur {planned} prévues"
+  },
+  "AccountantExport": {
+    "Title": "Fichiers du comptable",
+    "Description": "Fichiers CSV de la période du {from} au {to}, à ouvrir dans un tableur ou à importer dans le logiciel comptable. Chaque export est journalisé.",
+    "Files": {
+      "INVOICES": "Journal des ventes",
+      "RECEIPTS": "Reçus d'espèces",
+      "PAYMENTS": "Paiements",
+      "EXPENSES": "Dépenses"
+    },
+    "FileKind": "Fichier CSV",
+    "Saved": "Enregistré : {path}",
+    "Failed": "Le fichier n'a pas pu être enregistré."
   }
 }

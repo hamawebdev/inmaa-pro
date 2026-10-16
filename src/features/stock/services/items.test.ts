@@ -20,7 +20,9 @@ describe("an item of the store", () => {
   it("is created with its unit and minimum, and what is on the shelf as its first movement", async () => {
     const item = await stockItem(test);
     expect(item.code).toBe("MAT-0001");
-    const [row] = await test.transact((ex, ctx) => listInventory(ex, ctx));
+    // The seeded store (../seeds.ts) is there too; this item is the one just made.
+    const row = (await test.transact((ex, ctx) => listInventory(ex, ctx))).find((each) => each.id === item.id);
+    if (!row) throw new Error("stock: the item is not listed");
     expect(row).toEqual({
       id: item.id,
       code: "MAT-0001",
@@ -53,8 +55,9 @@ describe("an item of the store", () => {
       unit: "PIECE",
       openingQty: 3,
     });
-    const typed = await stockItem(test, { nameAr: "قفازات", code: "PPE_GLOVES", unit: "PAIR" });
-    expect([second.code, bucket.code, typed.code]).toEqual(["MAT-0002", "EQP-0001", "PPE_GLOVES"]);
+    const typed = await stockItem(test, { nameAr: "قفازات مطاطية", code: "RUBBER_GLOVES", unit: "PAIR" });
+    expect([second.code, bucket.code, typed.code]).toEqual(["MAT-0002", "EQP-0001", "RUBBER_GLOVES"]);
+    // A seeded code is taken like any other.
     await expect(stockItem(test, { nameAr: "قفازات أخرى", code: "PPE_GLOVES" })).rejects.toThrow(
       "An item with this code already exists.",
     );
@@ -76,7 +79,8 @@ describe("an item of the store", () => {
         },
       }),
     );
-    const [row] = await test.transact((ex, ctx) => listInventory(ex, ctx));
+    const row = (await test.transact((ex, ctx) => listInventory(ex, ctx))).find((each) => each.id === item.id);
+    if (!row) throw new Error("stock: the item is not listed");
     expect(row).toMatchObject({ nameFr: "Nettoyant sols", minLevel: 30_000, onHandQty: 30_000 });
     // At its minimum: his rule, "when stock reaches the minimum".
     expect(isLowStock(row)).toBe(true);
@@ -104,13 +108,19 @@ describe("an item of the store", () => {
         reception,
       ),
     ).rejects.toThrow("You do not have permission to do this.");
-    // A supervisor reads the store and changes nothing.
+    // A supervisor reads the store (the 29 seeded items, nothing typed here was saved) and changes nothing.
     const supervisor = await test.sessionFor("SUPERVISOR");
-    expect(await test.transact((ex, ctx) => listInventory(ex, ctx), supervisor)).toEqual([]);
+    expect(await test.transact((ex, ctx) => listInventory(ex, ctx), supervisor)).toHaveLength(29);
   });
 });
 
 describe("counting the store", () => {
+  // A database without the seeded items: the count lists only what the test made.
+  beforeEach(async () => {
+    test.close();
+    test = await createTestDatabase({ seeds: false });
+  });
+
   it("freezes the record, takes what was counted, and adjusts each difference with its reason", async () => {
     const floor = await stockItem(test);
     const glass = await stockItem(test, { nameAr: "منظف زجاج", openingQty: 20, minLevel: 5 });

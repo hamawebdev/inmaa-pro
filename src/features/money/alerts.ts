@@ -1,4 +1,4 @@
-import { CalendarClock, CircleAlert, HandCoins } from "lucide-react";
+import { CalendarClock, CircleAlert, HandCoins, ReceiptText } from "lucide-react";
 
 import type { RegisterAlert } from "@/lib/alerts";
 import { addDays } from "@/lib/clock";
@@ -7,6 +7,7 @@ import { money } from "@/lib/units";
 
 import { contractEndAlert } from "./rules/alerts";
 import { PAYMENTS_PATH } from "./services/paths";
+import { countUnreconciledReceipts } from "./services/reconciliation";
 import type { FileStage, ServiceType } from "./validators/option-codes";
 
 /**
@@ -128,5 +129,15 @@ export function registerAlerts(register: RegisterAlert) {
     leadSetting: "alerts.paymentDueLeadDays",
     route: `${PAYMENTS_PATH}?view=dues&state=DUE_SOON`,
     count: (ex, ctx, { days }) => countDues(ex, ctx, { state: "DUE_SOON", leadDays: days ?? 7 }),
+  });
+  // Blank receipts of a day gone by that nobody accounted for (DESIGN.md section 13): the day waits for its closing.
+  register({
+    key: "receipts.unreconciled",
+    section: "money",
+    severity: "warning",
+    name: "ReceiptsUnreconciled",
+    icon: ReceiptText,
+    route: `${PAYMENTS_PATH}?view=reconciliation`,
+    count: (ex, ctx) => countUnreconciledReceipts(ex, ctx),
   });
 }

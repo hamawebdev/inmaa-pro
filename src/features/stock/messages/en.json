@@ -316,5 +316,39 @@
     "SaveFailed": "The purchase could not be recorded.",
     "Saved": "Purchase {number} recorded.",
     "ReadOnly": "Your account reads the store and does not record purchases."
+  },
+  "Counts": {
+    "ListTitle": "Stock counts",
+    "ListDescription": "Each count freezes the record, takes what is on the shelf, and adjusts each difference with its reason.",
+    "Start": "Count the {kind}",
+    "OpenFailed": "The count could not be opened.",
+    "NoCounts": "No count yet.",
+    "Open": "Open",
+    "Title": "Count {number}",
+    "Of": "{kind} · {date}",
+    "Typed": "{typed} of {lines} lines typed",
+    "States": {
+      "OPEN": "Open",
+      "CLOSED": "Closed"
+    },
+    "Table": {
+      "Number": "Count",
+      "Kind": "Kind",
+      "Progress": "Lines",
+      "State": "State",
+      "Actions": "Actions",
+      "Item": "Item",
+      "Record": "In the record",
+      "Counted": "On the shelf",
+      "Difference": "Difference",
+      "Reason": "Reason"
+    },
+    "CountedOf": "Counted: {item}",
+    "ReasonOf": "Reason: {item}",
+    "SaveFailed": "The line could not be saved.",
+    "ReadOnly": "Only the storekeeper closes a count.",
+    "CloseCount": "Close the count",
+    "CloseFailed": "The count could not be closed.",
+    "Closed": "{count, plural, =0 {Count closed: no difference.} one {Count closed: # item adjusted.} other {Count closed: # items adjusted.}}"
   }
 }

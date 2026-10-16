@@ -71,6 +71,7 @@ describe("payments falling due", () => {
       ["payment.overdue", 1, "/dashboard/payments?view=dues&state=OVERDUE"],
       ["contract.ending", 0, "/dashboard/files"],
       ["payment.dueSoon", 1, "/dashboard/payments?view=dues&state=DUE_SOON"],
+      ["receipts.unreconciled", 0, "/dashboard/payments?view=reconciliation"],
     ]);
     expect(mine.find((alert) => alert.key === "payment.dueSoon")?.leadDays).toBe(20);
 
