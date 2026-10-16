@@ -82,6 +82,12 @@ export const employeeFormSchema = z
     employmentContract: z.enum(EMPLOYMENT_CONTRACTS).optional(),
     workTimeKind: z.enum(WORK_TIMES).optional(),
     contractEndDate: date,
+    // Annual leave brought in from paper: the days left on that date (LAB-6; the count goes on from the day after).
+    leaveOpeningDays: z
+      .string()
+      .trim()
+      .refine((value) => value === "" || /^\d{1,3}([.,]\d{1,3})?$/.test(value), "Enter a number of days."),
+    leaveOpeningDate: date,
     cnasDeclared: z.boolean(),
     cnasNumber: text,
 
@@ -161,6 +167,8 @@ export function emptyEmployeeValues(today: string): EmployeeFormValues {
     employmentContract: undefined,
     workTimeKind: undefined,
     contractEndDate: "",
+    leaveOpeningDays: "",
+    leaveOpeningDate: "",
     cnasDeclared: false,
     cnasNumber: "",
     payBasis: undefined,

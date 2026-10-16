@@ -63,7 +63,12 @@ export interface PayslipFigures {
   /** Advances repaid on this payslip. */
   advanceRepayment: Money;
   declared: boolean;
-  overrides?: { cnas?: Money; irg?: Money };
+  /**
+   * Amounts typed over the computed ones: CNAS, IRG, and, where the basis has
+   * no hourly value (a wage per task), the overtime premium and the rest-day
+   * premium, which the office prices (People's round-0 ruling).
+   */
+  overrides?: { cnas?: Money; irg?: Money; overtime?: Money; restDayPremium?: Money };
 }
 
 export interface PayslipLine {
@@ -186,7 +191,14 @@ export function computePayslip(input: PayslipFigures, rates: PayslipRates): Pays
       const tasks = whole(input.tasks ?? 0, "Tasks done");
       base = tasks * rate;
       earnedLine({ type: "BASE", quantity: tasks, amount: money(base) });
-      if (overtimeMin > 0) warnings.push({ kind: "OVERTIME_NOT_PRICED", minutes: overtimeMin });
+      if (overtimeMin > 0) {
+        if (input.overrides?.overtime === undefined)
+          warnings.push({ kind: "OVERTIME_NOT_PRICED", minutes: overtimeMin });
+        else {
+          overtime = whole(input.overrides.overtime, "The overtime typed");
+          if (overtime > 0) earnedLine({ type: "OVERTIME_50", quantity: overtimeMin, amount: money(overtime) });
+        }
+      }
       break;
     }
   }
@@ -196,6 +208,11 @@ export function computePayslip(input: PayslipFigures, rates: PayslipRates): Pays
   if (restDayMin > 0) {
     if (atHourly) {
       restDayPremium = atHourly(restDayMin, rates.restDayPremiumBp);
+      if (restDayPremium > 0) {
+        earnedLine({ type: "REST_DAY_PREMIUM", quantity: restDayMin, amount: money(restDayPremium) });
+      }
+    } else if (input.overrides?.restDayPremium !== undefined) {
+      restDayPremium = whole(input.overrides.restDayPremium, "The rest-day premium typed");
       if (restDayPremium > 0) {
         earnedLine({ type: "REST_DAY_PREMIUM", quantity: restDayMin, amount: money(restDayPremium) });
       }

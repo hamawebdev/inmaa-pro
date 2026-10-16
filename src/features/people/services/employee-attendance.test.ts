@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { emptyEmployeeValues } from "@/features/people/validators/employee";
+import { localDate } from "@/lib/units";
 import { createTestDatabase, type TestDatabase } from "@/testing/database";
 
 import {
@@ -88,8 +89,17 @@ describe("checks in and out", () => {
       .selectAll()
       .where("entity", "=", "EmployeeCheckRecord")
       .where("operation", "=", "CHANGE")
+      .where("action", "=", "UPDATE")
       .executeTakeFirstOrThrow();
     expect(entry.reason).toBe("نسيت تسجيل الخروج");
+    // Each time typed has its own line too (LOG-9).
+    const created = await test.db
+      .selectFrom("AuditLog")
+      .select("id")
+      .where("entity", "=", "EmployeeCheckRecord")
+      .where("action", "=", "CREATE")
+      .execute();
+    expect(created.length).toBeGreaterThan(0);
     expect(JSON.parse(entry.changes ?? "{}")).toEqual({ localTime: ["16:00", "16:30"] });
 
     await expect(check("CHECK_IN", "2026-10-13", "08:00")).rejects.toThrow(
@@ -206,12 +216,14 @@ describe("leave", () => {
     let seen = await attendance("2026-10-01", "2026-11-30");
     expect(seen.leaves.map((leave) => leave.status)).toEqual(["APPROVED", "APPROVED"]);
     // Since 1 July: three whole months by 12 October, 7.5 days earned; seven taken.
-    expect(seen.leave).toMatchObject({ earned: 7500, taken: 7000, balance: 500, from: "2026-07-01" });
+    // Law 90-11: what this reference year earns (7.5 days) is taken next year; leave taken now is taken in advance.
+    expect(seen.leave).toMatchObject({ earned: 7500, taken: 7000, balance: -7000, from: "2026-07-01" });
 
     await test.transact((ex, ctx) => cancelEmployeeLeave(ex, ctx, { leaveId: ids[0], reason: "أجلت عطلتها" }));
     seen = await attendance("2026-10-01", "2026-11-30");
     expect(seen.leaves.map((leave) => leave.status)).toEqual(["CANCELLED", "CANCELLED"]);
-    expect(seen.leave.balance).toBe(7500);
+    // Cancelled: nothing taken, and nothing to take before the reference year ends.
+    expect(seen.leave).toMatchObject({ taken: 0, balance: 0, earned: 7500 });
     await expect(
       test.transact((ex, ctx) => decideEmployeeLeave(ex, ctx, { leaveId: ids[0], status: "REFUSED", reason: "x" })),
     ).rejects.toThrow("This leave has already been decided.");
@@ -233,5 +245,50 @@ describe("leave", () => {
     await expect(
       test.transact((ex, ctx) => decideEmployeeLeave(ex, ctx, { leaveId: ids[0], status: "REFUSED" })),
     ).rejects.toThrow("Write the reason for the decision.");
+  });
+});
+
+describe("the leave rulings", () => {
+  it("records a leave as approved only for whoever may approve it (ACC-6), and debits annual leave only (LAB-7)", async () => {
+    const id = await anEmployee("2026-07-01");
+    const hr = await test.sessionFor("HR_OFFICER");
+    const withoutApproval = {
+      ...hr,
+      capabilities: new Set([...hr.capabilities].filter((key) => key !== "attendance.employee.edit")),
+    };
+    await test.transact(
+      (ex, ctx) =>
+        requestEmployeeLeave(ex, ctx, {
+          staffId: id,
+          type: "SICK",
+          startDate: "2026-10-05",
+          endDate: "2026-10-06",
+          approved: true,
+        }),
+      withoutApproval,
+    );
+    let row = await test.db.selectFrom("EmployeeLeave").select(["status", "decidedByUserId"]).executeTakeFirstOrThrow();
+    expect(row).toEqual({ status: "REQUESTED", decidedByUserId: null });
+
+    // Approved by HR: a sick leave does not touch the annual balance.
+    await test.transact((ex, ctx) =>
+      requestEmployeeLeave(ex, ctx, {
+        staffId: id,
+        type: "SICK",
+        startDate: "2026-10-07",
+        endDate: "2026-10-08",
+        approved: true,
+      }),
+    );
+    row = await test.db
+      .selectFrom("EmployeeLeave")
+      .select(["status", "decidedByUserId"])
+      .where("startDate", "=", localDate("2026-10-07"))
+      .executeTakeFirstOrThrow();
+    expect(row.status).toBe("APPROVED");
+    const [seen] = await test.transact((ex, ctx) =>
+      listEmployeeAttendance(ex, ctx, { from: "2026-10-01", to: "2026-10-31", staffId: id }),
+    );
+    expect(seen.leave.taken).toBe(0);
   });
 });

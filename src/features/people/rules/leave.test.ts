@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { completedMonths } from "./dates";
-import { leaveBalance, leaveEarned } from "./leave";
+import { leaveAccount, leaveBalance, leaveEarned } from "./leave";
 
 /** The defaults of the settings: 2.5 days a month, at most 30 days, the year from 1 July. */
 const RULES = { perMonth: 2500, cap: 30000, yearStart: "07-01" };
@@ -64,5 +64,21 @@ describe("leave earned at 2.5 days a month", () => {
 
   it("gives what is left", () => {
     expect(leaveBalance({ broughtForward: 10000, earned: 7500, taken: 12000 })).toBe(5500);
+  });
+});
+
+describe("leaveAccount (Law 90-11, the coordinator's ruling)", () => {
+  const RULES = { perMonth: 2500, cap: 30000, yearStart: "07-01" };
+  it("carries the year ended into the leave year that follows, and never loses it at 1 July", () => {
+    // Started 1 March 2025: four months to 30 June 2025, a whole year to 30 June 2026, two months since.
+    const account = leaveAccount({ startDate: "2025-03-01", asOf: "2026-08-31", taken: 24000 }, RULES);
+    expect(account).toEqual({ earningFrom: "2026-07-01", earning: 5000, earnedBefore: 40000, toTake: 16000 });
+  });
+  it("counts from the day after a balance brought in from paper", () => {
+    const account = leaveAccount(
+      { startDate: "2020-01-01", openingDate: "2026-06-30", openingDays: 12500, asOf: "2026-09-30", taken: 0 },
+      RULES,
+    );
+    expect(account).toEqual({ earningFrom: "2026-07-01", earning: 7500, earnedBefore: 0, toTake: 12500 });
   });
 });

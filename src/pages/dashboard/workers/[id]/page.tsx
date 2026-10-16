@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useConductEntries } from "@/features/people/components/conduct-entries";
 import { DOCUMENT_FILE_CAPABILITY } from "@/features/people/services/documents";
-import { todayAtTheCentre, useMay } from "@/features/people/components/may";
+import { todayAtTheCentre, useMay, useMayIn } from "@/features/people/components/may";
 import { useReasonDialog } from "@/features/people/components/reason-dialog";
 import { SanctionCard } from "@/features/people/components/sanction-card";
 import { SanctionChip } from "@/features/people/components/sanction-chip";
@@ -65,7 +65,10 @@ export default function WorkerPage() {
     retry: false,
   });
   const back = { href: "/dashboard/workers", label: tNav("WorkersList") };
-  const keepsFiles = useMay("staff.write");
+  // The file's actions need the workers' section written, as the list does (ACC-10).
+  const holdsFiles = useMay("staff.write");
+  const writesWorkers = useMayIn("WORKERS", "WRITE");
+  const keepsFiles = holdsFiles && writesWorkers;
   const holdsDocuments = useMay(DOCUMENT_FILE_CAPABILITY);
   const conduct = useConductEntries();
   const tHiring = useTranslations("Hiring");

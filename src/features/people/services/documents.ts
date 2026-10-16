@@ -11,6 +11,7 @@ import { staffName } from "@/lib/text/names";
 import { localDate } from "@/lib/units";
 
 import { staffOf } from "./staff-shared";
+import { requireRestrictedUpload } from "./worker-files";
 import { RESTRICTED_DOCUMENTS } from "./workers";
 
 /**
@@ -128,7 +129,10 @@ export async function setStaffDocumentFile(
   const [current] = await listUploads(ex, { entity: "StaffDocument", ownerId: row.id, field: "fileUrl" });
   if ((current?.url ?? row.fileUrl) === input.url) return;
   if (current) await removeUpload(ex, ctx, { url: current.url, owner: "PEOPLE", subject });
-  if (input.url) await linkUpload(ex, ctx, input.url, row.id);
+  if (input.url) {
+    await requireRestrictedUpload(ex, input.url, { entity: "StaffDocument", field: "fileUrl" });
+    await linkUpload(ex, ctx, input.url, row.id);
+  }
   await ex
     .updateTable("StaffDocument")
     .set({ fileUrl: input.url, updatedAt: ctx.now, updatedByUserId: ctx.userId })

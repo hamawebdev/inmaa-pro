@@ -10,7 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Field, FieldLabel } from "@/components/ui/field";
 import { ChoiceField, DateField, TextField, TickField } from "@/features/people/components/form-fields";
 import { ResidenceField } from "@/features/people/components/residence-fields";
-import { isolate, useMay } from "@/features/people/components/may";
+import { isolate, useMay, useMayIn } from "@/features/people/components/may";
 import { useSanctionGate } from "@/features/people/components/sanction-gate";
 import { employeeIdentity, registerEmployeeAction, updateEmployeeAction } from "@/features/people/services/employees";
 import { employeeFormSchema, type EmployeeFormValues } from "@/features/people/validators/employee";
@@ -97,7 +97,10 @@ export function EmployeeForm({ mode, defaultValues }: { mode: Mode; defaultValue
   };
 
   // Somebody who reads the section without keeping the files sees the form, and changes nothing.
-  const readOnly = !useMay("staff.write");
+  const holdsFiles = useMay("staff.write");
+  const writesSection = useMayIn("EMPLOYEES", "WRITE");
+  // Read-only unless the files are kept and the section written (ACC-10).
+  const readOnly = !(holdsFiles && writesSection);
 
   return (
     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6" noValidate>
@@ -212,6 +215,14 @@ export function EmployeeForm({ mode, defaultValues }: { mode: Mode; defaultValue
               options={EMPLOYMENT_CONTRACTS.map((code) => ({ value: code, label: t(`Contracts.${code}`) }))}
             />
             <DateField control={control} name="contractEndDate" label={t("Form.ContractEndDate")} />
+            <TextField
+              control={control}
+              name="leaveOpeningDays"
+              label={t("Form.LeaveOpeningDays")}
+              dir="ltr"
+              inputMode="decimal"
+            />
+            <DateField control={control} name="leaveOpeningDate" label={t("Form.LeaveOpeningDate")} />
             <ChoiceField
               control={control}
               name="workTimeKind"

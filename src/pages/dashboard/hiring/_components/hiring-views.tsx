@@ -17,7 +17,6 @@ import { useMay } from "@/features/people/components/may";
 import { usePeopleDates } from "@/features/people/components/people-dates";
 import { RowMenu } from "@/features/people/components/row-menu";
 import { SimpleTable } from "@/features/people/components/simple-table";
-import { STATUS_TONE } from "@/features/people/components/status-tones";
 import {
   listEvaluationsDueQuery,
   listEvaluationsQuery,
@@ -47,7 +46,6 @@ const VIOLATION_TONE: Record<string, StatusTone> = { OPEN: "warning", DECIDED: "
  */
 export function CandidatesView({ entries }: { entries: Entries }) {
   const t = useTranslations("Hiring");
-  const tWorkers = useTranslations("Workers");
   const tForm = useTranslations("WorkerForm");
   const keepsFiles = useMay("staff.write");
   const decides = useMay("hiring.decide");
@@ -156,7 +154,7 @@ export function CandidatesView({ entries }: { entries: Entries }) {
         },
       },
     ],
-    [t, tWorkers, tForm, dates, navigate, keepsFiles, decides, scheduleInterview, recordOutcome, decide],
+    [t, tForm, dates, navigate, keepsFiles, decides, scheduleInterview, recordOutcome, decide],
   );
 
   return (

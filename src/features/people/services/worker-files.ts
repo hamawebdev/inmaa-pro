@@ -84,7 +84,10 @@ export async function setWorkerSignedScan(
   });
   if ((current?.url ?? null) === input.url) return;
   if (current) await removeUpload(ex, ctx, { url: current.url, owner: "PEOPLE", subject: worker.subject });
-  if (input.url) await linkUpload(ex, ctx, input.url, worker.id);
+  if (input.url) {
+    await requireRestrictedUpload(ex, input.url, { entity: "StaffConfidential", field: "signedFormScanUrl" });
+    await linkUpload(ex, ctx, input.url, worker.id);
+  }
   await ex
     .updateTable("StaffConfidential")
     .set({ signedFormScanUrl: input.url, updatedAt: ctx.now, updatedByUserId: ctx.userId })
@@ -99,6 +102,25 @@ export async function setWorkerSignedScan(
     subject: worker.subject,
     changes: { signedFormScanUrl: [WITHHELD, WITHHELD] },
   });
+}
+
+/**
+ * A file linked to a restricted place must have been saved for that place, restricted (LOG-16): the
+ * service keeps the promise that the signed form and the documents' scans are never ordinary files.
+ */
+export async function requireRestrictedUpload(
+  ex: Executor,
+  url: string,
+  place: { entity: string; field: string },
+): Promise<void> {
+  const upload = await ex
+    .selectFrom("Upload")
+    .select(["entity", "field", "restrictedCapability"])
+    .where("url", "=", url)
+    .executeTakeFirst();
+  if (!upload || upload.entity !== place.entity || upload.field !== place.field || !upload.restrictedCapability) {
+    throw new Error("people: this file was not saved restricted for this place");
+  }
 }
 
 // What the screens import.

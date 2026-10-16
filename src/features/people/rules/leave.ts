@@ -1,4 +1,4 @@
-import { completedMonths, isDate, yearStartOnOrBefore } from "./dates";
+import { addDays, completedMonths, isDate, yearStartOnOrBefore } from "./dates";
 
 /**
  * Annual leave earned: 2.5 days for each month worked (scope section 5).
@@ -60,3 +60,57 @@ export function leaveBalance({
 }) {
   return broughtForward + earned - taken;
 }
+
+export interface LeaveAccount {
+  /** The reference year being earned now: from when, and what it has earned so far. Taken in the next leave year. */
+  earningFrom: string;
+  earning: number;
+  /** Earned in the reference years already ended since the count began. */
+  earnedBefore: number;
+  /** What can be taken now: brought in, plus the years ended, less the annual leave taken. Negative when overdrawn. */
+  toTake: number;
+}
+
+/**
+ * A person's annual leave under Law 90-11 (the coordinator's ruling, LAB-6):
+ * what a reference year (1 July to 30 June) earns is taken in the leave year
+ * that follows, and it is never lost at 1 July. The count begins the day after
+ * `openingDate` when the office brought a balance in from paper
+ * (`openingDays`, already earned), else on the first day of work.
+ *
+ * `taken` is the annual leave taken since the count began: only annual leave
+ * debits it (LAB-7). In thousandths of a day.
+ */
+export function leaveAccount(
+  input: {
+    startDate: string;
+    openingDate?: string | null;
+    openingDays?: number | null;
+    asOf: string;
+    taken: number;
+  },
+  rules: LeaveRules,
+): LeaveAccount {
+  const from = input.openingDate ? addDays(input.openingDate, 1) : input.startDate;
+  if (!isDate(from) || !isDate(input.asOf)) throw new RangeError("leaveAccount takes dates written YYYY-MM-DD");
+  const current = yearStartOnOrBefore(input.asOf, rules.yearStart);
+  const nextYear = (year: string) => `${Number(year.slice(0, 4)) + 1}${year.slice(4)}`;
+  let earnedBefore = 0;
+  for (let year = yearStartOnOrBefore(from, rules.yearStart); year < current; year = nextYear(year)) {
+    const begin = from > year ? from : year;
+    const end = addDays(nextYear(year), -1);
+    if (begin <= end) earnedBefore += Math.min(rules.cap, completedMonths(begin, end) * rules.perMonth);
+  }
+  const begin = from > current ? from : current;
+  const earning = begin > input.asOf ? 0 : Math.min(rules.cap, completedMonths(begin, input.asOf) * rules.perMonth);
+  return {
+    earningFrom: begin,
+    earning,
+    earnedBefore,
+    toTake: (input.openingDays ?? 0) + earnedBefore - input.taken,
+  };
+}
+
+/** Where a person's count of annual leave begins: the day after a balance brought in, else the first day of work. */
+export const leaveCountFrom = (startDate: string, openingDate?: string | null) =>
+  openingDate ? addDays(openingDate, 1) : startDate;

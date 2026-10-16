@@ -15,7 +15,7 @@ import {
 import type { WorkerFormValues } from "@/features/people/validators/worker";
 import { requireCapability, requireSection } from "@/lib/access/session";
 import { listUploads } from "@/lib/attachments";
-import { logConsult, logDisclose } from "@/lib/log";
+import { logConsultOnce, logDisclose } from "@/lib/log";
 import { readRestricted } from "@/lib/restricted";
 import { action, query } from "@/lib/service/action";
 import type { Executor, ServiceContext } from "@/lib/service/context";
@@ -219,7 +219,8 @@ export async function openWorkerFile(ex: Executor, ctx: ServiceContext, input: {
   ]);
 
   const subject = { kind: "WORKER" as const, id: worker.id, label: staffName(worker) };
-  await logConsult(ex, ctx, {
+  // One consultation per user, record and day (ruling 29).
+  await logConsultOnce(ex, ctx, {
     owner: "PEOPLE",
     action: "VIEW",
     entity: "StaffMember",

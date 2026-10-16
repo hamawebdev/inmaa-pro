@@ -149,14 +149,30 @@ function checkPeriod(input: { from: string; to: string }): { from: LocalDate; to
   return { from: localDate(input.from), to: localDate(input.to) };
 }
 
-/** The share of an absence that falls in a period, by days. */
-function minutesIn(absence: { startDate: string; endDate: string; absenceMin: number }, from: string, to: string) {
+/** The days from `first` to `last` that are not the weekly rest day. */
+function workingDays(first: string, last: string, restDay: string): number {
+  let count = 0;
+  for (let day = first; day <= last; day = addDays(day, 1)) if (weekdayOf(localDate(day)) !== restDay) count += 1;
+  return count;
+}
+
+/**
+ * The share of an absence that falls in a period, for pay: its minutes a day
+ * (as Operations counted them, over every calendar day of the range) times the
+ * working days of the range inside the period. The weekly rest day is not an
+ * absence from work (LAB-8): a week of leave pays 40 hours, not 56.
+ */
+function minutesIn(
+  absence: { startDate: string; endDate: string; absenceMin: number },
+  from: string,
+  to: string,
+  restDay: string,
+) {
   const first = absence.startDate > from ? absence.startDate : from;
   const last = absence.endDate < to ? absence.endDate : to;
   if (last < first) return 0;
-  const all = daysBetween(absence.startDate, absence.endDate) + 1;
-  const inside = daysBetween(first, last) + 1;
-  return Math.round((absence.absenceMin * inside) / all);
+  const perDay = absence.absenceMin / (daysBetween(absence.startDate, absence.endDate) + 1);
+  return Math.round(perDay * workingDays(first, last, restDay));
 }
 
 /**
@@ -270,9 +286,10 @@ export async function workerHours(
       workedMin: seat.seatStatus === "ASSIGNED" ? seat.workedMin : 0,
       seatStatus: seat.seatStatus,
     }));
+    // A done visit's seat with no typed times counts its planned minutes (RULINGS item 14, LAB-14).
     const worked = (seat: SeatMinutes) =>
       seat.seatStatus === "ASSIGNED" && (WORKED_VISITS as readonly string[]).includes(seat.visitStatus)
-        ? (seat.workedMin ?? 0)
+        ? (seat.workedMin ?? (seat.visitStatus === "DONE" ? seat.plannedMin : 0))
         : 0;
     const lines = adjustments
       .filter((line) => line.staffId === person.id)
@@ -326,7 +343,7 @@ export async function workerHours(
         endDate: absence.endDate,
         category: absence.category,
         leaveType: absence.leaveType,
-        minutes: minutesIn(absence, from, to),
+        minutes: minutesIn(absence, from, to, settings["work.restDay"] as string),
         paid: absence.paid === 1,
         justified: absence.justified === 1,
       }));
@@ -364,6 +381,7 @@ export async function workerHours(
             seat.seatStatus === "ASSIGNED" &&
             seat.workedMin === null &&
             seat.date <= today &&
+            seat.visitStatus !== "DONE" &&
             (WORKED_VISITS as readonly string[]).includes(seat.visitStatus),
         ).length,
         absenceMin,
@@ -395,8 +413,9 @@ export async function addHoursAdjustment(
   ctx: ServiceContext,
   input: HoursAdjustmentInput,
 ): Promise<{ id: string }> {
-  requireSection(ctx, "WORKERS", "WRITE");
-  requireCapability(ctx, "staff.write");
+  // Hours corrections are pay's (DESIGN section 12, ACC-9).
+  requireSection(ctx, "WORKERS", "READ");
+  requireCapability(ctx, "pay.write");
   if (!isDate(input.date)) throw new ServiceError("Enter a valid date.");
   if (!Number.isInteger(input.adjustMin) || input.adjustMin === 0 || Math.abs(input.adjustMin) > 24 * 60) {
     throw new ServiceError("A correction is a whole number of minutes, at most a day either way.");
@@ -449,8 +468,9 @@ export async function removeHoursAdjustment(
   ctx: ServiceContext,
   input: { id: string; reason: string },
 ): Promise<void> {
-  requireSection(ctx, "WORKERS", "WRITE");
-  requireCapability(ctx, "staff.write");
+  // Hours corrections are pay's (DESIGN section 12, ACC-9).
+  requireSection(ctx, "WORKERS", "READ");
+  requireCapability(ctx, "pay.write");
   const reason = input.reason.trim();
   if (reason === "") throw new ServiceError("Write the reason for the correction.");
   const line = await ex

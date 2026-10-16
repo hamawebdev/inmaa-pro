@@ -126,9 +126,9 @@ describe("workerHours", () => {
 
   it("counts the orders not typed in by today, and her absences of the period", async () => {
     const id = await aWorker();
-    await seat(id, "2026-10-10", null);
-    await seat(id, "2026-10-11", null);
-    await seat(id, "2026-10-13", null); // tomorrow: not late to type yet
+    await seat(id, "2026-10-10", null, { status: "CONFIRMED" });
+    await seat(id, "2026-10-11", null, { status: "CONFIRMED" });
+    await seat(id, "2026-10-13", null, { status: "CONFIRMED" }); // tomorrow: not late to type yet
     await test.rows.insert("WorkerAbsence", {
       workerId: id,
       startDate: localDate("2026-09-29"),
@@ -163,9 +163,10 @@ describe("workerHours", () => {
     const hours = await hoursOf("2026-10-01", "2026-10-31");
     expect(hours.totals).toMatchObject({
       ordersNotTyped: 2,
-      // Two of the sick days fall in October: half of 1920.
-      absenceMin: 960 + 480,
-      paidAbsenceMin: 960,
+      // Two of the sick days fall in October, Thursday 1st and Friday 2nd; Friday is the rest day,
+      // not a day off work (LAB-8): one day of 480 minutes.
+      absenceMin: 480 + 480,
+      paidAbsenceMin: 480,
       unpaidAbsenceMin: 480,
     });
   });

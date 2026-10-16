@@ -141,7 +141,8 @@ export async function decideHiring(
     note?: string | null;
   },
 ): Promise<void> {
-  requireSection(ctx, "WORKERS", "WRITE");
+  // «قرار الإدارة» is the administration's: hiring.decide alone, reading the workers' section (ACC-13).
+  requireSection(ctx, "WORKERS", "READ");
   requireCapability(ctx, "hiring.decide");
   if (!(HIRING_DECISIONS as readonly string[]).includes(input.decision)) throw new ServiceError("Choose the decision.");
   const date = input.date?.trim() || ctx.today;

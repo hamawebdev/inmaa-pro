@@ -52,12 +52,12 @@ async function aWorker(over: Record<string, unknown> = {}) {
   ).id;
 }
 
-async function seat(workerId: string, date: string, worked: number | null) {
+async function seat(workerId: string, date: string, worked: number | null, status = "DONE") {
   const visit = await test.rows.insert("Visit", {
     visitDate: localDate(date),
     plannedStartTime: "08:00" as never,
     plannedDurationMin: 480 as never,
-    status: "DONE",
+    status,
   });
   return test.rows.insert("VisitWorker", {
     visitId: visit.id,
@@ -77,7 +77,7 @@ describe("a month of pay for the workers", () => {
   it("drafts a payslip from the typed orders, and closes only once the IRG is typed", async () => {
     const id = await aWorker();
     for (const day of ["01", "02", "03"]) await seat(id, `2026-09-${day}`, 480);
-    await seat(id, "2026-09-05", null); // an order not typed in: paid nothing, counted
+    await seat(id, "2026-09-05", null, "CONFIRMED"); // an order not typed in: paid nothing, counted
 
     const { payRunId, payslips } = await september();
     expect(payslips).toBe(1);
@@ -151,7 +151,7 @@ describe("a month of pay for the workers", () => {
   it("pays an order typed after the month closed in the next run, as arrears", async () => {
     const id = await aWorker({ cnasDeclared: false, cnasNumber: "" });
     await seat(id, "2026-09-01", 480);
-    const late = await seat(id, "2026-09-02", null);
+    const late = await seat(id, "2026-09-02", null, "CONFIRMED");
     const first = await september();
     await test.transact((ex, ctx) => closePayRun(ex, ctx, { payRunId: first.payRunId }));
 
@@ -175,6 +175,38 @@ describe("a month of pay for the workers", () => {
     // Each seat is paid once: minutes paid for September's visits are the two days.
     const paid = await test.transact((ex, ctx) => getPaidMinutes(ex, ctx, { from: "2026-09-01", to: "2026-09-30" }));
     expect(paid).toEqual({ [id]: 960 });
+  });
+
+  it("pays the overtime a late order adds to a week already closed (LAB-5)", async () => {
+    const id = await aWorker({ cnasDeclared: false, cnasNumber: "" });
+    // Saturday 19 to Wednesday 23 September: 40 hours; Thursday 24th typed only after September closed.
+    for (const day of ["19", "20", "21", "22", "23"]) await seat(id, `2026-09-${day}`, 480);
+    const late = await seat(id, "2026-09-24", null, "CONFIRMED");
+    const first = await september();
+    expect((await runOf(first.payRunId)).payslips[0]).toMatchObject({ overtimeMin: 0, grossAmount: 1_000_000 });
+    await test.transact((ex, ctx) => closePayRun(ex, ctx, { payRunId: first.payRunId }));
+
+    test.raw
+      .prepare(
+        `UPDATE "VisitWorker" SET "workedMin" = 480, "arrivedTime" = '08:00', "leftTime" = '16:00' WHERE "id" = ?`,
+      )
+      .run(late.id);
+    test.clock.advance({ days: 25 });
+    const second = await test.transact((ex, ctx) => preparePayRun(ex, ctx, { staffKind: "WORKER", month: "2026-10" }));
+    // The late 8 hours at 250 DA, and the week's 8 hours past 40 at +50%: 2,000 + 1,000 DA.
+    expect((await runOf(second.payRunId)).payslips[0]).toMatchObject({ overtimeMin: 480, grossAmount: 300_000 });
+  });
+
+  it("pays a done visit's seat with no typed times its planned minutes, flagged (LAB-14)", async () => {
+    const id = await aWorker({ cnasDeclared: false, cnasNumber: "" });
+    await seat(id, "2026-09-01", 480);
+    await seat(id, "2026-09-02", null);
+    const { payRunId } = await september();
+    expect((await runOf(payRunId)).payslips[0]).toMatchObject({
+      grossAmount: 400_000,
+      plannedSeats: 1,
+      ordersNotTypedCount: 0,
+    });
   });
 
   it("refuses a month still to come, a month not over at closing, and an earlier draft left open", async () => {
@@ -265,6 +297,27 @@ describe("a month of pay for the workers", () => {
     const payslipId = (await runOf(payRunId)).payslips[0].id;
     await test.transact((ex, ctx) => updatePayslip(ex, ctx, { payslipId, advanceRepayment: 100_000 }));
     expect((await runOf(payRunId)).payslips[0]).toMatchObject({ advanceRepayment: 100_000, netAmount: 100_000 });
+  });
+
+  it("does not close a wage per task until its overtime is priced (LAB-1)", async () => {
+    const id = await aWorker({ payBasis: "PER_TASK", payRate: "1500", cnasDeclared: false, cnasNumber: "" });
+    // Saturday 5 to Thursday 10 September: six tasks of 8 hours, 48 hours, 8 past the legal week.
+    for (const day of ["05", "06", "07", "08", "09", "10"]) await seat(id, `2026-09-${day}`, 480);
+    const { payRunId } = await september();
+    let run = await runOf(payRunId);
+    expect(run.payslips[0]).toMatchObject({ grossAmount: 900_000, overtimeMin: 480, missing: ["OVERTIME"] });
+    await expect(test.transact((ex, ctx) => closePayRun(ex, ctx, { payRunId }))).rejects.toThrow(
+      "Price the overtime and the rest-day work of every payslip paid per task first.",
+    );
+    await test.transact((ex, ctx) => updatePayslip(ex, ctx, { payslipId: run.payslips[0].id, overtime: 75_000 }));
+    run = await runOf(payRunId);
+    expect(run.payslips[0]).toMatchObject({ grossAmount: 975_000, missing: [] });
+    await test.transact((ex, ctx) => closePayRun(ex, ctx, { payRunId }));
+    const slip = await test.transact((ex, ctx) => getPayslip(ex, ctx, { payslipId: run.payslips[0].id }));
+    expect(slip.items.map((item) => [item.type, item.amount])).toEqual([
+      ["BASE", 900_000],
+      ["OVERTIME_50", 75_000],
+    ]);
   });
 
   it("is the pay holders' to prepare, and nobody else's to read", async () => {

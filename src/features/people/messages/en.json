@@ -423,7 +423,9 @@
       "CnasDeclared": "Declared to the CNAS",
       "CnasNumber": "Social security number",
       "PayTitle": "Pay",
-      "PayDescription": "Needed before the first pay run."
+      "PayDescription": "Needed before the first pay run.",
+      "LeaveOpeningDays": "Leave brought in (days)",
+      "LeaveOpeningDate": "Counted on"
     },
     "File": {
       "Title": "Employee's file",
@@ -661,7 +663,11 @@
       "SeatsHint": "Each order is paid once. One typed in after its month closed is paid here, as arrears.",
       "Arrears": "Arrears",
       "Payments": "Payments",
-      "NoPayment": "Nothing paid yet."
+      "NoPayment": "Nothing paid yet.",
+      "PremiumsToPrice": "Premiums to price",
+      "OvertimeTyped": "Overtime premium (per task)",
+      "RestDayTyped": "Rest-day premium (per task)",
+      "PlannedSeats": "{count} paid at planned time, not typed"
     },
     "Payouts": {
       "Title": "Payments",
@@ -804,8 +810,8 @@
       "Hours": "Hours at the centre",
       "DaysPresent": "Days present",
       "Absence": "Absence",
-      "LeaveBalance": "Leave left (days)",
-      "LeaveHint": "2.5 days earned for each month worked"
+      "LeaveBalance": "Leave to take (days)",
+      "LeaveHint": "Earned from 1 July to 30 June, taken the year after"
     },
     "Days": {
       "Title": "Days",
@@ -821,9 +827,9 @@
     "Leave": {
       "Title": "Leave",
       "None": "No leave this month.",
-      "Earned": "Earned this year:",
-      "Taken": "taken:",
-      "Left": "left:"
+      "Earned": "Being earned this year:",
+      "Taken": "annual leave taken:",
+      "Left": "to take:"
     },
     "Entry": {
       "Employee": "Employee",
@@ -1216,7 +1222,9 @@
     "ResidenceCommuneRequired": "Choose the commune of residence.",
     "PayItemTypeRequired": "Choose an allowance or a deduction.",
     "PayItemNotFound": "This allowance or deduction does not exist.",
-    "PersonLeftNoCard": "This person has left: no card is printed."
+    "PersonLeftNoCard": "This person has left: no card is printed.",
+    "PremiumsToPrice": "Price the overtime and the rest-day work of every payslip paid per task first.",
+    "DaysNumber": "Enter a number of days."
   },
   "Cards": {
     "Title": "ID card",

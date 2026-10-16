@@ -1,5 +1,5 @@
 import { addDays, isDate } from "@/features/people/rules/dates";
-import { leaveBalance, leaveEarned, type LeaveRules } from "@/features/people/rules/leave";
+import { leaveAccount, leaveCountFrom, type LeaveRules } from "@/features/people/rules/leave";
 import type { IrgTable } from "@/features/people/rules/pay";
 import { computePayslip, type PayslipLine, type PayslipRates } from "@/features/people/rules/payslip";
 import {
@@ -73,6 +73,9 @@ const LINE_AR: Record<PayslipItemType, string> = {
 export interface PayslipOverrides {
   cnas?: number;
   irg?: number;
+  /** A wage per task: the overtime premium and the rest-day premium, priced by the office. */
+  overtime?: number;
+  restDayPremium?: number;
   advanceRepayment?: number;
   /** A deduction typed on this payslip, besides the recurring ones. */
   deduction?: number;
@@ -81,6 +84,8 @@ export interface PayslipOverrides {
 
 interface StoredOverrides {
   typed: PayslipOverrides;
+  /** Seats paid their planned minutes because their times were not typed (LAB-14). */
+  plannedSeats?: number;
   /** What is missing to close: the IRG when no scale is in Settings and none was typed. */
   missing: string[];
 }
@@ -88,9 +93,9 @@ interface StoredOverrides {
 function parseOverrides(text: string | null): StoredOverrides {
   try {
     const value = text ? (JSON.parse(text) as Partial<StoredOverrides>) : {};
-    return { typed: value.typed ?? {}, missing: value.missing ?? [] };
+    return { typed: value.typed ?? {}, missing: value.missing ?? [], plannedSeats: value.plannedSeats ?? 0 };
   } catch {
-    return { typed: {}, missing: [] };
+    return { typed: {}, missing: [], plannedSeats: 0 };
   }
 }
 
@@ -171,6 +176,7 @@ interface Person {
   payBasis: string | null;
   payRate: number | null;
   leaveOpeningDays: number | null;
+  leaveOpeningDate: string | null;
 }
 
 /** The people a run of this kind pays: registered by its end, not gone before its start, with pay terms. */
@@ -195,6 +201,7 @@ async function peopleOf(ex: Executor, kind: StaffKind, start: LocalDate, end: Lo
       "payBasis",
       "payRate",
       "leaveOpeningDays",
+      "leaveOpeningDate",
       "numberSeq",
     ])
     .where("kind", "=", kind)
@@ -239,6 +246,8 @@ interface PaidSeat {
   date: string;
   workedMin: number;
   division: string;
+  /** Paid its planned minutes: a done visit whose times were not typed. */
+  planned: boolean;
 }
 
 /** A worker's typed seats up to the end of the month that no live run has paid. */
@@ -247,10 +256,11 @@ async function seatsToPay(ex: Executor, workerId: string, end: LocalDate, runId:
     .selectFrom("VisitWorker as vw")
     .innerJoin("Visit as v", "v.id", "vw.visitId")
     .innerJoin("File as f", "f.id", "v.fileId")
-    .select(["vw.id", "v.visitDate", "vw.workedMin", "f.division"])
+    .select(["vw.id", "v.visitDate", "vw.workedMin", "v.plannedDurationMin", "v.status", "f.division"])
     .where("vw.workerId", "=", workerId)
     .where("vw.seatStatus", "=", "ASSIGNED")
-    .where("vw.workedMin", "is not", null)
+    // Typed, or on a done visit whose times were left empty: then its planned minutes (RULINGS item 14, LAB-14).
+    .where((eb) => eb.or([eb("vw.workedMin", "is not", null), eb("v.status", "=", "DONE")]))
     .where("v.visitDate", "<=", end)
     .where("v.status", "in", WORKED_VISITS)
     .where((eb) => eb.or([eb("v.statusReason", "is", null), eb("v.statusReason", "<>", "PROGRAMME_CHANGED")]))
@@ -273,8 +283,9 @@ async function seatsToPay(ex: Executor, workerId: string, end: LocalDate, runId:
   return rows.map((row) => ({
     id: row.id,
     date: row.visitDate,
-    workedMin: row.workedMin ?? 0,
+    workedMin: row.workedMin ?? row.plannedDurationMin,
     division: row.division,
+    planned: row.workedMin === null,
   }));
 }
 
@@ -298,6 +309,7 @@ async function workerFigures(
   person: Person,
   period: { start: LocalDate; end: LocalDate },
   runId: string,
+  limits: { dayMin: number; weekMin: number },
 ): Promise<Figures> {
   const [hours] = await workerHours(ex, ctx, { from: period.start, to: period.end, workerId: person.id });
   const seats = await seatsToPay(ex, person.id, period.end, runId);
@@ -312,12 +324,40 @@ async function workerFigures(
     divisionMin.COMMON = (divisionMin.COMMON ?? 0) + line.adjustMin;
   }
   const weeks = hours?.weeks ?? [];
+  let overtimeMin = weeks.reduce((sum, week) => sum + week.overtimeMin, 0);
+  let premiumOnlyMin = weeks.reduce((sum, week) => sum + Math.max(0, week.overtimeMin - week.beyondDayMin), 0);
+  let restDayMin = weeks.reduce((sum, week) => sum + week.restDayMin, 0);
+
+  // Arrears (LAB-5): a seat typed after the month its week ended in was closed. Its week is priced again with
+  // every seat now typed, and what the late seats add to its overtime and its rest-day work is paid here.
+  const late = new Map<string, PaidSeat[]>();
+  for (const seat of seats) {
+    if (seat.date >= period.start) continue;
+    const saturday = weekStart(localDate(seat.date));
+    if (addDays(saturday, 6) >= period.start) continue; // a week ending in this month is already counted whole
+    late.set(saturday, [...(late.get(saturday) ?? []), seat]);
+  }
+  for (const [saturday, lateSeats] of late) {
+    const [past] = await workerHours(ex, ctx, { from: saturday, to: addDays(saturday, 6), workerId: person.id });
+    const week = past?.weeks.find((each) => each.start === saturday);
+    if (!week) continue;
+    const added = lateSeats.reduce((sum, seat) => sum + seat.workedMin, 0);
+    const overtimeBefore = Math.max(0, week.workedMin - added - limits.weekMin);
+    const overtimeAdded = Math.max(0, week.overtimeMin - overtimeBefore);
+    const beyondAdded = lateSeats.reduce((sum, seat) => sum + Math.max(0, seat.workedMin - limits.dayMin), 0);
+    const onRestDay = lateSeats
+      .filter((seat) => seat.date === week.restDate)
+      .reduce((sum, seat) => sum + seat.workedMin, 0);
+    overtimeMin += overtimeAdded;
+    premiumOnlyMin += Math.max(0, overtimeAdded - beyondAdded);
+    restDayMin += Math.min(week.restDayMin, onRestDay);
+  }
   return {
     days,
     seats,
-    overtimeMin: weeks.reduce((sum, week) => sum + week.overtimeMin, 0),
-    premiumOnlyMin: weeks.reduce((sum, week) => sum + Math.max(0, week.overtimeMin - week.beyondDayMin), 0),
-    restDayMin: weeks.reduce((sum, week) => sum + week.restDayMin, 0),
+    overtimeMin,
+    premiumOnlyMin,
+    restDayMin,
     paidAbsenceMin: hours?.totals.paidAbsenceMin ?? 0,
     unpaidAbsenceMin: hours?.totals.unpaidAbsenceMin ?? 0,
     lateMin: hours?.totals.lateMin ?? 0,
@@ -417,15 +457,20 @@ function lineQuantity(line: PayslipLine, basis: PayBasis) {
   return qty(counted ? (line.quantity ?? 0) * 1000 : Math.round(((line.quantity ?? 0) * 1000) / 60));
 }
 
-/** Paid leave taken in the month, and what is left at its end, in thousandths of a day. */
+/**
+ * Annual leave taken in the month, and what is left to take at its end, in
+ * thousandths of a day (Law 90-11, the coordinator's ruling): the years ended
+ * are carried, the count begins after a balance brought in, and only annual
+ * leave debits it.
+ */
 async function leaveFigures(
   ex: Executor,
   person: Person,
   period: { start: LocalDate; end: LocalDate },
   rules: LeaveRules,
 ): Promise<{ taken: number; balance: number }> {
-  const accrual = leaveEarned({ startDate: person.startDate ?? person.registrationDate, asOf: period.end }, rules);
-  const since = localDate(accrual.from < period.start ? accrual.from : period.start);
+  const from = leaveCountFrom(person.startDate ?? person.registrationDate, person.leaveOpeningDate);
+  const since = localDate(from < period.start ? from : period.start);
   const taken: Array<{ startDate: string; days: number | null }> =
     person.kind === "WORKER"
       ? await ex
@@ -433,8 +478,8 @@ async function leaveFigures(
           .select(["startDate", "days"])
           .where("workerId", "=", person.id)
           .where("category", "=", "LEAVE")
+          .where("leaveType", "=", "ANNUAL")
           .where("status", "=", "APPROVED")
-          .where("paid", "=", 1)
           .where("startDate", ">=", since)
           .where("startDate", "<=", period.end)
           .execute()
@@ -442,22 +487,25 @@ async function leaveFigures(
           .selectFrom("EmployeeLeave")
           .select(["startDate", "days"])
           .where("staffId", "=", person.id)
+          .where("type", "=", "ANNUAL")
           .where("status", "=", "APPROVED")
-          .where("paid", "=", 1)
           .where("deletedAt", "is", null)
           .where("startDate", ">=", since)
           .where("startDate", "<=", period.end)
           .execute();
-  const sum = (from: string) =>
-    taken.filter((row) => row.startDate >= from).reduce((all, row) => all + (row.days ?? 0), 0);
-  return {
-    taken: sum(period.start),
-    balance: leaveBalance({
-      broughtForward: person.leaveOpeningDays ?? 0,
-      earned: accrual.earned,
-      taken: sum(accrual.from),
-    }),
-  };
+  const sum = (after: string) =>
+    taken.filter((row) => row.startDate >= after).reduce((all, row) => all + (row.days ?? 0), 0);
+  const account = leaveAccount(
+    {
+      startDate: person.startDate ?? person.registrationDate,
+      openingDate: person.leaveOpeningDate,
+      openingDays: person.leaveOpeningDays,
+      asOf: period.end,
+      taken: sum(from),
+    },
+    rules,
+  );
+  return { taken: sum(period.start), balance: account.toTake };
 }
 
 /** Computes and writes one person's payslip in a draft run, with its lines and the seats it pays. */
@@ -473,7 +521,7 @@ async function writePayslip(
   const period = { start: run.periodStart, end: run.periodEnd };
   const figures =
     person.kind === "WORKER"
-      ? await workerFigures(ex, ctx, person, period, run.id)
+      ? await workerFigures(ex, ctx, person, period, run.id, { dayMin: setup.dayMin, weekMin: setup.weekMin })
       : await employeeFigures(ex, person, period, {
           dayMin: setup.dayMin,
           weekMin: setup.weekMin,
@@ -520,6 +568,8 @@ async function writePayslip(
     overrides: {
       cnas: typed.cnas === undefined ? undefined : money(typed.cnas),
       irg: typed.irg === undefined ? undefined : money(typed.irg),
+      overtime: typed.overtime === undefined ? undefined : money(typed.overtime),
+      restDayPremium: typed.restDayPremium === undefined ? undefined : money(typed.restDayPremium),
     },
   };
   // Advances and other debts are taken back from what is left: those of this month and of the months before
@@ -585,7 +635,13 @@ async function writePayslip(
       leaveBalanceDays: qty(leave.balance),
       manualOverrides: JSON.stringify({
         typed,
-        missing: result.irg === null ? ["IRG"] : [],
+        // What must be typed before the run closes: the IRG without a scale, and a wage per task's premiums.
+        plannedSeats: figures.seats.filter((seat) => seat.planned).length,
+        missing: [
+          ...(result.irg === null ? ["IRG"] : []),
+          ...(result.warnings.some((warning) => warning.kind === "OVERTIME_NOT_PRICED") ? ["OVERTIME"] : []),
+          ...(result.warnings.some((warning) => warning.kind === "REST_DAY_NOT_PRICED") ? ["REST_DAY"] : []),
+        ],
       } satisfies StoredOverrides),
       createdAt: ctx.now,
       updatedAt: ctx.now,
@@ -796,7 +852,7 @@ export async function updatePayslip(
   requirePay(ctx, "WRITE");
   if (slip.status !== "DRAFT") throw new ServiceError("A closed payslip can no longer be changed.");
   const typed: PayslipOverrides = { ...parseOverrides(slip.manualOverrides).typed };
-  for (const key of ["cnas", "irg", "advanceRepayment", "deduction"] as const) {
+  for (const key of ["cnas", "irg", "advanceRepayment", "deduction", "overtime", "restDayPremium"] as const) {
     const value = input[key];
     if (value === undefined) continue;
     if (value === null) delete typed[key];
@@ -848,6 +904,14 @@ export async function closePayRun(
   if (payslips.length === 0) throw new ServiceError("This pay run has no payslip.");
   if (payslips.some((slip) => parseOverrides(slip.manualOverrides).missing.includes("IRG"))) {
     throw new ServiceError("Type the IRG of every payslip first: its scale is not in Settings.");
+  }
+  if (
+    payslips.some((slip) => {
+      const missing = parseOverrides(slip.manualOverrides).missing;
+      return missing.includes("OVERTIME") || missing.includes("REST_DAY");
+    })
+  ) {
+    throw new ServiceError("Price the overtime and the rest-day work of every payslip paid per task first.");
   }
   for (const slip of payslips) {
     if (slip.netAmount < 0) throw new ServiceError("A payslip takes off more than it pays: correct it first.");
@@ -1073,6 +1137,8 @@ export interface PayslipRow {
   paidDate: string | null;
   /** The IRG still to type. */
   missing: string[];
+  /** Seats paid their planned minutes, their times not typed (LAB-14). */
+  plannedSeats: number;
   typed: PayslipOverrides;
 }
 
@@ -1105,6 +1171,7 @@ const payslipRow = (slip: Record<string, unknown> & { manualOverrides: string | 
     paidAmount: slip.paidAmount as number,
     paidDate: slip.paidDate as string | null,
     missing: overrides.missing,
+    plannedSeats: overrides.plannedSeats ?? 0,
     typed: overrides.typed,
   };
 };

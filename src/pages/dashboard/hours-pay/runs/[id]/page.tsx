@@ -111,6 +111,9 @@ export default function PayRunPage() {
         cell: ({ row }) => {
           const slip = row.original;
           if (slip.missing.includes("IRG")) return <StatusChip tone="warning" label={t("Slips.IrgToType")} />;
+          if (slip.missing.includes("OVERTIME") || slip.missing.includes("REST_DAY")) {
+            return <StatusChip tone="warning" label={t("Slips.PremiumsToPrice")} />;
+          }
           if (slip.ordersNotTypedCount > 0) {
             return <StatusChip tone="warning" label={t("Slips.OrdersNotTyped", { count: slip.ordersNotTypedCount })} />;
           }

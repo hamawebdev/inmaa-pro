@@ -1,5 +1,5 @@
 import { addDays, isDate } from "@/features/people/rules/dates";
-import { leaveBalance, leaveEarned } from "@/features/people/rules/leave";
+import { leaveAccount, leaveCountFrom } from "@/features/people/rules/leave";
 import {
   ABSENCE_TYPES,
   CHECK_TYPES,
@@ -9,7 +9,7 @@ import {
   type LeaveStatus,
   type LeaveType,
 } from "@/features/people/validators/staff-codes";
-import { requireCapability, requireSection } from "@/lib/access/session";
+import { can, requireCapability, requireSection } from "@/lib/access/session";
 import { newId } from "@/lib/db/rows";
 import { logChange, logErase } from "@/lib/log";
 import { weekdayOf } from "@/lib/options";
@@ -114,6 +114,16 @@ export async function recordCheck(ex: Executor, ctx: ServiceContext, input: Chec
       updatedByUserId: ctx.userId,
     })
     .execute();
+  // A typed time is a change to a person's record (DESIGN section 9, LOG-9).
+  await logChange(ex, ctx, {
+    owner: "PEOPLE",
+    action: "CREATE",
+    entity: "EmployeeCheckRecord",
+    entityId: id,
+    entityLabel: `${person.number} ${date} ${time}`,
+    subject: person.subject,
+    changes: { type: [null, input.type], localDate: [null, date], localTime: [null, time] },
+  });
   return { id };
 }
 
@@ -455,7 +465,9 @@ export async function requestEmployeeLeave(
     .executeTakeFirst();
   if (overlapping) throw new ServiceError("This employee already has a leave on these days.");
   const { "work.restDay": restDay } = await getSettings(ex, ["work.restDay"]);
-  const status: LeaveStatus = input.approved ? "APPROVED" : "REQUESTED";
+  // Recorded as already approved only by whoever may approve it (ACC-6); anyone else's is a request.
+  const approved = input.approved === true && can(ctx, "attendance.employee.edit");
+  const status: LeaveStatus = approved ? "APPROVED" : "REQUESTED";
   const paid = input.type === "UNPAID" ? false : (input.paid ?? true);
   const parts = cutAtMonthEnds(input.startDate, input.endDate);
   const splitGroupId = parts.length > 1 ? newId() : null;
@@ -475,8 +487,8 @@ export async function requestEmployeeLeave(
         splitGroupId,
         paid: paid ? 1 : 0,
         status,
-        decidedByUserId: input.approved ? ctx.userId : null,
-        decidedAt: input.approved ? ctx.now : null,
+        decidedByUserId: approved ? ctx.userId : null,
+        decidedAt: approved ? ctx.now : null,
         reason: input.reason?.trim() || null,
         createdAt: ctx.now,
         updatedAt: ctx.now,
@@ -642,7 +654,17 @@ export async function listEmployeeAttendance(
   if (input.to < input.from) throw new ServiceError("The end date must not be before the start date.");
   let people = ex
     .selectFrom("StaffMember")
-    .select(["id", "number", "numberSeq", "firstName", "lastName", "startDate", "registrationDate", "leaveOpeningDays"])
+    .select([
+      "id",
+      "number",
+      "numberSeq",
+      "firstName",
+      "lastName",
+      "startDate",
+      "registrationDate",
+      "leaveOpeningDays",
+      "leaveOpeningDate",
+    ])
     .where("kind", "=", "EMPLOYEE")
     .where("deletedAt", "is", null);
   if (input.staffId) people = people.where("id", "=", input.staffId);
@@ -697,18 +719,26 @@ export async function listEmployeeAttendance(
     }));
     const ownAbsences = absences.filter((absence) => absence.staffId === person.id);
     const ownLeaves = leaves.filter((leave) => leave.staffId === person.id);
+    // Annual leave only (LAB-7), counted from a balance brought in or the first day, the years ended carried (LAB-6).
     const start = person.startDate ?? person.registrationDate;
-    const accrual = leaveEarned(
-      { startDate: start, asOf: ctx.today },
+    const from = leaveCountFrom(start, person.leaveOpeningDate);
+    const taken = ownLeaves
+      .filter((leave) => leave.type === "ANNUAL" && leave.status === "APPROVED" && leave.startDate >= from)
+      .reduce((sum, leave) => sum + leave.days, 0);
+    const account = leaveAccount(
+      {
+        startDate: start,
+        openingDate: person.leaveOpeningDate,
+        openingDays: person.leaveOpeningDays,
+        asOf: ctx.today,
+        taken,
+      },
       {
         perMonth: rules["pay.leaveDaysPerMonth"],
         cap: rules["pay.leaveCapDays"],
         yearStart: rules["pay.leaveYearStart"],
       },
     );
-    const taken = ownLeaves
-      .filter((leave) => leave.status === "APPROVED" && leave.paid === 1 && leave.startDate >= accrual.from)
-      .reduce((sum, leave) => sum + leave.days, 0);
     const absenceMin = ownAbsences
       .filter((absence) => absence.employeeLeaveId === null)
       .reduce((sum, a) => sum + a.absenceMin, 0);
@@ -743,10 +773,12 @@ export async function listEmployeeAttendance(
           reason: leave.reason,
         })),
       leave: {
-        earned: accrual.earned,
+        /** Being earned in the current reference year, taken in the next leave year. */
+        earned: account.earning,
         taken,
-        balance: leaveBalance({ broughtForward: person.leaveOpeningDays ?? 0, earned: accrual.earned, taken }),
-        from: accrual.from,
+        /** What can be taken now. */
+        balance: account.toTake,
+        from: account.earningFrom,
       },
       totals: {
         workedMin: days.reduce((sum, day) => sum + day.minutes, 0),

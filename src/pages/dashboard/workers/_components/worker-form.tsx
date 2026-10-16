@@ -20,7 +20,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { listZonesQuery, PLACES_PATH } from "@/features/core/services/places";
 import { ResidenceField } from "@/features/people/components/residence-fields";
-import { isolate, useMay } from "@/features/people/components/may";
+import { isolate, useMay, useMayIn } from "@/features/people/components/may";
 import { useSanctionGate } from "@/features/people/components/sanction-gate";
 import { workerFormRowByKey, YES_NO } from "@/features/people/forms/worker-form";
 import { WORKER_SCREEN_CARDS, type WorkerScreenCard } from "@/features/people/forms/worker-screen";
@@ -171,7 +171,10 @@ export function WorkerForm({ mode, defaultValues }: Props) {
   };
 
   // Somebody who reads the section without keeping the files sees the form, and changes nothing.
-  const readOnly = !useMay("staff.write");
+  const holdsFiles = useMay("staff.write");
+  const writesSection = useMayIn("WORKERS", "WRITE");
+  // Read-only unless the files are kept and the section written (ACC-10).
+  const readOnly = !(holdsFiles && writesSection);
 
   return (
     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6" noValidate>

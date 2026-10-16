@@ -19,7 +19,7 @@ import { residenceValues } from "@/features/people/forms/worker-values";
 import { phoneDigits } from "@/features/people/validators/worker";
 import { requireCapability, requireSection } from "@/lib/access/session";
 import { newId } from "@/lib/db/rows";
-import { logChange, logCollect, logConsult } from "@/lib/log";
+import { logChange, logCollect, logConsultOnce } from "@/lib/log";
 import { nextNumber } from "@/lib/numbering";
 import { action, query } from "@/lib/service/action";
 import { changedColumns } from "@/lib/service/changes";
@@ -28,7 +28,7 @@ import { ServiceError } from "@/lib/service/errors";
 import { addDays } from "@/lib/clock";
 import { getSetting } from "@/lib/settings";
 import { normaliseName, phoneKeys } from "@/lib/text/normalise";
-import { dinarsToMoney, hoursToMinutes, localDate } from "@/lib/units";
+import { dinarsToMoney, hoursToMinutes, localDate, qty } from "@/lib/units";
 
 import { getSanctionStates, type SanctionStateOf } from "./sanctions";
 import {
@@ -118,6 +118,8 @@ function memberColumns(values: EmployeeFormValues) {
     employmentContract: values.employmentContract ?? null,
     workTimeKind: values.workTimeKind ?? null,
     contractEndDate: dateOrNull(values.contractEndDate),
+    leaveOpeningDays: values.leaveOpeningDays === "" ? null : qty(Math.round(decimal(values.leaveOpeningDays) * 1000)),
+    leaveOpeningDate: dateOrNull(values.leaveOpeningDate),
     cnasDeclared: values.cnasDeclared ? 1 : 0,
     cnasNumber: orNull(values.cnasNumber),
     weeklyCapacityMin: hoursToMinutes(decimal(values.weeklyCapacityHours)),
@@ -398,7 +400,8 @@ export async function openEmployeeFile(
       : Promise.resolve(undefined),
   ]);
   const subject = { kind: "EMPLOYEE" as const, id: employee.id, label: staffName(employee) };
-  await logConsult(ex, ctx, {
+  // One consultation per user, record and day (ruling 29).
+  await logConsultOnce(ex, ctx, {
     owner: "PEOPLE",
     action: "VIEW",
     entity: "StaffMember",
@@ -439,6 +442,8 @@ export async function openEmployeeFile(
       employmentContract: oneOf(employee.employmentContract, EMPLOYMENT_CONTRACTS),
       workTimeKind: oneOf(employee.workTimeKind, WORK_TIMES),
       contractEndDate: text(employee.contractEndDate),
+      leaveOpeningDays: employee.leaveOpeningDays === null ? "" : String(employee.leaveOpeningDays / 1000),
+      leaveOpeningDate: text(employee.leaveOpeningDate),
       cnasDeclared: employee.cnasDeclared === 1,
       cnasNumber: text(employee.cnasNumber),
       payBasis: oneOf(employee.payBasis, PAY_BASES),

@@ -6,7 +6,18 @@ Owner of features 21, 25, 37, 38: centre employees, cleaning workers, his worker
 
 - **ID cards (scope R9):** `services/cards.ts` (`staffCardsForPrint`, `recordCardPrint`, one DISCLOSE line per card), `sheets/id-cards.tsx` (ISO ID-1, 85.6 × 54 mm, eight to an A4 page with cutting marks; photo or the empty frame, name surname first, number, role in his words, the centre), `components/staff-cards-screen.tsx`. Pages: `workers/:id/print-card`, `employees/:id/print-card`, and `workers/print-cards?ids=` for the workers chosen in the list. A person who left gets no card.
 - **One file per document:** `setStaffDocumentFile` in `services/documents.ts`; the worker's documents card attaches, copies and removes each scan, stored restricted under `DOCUMENT_FILE_CAPABILITY` (`staff.health.read` until Foundation names `staff.documents.read`). The worker's file reads `fileUrl` per document.
-- **Not this round:** the phone helper (Foundation's move has not landed); the labour-rules findings (not received); one yes for several sanctions (needs a column, see "Needs").
+- **The Checker's S-22 to S-27:** dialogs commit in `success` (`entry-dialog`, `reason-dialog`); the employees' run, the candidates and the violations lists fit their box at 1024 and 1440 px in Arabic and French, rows 81/71 px; a time's edit and delete are on its chip; a row's other actions in `RowMenu`.
+- **`phoneText`:** `components/format.ts` re-exports Foundation's helper (`formatPhone` stays as an alias).
+- **The verified audit findings (`scratchpad/audit/for-people.md`), all fixed and tested:**
+  - LAB-1: a wage per task's overtime and rest-day premiums are typed on the payslip (`overtime`, `restDayPremium`), flagged until then, and the run refuses to close before.
+  - LAB-5: a late seat's week, already closed, is priced again in the next run: the overtime and rest-day work it adds are paid as arrears.
+  - LAB-6: `rules/leave.ts` `leaveAccount`: what a reference year earns is taken the year after and carried, never lost at 1 July; the count begins after `leaveOpeningDate`; the employee's file has the two opening fields; the screens show the year being earned and the balance to take.
+  - LAB-7: only annual leave debits the balance.
+  - LAB-8: a worker's absence pays its working days only, not the weekly rest day.
+  - LAB-14: a done visit's seat with no typed times is paid its planned minutes, counted on the payslip (`plannedSeats`).
+  - ACC-6: a leave is recorded approved only by a holder of `attendance.employee.edit`, else as requested; the tick shows to holders only.
+  - ACC-9: hours corrections need `pay.write`. ACC-13: «قرار الإدارة» needs `hiring.decide` and the workers' section read. ACC-10: the file pages and forms need the section written as well as `staff.write`.
+  - LOG-8: a file logs one consultation per user, record and day (`logConsultOnce`). LOG-9: a typed time is logged. LOG-16: only a file saved restricted for its place can be linked as the signed form or a document's scan.
 
 ## Round 3, done
 
@@ -103,7 +114,15 @@ Owner of features 21, 25, 37, 38: centre employees, cleaning workers, his worker
 - The manager answers signed in as himself: `requestManagerApproval` will not come.
 - From the Checker's screen audit: Save is `success` at the foot in `PageActions`, cancel `outline` beside it; a record's actions stay in the heading; a tab page is headed by its tab; the CNAS tick is an office field, on screen only.
 
-## Decisions taken in round 3 (to confirm)
+## Decisions taken in round 4 (to confirm)
+
+- An ID card is printed only for someone in post, by a holder of `staff.write` reading the person's section; each card printed is one DISCLOSE line. Eight cards to an A4 page, without the letterhead.
+- A document's scan is filed by a holder of `staff.write` who also holds `staff.health.read`, until `staff.documents.read` exists. A scan attached to a document never handed in creates its current row, handed in that day.
+- A late seat's week is priced again from the minutes now typed: what the late seats add to its overtime is paid at +50%; for a daily wage, the minutes past the day of the late seats themselves are paid as before and only the rest is premium-only.
+- Under Law 90-11 an employee who started this reference year has nothing to take until 1 July; leave taken before is shown as taken in advance (a negative balance).
+- A worker's absence counts the rest day (`work.restDay`) out of pay; Operations' dialog still suggests leave days over every calendar day.
+
+## Decisions taken in round 3 (accepted)
 
 - A violation handed over by Operations arrives as minor unless Operations says otherwise; HR sets how serious when deciding.
 - Deciding a violation is HR's (`staff.write`); a suspension or a penalty also needs `sanction.set`, so it is the manager's. A deduction is a ledger line of reason OTHER pointing at the violation. Only an open violation can be cancelled.
@@ -143,10 +162,9 @@ Owner of features 21, 25, 37, 38: centre employees, cleaning workers, his worker
 
 1. Weekly pay runs: only monthly runs are built. A weekly payment is an advance.
 2. A file per document on the worker's file (`StaffDocument.fileUrl`).
-3. A person matching two sanctions in force cannot be allowed by one yes.
+3. One yes for every sanction a person matches (the coordinator's ruling) waits for the column asked of Foundation.
 4. File consultations: switch to Foundation's once-a-day helper when it lands.
 5. The payslip's employer number prints from `centre.cnasEmployerNumber`, empty until Foundation's card has it.
-6. `formatPhone` moves to `src/lib/text` (Foundation): re-export it from `components/format.ts` when it lands.
 
 ## Needs from others
 

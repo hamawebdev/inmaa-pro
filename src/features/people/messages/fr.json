@@ -423,7 +423,9 @@
       "CnasDeclared": "Déclaré à la CNAS",
       "CnasNumber": "Numéro de sécurité sociale",
       "PayTitle": "Paie",
-      "PayDescription": "Nécessaire avant la première paie."
+      "PayDescription": "Nécessaire avant la première paie.",
+      "LeaveOpeningDays": "Congé reporté (jours)",
+      "LeaveOpeningDate": "Arrêté au"
     },
     "File": {
       "Title": "Dossier de l'employé",
@@ -661,7 +663,11 @@
       "SeatsHint": "Chaque ordre est payé une fois. Celui saisi après la clôture de son mois est payé ici, en rappel.",
       "Arrears": "Rappel",
       "Payments": "Paiements",
-      "NoPayment": "Rien de payé pour l'instant."
+      "NoPayment": "Rien de payé pour l'instant.",
+      "PremiumsToPrice": "Majorations à chiffrer",
+      "OvertimeTyped": "Majoration des heures supplémentaires (à la tâche)",
+      "RestDayTyped": "Majoration du jour de repos (à la tâche)",
+      "PlannedSeats": "{count} payés au temps prévu, non saisis"
     },
     "Payouts": {
       "Title": "Paiements",
@@ -804,8 +810,8 @@
       "Hours": "Heures de présence",
       "DaysPresent": "Jours de présence",
       "Absence": "Absence",
-      "LeaveBalance": "Solde de congé (jours)",
-      "LeaveHint": "2,5 jours acquis par mois travaillé"
+      "LeaveBalance": "Congé à prendre (jours)",
+      "LeaveHint": "Acquis du 1er juillet au 30 juin, pris l'année suivante"
     },
     "Days": {
       "Title": "Jours",
@@ -821,9 +827,9 @@
     "Leave": {
       "Title": "Congés",
       "None": "Aucun congé ce mois-ci.",
-      "Earned": "Acquis cette année :",
-      "Taken": "pris :",
-      "Left": "reste :"
+      "Earned": "En cours d'acquisition :",
+      "Taken": "congé annuel pris :",
+      "Left": "à prendre :"
     },
     "Entry": {
       "Employee": "Employé",
@@ -1216,7 +1222,9 @@
     "ResidenceCommuneRequired": "Choisissez la commune de résidence.",
     "PayItemTypeRequired": "Choisissez une prime ou une retenue.",
     "PayItemNotFound": "Cette prime ou retenue n'existe pas.",
-    "PersonLeftNoCard": "Cette personne est partie : aucune carte n'est imprimée."
+    "PersonLeftNoCard": "Cette personne est partie : aucune carte n'est imprimée.",
+    "PremiumsToPrice": "Chiffrez d'abord les heures supplémentaires et le travail du jour de repos de chaque bulletin payé à la tâche.",
+    "DaysNumber": "Saisissez un nombre de jours."
   },
   "Cards": {
     "Title": "Carte professionnelle",

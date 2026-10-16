@@ -63,7 +63,10 @@ export default function EmployeePage() {
     retry: false,
   });
   const back = { href: "/dashboard/employees", label: tNav("EmployeesList") };
-  const keepsFiles = useMay("staff.write");
+  // The file's actions need the employees' section written, as the list does (ACC-10).
+  const holdsFiles = useMay("staff.write");
+  const writesEmployees = useMayIn("EMPLOYEES", "WRITE");
+  const keepsFiles = holdsFiles && writesEmployees;
   const tCards = useTranslations("Cards");
   // Pay is a tab of the workers' section: an account that does not reach it is not sent there.
   const holdsPay = useMay("pay.read");

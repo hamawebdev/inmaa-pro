@@ -13,7 +13,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useEntryDialog } from "@/features/people/components/entry-dialog";
 import { DayDate, Duration, Nothing } from "@/features/people/components/figures";
 import { monthBounds } from "@/features/people/components/format";
-import { useMay, useMayIn } from "@/features/people/components/may";
+import { useMay } from "@/features/people/components/may";
 import { MonthSwitch } from "@/features/people/components/month-switch";
 import { useReasonDialog } from "@/features/people/components/reason-dialog";
 import { SimpleTable } from "@/features/people/components/simple-table";
@@ -46,9 +46,8 @@ export default function WorkerHoursPage() {
   const navigate = useNavigate();
   const errorMessage = useErrorMessage();
   const { today } = useCentreClock();
-  const keepsFiles = useMay("staff.write");
-  const writesWorkers = useMayIn("WORKERS", "WRITE");
-  const corrects = keepsFiles && writesWorkers;
+  // Corrections are pay's (ACC-9).
+  const corrects = useMay("pay.write");
   const [ask, entryDialog] = useEntryDialog();
   const [askReason, reasonDialog] = useReasonDialog();
 

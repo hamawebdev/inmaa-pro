@@ -87,6 +87,13 @@ export default function PayslipPage() {
         number("irg", t("Slips.Irg"), slip.typed.irg),
         number("advanceRepayment", t("Slips.Repayment"), slip.typed.advanceRepayment),
         number("deduction", t("Slips.Deduction"), slip.typed.deduction),
+        // A wage per task has no hourly value: its overtime and rest-day premiums are priced here.
+        ...(slip.payBasis === "PER_TASK"
+          ? [
+              number("overtime", t("Slips.OvertimeTyped"), slip.typed.overtime),
+              number("restDayPremium", t("Slips.RestDayTyped"), slip.typed.restDayPremium),
+            ]
+          : []),
         {
           kind: "text",
           name: "deductionLabel",
@@ -104,6 +111,9 @@ export default function PayslipPage() {
       irg: typed(values.irg),
       advanceRepayment: typed(values.advanceRepayment),
       deduction: typed(values.deduction),
+      ...(slip.payBasis === "PER_TASK"
+        ? { overtime: typed(values.overtime ?? ""), restDayPremium: typed(values.restDayPremium ?? "") }
+        : {}),
       deductionLabel: values.deductionLabel || null,
     });
     if (result.success) toast.success(t("Slips.Corrected"));
@@ -155,6 +165,12 @@ export default function PayslipPage() {
       <div className="space-y-5">
         <div className="flex flex-wrap items-center gap-2">
           {slip.missing.includes("IRG") && <StatusChip tone="warning" label={t("Slips.IrgToType")} />}
+          {slip.plannedSeats > 0 && (
+            <StatusChip tone="warning" label={t("Slips.PlannedSeats", { count: slip.plannedSeats })} />
+          )}
+          {(slip.missing.includes("OVERTIME") || slip.missing.includes("REST_DAY")) && (
+            <StatusChip tone="warning" label={t("Slips.PremiumsToPrice")} />
+          )}
           {slip.ordersNotTypedCount > 0 && (
             <StatusChip tone="warning" label={t("Slips.OrdersNotTyped", { count: slip.ordersNotTypedCount })} />
           )}

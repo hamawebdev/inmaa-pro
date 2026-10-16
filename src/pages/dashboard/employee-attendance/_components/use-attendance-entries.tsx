@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { useTranslations } from "use-intl";
 
 import { useEntryDialog, type EntryField } from "@/features/people/components/entry-dialog";
-import { isolate } from "@/features/people/components/may";
+import { isolate, useMay } from "@/features/people/components/may";
 import { useReasonDialog } from "@/features/people/components/reason-dialog";
 import {
   cancelEmployeeLeaveAction,
@@ -66,6 +66,7 @@ export function useAttendanceEntries() {
   const absenceLabel = useCodeLabel("Options.AbsenceType");
   const leaveLabel = useCodeLabel("Options.LeaveType");
   const errorMessage = useErrorMessage();
+  const decides = useMay("attendance.employee.edit");
   const { today, nowTime } = useCentreClock();
   const [ask, entryDialog] = useEntryDialog();
   const [askReason, reasonDialog] = useReasonDialog();
@@ -246,7 +247,8 @@ export function useAttendanceEntries() {
         },
         { kind: "date", name: "startDate", label: t("Entry.FromDay"), required: true, defaultValue: today },
         { kind: "date", name: "endDate", label: t("Entry.ToDay"), required: true, defaultValue: today },
-        { kind: "tick", name: "approved", label: t("Entry.ApprovedNow") },
+        // Only whoever may approve a leave records one already approved.
+        ...(decides ? [{ kind: "tick" as const, name: "approved", label: t("Entry.ApprovedNow") }] : []),
         { kind: "note", name: "reason", label: t("Entry.Note") },
       ],
     });
