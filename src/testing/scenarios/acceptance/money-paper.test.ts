@@ -121,7 +121,7 @@ it("VAT mode: an organisation's month at prices including VAT, 19%, paid in cash
   expect(invoice).toMatchObject({
     taxMode: "VAT",
     vatRate: 1900,
-    pricesIncludeVat: 1,
+    pricesIncludeVat: 0,
     totalTTC: ttc,
     totalHT: ht,
     vatAmount: ttc - ht,

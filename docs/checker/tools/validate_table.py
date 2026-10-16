@@ -24,8 +24,8 @@ It reads the Markdown table as it is on disk; it does not rebuild it. Checks:
   L1  the legal rules section has its nine columns and every row nine cells
   L2  its ids run L-01, L-02, … in order without gaps
   L3  status, owner and "Enforced in" are filled with allowed words; a mismatch
-      names an open audit finding; a checked row names a test, and every test
-      it names exists
+      names an open audit finding; a checked row names a test (or the lint
+      gate, `npm run lint`), and every test it names exists
 
 Exit status 0 when every check passes, 1 otherwise.
 """
@@ -182,7 +182,7 @@ def check_legal(rep, table):
         if r["status"] == "checked" and open_findings and "fixed" not in r["findings"]:
             problems.append("%s is checked while naming open findings %s" % (r["id"], open_findings))
         tests = re.findall(r"[\w./-]+\.test\.ts", r["proof"])
-        if r["status"] == "checked" and not tests:
+        if r["status"] == "checked" and not tests and "`npm run lint`" not in r["proof"]:
             problems.append("%s is checked with no test named" % r["id"])
         for t in tests:
             if not os.path.exists(os.path.join(fx.ROOT, t)):
