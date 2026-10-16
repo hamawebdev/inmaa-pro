@@ -17,7 +17,10 @@ import FileResidentsPrintPage from "@/pages/dashboard/files/[id]/residents/print
 import EmptyFormPrintPage from "@/pages/dashboard/files/empty-forms/[kind]/print/page";
 import EmptyFormsPage from "@/pages/dashboard/files/empty-forms/page";
 import NewFilePage from "@/pages/dashboard/files/new/page";
+import PendingQuotesPage from "@/pages/dashboard/files/quotes/page";
 import FilesPage from "@/pages/dashboard/files/page";
+import RepVisitPage from "@/pages/dashboard/rep-visits/[id]/page";
+import NewRepVisitPage from "@/pages/dashboard/rep-visits/new/page";
 import RepVisitsPage from "@/pages/dashboard/rep-visits/page";
 
 /**
@@ -33,8 +36,11 @@ import RepVisitsPage from "@/pages/dashboard/rep-visits/page";
  */
 export const clientsRoutes: RouteObject[] = [
   { path: "rep-visits", element: <RepVisitsPage /> },
+  { path: "rep-visits/new", element: <NewRepVisitPage /> },
+  { path: "rep-visits/:id", element: <RepVisitPage /> },
   { path: "files", element: <FilesPage /> },
   { path: "files/new", element: <NewFilePage /> },
+  { path: "files/quotes", element: <PendingQuotesPage /> },
   { path: "clients", element: <ClientsPage /> },
   { path: "clients/:id", element: <ClientCardPage /> },
   { path: "files/:id", element: <FileHubPage /> },

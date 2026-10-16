@@ -9,7 +9,9 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { PageActions } from "@/components/screen";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { formatSheetDate } from "@/features/clients/forms/answers";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useDateText } from "@/features/clients/components/use-date-text";
 import { formTitleOf, screenCardsOf, type ScreenCard } from "@/features/clients/forms/screen-labels";
 import { registerFileAction, saveFileFormAction } from "@/features/clients/services/files";
 import {
@@ -19,7 +21,7 @@ import {
 } from "@/features/clients/validators/file-screen";
 import { FORM_KIND_OF, type FileStatusTick, type FormKind } from "@/features/clients/validators/option-lists";
 import { useSanctionGate } from "@/features/people/components/sanction-gate";
-import { useSectionLevel } from "@/hooks/use-session";
+import { useCan, useSectionLevel } from "@/hooks/use-session";
 import { matchErrorMessage, useErrorMessage } from "@/i18n/errors";
 import { useRouter } from "@/lib/compat/navigation";
 import { fileHubHref, FILES_PATH } from "@/navigation/file-parts";
@@ -49,6 +51,16 @@ export interface FileDraft {
   kind: FormKind;
   state: FileScreenState;
   returning: ReturningLink | null;
+  /** The sales rep's visit this request came from. */
+  repVisitId?: string | null;
+}
+
+/** The numbers typed from a paper form, or null when none was typed. */
+function paperNumbersOf(paper: { client: string; file: string; reason: string }, returning: boolean) {
+  const whole = (typed: string) => (/^\d+$/.test(typed.trim()) ? Number(typed.trim()) : null);
+  const client = returning ? null : whole(paper.client);
+  const file = whole(paper.file);
+  return client === null && file === null ? null : { client, file, reason: paper.reason };
 }
 
 export type FileFormMode =
@@ -58,6 +70,8 @@ export type FileFormMode =
       returning?: ReturningLink | null;
       /** The manager's yes this registration came back with. */
       decisionId?: string | null;
+      /** The sales rep's visit this request came from. */
+      repVisitId?: string | null;
     }
   | {
       kind: "edit";
@@ -84,6 +98,26 @@ function errorsOf(issues: ParsedFileScreen["issues"]): FieldErrors<FileScreenSta
     });
   }
   return errors as FieldErrors<FileScreenState>;
+}
+
+function PaperField({
+  label,
+  value,
+  onChange,
+  wide,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  wide?: boolean;
+}) {
+  const id = React.useId();
+  return (
+    <div className={wide ? "space-y-2 sm:col-span-2" : "space-y-2"}>
+      <Label htmlFor={id}>{label}</Label>
+      <Input id={id} value={value} onChange={(event) => onChange(event.target.value)} dir={wide ? undefined : "ltr"} />
+    </div>
+  );
 }
 
 function SheetCard({ title, disabled, children }: { title: string; disabled: boolean; children: React.ReactNode }) {
@@ -124,10 +158,14 @@ export function FileForm({
 }) {
   const t = useTranslations("FileForm");
   const errorMessage = useErrorMessage();
+  const dates = useDateText();
   const router = useRouter();
   const [pending, setPending] = React.useState<ParsedFileScreen | null>(null);
   const [busy, setBusy] = React.useState(false);
   const [passGate, gateDialogs] = useSanctionGate();
+  // Numbers already on a paper form (capability `file.setNumber`, with the reason typed).
+  const setsNumbers = useCan("file.setNumber");
+  const [paper, setPaper] = React.useState({ client: "", file: "", reason: "" });
 
   const resolver = React.useCallback<Resolver<FileScreenState>>(
     async (state) => {
@@ -193,7 +231,8 @@ export function FileForm({
     const returning = mode.kind === "new" ? (mode.returning ?? null) : null;
     const text = (value: unknown) => (typeof value === "string" && value.trim() !== "" ? value.trim() : null);
     // The list of residents is not kept on a question to the manager: it is typed again.
-    const draft: FileDraft = { kind: formKind, state: { ...state, residents: [] }, returning };
+    const repVisitId = mode.kind === "new" ? (mode.repVisitId ?? null) : null;
+    const draft: FileDraft = { kind: formKind, state: { ...state, residents: [] }, returning, repVisitId };
     const passage = await passGate({
       context: "CLIENT_FILE",
       subjectKind: "CLIENT",
@@ -214,6 +253,8 @@ export function FileForm({
       returning: returning
         ? { clientId: returning.clientId, siteId: returning.siteId, copiedFromFileId: returning.copiedFromFileId }
         : undefined,
+      sourceRepVisitId: repVisitId,
+      paperNumbers: paperNumbersOf(paper, returning !== null),
       ...passage,
     });
     setBusy(false);
@@ -287,7 +328,8 @@ export function FileForm({
         {edit ? (
           <GivenValue
             label={t("Labels.registrationDate")}
-            value={formatSheetDate(String(initial.answers.registrationDate ?? ""))}
+            value={initial.answers.registrationDate ? dates.long(String(initial.answers.registrationDate)) : null}
+            ltr={false}
           />
         ) : (
           <SheetRowField
@@ -314,6 +356,31 @@ export function FileForm({
         <SitePlaceCard control={control} complex={formKind === "COMPLEX_CONTRACT"} />
         <SiteWorkCard control={control} />
       </fieldset>
+
+      {mode.kind === "new" && setsNumbers && !readOnly && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">{t("Paper.Title")}</CardTitle>
+          </CardHeader>
+          <CardContent className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2">
+            {!mode.returning && (
+              <PaperField
+                label={t("Paper.Client")}
+                value={paper.client}
+                onChange={(client) => setPaper({ ...paper, client })}
+              />
+            )}
+            <PaperField label={t("Paper.File")} value={paper.file} onChange={(file) => setPaper({ ...paper, file })} />
+            <PaperField
+              label={t("Paper.Reason")}
+              value={paper.reason}
+              onChange={(reason) => setPaper({ ...paper, reason })}
+              wide
+            />
+            <p className="text-sm text-muted-foreground sm:col-span-2">{t("Paper.Hint")}</p>
+          </CardContent>
+        </Card>
+      )}
 
       <PageActions>
         <Button type="button" variant="outline" onClick={() => router.back()}>

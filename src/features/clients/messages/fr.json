@@ -155,7 +155,10 @@
       "sameWorkerRule": "Les mêmes agents à chaque visite",
       "womenOnly": "Agentes uniquement",
       "photoConsent": "Le client accepte les photos sur le site",
-      "note": "Notes"
+      "note": "Notes",
+      "latitude": "Latitude",
+      "longitude": "Longitude",
+      "coordinatesHint": "En degrés, comme «35.8754» et «7.1135». Imprimées sur l'ordre en QR (geo:) seulement si l'option est activée."
     },
     "Residents": {
       "Description": "Page 3 du formulaire de l'immeuble. Chaque consultation est journalisée.",
@@ -332,6 +335,13 @@
       "REFUSED": "Le directeur n'a pas autorisé ce dossier (correspondance avec {name}).",
       "CANCELLED": "Cette question a été retirée (correspondance avec {name}).",
       "USED": "Ce dossier est déjà enregistré (correspondance avec {name})."
+    },
+    "Paper": {
+      "Title": "Numéros déjà sur papier",
+      "Client": "N° de dossier du client («رقم الملف»)",
+      "File": "N° d'enregistrement («رقم التسجيل»)",
+      "Reason": "Pourquoi ces numéros",
+      "Hint": "Seulement pour un formulaire rempli à la main avant le programme. Laissés vides, le programme numérote lui-même. Le motif est conservé dans le journal."
     }
   },
   "FilePrint": {
@@ -522,6 +532,12 @@
       "MORE_WORKERS": "Plus d'agents",
       "FEWER_VISITS": "Moins de visites",
       "ADD_PERIODIC_SERVICES": "Ajouter des prestations périodiques"
+    },
+    "Interest": {
+      "HIGH": "Élevé",
+      "MEDIUM": "Moyen",
+      "LOW": "Faible",
+      "NONE": "Aucun"
     }
   },
   "Errors": {
@@ -584,7 +600,16 @@
     "ContractEndFuture": "Un contrat se termine le jour où il prend fin, pas avant.",
     "FileContractEndBeforeStart": "Un contrat ne peut pas finir avant de commencer.",
     "ClausesLocked": "Un contrat signé garde les clauses avec lesquelles il a été signé.",
-    "ClauseText": "Chaque clause doit avoir un texte."
+    "ClauseText": "Chaque clause doit avoir un texte.",
+    "SiteLatitude": "La latitude est un nombre entre -90 et 90.",
+    "SiteLongitude": "La longitude est un nombre entre -180 et 180.",
+    "RepVisitNotFound": "Cette visite du commercial n'existe pas.",
+    "RepVisitRep": "Choisissez le commercial qui a fait la visite.",
+    "RepVisitProspect": "Le nom du prospect est obligatoire.",
+    "RepVisitFuture": "Une visite ne peut pas être datée après aujourd'hui.",
+    "ContactName": "Le nom de la personne de contact est obligatoire.",
+    "ContactNotFound": "Cette personne de contact n'existe pas.",
+    "SiteHasCoordinator": "Ce site a déjà un coordinateur."
   },
   "Alerts": {
     "QuoteFollowUp": {
@@ -825,7 +850,26 @@
     "Sites": "Sites",
     "Files": "Dossiers",
     "Closed": "Clôturé",
-    "OpenFile": "Ouvrir"
+    "OpenFile": "Ouvrir",
+    "Contacts": "Personnes de contact",
+    "AddContact": "Ajouter une personne",
+    "EditContact": "Modifier",
+    "RemoveContact": "Retirer",
+    "RemoveContactHint": "Indiquez pourquoi cette personne est retirée de la fiche.",
+    "NoContacts": "Aucune personne de contact pour l'instant.",
+    "ContactName": "Nom",
+    "ContactRole": "Fonction",
+    "ContactSite": "Site",
+    "AllSites": "Tous ses sites",
+    "ContactSaved": "La personne de contact a été enregistrée.",
+    "ContactRemoved": "La personne de contact a été retirée.",
+    "ContactFlags": {
+      "signsHandover": "Signe la réception",
+      "receivesInvoice": "Reçoit la facture",
+      "isCoordinator": "Coordinateur du site",
+      "holdsKey": "Détient une clé",
+      "followsService": "Suit la prestation"
+    }
   },
   "Contract": {
     "Renew": "Renouveler le contrat",
@@ -866,5 +910,72 @@
     "RestrictedCount": "{count} résidents sur la liste. Elle n'est ouverte qu'aux personnes autorisées.",
     "Title": "Liste des résidents ({count})",
     "Empty": "Personne sur la liste."
+  },
+  "RepVisits": {
+    "Title": "Visite du commercial",
+    "NewTitle": "Nouvelle visite du commercial",
+    "New": "Nouvelle visite",
+    "NotFound": "Cette visite n'existe pas.",
+    "Columns": {
+      "Date": "Date",
+      "Prospect": "Prospect",
+      "Rep": "Commercial",
+      "Interest": "Intérêt",
+      "CallBack": "Rappel"
+    },
+    "Converted": "Devenue un dossier",
+    "Due": "À appeler",
+    "Open": "Ouvrir",
+    "SearchPlaceholder": "Prospect, contact, téléphone ou commercial",
+    "All": "Toutes",
+    "DueOnly": "Rappels dus",
+    "Empty": "Aucune visite.",
+    "ToFile": "Ouvrir un dossier depuis cette visite",
+    "OpenFile": "Dossier {number}",
+    "CallBackDone": "Appel fait",
+    "CalledBack": "L'appel a été noté.",
+    "TheVisit": "La visite",
+    "Date": "Date de la visite",
+    "Rep": "Commercial",
+    "Choose": "Choisir",
+    "Prospect": "Le prospect",
+    "ProspectName": "Nom",
+    "ProspectKind": "Division",
+    "Activity": "Activité",
+    "Phone": "Téléphone",
+    "ContactName": "Personne rencontrée",
+    "ContactRole": "Sa fonction",
+    "Address": "Adresse",
+    "Commune": "Commune",
+    "Outcome": "Résultat",
+    "Interest": "Intérêt",
+    "NotSaid": "Non précisé",
+    "CallBackDate": "Rappeler le",
+    "OutcomeText": "Résultat et prochaine étape",
+    "Note": "Remarque",
+    "LeftProfile": "La présentation du centre a été laissée",
+    "Save": "Enregistrer la visite",
+    "Saved": "La visite a été enregistrée.",
+    "Unchanged": "Rien n'a changé.",
+    "SaveFailed": "Impossible d'enregistrer la visite."
+  },
+  "PendingQuotes": {
+    "Title": "Devis en attente de réponse",
+    "Description": "Devis émis sans réponse du client : le dernier appel et le prochain.",
+    "Columns": {
+      "Quote": "Devis",
+      "Client": "Client",
+      "Answer": "Réponse",
+      "LastCall": "Dernier appel",
+      "NextCall": "Prochain appel",
+      "Total": "Montant"
+    },
+    "CallDue": "Appel dû",
+    "NoCallYet": "Aucun appel",
+    "Open": "Ouvrir",
+    "All": "Tous en attente",
+    "DueOnly": "Appels dus",
+    "None": "Aucun devis n'attend de réponse.",
+    "NoneDue": "Aucun appel n'est dû."
   }
 }

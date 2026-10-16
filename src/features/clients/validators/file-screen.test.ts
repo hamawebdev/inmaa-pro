@@ -4,7 +4,7 @@ import { DEMO_FILES } from "../demo";
 
 import type { FormValues } from "../forms/values";
 
-import { normaliseTyped, parseFileScreen, screenStateOf } from "./file-screen";
+import { normaliseTyped, parseFileScreen, screenStateOf, parseDegrees } from "./file-screen";
 
 /** A list's blank lines with the empty ones at the end left out: the screen always holds one per line of the form. */
 function trimmed(values: FormValues): FormValues {
@@ -75,5 +75,15 @@ describe("the form screen's answers", () => {
     const state = screenStateOf(kind, values);
     state.answers.executionDays = ["WED", "SAT"];
     expect(parseFileScreen(kind, state).values.executionDays).toEqual(["SAT", "WED"]);
+  });
+});
+
+describe("the site's coordinates", () => {
+  it("are typed in degrees and kept in micro-degrees, within range", () => {
+    expect(parseDegrees("35.8754", 90, "x")).toEqual({ value: 35875400 });
+    expect(parseDegrees("٧,١١٣٥", 180, "x")).toEqual({ value: 7113500 });
+    expect(parseDegrees("-0.5", 90, "x")).toEqual({ value: -500000 });
+    expect(parseDegrees("91", 90, "bad")).toEqual({ message: "bad" });
+    expect(parseDegrees("https://maps", 180, "bad")).toEqual({ message: "bad" });
   });
 });

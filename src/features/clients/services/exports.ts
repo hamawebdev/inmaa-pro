@@ -1,3 +1,4 @@
+import { WILAYAS } from "@/lib/geo/wilayas";
 import type { Executor, ServiceContext } from "@/lib/service/context";
 import type { LocalDate, LocalTime } from "@/lib/units";
 
@@ -500,4 +501,183 @@ export async function getFileEstimate(
     return { perVisitMin: visit.perVisitMin, workers: visit.estimatedWorkers, source: "FIRST_VISIT" };
   }
   return { perVisitMin: null, workers: null, source: null };
+}
+
+const parseList = (text: string | null): string[] => (text ? (JSON.parse(text) as string[]) : []);
+
+export interface FileBillingTerms {
+  id: string;
+  number: string;
+  formKind: string;
+  division: string;
+  serviceType: string;
+  stage: string;
+  clientId: string;
+  siteId: string;
+  branchId: string;
+  startDate: string | null;
+  endDate: string | null;
+  endedDate: string | null;
+  endKind: string | null;
+  closedAt: string | null;
+  closeReason: string | null;
+  /** «دورية السداد». */
+  frequency: string | null;
+  /** «المبلغ إجمالي», centimes. */
+  totalAmount: number | null;
+  amountBasis: string | null;
+  /** Frozen at «متعاقد». */
+  amountIncludesVat: boolean | null;
+  firstDueDate: string | null;
+  paymentMethods: string[];
+  payerName: string | null;
+  payerPhone: string | null;
+  paymentPlace: string | null;
+  materialsBearer: string | null;
+  materialsAmount: number | null;
+  transportBearer: string | null;
+  transportAmount: number | null;
+  expensesIncluded: boolean;
+  workersCount: number | null;
+  arrivalTime: string | null;
+  departureTime: string | null;
+  contractKind: string | null;
+  contractDuration: string | null;
+  equipmentStorage: boolean | null;
+  storagePlace: string | null;
+  renewalDecision: string | null;
+  /** The file that renews this one, and whether it is signed. */
+  renewedBy: { id: string; contracted: boolean } | null;
+  /** The accepted quote's totals per line kind (INITIAL_JOB is billed once, apart). */
+  acceptedQuoteTotals: { INITIAL_JOB: number; PERIODIC: number; EXTRA: number } | null;
+}
+
+/** `getFileBillingTerms(fileId)` (CONTRACTS.md section 3): what Money bills a file from. Null for no such file. */
+export async function getFileBillingTerms(
+  ex: Executor,
+  ctx: ServiceContext,
+  input: { fileId: string },
+): Promise<FileBillingTerms | null> {
+  const file = await ex
+    .selectFrom("File")
+    .selectAll()
+    .where("id", "=", input.fileId)
+    .where("deletedAt", "is", null)
+    .executeTakeFirst();
+  if (!file) return null;
+  const [successor, quote] = await Promise.all([
+    ex
+      .selectFrom("File")
+      .select(["id", "stage"])
+      .where("renewalOfFileId", "=", file.id)
+      .where("deletedAt", "is", null)
+      .executeTakeFirst(),
+    getAcceptedQuote(ex, ctx, { fileId: file.id }),
+  ]);
+  const yesNo = (value: number | null) => (value === null ? null : value === 1);
+  return {
+    id: file.id,
+    number: file.number,
+    formKind: file.formKind,
+    division: file.division,
+    serviceType: file.serviceType,
+    stage: file.stage,
+    clientId: file.clientId,
+    siteId: file.siteId,
+    branchId: file.branchId,
+    startDate: file.startDate,
+    endDate: file.endDate,
+    endedDate: file.endedDate,
+    endKind: file.endKind,
+    closedAt: file.closedAt,
+    closeReason: file.closeReason,
+    frequency: file.paymentFrequency,
+    totalAmount: file.totalAmount,
+    amountBasis: file.amountBasis,
+    amountIncludesVat: yesNo(file.amountIncludesVat),
+    firstDueDate: file.firstDueDate,
+    paymentMethods: parseList(file.paymentMethods),
+    payerName: file.payerName,
+    payerPhone: file.payerPhone,
+    paymentPlace: file.paymentPlace,
+    materialsBearer: file.materialsBearer,
+    materialsAmount: file.materialsAmount,
+    transportBearer: file.transportBearer,
+    transportAmount: file.transportAmount,
+    expensesIncluded: file.expensesIncluded === 1,
+    workersCount: file.workersCount,
+    arrivalTime: file.arrivalTime,
+    departureTime: file.departureTime,
+    contractKind: file.contractKind,
+    contractDuration: file.contractDuration,
+    equipmentStorage: yesNo(file.equipmentStorage),
+    storagePlace: file.storagePlace,
+    renewalDecision: file.renewalDecision,
+    renewedBy: successor ? { id: successor.id, contracted: successor.stage === "CONTRACTED" } : null,
+    acceptedQuoteTotals: quote?.totals ?? null,
+  };
+}
+
+export interface ClientForInvoice {
+  id: string;
+  /** The name to bill: `billingName`, else the client's. */
+  name: string;
+  legalForm: string | null;
+  hasTradeRegister: boolean;
+  rc: string | null;
+  nis: string | null;
+  nif: string | null;
+  articleNumber: string | null;
+  phones: string[];
+  /** `billingAddress`, else the file's site address with its commune and wilaya. */
+  address: string | null;
+  /** What is missing before a first invoice: a missing address blocks the issue; the RC when it has a trade register. */
+  missing: ("ADDRESS" | "RC")[];
+}
+
+/** `getClientForInvoice(clientId, fileId)` (CONTRACTS.md section 3): the buyer block of an invoice. */
+export async function getClientForInvoice(
+  ex: Executor,
+  _ctx: ServiceContext,
+  input: { clientId: string; fileId?: string | null },
+): Promise<ClientForInvoice | null> {
+  const client = await ex
+    .selectFrom("Client")
+    .selectAll()
+    .where("id", "=", input.clientId)
+    .where("deletedAt", "is", null)
+    .executeTakeFirst();
+  if (!client) return null;
+  let address = client.billingAddress;
+  if (!address && input.fileId) {
+    const site = await ex
+      .selectFrom("File as f")
+      .innerJoin("Site as s", "s.id", "f.siteId")
+      .leftJoin("Commune as m", "m.id", "s.communeId")
+      .select(["s.address", "m.nameAr as communeName", "m.wilayaCode"])
+      .where("f.id", "=", input.fileId)
+      .where("f.clientId", "=", client.id)
+      .executeTakeFirst();
+    if (site) {
+      const wilaya = site.wilayaCode ? WILAYAS.find((one) => one.code === site.wilayaCode)?.nameAr : null;
+      address = [site.address, site.communeName, wilaya].filter(Boolean).join("، ") || null;
+    }
+  }
+  const hasTradeRegister = client.hasTradeRegister === 1;
+  const missing: ClientForInvoice["missing"] = [];
+  if (!address) missing.push("ADDRESS");
+  if (hasTradeRegister && !client.rcNumber) missing.push("RC");
+  return {
+    id: client.id,
+    name: client.billingName ?? client.name,
+    legalForm: client.legalForm,
+    hasTradeRegister,
+    rc: client.rcNumber,
+    nis: client.nis,
+    nif: client.nif,
+    articleNumber: client.articleNumber,
+    phones: [client.phone1, client.phone2].filter((phone): phone is string => Boolean(phone)),
+    address,
+    missing,
+  };
 }

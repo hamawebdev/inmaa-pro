@@ -70,7 +70,7 @@ function OfficeText({
   long?: boolean;
   type?: "text" | "date" | "time" | "tel";
   dir?: "ltr";
-  inputMode?: "numeric" | "tel";
+  inputMode?: "numeric" | "tel" | "decimal";
   wide?: boolean;
 }) {
   const errorMessage = useErrorMessage();
@@ -286,6 +286,15 @@ export function SitePlaceCard({ control, complex }: { control: FormControl; comp
         description={t("mapLinkHint")}
         dir="ltr"
         wide
+      />
+      <OfficeText control={control} path="site.latitude" label={t("latitude")} inputMode="decimal" dir="ltr" />
+      <OfficeText
+        control={control}
+        path="site.longitude"
+        label={t("longitude")}
+        description={t("coordinatesHint")}
+        inputMode="decimal"
+        dir="ltr"
       />
       <OfficeFlag control={control} path="site.keysHeld" label={t("keysHeld")} />
       <OfficeText control={control} path="site.keyCount" label={t("keyCount")} inputMode="numeric" />

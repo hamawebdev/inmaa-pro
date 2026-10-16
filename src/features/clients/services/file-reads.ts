@@ -426,6 +426,8 @@ export function siteOfficeOf(site: FileRecord["site"]): SiteOfficeInput {
     "note",
   ] as const;
   for (const column of columns) office[column] = site[column];
+  office.latitude = site.latitude;
+  office.longitude = site.longitude;
   for (const column of SITE_OFFICE_SETS) office[column] = parseCodes(site[column]);
   for (const column of SITE_OFFICE_FLAGS) office[column] = site[column] === 1;
   return office as SiteOfficeInput;

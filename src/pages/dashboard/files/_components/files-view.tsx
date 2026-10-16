@@ -18,7 +18,7 @@ import { ScreenTabs } from "@/components/screen-tabs";
 import { StatusChip } from "@/components/status-chip";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { formatSheetDate } from "@/features/clients/forms/answers";
+import { ScreenDate } from "@/features/clients/components/screen-date";
 import { listFilesQuery, type FileListRow } from "@/features/clients/services/file-reads";
 import {
   DIVISIONS_WITH_REQUESTS,
@@ -128,7 +128,7 @@ export function FilesView() {
       {
         id: "registered",
         header: t("Columns.Registered"),
-        cell: ({ row }) => <Ltr>{formatSheetDate(row.original.registrationDate)}</Ltr>,
+        cell: ({ row }) => <ScreenDate className="whitespace-nowrap" date={row.original.registrationDate} />,
       },
       {
         id: "period",
@@ -137,9 +137,9 @@ export function FilesView() {
           row.original.startDate ? (
             // One date above the other: side by side they would push the row's button out of the window.
             <div className="leading-snug whitespace-nowrap">
-              <Ltr className="block">{formatSheetDate(row.original.startDate)}</Ltr>
+              <ScreenDate className="block" date={row.original.startDate} />
               {row.original.endDate && (
-                <Ltr className="block text-muted-foreground">{formatSheetDate(row.original.endDate)}</Ltr>
+                <ScreenDate className="block text-muted-foreground" date={row.original.endDate} />
               )}
             </div>
           ) : (

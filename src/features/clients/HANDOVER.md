@@ -29,9 +29,13 @@ For whoever continues this folder. Features 1, 2, 3, 4, 5, 6, 26, 29, 40. Read `
 | «عرض السعر» (features 5, 29): `saveQuote`, `submitQuote`, `decideQuote` (`quote.approve`), `issueQuote`, `reviseQuote`, `cancelQuote`, `recordQuoteResult` (`contract: true` takes the file to «متعاقد»), `addQuoteFollowUp`; the quote sheet      | `services/quotes.ts`, `sheets/quote-sheet.tsx`                      |
 | «العقد وتجديده» (feature 6): `getContractPart`, `renewFile` (emits `file.renewed`), `endContract`, `saveFileClauses`; the annex sheet; `countResidents`                                                                                            | `services/contracts.ts`, `sheets/clauses-sheet.tsx`                 |
 | «العملاء» (feature 1): `listClients`, `openClientCard` (logged once a day), `saveClientIdentifiers` (RC, NIS, NIF, article, legal form, billing name and address, second phone, e-mail, note)                                                      | `services/clients.ts`, `rules/client-identifiers.ts`                |
-| For Money: `getAcceptedQuote`, `getFileEstimate`                                                                                                                                                                                                   | `services/exports.ts`                                               |
+| «زيارات المندوب التجاري» (feature 40): `listRepVisits`, `getRepVisit`, `saveRepVisit`, `markRepCallBackDone`, `getRepVisitFill`; `registerFile({ sourceRepVisitId })` turns a visit into a file and names its client                               | `services/rep-visits.ts`                                            |
+| «عروض أسعار تنتظر الجواب» (feature 29): `listPendingQuotes`; the home tile opens `/files/quotes?due=1`                                                                                                                                             | `services/quotes.ts`, `pages/dashboard/files/quotes/`               |
+| Contact people on the card: `saveContact`, `removeContact` (five flags, one coordinator per site)                                                                                                                                                  | `services/clients.ts`                                               |
+| Numbers already on paper: `registerFile({ paperNumbers: { client, file, reason } })` through `claimNumber` (`file.setNumber`)                                                                                                                      | `services/files.ts`                                                 |
+| For Money: `getAcceptedQuote`, `getFileEstimate`, `getFileBillingTerms`, `getClientForInvoice`                                                                                                                                                     | `services/exports.ts`                                               |
 
-Placeholder still: the tab `rep-visits/` (feature 40's rep visits, «زيارات المندوب التجاري»).
+No placeholder is left in my paths.
 
 ## Conventions followed here
 
@@ -84,14 +88,39 @@ A file goes جديد → الزيارة (its first visit planned, printed, typed
 
 Demo: `housingRequest` (first visit done, study, quote issued and waiting), `housingJob` and `orgJob` (on demand, quote accepted, «متعاقد», visits on 13, 14 and 15 October), with `…Quote` and `…FirstVisit` names. Pictures in `.harness/shots/clients-r2/`, sheets in `.harness/pdf/clients-r2/`.
 
+## Round 3: done
+
+Rep visits (list, new, detail, call-backs due, a file opened from a visit with its details); the list of quotes waiting for an answer (the home tile's); contact people on the client card; numbers from paper on the new-file form (only with `file.setNumber`); `getFileBillingTerms` and `getClientForInvoice`; a site's coordinates in its office block (micro-degrees, typed in degrees, checked in range; the QR is Operations'). Dates on every screen of this folder are the program's («12 أكتوبر 2026», `components/screen-date.tsx`); sheets keep his «12/10/2026». The quote sheet prints its frozen tax terms: under VAT the total before tax, the tax and the total after it; under the IFU the mention.
+
+## My own wording, to check against his documents
+
+The plan names these codes without his words; the Arabic is mine:
+
+| Code                                   | Arabic                                      | English                  |
+| -------------------------------------- | ------------------------------------------- | ------------------------ |
+| FIRST_VISIT_RESULT `SUITABLE`          | مناسب للخدمة                                | Suitable                 |
+| `NEEDS_STUDY`                          | يحتاج إلى دراسة                             | Needs a study            |
+| `NEEDS_INITIAL_DEEP`                   | يحتاج إلى تنظيف أولي عميق                   | Needs a first deep clean |
+| `NEEDS_EQUIPMENT`                      | يحتاج إلى معدات                             | Needs equipment          |
+| `NEEDS_EXTRA_TEAM`                     | يحتاج إلى فريق إضافي                        | Needs an extra team      |
+| `NEEDS_SPECIAL_SERVICES`               | يحتاج إلى خدمات خاصة (the plan's own words) | Needs special services   |
+| CONDITION_FACTOR `CEMENT_PAINT_TRACES` | بقايا إسمنت أو طلاء                         | Cement or paint traces   |
+| `GREASE`                               | دهون                                        | Grease                   |
+| `STRONG_SMELLS`                        | روائح قوية                                  | Strong smells            |
+| `PETS`                                 | حيوانات أليفة                               | Pets                     |
+| `PILED_WASTE`                          | نفايات متراكمة                              | Piled-up waste           |
+| `RECENT_WORKS`                         | أشغال حديثة                                 | Recent works             |
+| `SENSITIVE_EQUIPMENT`                  | أجهزة حساسة                                 | Sensitive equipment      |
+
+The rep visit's interest (`HIGH` مرتفع, `MEDIUM` متوسط, `LOW` ضعيف, `NONE` لا اهتمام) and the contact roles (يوقع على الاستلام, يستلم الفاتورة, منسق الموقع, يحتفظ بمفتاح, يتابع الخدمة) are mine too.
+
 ## Open
 
-1. «زيارات المندوب التجاري» (`RepVisit`, the tab `rep-visits/`).
-2. `getFileBillingTerms`, `getClientForInvoice` (CONTRACTS.md section 3): Money reads the tables directly for now.
-3. A screen for `ClauseTemplate`; contacts (`Contact`) on the client card; `claimNumber` for a client number already on paper.
+1. A screen for `ClauseTemplate` is not needed: the contract part types its clauses per file.
+2. Rep visits are written with the employees section's WRITE level (the tab is under الموظفون); the reception, which holds none, cannot open them. A grant change is Foundation's if the reception should type them.
 
 Known gaps in what is built:
 
-- A ticked radio button is given its look in `pages/dashboard/files/_components/sheet-fields.tsx` (`RADIO_CHECKED`): the shared `RadioGroupItem` and `Checkbox` style their ticked state with `data-checked:`, which matches nothing (asked of Foundation).
+- A ticked radio button is given its look in `pages/dashboard/files/_components/sheet-fields.tsx` (`RADIO_CHECKED`) until Foundation's fix of the shared checkbox and radio lands; then it goes.
 - A site's zone is set to its commune's zone at every save of an unsigned file; once a site can be put in another zone by hand, the form must stop doing that.
 - The quote and inspection sheets follow his client forms' letterhead and faces; he gave no form for either (scope F1).

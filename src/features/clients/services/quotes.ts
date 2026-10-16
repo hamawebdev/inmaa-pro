@@ -27,6 +27,7 @@ import {
   type QuoteStatus,
 } from "../validators/pricing";
 
+import { quotesToFollowUp } from "./alerts";
 import { clientSubjectOf, partHeaderOf, requireFileRecord, requireOpenFile, type FilePartHeader } from "./file-part";
 import { sheetValuesOf, type FileRecord } from "./file-records";
 import { closeFile, moveFileStage, STAGE_REFUSALS, stageFactsOf } from "./files";
@@ -832,9 +833,101 @@ export async function recordQuotePrint(ex: Executor, ctx: ServiceContext, input:
   });
 }
 
+export interface PendingQuoteRow {
+  quoteId: string;
+  number: string;
+  version: number;
+  fileId: string;
+  fileNumber: string;
+  clientName: string;
+  phone: string;
+  issuedDate: string | null;
+  result: QuoteResult;
+  postponedUntil: string | null;
+  total: number;
+  lastFollowUp: { date: string; note: string | null } | null;
+  nextFollowUpDate: string | null;
+  /** Counted by the home tile «عروض أسعار تنتظر المتابعة»: a call is due. */
+  due: boolean;
+}
+
+/**
+ * The issued quotes still waiting for the client's answer (plan feature 29),
+ * with their last follow-up and the next call: what the home tile opens.
+ */
+export async function listPendingQuotes(
+  ex: Executor,
+  ctx: ServiceContext,
+  input: { dueOnly?: boolean } = {},
+): Promise<PendingQuoteRow[]> {
+  requireSection(ctx, "REQUESTS", "READ");
+  const rows = await ex
+    .selectFrom("Quote as q")
+    .innerJoin("File as f", "f.id", "q.fileId")
+    .innerJoin("Client as c", "c.id", "f.clientId")
+    .select([
+      "q.id",
+      "q.number",
+      "q.version",
+      "q.fileId",
+      "q.issuedDate",
+      "q.result",
+      "q.postponedUntil",
+      "q.total",
+      "f.number as fileNumber",
+      "c.name as clientName",
+      "c.phone1 as phone",
+    ])
+    .where("q.status", "=", "ISSUED")
+    .where("q.deletedAt", "is", null)
+    .where("q.result", "in", ["PENDING", "NO_ANSWER", "POSTPONED", "DISCOUNT_REQUESTED", "CHANGE_REQUESTED"])
+    .where("f.closedAt", "is", null)
+    .where("f.deletedAt", "is", null)
+    .orderBy("q.issuedDate")
+    .execute();
+  if (rows.length === 0) return [];
+  const [followUps, due] = await Promise.all([
+    ex
+      .selectFrom("QuoteFollowUp")
+      .select(["quoteId", "date", "note", "nextFollowUpDate", "createdAt"])
+      .where(
+        "quoteId",
+        "in",
+        rows.map((row) => row.id),
+      )
+      .orderBy("date", "desc")
+      .orderBy("createdAt", "desc")
+      .execute(),
+    quotesToFollowUp(ex, ctx, { days: await getSetting(ex, "alerts.quoteFollowUpDays") }),
+  ]);
+  return rows
+    .map((row) => {
+      const mine = followUps.filter((followUp) => followUp.quoteId === row.id);
+      const next = mine.flatMap((followUp) => (followUp.nextFollowUpDate ? [String(followUp.nextFollowUpDate)] : []));
+      return {
+        quoteId: row.id,
+        number: row.number,
+        version: row.version,
+        fileId: row.fileId,
+        fileNumber: row.fileNumber,
+        clientName: row.clientName,
+        phone: row.phone,
+        issuedDate: row.issuedDate,
+        result: row.result as QuoteResult,
+        postponedUntil: row.postponedUntil,
+        total: row.total,
+        lastFollowUp: mine[0] ? { date: mine[0].date, note: mine[0].note } : null,
+        nextFollowUpDate: next.sort().at(-1) ?? null,
+        due: due.quoteIds.includes(row.id),
+      };
+    })
+    .filter((row) => !input.dueOnly || row.due);
+}
+
 // ── What the screens call ────────────────────────────────────────────────────
 
 export const getFileQuotesQuery = query(getFileQuotes);
+export const listPendingQuotesQuery = query(listPendingQuotes);
 export const getQuoteSheetQuery = query(getQuoteSheet);
 export const saveQuoteAction = action(saveQuote, { revalidate: QUOTES_REFRESH });
 export const submitQuoteAction = action(submitQuote, { revalidate: QUOTES_REFRESH });

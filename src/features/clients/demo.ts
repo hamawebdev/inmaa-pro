@@ -6,10 +6,12 @@ import type { DemoNames, DemoTools } from "@/testing/demo";
 import type { FormValues } from "./forms/values";
 import { saveCostStudy } from "./services/cost-study";
 import { saveFirstVisit } from "./services/first-visits";
+import { saveRepVisit } from "./services/rep-visits";
 import { moveFileStage, registerFile, type RegisterFileInput } from "./services/files";
 import { decideQuote, issueQuote, recordQuoteResult, saveQuote, submitQuote } from "./services/quotes";
 import type { FileStage } from "./validators/option-lists";
 import { emptyFirstVisit, type FirstVisitInput } from "./validators/first-visit";
+import type { RepVisitInput } from "./validators/rep-visit";
 import type { CostStudyInput, QuoteInput } from "./validators/pricing";
 
 /**
@@ -663,6 +665,51 @@ const studyOf = (workers: number, hours: number, materials: number, transport: n
   discount: 0,
 });
 
+/** The sales rep's visits typed in at the office (the rep is People's demo supervisor). */
+export const DEMO_REP_VISITS: ReadonlyArray<{ name: string; at: string; visit: Omit<RepVisitInput, "repEmployeeId"> }> =
+  [
+    {
+      name: "repVisitFactory",
+      at: at("2026-10-08", "16:00"),
+      visit: {
+        date: "2026-10-08",
+        prospectName: "مصنع الهضاب للحليب ومشتقاته",
+        prospectKind: "ORGANISATION",
+        activity: "صناعة غذائية",
+        contactName: "بلعيد كمال",
+        contactRole: "مدير الموارد البشرية",
+        phone: "032 41 22 33",
+        address: "المنطقة الصناعية، الطريق الوطني رقم 10",
+        communeId: "commune-0402",
+        leftProfile: true,
+        interest: "HIGH",
+        outcome: "يريد عرض سعر لعقد سنوي لتنظيف المكاتب وقاعة الاستراحة.",
+        callBackDate: "2026-10-12",
+        note: null,
+      },
+    },
+    {
+      name: "repVisitPharmacy",
+      at: at("2026-10-09", "11:30"),
+      visit: {
+        date: "2026-10-09",
+        prospectName: "صيدلية النور",
+        prospectKind: "ORGANISATION",
+        activity: "صيدلية",
+        contactName: "مسعودي سارة",
+        contactRole: "الصيدلانية",
+        phone: "0770 12 34 56",
+        address: "شارع الاستقلال",
+        communeId: "commune-0401",
+        leftProfile: true,
+        interest: "LOW",
+        outcome: "لا تحتاج الخدمة حاليا.",
+        callBackDate: null,
+        note: null,
+      },
+    },
+  ];
+
 /** The first visits typed in from the supervisor's sheet (the inspector is People's demo supervisor). */
 export const DEMO_FIRST_VISITS: ReadonlyArray<{ file: string; at: string; visit: FirstVisitInput }> = [
   {
@@ -900,6 +947,20 @@ export async function seedDemo(ex: Executor, _ctx: ServiceContext, tools: DemoTo
           visit: { ...entry.visit, inspectorEmployeeId: inspector },
         });
         names[`${entry.file}FirstVisit`] = firstVisitId;
+      },
+    });
+  }
+
+  for (const entry of DEMO_REP_VISITS) {
+    steps.push({
+      at: entry.at,
+      run: async () => {
+        const rep = tools.names.people?.employeeSupervisor;
+        if (!rep) return;
+        const { repVisitId } = await saveRepVisit(ex, tools.at(entry.at), {
+          visit: { ...entry.visit, repEmployeeId: rep },
+        });
+        names[entry.name] = repVisitId;
       },
     });
   }

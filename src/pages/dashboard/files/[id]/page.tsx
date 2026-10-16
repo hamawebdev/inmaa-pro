@@ -24,7 +24,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { formatSheetDate } from "@/features/clients/forms/answers";
+import { ScreenDate } from "@/features/clients/components/screen-date";
 import { FORM_DEFINITIONS } from "@/features/clients/forms/definitions";
 import { labelKeyOf } from "@/features/clients/forms/screen-labels";
 import { fileQueryPath, getFileHubQuery, type FileHub } from "@/features/clients/services/file-reads";
@@ -162,10 +162,11 @@ function Summary({ hub }: { hub: FileHub }) {
                 label: t("Dates"),
                 wide: true,
                 value: terms.startDate ? (
-                  <Ltr>
-                    {formatSheetDate(terms.startDate)}
-                    {terms.endDate ? ` – ${formatSheetDate(terms.endDate)}` : ""}
-                  </Ltr>
+                  <span>
+                    <ScreenDate date={terms.startDate} />
+                    {terms.endDate ? " – " : ""}
+                    <ScreenDate date={terms.endDate} />
+                  </span>
                 ) : (
                   notYet
                 ),
@@ -267,9 +268,9 @@ function History({ hub }: { hub: FileHub }) {
               className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-1"
             >
               <StatusChip tone={stageTone(line.toStage)} label={stageLabel(line.toStage)} />
-              <Ltr className="text-base text-muted-foreground">
-                {formatSheetDate(line.localDate)} {line.localTime}
-              </Ltr>
+              <span className="text-base text-muted-foreground">
+                <ScreenDate date={line.localDate} /> <Ltr>{line.localTime}</Ltr>
+              </span>
               <span className="text-base text-muted-foreground">
                 {line.fromStage === null ? `${t("Registered")} · ` : ""}
                 {line.byName ? t("HistoryBy", { name: line.byName }) : t("HistoryProgram")}

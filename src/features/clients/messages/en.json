@@ -155,7 +155,10 @@
       "sameWorkerRule": "The same workers at every visit",
       "womenOnly": "Women workers only",
       "photoConsent": "The client agrees to photos on the site",
-      "note": "Notes"
+      "note": "Notes",
+      "latitude": "Latitude",
+      "longitude": "Longitude",
+      "coordinatesHint": "In degrees, as «35.8754» and «7.1135». Printed on the order as a QR (geo:) only when that option is on."
     },
     "Residents": {
       "Description": "Page 3 of the building form. Every reading is logged.",
@@ -332,6 +335,13 @@
       "REFUSED": "The manager did not allow this file (match with {name}).",
       "CANCELLED": "This question was withdrawn (match with {name}).",
       "USED": "This file is already registered (match with {name})."
+    },
+    "Paper": {
+      "Title": "Numbers already on paper",
+      "Client": "Client's file number («رقم الملف»)",
+      "File": "Registration number («رقم التسجيل»)",
+      "Reason": "Why these numbers",
+      "Hint": "Only for a form filled by hand before the program. Left empty, the program numbers the file itself. The reason is kept in the log."
     }
   },
   "FilePrint": {
@@ -522,6 +532,12 @@
       "MORE_WORKERS": "More workers",
       "FEWER_VISITS": "Fewer visits",
       "ADD_PERIODIC_SERVICES": "Add periodic services"
+    },
+    "Interest": {
+      "HIGH": "High",
+      "MEDIUM": "Medium",
+      "LOW": "Low",
+      "NONE": "None"
     }
   },
   "Errors": {
@@ -584,7 +600,16 @@
     "ContractEndFuture": "A contract is ended on the day it ends, not before.",
     "FileContractEndBeforeStart": "A contract cannot end before it starts.",
     "ClausesLocked": "A signed contract keeps the clauses it was signed with.",
-    "ClauseText": "Every clause needs its text."
+    "ClauseText": "Every clause needs its text.",
+    "SiteLatitude": "The latitude is a number between -90 and 90.",
+    "SiteLongitude": "The longitude is a number between -180 and 180.",
+    "RepVisitNotFound": "This visit of the sales rep does not exist.",
+    "RepVisitRep": "Choose the sales rep who made the visit.",
+    "RepVisitProspect": "The prospect's name is required.",
+    "RepVisitFuture": "A visit cannot be dated after today.",
+    "ContactName": "The contact's name is required.",
+    "ContactNotFound": "This contact does not exist.",
+    "SiteHasCoordinator": "This site already has a coordinator."
   },
   "Alerts": {
     "QuoteFollowUp": {
@@ -825,7 +850,26 @@
     "Sites": "Sites",
     "Files": "Files",
     "Closed": "Closed",
-    "OpenFile": "Open"
+    "OpenFile": "Open",
+    "Contacts": "Contact people",
+    "AddContact": "Add a person",
+    "EditContact": "Change",
+    "RemoveContact": "Take off",
+    "RemoveContactHint": "Say why this person is taken off the card.",
+    "NoContacts": "No contact person yet.",
+    "ContactName": "Name",
+    "ContactRole": "Role",
+    "ContactSite": "Site",
+    "AllSites": "All his sites",
+    "ContactSaved": "The contact person was saved.",
+    "ContactRemoved": "The contact person was taken off.",
+    "ContactFlags": {
+      "signsHandover": "Signs the hand-over",
+      "receivesInvoice": "Receives the invoice",
+      "isCoordinator": "Coordinator of the site",
+      "holdsKey": "Holds a key",
+      "followsService": "Follows the service"
+    }
   },
   "Contract": {
     "Renew": "Renew the contract",
@@ -866,5 +910,72 @@
     "RestrictedCount": "{count} residents on the list. It is open only to those allowed to read it.",
     "Title": "List of residents ({count})",
     "Empty": "Nobody on the list."
+  },
+  "RepVisits": {
+    "Title": "Visit of the sales rep",
+    "NewTitle": "New visit of the sales rep",
+    "New": "New visit",
+    "NotFound": "This visit does not exist.",
+    "Columns": {
+      "Date": "Date",
+      "Prospect": "Prospect",
+      "Rep": "Sales rep",
+      "Interest": "Interest",
+      "CallBack": "Call back"
+    },
+    "Converted": "Became a file",
+    "Due": "To call",
+    "Open": "Open",
+    "SearchPlaceholder": "Prospect, contact, phone or rep",
+    "All": "All",
+    "DueOnly": "Calls due",
+    "Empty": "No visit.",
+    "ToFile": "Open a file from this visit",
+    "OpenFile": "File {number}",
+    "CallBackDone": "Call made",
+    "CalledBack": "The call was noted.",
+    "TheVisit": "The visit",
+    "Date": "Date of the visit",
+    "Rep": "Sales rep",
+    "Choose": "Choose",
+    "Prospect": "The prospect",
+    "ProspectName": "Name",
+    "ProspectKind": "Division",
+    "Activity": "Activity",
+    "Phone": "Phone",
+    "ContactName": "Person met",
+    "ContactRole": "Their role",
+    "Address": "Address",
+    "Commune": "Commune",
+    "Outcome": "What came of it",
+    "Interest": "Interest",
+    "NotSaid": "Not said",
+    "CallBackDate": "Call back on",
+    "OutcomeText": "Outcome and next step",
+    "Note": "Note",
+    "LeftProfile": "The centre's presentation was left",
+    "Save": "Save the visit",
+    "Saved": "The visit was saved.",
+    "Unchanged": "Nothing changed.",
+    "SaveFailed": "Could not save the visit."
+  },
+  "PendingQuotes": {
+    "Title": "Quotes waiting for an answer",
+    "Description": "Issued quotes without the client's answer: the last call and the next one.",
+    "Columns": {
+      "Quote": "Quote",
+      "Client": "Client",
+      "Answer": "Answer",
+      "LastCall": "Last call",
+      "NextCall": "Next call",
+      "Total": "Amount"
+    },
+    "CallDue": "Call due",
+    "NoCallYet": "No call yet",
+    "Open": "Open",
+    "All": "All waiting",
+    "DueOnly": "Calls due",
+    "None": "No quote is waiting for an answer.",
+    "NoneDue": "No call is due."
   }
 }

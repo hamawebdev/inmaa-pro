@@ -9,7 +9,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { formatSheetDate } from "@/features/clients/forms/answers";
+import { ScreenDate } from "@/features/clients/components/screen-date";
 import { countResidentsQuery } from "@/features/clients/services/contracts";
 import { fileQueryPath, getFileHubQuery, openResidentListAction } from "@/features/clients/services/file-reads";
 import { useCan, useSectionLevel } from "@/hooks/use-session";
@@ -108,7 +108,7 @@ export default function FileResidentsPage() {
                     <span className="min-w-0 flex-1 truncate font-medium">{resident.name}</span>
                     {resident.phone && <Ltr className="text-muted-foreground tabular-nums">{resident.phone}</Ltr>}
                     {resident.registeredDate && (
-                      <Ltr className="text-muted-foreground">{formatSheetDate(resident.registeredDate)}</Ltr>
+                      <ScreenDate className="text-muted-foreground" date={resident.registeredDate} />
                     )}
                   </li>
                 ))}

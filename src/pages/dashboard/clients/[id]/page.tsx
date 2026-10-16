@@ -14,8 +14,8 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ScreenDate } from "@/features/clients/components/screen-date";
 import { Fact, FieldGrid, TextField } from "@/features/clients/components/part-fields";
-import { formatSheetDate } from "@/features/clients/forms/answers";
 import {
   CLIENTS_PATH,
   openClientCardAction,
@@ -31,6 +31,8 @@ import { pathKey } from "@/lib/compat/revalidate";
 import { fileHubHref } from "@/navigation/file-parts";
 
 import { stageTone } from "../../files/_components/stage-tone";
+
+import { ContactsCard } from "./_components/contacts-card";
 
 /**
  * A client's card (plan feature 1): who he is, the identifiers his invoices
@@ -188,6 +190,8 @@ export default function ClientCardPage() {
           </Card>
         </form>
 
+        <ContactsCard client={client} writes={writes} />
+
         <SanctionCard subjectKind="CLIENT" subjectId={client.id} />
 
         <Card>
@@ -223,7 +227,7 @@ export default function ClientCardPage() {
                   <span className="min-w-0 truncate">{kindLabel(file.formKind)}</span>
                   <StatusChip tone={stageTone(file.stage)} label={stageLabel(file.stage)} />
                   {file.closed && <StatusChip tone="danger" label={t("Closed")} />}
-                  <Ltr className="text-muted-foreground">{formatSheetDate(file.registrationDate)}</Ltr>
+                  <ScreenDate className="text-muted-foreground" date={file.registrationDate} />
                   <Button variant="outline" size="sm" asChild className="ms-auto">
                     <Link to={fileHubHref(file.id)}>
                       <FolderOpen />

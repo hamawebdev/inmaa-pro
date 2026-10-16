@@ -16,10 +16,10 @@ export function registerAlerts(register: RegisterAlert) {
     name: "QuoteFollowUp",
     icon: PhoneCall,
     leadSetting: "alerts.quoteFollowUpDays",
-    route: "/dashboard/files?stage=QUOTE",
+    route: "/dashboard/files/quotes?due=1",
     count: async (ex, ctx, { days }) => {
-      const { count, fileIds } = await quotesToFollowUp(ex, ctx, { days: days ?? 3 });
-      return { count, route: `/dashboard/files?ids=${fileIds.join(",")}` };
+      const { count } = await quotesToFollowUp(ex, ctx, { days: days ?? 3 });
+      return count;
     },
   });
 }

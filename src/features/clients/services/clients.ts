@@ -3,7 +3,8 @@ import { z } from "zod";
 import { getSanctionStates } from "@/features/people/services/sanctions";
 import type { SanctionState } from "@/features/people/validators/staff-codes";
 import { requireSection } from "@/lib/access/session";
-import { logChange, logConsult } from "@/lib/log";
+import { newId } from "@/lib/db/rows";
+import { logChange, logCollect, logConsult, logErase } from "@/lib/log";
 import { action, query } from "@/lib/service/action";
 import { changedColumns } from "@/lib/service/changes";
 import type { Executor, ServiceContext } from "@/lib/service/context";
@@ -154,6 +155,26 @@ export interface ClientIdentifiers {
   note: string | null;
 }
 
+export const CONTACT_FLAGS = [
+  "signsHandover",
+  "receivesInvoice",
+  "isCoordinator",
+  "holdsKey",
+  "followsService",
+] as const;
+export type ContactFlag = (typeof CONTACT_FLAGS)[number];
+
+export interface ContactView {
+  id: string;
+  name: string;
+  role: string | null;
+  phone: string | null;
+  phone2: string | null;
+  siteId: string | null;
+  note: string | null;
+  flags: Record<ContactFlag, boolean>;
+}
+
 export interface ClientCard {
   id: string;
   number: string;
@@ -166,6 +187,7 @@ export interface ClientCard {
   phone: string;
   identifiers: ClientIdentifiers;
   missingIdentifiers: MissingIdentifier[];
+  contacts: ContactView[];
   sites: {
     id: string;
     division: Division;
@@ -221,7 +243,7 @@ export async function openClientCard(
     });
   }
 
-  const [sites, files] = await Promise.all([
+  const [sites, files, contacts] = await Promise.all([
     ex
       .selectFrom("Site as s")
       .leftJoin("Commune as m", "m.id", "s.communeId")
@@ -249,6 +271,13 @@ export async function openClientCard(
       .orderBy("registrationDate", "desc")
       .orderBy("createdAt", "desc")
       .execute(),
+    ex
+      .selectFrom("Contact")
+      .selectAll()
+      .where("clientId", "=", client.id)
+      .where("deletedAt", "is", null)
+      .orderBy("createdAt")
+      .execute(),
   ]);
   return {
     id: client.id,
@@ -273,6 +302,19 @@ export async function openClientCard(
       note: client.note,
     },
     missingIdentifiers: missingIdentifiersOf(client),
+    contacts: contacts.map((contact) => ({
+      id: contact.id,
+      name: contact.name,
+      role: contact.role,
+      phone: contact.phone,
+      phone2: contact.phone2,
+      siteId: contact.siteId,
+      note: contact.note,
+      flags: Object.fromEntries(CONTACT_FLAGS.map((flag) => [flag, contact[flag] === 1])) as Record<
+        ContactFlag,
+        boolean
+      >,
+    })),
     sites: sites.map((site) => ({
       id: site.id,
       division: site.division as Division,
@@ -373,7 +415,161 @@ export async function saveClientIdentifiers(
   return { clientId: before.id, changed: true };
 }
 
+export const contactSchema = z.object({
+  name: z.string().trim().min(1, "The contact's name is required.").max(200),
+  role: optionalText(100),
+  phone: optionalText(30).refine(
+    (value) => value === null || /^\d{9,10}$/.test(value.replace(/[\s./-]/g, "")),
+    "The phone number has 9 or 10 digits.",
+  ),
+  phone2: optionalText(30).refine(
+    (value) => value === null || /^\d{9,10}$/.test(value.replace(/[\s./-]/g, "")),
+    "The phone number has 9 or 10 digits.",
+  ),
+  siteId: z.string().nullable(),
+  note: optionalText(1000),
+  flags: z.object(
+    Object.fromEntries(CONTACT_FLAGS.map((flag) => [flag, z.boolean()])) as Record<ContactFlag, z.ZodBoolean>,
+  ),
+});
+export type ContactInput = z.input<typeof contactSchema>;
+
+/**
+ * A contact person of the client (his forms' people on site): who signs the
+ * hand-over, receives the invoice, coordinates the site, holds a key, follows
+ * the service. One coordinator per site.
+ */
+export async function saveContact(
+  ex: Executor,
+  ctx: ServiceContext,
+  input: { clientId: string; contactId?: string | null; contact: ContactInput },
+): Promise<{ contactId: string; changed: boolean }> {
+  requireSection(ctx, "REQUESTS", "WRITE");
+  const parsed = contactSchema.safeParse(input.contact);
+  if (!parsed.success) throw new ServiceError(parsed.error.issues[0]?.message ?? "Invalid form submission.");
+  const contact = parsed.data;
+  const client = await ex
+    .selectFrom("Client")
+    .select(["id", "name"])
+    .where("id", "=", input.clientId)
+    .where("deletedAt", "is", null)
+    .executeTakeFirst();
+  if (!client) throw new ServiceError("This client does not exist.");
+  if (contact.siteId) {
+    const site = await ex
+      .selectFrom("Site")
+      .select("id")
+      .where("id", "=", contact.siteId)
+      .where("clientId", "=", client.id)
+      .executeTakeFirst();
+    if (!site) throw new ServiceError("This site is not one of this client's sites in this division.");
+    if (contact.flags.isCoordinator) {
+      let other = ex
+        .selectFrom("Contact")
+        .select("id")
+        .where("siteId", "=", contact.siteId)
+        .where("isCoordinator", "=", 1)
+        .where("deletedAt", "is", null);
+      if (input.contactId) other = other.where("id", "<>", input.contactId);
+      if (await other.executeTakeFirst()) throw new ServiceError("This site already has a coordinator.");
+    }
+  }
+  const columns = {
+    name: contact.name,
+    role: contact.role,
+    phone: contact.phone,
+    phone2: contact.phone2,
+    siteId: contact.siteId,
+    note: contact.note,
+    ...Object.fromEntries(CONTACT_FLAGS.map((flag) => [flag, contact.flags[flag] ? 1 : 0])),
+  };
+  const log = { owner: "CLIENTS", entity: "Contact" } as const;
+  if (input.contactId) {
+    const before = await ex
+      .selectFrom("Contact")
+      .selectAll()
+      .where("id", "=", input.contactId)
+      .where("clientId", "=", client.id)
+      .where("deletedAt", "is", null)
+      .executeTakeFirst();
+    if (!before) throw new ServiceError("This contact does not exist.");
+    const { set, changes } = changedColumns(before, columns);
+    if (!changes) return { contactId: before.id, changed: false };
+    await ex
+      .updateTable("Contact")
+      .set({ ...set, updatedAt: ctx.now, updatedByUserId: ctx.userId })
+      .where("id", "=", before.id)
+      .execute();
+    await logChange(ex, ctx, {
+      ...log,
+      action: "UPDATE",
+      entityId: before.id,
+      entityLabel: contact.name,
+      subject: { kind: "CONTACT", id: before.id, label: contact.name },
+      changes,
+    });
+    return { contactId: before.id, changed: true };
+  }
+  const id = newId();
+  await ex
+    .insertInto("Contact")
+    .values({
+      id,
+      clientId: client.id,
+      ...(columns as typeof columns & Record<ContactFlag, number>),
+      createdAt: ctx.now,
+      updatedAt: ctx.now,
+      createdByUserId: ctx.userId,
+      updatedByUserId: ctx.userId,
+    })
+    .execute();
+  await logCollect(ex, ctx, {
+    ...log,
+    action: "CREATE",
+    entityId: id,
+    entityLabel: contact.name,
+    subject: { kind: "CONTACT", id, label: contact.name },
+    context: { clientId: client.id },
+  });
+  return { contactId: id, changed: true };
+}
+
+/** A contact taken off the card, with the reason typed. */
+export async function removeContact(
+  ex: Executor,
+  ctx: ServiceContext,
+  input: { contactId: string; reason: string },
+): Promise<{ contactId: string }> {
+  requireSection(ctx, "REQUESTS", "WRITE");
+  const reason = input.reason.trim();
+  if (!reason) throw new ServiceError("A reason is required.");
+  const before = await ex
+    .selectFrom("Contact")
+    .selectAll()
+    .where("id", "=", input.contactId)
+    .where("deletedAt", "is", null)
+    .executeTakeFirst();
+  if (!before) throw new ServiceError("This contact does not exist.");
+  await ex
+    .updateTable("Contact")
+    .set({ deletedAt: ctx.now, updatedAt: ctx.now, updatedByUserId: ctx.userId })
+    .where("id", "=", before.id)
+    .execute();
+  await logErase(ex, ctx, {
+    owner: "CLIENTS",
+    action: "SOFT_DELETE",
+    reason,
+    entity: "Contact",
+    entityId: before.id,
+    entityLabel: before.name,
+    subject: { kind: "CONTACT", id: before.id, label: before.name },
+  });
+  return { contactId: before.id };
+}
+
 export const listClientsQuery = query(listClients);
+export const saveContactAction = action(saveContact, { revalidate: [CLIENTS_PATH] });
+export const removeContactAction = action(removeContact, { revalidate: [CLIENTS_PATH] });
 export const openClientCardAction = action(openClientCard);
 export const saveClientIdentifiersAction = action(saveClientIdentifiers, {
   revalidate: [CLIENTS_PATH, FILES_PATH],

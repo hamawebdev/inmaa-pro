@@ -85,6 +85,22 @@ export const SITE_OFFICE_TEXTS = [
 /** The site office block's whole numbers. */
 export const SITE_OFFICE_COUNTS = ["buildingsCount", "keyCount"] as const;
 
+/** The site's coordinates, typed in degrees and kept in micro-degrees. */
+export const SITE_OFFICE_COORDINATES = [
+  ["latitude", 90, "The latitude is a number between -90 and 90."],
+  ["longitude", 180, "The longitude is a number between -180 and 180."],
+] as const;
+
+/** Degrees as typed («35.8754», «7,1135», «-0.5») in micro-degrees, or the reason it is not one. */
+export function parseDegrees(typed: string, limit: number, message: string): { value: number } | { message: string } {
+  const match = /^(-?)(\d+)(?:\.(\d{1,6}))?$/.exec(normaliseTyped(typed));
+  if (!match) return { message };
+  const value = (match[1] ? -1 : 1) * (Number(match[2]) * 1_000_000 + Number((match[3] ?? "").padEnd(6, "0")));
+  return Math.abs(value) > limit * 1_000_000 ? { message } : { value };
+}
+
+const degreesText = (value: unknown) => (typeof value === "number" ? String(value / 1_000_000) : "");
+
 // ── Typed numbers ────────────────────────────────────────────────────────────
 
 /** Digits as typed on an Arabic keyboard become ASCII; spaces and thousands marks go; a comma is a decimal point. */
@@ -186,6 +202,7 @@ export function screenStateOf(
     const count = siteOffice[key];
     site[key] = typeof count === "number" ? String(count) : "";
   }
+  for (const [key] of SITE_OFFICE_COORDINATES) site[key] = degreesText(siteOffice[key]);
   for (const key of SITE_OFFICE_SETS)
     site[key] = [...((siteOffice[key] as readonly string[] | null | undefined) ?? [])];
   for (const key of SITE_OFFICE_FLAGS) site[key] = siteOffice[key] === true;
@@ -335,6 +352,14 @@ export function parseFileScreen(kind: FormKind, state: FileScreenState): ParsedF
   }
   if (site.allowedFrom && site.allowedTo && (site.allowedFrom as string) >= (site.allowedTo as string)) {
     issues.push({ path: "site.allowedTo", message: "The allowed hours must end after they start." });
+  }
+  for (const [key, limit, message] of SITE_OFFICE_COORDINATES) {
+    const typed = text(state.site[key]);
+    site[key] = null;
+    if (typed === "") continue;
+    const parsed = parseDegrees(typed, limit, message);
+    if ("message" in parsed) issues.push({ path: `site.${key}`, message: parsed.message });
+    else site[key] = parsed.value;
   }
   for (const key of SITE_OFFICE_COUNTS) {
     const typed = text(state.site[key]);

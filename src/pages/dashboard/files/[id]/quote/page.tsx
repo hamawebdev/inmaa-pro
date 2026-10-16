@@ -8,6 +8,7 @@ import { StatusChip } from "@/components/status-chip";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ScreenDate } from "@/features/clients/components/screen-date";
 import { fileQueryPath } from "@/features/clients/services/file-reads";
 import { getFileQuotesQuery } from "@/features/clients/services/quotes";
 import { useMoneyText } from "@/hooks/use-money-text";
@@ -115,7 +116,7 @@ export default function FileQuotePage() {
                   <li key={quote.id} className="flex min-w-0 flex-wrap items-center gap-x-5 gap-y-2 py-3">
                     <Ltr className="font-medium tabular-nums">{quoteLabel(quote)}</Ltr>
                     <StatusChip tone={QUOTE_STATUS_TONE[quote.status]} label={statusLabel(quote.status)} />
-                    <Ltr className="text-muted-foreground tabular-nums">{quote.terms.date}</Ltr>
+                    <ScreenDate className="text-muted-foreground" date={quote.terms.date} />
                     <Ltr className="tabular-nums">{money(quote.total)}</Ltr>
                     {quote.status === "SUPERSEDED" && (
                       <Link

@@ -162,6 +162,21 @@ export const siteOfficeSchema = z
     landmark: text(200).nullable(),
     directions: text(1000).nullable(),
     mapLink: text(500).nullable(),
+    /** Micro-degrees (@udeg): the site's coordinates, for the optional QR on the order (`geo:<lat>,<lng>`). */
+    latitude: z
+      .number()
+      .int()
+      .min(-90_000_000, "The latitude is a number between -90 and 90.")
+      .max(90_000_000, "The latitude is a number between -90 and 90.")
+      .nullable()
+      .optional(),
+    longitude: z
+      .number()
+      .int()
+      .min(-180_000_000, "The longitude is a number between -180 and 180.")
+      .max(180_000_000, "The longitude is a number between -180 and 180.")
+      .nullable()
+      .optional(),
     floorAndDoor: text(100).nullable(),
     buildingsCount: z.number().int().min(1).max(1000).nullable(),
     keysHeld: z.boolean(),

@@ -8,7 +8,7 @@ import { newId } from "@/lib/db/rows";
 import type { DB } from "@/lib/db/schema";
 import { emit } from "@/lib/events";
 import { logChange, logCollect, logConsult, logErase } from "@/lib/log";
-import { fileSequenceKey, nextNumber } from "@/lib/numbering";
+import { claimNumber, fileSequenceKey, nextNumber } from "@/lib/numbering";
 import { action } from "@/lib/service/action";
 import { changedColumns } from "@/lib/service/changes";
 import type { Executor, ServiceContext } from "@/lib/service/context";
@@ -403,6 +403,14 @@ export interface RegisterFileInput {
   /** What the suspended-or-penalised gate handed back (People's `useSanctionGate`). */
   notTheSamePerson?: boolean;
   decisionId?: string | null;
+  /** The sales rep's visit this request came from (plan feature 40). */
+  sourceRepVisitId?: string | null;
+  /**
+   * Numbers already written on a paper form filled before the program: the
+   * client's «رقم الملف» and the file's «رقم التسجيل». Needs `file.setNumber`
+   * and the reason typed (`claimNumber`, logged).
+   */
+  paperNumbers?: { client?: number | null; file?: number | null; reason: string } | null;
 }
 
 export interface RegisteredFile {
@@ -443,6 +451,17 @@ export async function registerFile(
   }
   const answers = storedAnswersOf(kind, values);
   const audit = { formKind: kind };
+  const paper = input.paperNumbers ?? null;
+  const sourceRepVisitId = input.sourceRepVisitId ?? null;
+  if (sourceRepVisitId) {
+    const repVisit = await ex
+      .selectFrom("RepVisit")
+      .select("id")
+      .where("id", "=", sourceRepVisitId)
+      .where("deletedAt", "is", null)
+      .executeTakeFirst();
+    if (!repVisit) throw new ServiceError("This visit of the sales rep does not exist.");
+  }
 
   // ── Suspended or penalised? ──
   const returning = input.returning ?? null;
@@ -484,7 +503,16 @@ export async function registerFile(
     clientId = known.id;
     await updateClientFromSheet(ex, ctx, known, kind, values, answers.client, audit);
   } else {
-    const dossier = await nextNumber(ex, ctx, "CLIENT_DOSSIER", { date: registrationDate });
+    const claimed = paper?.client ?? null;
+    const dossier = claimed
+      ? await claimNumber(ex, ctx, "CLIENT_DOSSIER", {
+          value: claimed,
+          date: registrationDate,
+          reason: paper?.reason ?? "",
+          isFree: async () =>
+            !(await ex.selectFrom("Client").select("id").where("number", "=", String(claimed)).executeTakeFirst()),
+        })
+      : await nextNumber(ex, ctx, "CLIENT_DOSSIER", { date: registrationDate });
     clientId = newId();
     const phone1 = textOrNull(values.phone)!;
     const managerName = textOrNull(values.managerName);
@@ -587,7 +615,21 @@ export async function registerFile(
   }
 
   // ── The file ──
-  const number = await nextNumber(ex, ctx, fileSequenceKey(kind), { date: registrationDate });
+  const claimedFile = paper?.file ?? null;
+  const number = claimedFile
+    ? await claimNumber(ex, ctx, fileSequenceKey(kind), {
+        value: claimedFile,
+        date: registrationDate,
+        reason: paper?.reason ?? "",
+        isFree: async () =>
+          !(await ex
+            .selectFrom("File")
+            .select("id")
+            .where("formKind", "=", kind)
+            .where("numberSeq", "=", claimedFile)
+            .executeTakeFirst()),
+      })
+    : await nextNumber(ex, ctx, fileSequenceKey(kind), { date: registrationDate });
   const suffixes = await getSetting(ex, "numbering.fileSuffix");
   const fileId = newId();
   await ex
@@ -596,6 +638,7 @@ export async function registerFile(
       ...answers.file,
       ...fileOfficeColumns(office),
       id: fileId,
+      sourceRepVisitId,
       formKind: kind,
       numberSeq: number.seq,
       numberSuffix: (suffixes[kind] ?? "").trim(),
@@ -671,6 +714,30 @@ export async function registerFile(
     await saveResidents(ex, ctx, { id: siteId }, residents, undefined, { fileId, formKind: kind }, true);
   }
 
+  // The rep's visit now names the client it became.
+  if (sourceRepVisitId) {
+    const repVisit = await ex
+      .selectFrom("RepVisit")
+      .select(["id", "clientId", "prospectName"])
+      .where("id", "=", sourceRepVisitId)
+      .executeTakeFirstOrThrow();
+    if (repVisit.clientId === null) {
+      await ex
+        .updateTable("RepVisit")
+        .set({ clientId, updatedAt: ctx.now, updatedByUserId: ctx.userId })
+        .where("id", "=", repVisit.id)
+        .execute();
+      await logChange(ex, ctx, {
+        owner: "CLIENTS",
+        action: "UPDATE",
+        entity: "RepVisit",
+        entityId: repVisit.id,
+        entityLabel: repVisit.prospectName,
+        changes: { clientId: [null, clientId] },
+        context: { fileId },
+      });
+    }
+  }
   return { fileId, clientId, siteId, number: number.display };
 }
 

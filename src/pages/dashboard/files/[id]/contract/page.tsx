@@ -15,8 +15,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ScreenDate } from "@/features/clients/components/screen-date";
 import { ChoiceField, Fact, FieldGrid, TextField } from "@/features/clients/components/part-fields";
-import { formatSheetDate } from "@/features/clients/forms/answers";
 import {
   EARLY_END_KINDS,
   endContractAction,
@@ -151,15 +151,11 @@ export default function FileContractPage() {
           </CardHeader>
           <CardContent>
             <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <Fact label={t("Start")} ltr>
-                {data.startDate ? formatSheetDate(data.startDate) : null}
-              </Fact>
-              <Fact label={t("End")} ltr>
-                {data.endDate ? formatSheetDate(data.endDate) : null}
-              </Fact>
+              <Fact label={t("Start")}>{data.startDate ? <ScreenDate date={data.startDate} /> : null}</Fact>
+              <Fact label={t("End")}>{data.endDate ? <ScreenDate date={data.endDate} /> : null}</Fact>
               {data.endedDate && (
-                <Fact label={t("EndedOn")} ltr>
-                  {formatSheetDate(data.endedDate)}
+                <Fact label={t("EndedOn")}>
+                  <ScreenDate date={data.endedDate} />
                 </Fact>
               )}
               {data.endKind && <Fact label={t("EndKind")}>{endLabel(data.endKind)}</Fact>}

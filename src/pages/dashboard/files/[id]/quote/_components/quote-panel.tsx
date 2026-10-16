@@ -12,6 +12,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { ScreenDate } from "@/features/clients/components/screen-date";
 import { ChoiceField, Fact, FieldGrid, TextField } from "@/features/clients/components/part-fields";
 import {
   addQuoteFollowUpAction,
@@ -173,15 +174,13 @@ export function QuotePanel({
         {children ?? (
           <>
             <div className="grid min-w-0 grid-cols-2 gap-4 lg:grid-cols-4">
-              <Fact label={t("Date")} ltr>
-                {quote.terms.date}
+              <Fact label={t("Date")}>
+                <ScreenDate date={quote.terms.date} />
               </Fact>
-              <Fact label={t("ValidUntil")} ltr>
-                {quote.terms.validUntil}
+              <Fact label={t("ValidUntil")}>
+                {quote.terms.validUntil ? <ScreenDate date={quote.terms.validUntil} /> : null}
               </Fact>
-              <Fact label={t("IssuedOn")} ltr>
-                {quote.issuedDate}
-              </Fact>
+              <Fact label={t("IssuedOn")}>{quote.issuedDate ? <ScreenDate date={quote.issuedDate} /> : null}</Fact>
               <Fact label={t("Total")} ltr>
                 {money(quote.total)}
               </Fact>
@@ -270,12 +269,10 @@ function Answer({ quote }: { quote: QuoteView }) {
   if (quote.result === "PENDING") return null;
   return (
     <div className="grid min-w-0 grid-cols-2 gap-4 lg:grid-cols-4">
-      <Fact label={t("AnswerDate")} ltr>
-        {quote.resultDate}
-      </Fact>
+      <Fact label={t("AnswerDate")}>{quote.resultDate ? <ScreenDate date={quote.resultDate} /> : null}</Fact>
       {quote.postponedUntil && (
-        <Fact label={t("PostponedUntil")} ltr>
-          {quote.postponedUntil}
+        <Fact label={t("PostponedUntil")}>
+          <ScreenDate date={quote.postponedUntil} />
         </Fact>
       )}
       <Fact label={t("AnswerNote")} className="col-span-2">
@@ -419,11 +416,11 @@ function FollowUps({
         <ul className="space-y-2">
           {quote.followUps.map((followUp) => (
             <li key={followUp.id} className="flex min-w-0 flex-wrap items-baseline gap-x-4 gap-y-1">
-              <Ltr className="shrink-0 tabular-nums">{followUp.date}</Ltr>
+              <ScreenDate className="shrink-0" date={followUp.date} />
               <span className="min-w-0 break-words">{followUp.note ?? "—"}</span>
               {followUp.nextFollowUpDate && (
                 <span className="text-sm text-muted-foreground">
-                  {t("NextFollowUp")} <Ltr className="tabular-nums">{followUp.nextFollowUpDate}</Ltr>
+                  {t("NextFollowUp")} <ScreenDate date={followUp.nextFollowUpDate} />
                 </span>
               )}
             </li>

@@ -11,6 +11,7 @@ import {
 } from "./validators/option-lists";
 import { CONDITION_FACTORS, FIRST_VISIT_RECOMMENDATIONS, FIRST_VISIT_RESULTS } from "./validators/first-visit";
 import { COST_LINES, QUOTE_LINE_KINDS, QUOTE_RESULTS, QUOTE_STATUSES } from "./validators/pricing";
+import { INTERESTS } from "./validators/rep-visit";
 
 /**
  * The stored codes this folder shows through `useCodeLabel`, each paired with
@@ -51,6 +52,7 @@ export const codeLabelCases: readonly CodeLabelCase[] = [
   ["FileOptions.QuoteResult", QUOTE_RESULTS],
   ["FileOptions.QuoteLineKind", QUOTE_LINE_KINDS],
   ["FileOptions.FirstVisitResult", FIRST_VISIT_RESULTS],
+  ["FileOptions.Interest", INTERESTS],
   ["FileOptions.ConditionFactor", CONDITION_FACTORS],
   ["FileOptions.FirstVisitRecommendation", FIRST_VISIT_RECOMMENDATIONS],
 ];

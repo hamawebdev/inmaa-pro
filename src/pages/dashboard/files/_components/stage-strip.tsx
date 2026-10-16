@@ -9,7 +9,7 @@ import { Ltr } from "@/components/ltr";
 import { StatusChip } from "@/components/status-chip";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { formatSheetDate } from "@/features/clients/forms/answers";
+import { useDateText } from "@/features/clients/components/use-date-text";
 import { labelKeyOf } from "@/features/clients/forms/screen-labels";
 import type { FileHub, StageOption } from "@/features/clients/services/file-reads";
 import { moveFileStageAction, STAGE_REFUSALS } from "@/features/clients/services/files";
@@ -32,6 +32,7 @@ import { stageTone } from "./stage-tone";
  */
 export function StageStrip({ hub }: { hub: FileHub }) {
   const t = useTranslations("FileHub");
+  const dates = useDateText();
   const tForm = useTranslations("FileForm");
   const stageLabel = useCodeLabel("Options.FileStage");
   const closeLabel = useCodeLabel("FileOptions.CloseReason");
@@ -113,9 +114,7 @@ export function StageStrip({ hub }: { hub: FileHub }) {
             );
           })}
         </ol>
-        <p className="text-sm text-muted-foreground">
-          {t("StageSince", { date: formatSheetDate(hub.stageChangedOn) })}
-        </p>
+        <p className="text-sm text-muted-foreground">{t("StageSince", { date: dates.long(hub.stageChangedOn) })}</p>
 
         {canWrite && !hub.closed && hub.nextStages.length > 0 && (
           <div className="space-y-3">

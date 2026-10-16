@@ -13,7 +13,7 @@ export async function quotesToFollowUp(
   ex: Executor,
   ctx: ServiceContext,
   input: { days: number },
-): Promise<{ count: number; fileIds: string[] }> {
+): Promise<{ count: number; fileIds: string[]; quoteIds: string[] }> {
   const quotes = await ex
     .selectFrom("Quote")
     .select(["id", "fileId", "issuedDate", "result", "postponedUntil"])
@@ -26,7 +26,7 @@ export async function quotesToFollowUp(
       ]),
     )
     .execute();
-  if (quotes.length === 0) return { count: 0, fileIds: [] };
+  if (quotes.length === 0) return { count: 0, fileIds: [], quoteIds: [] };
 
   const followUps = await ex
     .selectFrom("QuoteFollowUp")
@@ -47,5 +47,5 @@ export async function quotesToFollowUp(
     return last !== "" && last <= cutOff;
   });
   const fileIds = [...new Set(due.map((quote) => quote.fileId))];
-  return { count: due.length, fileIds };
+  return { count: due.length, fileIds, quoteIds: due.map((quote) => quote.id) };
 }

@@ -39,7 +39,7 @@ it("counts the quotes left without an answer for three days, and not the ones be
 
   // The list the tile opens is their files, each once.
   const files = [...new Set([waiting.fileId, noAnswer.fileId])].sort();
-  expect(await due()).toEqual({ count: 2, fileIds: expect.arrayContaining(files) });
+  expect(await due()).toMatchObject({ count: 2, fileIds: expect.arrayContaining(files) });
 
   // A call made yesterday puts it back three days; a call planned for later takes it off the list.
   await test.rows.insert("QuoteFollowUp", { quoteId: waiting.id, date: "2026-10-11" as never });
@@ -48,7 +48,7 @@ it("counts the quotes left without an answer for three days, and not the ones be
     date: "2026-10-05" as never,
     nextFollowUpDate: "2026-10-14" as never,
   });
-  expect(await due()).toEqual({ count: 0, fileIds: [] });
+  expect(await due()).toEqual({ count: 0, fileIds: [], quoteIds: [] });
 
   // Three days on, the call made on the 11th is due again, the planned call has passed, and the quote of the 10th is due.
   test.clock.advance({ days: 3 });

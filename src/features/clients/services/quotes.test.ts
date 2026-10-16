@@ -16,6 +16,7 @@ import {
   getFileQuotes,
   getQuoteSheet,
   issueQuote,
+  listPendingQuotes,
   recordQuoteResult,
   reviseQuote,
   saveQuote,
@@ -320,6 +321,17 @@ describe("a quote", () => {
       }),
     );
     expect(await due()).toBe(0);
+    const pending = await test.transact((ex, ctx) => listPendingQuotes(ex, ctx, {}));
+    expect(pending).toMatchObject([
+      {
+        quoteId: saved.quoteId,
+        clientName: "بن صالح كريمة",
+        lastFollowUp: { date: "2026-10-16", note: "ستجيب بعد أسبوع" },
+        nextFollowUpDate: "2026-10-23",
+        due: false,
+      },
+    ]);
+    expect(await test.transact((ex, ctx) => listPendingQuotes(ex, ctx, { dueOnly: true }))).toEqual([]);
     const view = await test.transact((ex, ctx) => getFileQuotes(ex, ctx, { fileId }));
     expect(view.quotes[0].followUps).toMatchObject([{ date: "2026-10-16", nextFollowUpDate: "2026-10-23" }]);
   });

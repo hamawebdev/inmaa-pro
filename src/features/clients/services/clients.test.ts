@@ -5,7 +5,14 @@ import { createTestDatabase, type TestDatabase } from "@/testing/database";
 
 import { DEMO_FILES } from "../demo";
 
-import { listClients, openClientCard, saveClientIdentifiers } from "./clients";
+import {
+  listClients,
+  openClientCard,
+  removeContact,
+  saveClientIdentifiers,
+  saveContact,
+  type ContactInput,
+} from "./clients";
 import { getFileHub } from "./file-reads";
 import { registerFile, type RegisterFileInput } from "./files";
 
@@ -95,4 +102,31 @@ it("refuses who only reads the requests, and a phone that is not one", async () 
       saveClientIdentifiers(ex, ctx, { clientId: org.clientId, identifiers: { phone2: "12" } }),
     ),
   ).rejects.toThrow("The phone number has 9 or 10 digits.");
+});
+
+it("keeps the client's contact people with their five flags, one coordinator per site", async () => {
+  const org = await register("orgContract");
+  const contact = (more: Partial<ContactInput> = {}): ContactInput => ({
+    name: "قاسمي نادية",
+    role: "مديرة",
+    phone: "0661 11 22 33",
+    phone2: null,
+    siteId: org.siteId,
+    note: null,
+    flags: { signsHandover: true, receivesInvoice: true, isCoordinator: true, holdsKey: false, followsService: true },
+    ...more,
+  });
+  const { contactId } = await test.transact((ex, ctx) =>
+    saveContact(ex, ctx, { clientId: org.clientId, contact: contact() }),
+  );
+  await expect(
+    test.transact((ex, ctx) => saveContact(ex, ctx, { clientId: org.clientId, contact: contact({ name: "بن علي" }) })),
+  ).rejects.toThrow("This site already has a coordinator.");
+  const card = await test.transact((ex, ctx) => openClientCard(ex, ctx, { clientId: org.clientId }));
+  expect(card.contacts).toMatchObject([{ id: contactId, flags: { isCoordinator: true, holdsKey: false } }]);
+  await expect(test.transact((ex, ctx) => removeContact(ex, ctx, { contactId, reason: "" }))).rejects.toThrow(
+    "A reason is required.",
+  );
+  await test.transact((ex, ctx) => removeContact(ex, ctx, { contactId, reason: "غادرت الشركة" }));
+  expect((await test.transact((ex, ctx) => openClientCard(ex, ctx, { clientId: org.clientId }))).contacts).toEqual([]);
 });

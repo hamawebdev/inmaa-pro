@@ -6,12 +6,12 @@ import { useParams } from "react-router-dom";
 import { useTranslations } from "use-intl";
 
 import { DetailScreen } from "@/components/detail-screen";
-import { Ltr } from "@/components/ltr";
 import { StatusChip } from "@/components/status-chip";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { ScreenDate } from "@/features/clients/components/screen-date";
 import { fileQueryPath } from "@/features/clients/services/file-reads";
 import { getFirstVisitsQuery } from "@/features/clients/services/first-visits";
 import { emptyFirstVisit } from "@/features/clients/validators/first-visit";
@@ -95,7 +95,7 @@ export default function FileInspectionPage() {
           >
             {data.visits.map((one) => (
               <ToggleGroupItem key={one.id} value={one.id} className={cn("px-5", accent.segment)}>
-                <Ltr className="tabular-nums">{one.visit.doneDate ?? one.visit.plannedDate}</Ltr>
+                <ScreenDate date={one.visit.doneDate ?? one.visit.plannedDate} />
               </ToggleGroupItem>
             ))}
           </ToggleGroup>

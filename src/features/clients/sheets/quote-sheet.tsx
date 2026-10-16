@@ -40,10 +40,15 @@ function Line({ label, children }: { label: string; children: ReactNode }) {
 export function QuoteSheet({ data }: { data: QuoteSheetData }) {
   const { quote, client, site } = data;
   const number = quote.version > 1 ? `${quote.number} (${quote.version})` : quote.number;
-  // Under VAT with prices before tax, the tax is added below the total; otherwise the total is what is paid.
-  const vatOnTop = quote.taxMode === "VAT" && quote.pricesIncludeVat === false && quote.vatRate !== null;
-  const vat = vatOnTop ? Math.round((quote.total * (quote.vatRate ?? 0)) / 10000) : 0;
-  const toPay = quote.total + vat;
+  // The tax terms frozen when the quote was issued, printed as the invoice prints them: under VAT the total
+  // before tax, the tax and the total after it; under the IFU the mention that says so.
+  const underVat = quote.taxMode === "VAT" && quote.vatRate !== null;
+  const rate = quote.vatRate ?? 0;
+  const beforeTax =
+    underVat && quote.pricesIncludeVat ? Math.round((quote.total * 10000) / (10000 + rate)) : quote.total;
+  const toPay =
+    underVat && !quote.pricesIncludeVat ? quote.total + Math.round((quote.total * rate) / 10000) : quote.total;
+  const vat = toPay - beforeTax;
   const included = (value: boolean | null) => (value === null ? null : value ? "مشمولة" : "غير مشمولة");
 
   return (
@@ -129,14 +134,14 @@ export function QuoteSheet({ data }: { data: QuoteSheetData }) {
               </SheetRow>
             </>
           )}
-          {vatOnTop && (
+          {underVat && (
             <>
               <SheetRow heightMm={9}>
                 <SheetCell colSpan={5} style={TYPE.head}>
                   المبلغ خارج الرسم
                 </SheetCell>
                 <SheetCell align="center" style={TYPE.cell}>
-                  <Ltr>{formatMoney(quote.total)}</Ltr>
+                  <Ltr>{formatMoney(beforeTax)}</Ltr>
                 </SheetCell>
               </SheetRow>
               <SheetRow heightMm={9}>
@@ -151,7 +156,7 @@ export function QuoteSheet({ data }: { data: QuoteSheetData }) {
           )}
           <SheetRow heightMm={10}>
             <SheetCell shaded colSpan={5} style={TYPE.head}>
-              المبلغ الإجمالي
+              {underVat ? "المبلغ الإجمالي مع احتساب الرسم" : "المبلغ الإجمالي"}
             </SheetCell>
             <SheetCell shaded align="center" style={TYPE.head}>
               <Ltr>{formatMoneyAr(toPay)}</Ltr>
@@ -164,8 +169,14 @@ export function QuoteSheet({ data }: { data: QuoteSheetData }) {
         <span style={{ fontWeight: 700 }}>المبلغ بالحروف: </span>
         {amountInWordsAr(toPay)}
       </p>
-      {quote.taxMode === "VAT" && quote.pricesIncludeVat === true && (
+      {underVat && quote.pricesIncludeVat === true && (
         <p style={{ ...TYPE.small, margin: "1mm 0 0" }}>الأسعار أعلاه تشمل الرسم على القيمة المضافة.</p>
+      )}
+      {quote.taxMode === "IFU" && (
+        <p style={{ ...TYPE.small, margin: "1mm 0 0" }}>
+          غير خاضع للرسم على القيمة المضافة – نظام الضريبة الجزافية الوحيدة |{" "}
+          <Ltr>Non assujetti à la TVA – régime de l&apos;IFU</Ltr>
+        </p>
       )}
 
       <div style={{ marginTop: "4mm", display: "grid", rowGap: "1mm" }}>

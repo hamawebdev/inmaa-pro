@@ -14,7 +14,9 @@ import { Field, FieldLabel } from "@/components/ui/field";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { getNewFileDefaultsQuery } from "@/features/clients/services/file-reads";
+import { getRepVisitFillQuery, type RepVisitFill } from "@/features/clients/services/rep-visits";
 import type { ReturningFillResult } from "@/features/clients/services/returning";
+import type { FormValues } from "@/features/clients/forms/values";
 import { screenStateOf, type FileScreenState } from "@/features/clients/validators/file-screen";
 import {
   DIVISIONS_WITH_REQUESTS,
@@ -56,13 +58,27 @@ import { ReturningDialog, type ReturningLink } from "../_components/returning-di
 
 const FILE_STATUSES = ["NEW", "OLD"] as const;
 
+/** A request the sales rep brought: the prospect's details on his form, «مندوب» as its source. */
+function draftOfRepVisit(fill: RepVisitFill): FileDraft {
+  const kind =
+    formKindFor(fill.division, fill.division === "HOUSING" ? "ON_DEMAND" : "CONTRACT") ??
+    formKindFor(fill.division, "CONTRACT")!;
+  const state = screenStateOf(kind, fill.values as FormValues, { source: "REP" });
+  return { kind, state, returning: null, repVisitId: fill.repVisitId };
+}
+
 /** What a question to the manager kept of the file, if it is one of ours. */
 function draftOf(payload: unknown): FileDraft | null {
   if (!payload || typeof payload !== "object") return null;
   const draft = payload as Partial<FileDraft>;
   if (typeof draft.kind !== "string" || !(draft.kind in FORM_KIND_OF)) return null;
   if (!draft.state || typeof draft.state !== "object") return null;
-  return { kind: draft.kind, state: draft.state, returning: draft.returning ?? null };
+  return {
+    kind: draft.kind,
+    state: draft.state,
+    returning: draft.returning ?? null,
+    repVisitId: draft.repVisitId ?? null,
+  };
 }
 
 function Switch<T extends string>({
@@ -114,13 +130,19 @@ export default function NewFilePage() {
   const filter = useFilesFilter();
   const [params] = useSearchParams();
   const decisionId = params.get("decision");
+  const repVisitId = params.get("repVisit");
+  const repVisit = useQuery({
+    queryKey: [...pathKey(FILES_PATH), "rep-visit-fill", repVisitId],
+    queryFn: () => getRepVisitFillQuery({ repVisitId: repVisitId ?? "" }),
+    enabled: repVisitId !== null,
+  });
 
   const { data: decision, isPending } = useQuery({
     queryKey: [...pathKey(SANCTIONS_PATH), "decision", decisionId],
     queryFn: () => getDecisionQuery({ decisionId: decisionId ?? "" }),
     enabled: decisionId !== null,
   });
-  const waiting = decisionId !== null && isPending;
+  const waiting = (decisionId !== null && isPending) || (repVisitId !== null && repVisit.isPending);
   const used = decision?.consumedAt != null;
   // His no, a withdrawn question or a yes already spent leave nothing to resume.
   const resumable = !decision || (!used && (decision.status === "ALLOWED" || decision.status === "PENDING"));
@@ -150,8 +172,8 @@ export default function NewFilePage() {
   }
   return (
     <NewFile
-      key={decisionId ?? "new"}
-      draft={draftOf(decision?.draftPayload)}
+      key={decisionId ?? repVisitId ?? "new"}
+      draft={draftOf(decision?.draftPayload) ?? (repVisit.data ? draftOfRepVisit(repVisit.data) : null)}
       decisionId={decision?.status === "ALLOWED" ? decision.id : null}
       notice={notice}
     />
@@ -319,7 +341,7 @@ function NewFile({
           <FileForm
             key={`${kind}:${fills}`}
             formKind={kind}
-            mode={{ kind: "new", returning, decisionId }}
+            mode={{ kind: "new", returning, decisionId, repVisitId: draft?.repVisitId ?? null }}
             initial={start}
             statusTicks={[returning ? "OLD" : "NEW"]}
             dossierNumber={returning?.clientNumber ?? null}

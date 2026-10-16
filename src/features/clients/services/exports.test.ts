@@ -5,7 +5,14 @@ import { createTestDatabase, type TestDatabase } from "@/testing/database";
 
 import { DEMO_FILES } from "../demo";
 
-import { getAcceptedQuote, getFileEstimate, getFileForScheduling, getSiteForOrder } from "./exports";
+import {
+  getAcceptedQuote,
+  getClientForInvoice,
+  getFileBillingTerms,
+  getFileEstimate,
+  getFileForScheduling,
+  getSiteForOrder,
+} from "./exports";
 import { closeFile, moveFileStage, registerFile, type RegisterFileInput } from "./files";
 
 let test: TestDatabase;
@@ -273,6 +280,40 @@ describe("for Money", () => {
       expect(
         await demo.transact((ex, ctx) => getFileEstimate(ex, ctx, { fileId: demo.demo.clients.buildingContract })),
       ).toEqual({ perVisitMin: null, workers: null, source: null });
+    } finally {
+      demo.close();
+    }
+  });
+});
+
+describe("the billing terms and the buyer, for Money", () => {
+  it("gives a signed file's terms and an organisation's buyer block, saying what is missing", async () => {
+    const demo = await createTestDatabase({ demo: ["clients"] });
+    try {
+      const fileId = demo.demo.clients.orgJob;
+      const terms = await demo.transact((ex, ctx) => getFileBillingTerms(ex, ctx, { fileId }));
+      expect(terms).toMatchObject({
+        stage: "CONTRACTED",
+        serviceType: "ON_DEMAND",
+        totalAmount: 3400000,
+        amountBasis: "WHOLE_CONTRACT",
+        amountIncludesVat: true,
+        paymentMethods: ["BANK_TRANSFER"],
+        renewedBy: null,
+        acceptedQuoteTotals: { INITIAL_JOB: 3200000, PERIODIC: 0, EXTRA: 350000 },
+      });
+      expect(await demo.transact((ex, ctx) => getFileBillingTerms(ex, ctx, { fileId: "nothing" }))).toBeNull();
+
+      const buyer = await demo.transact((ex, ctx) =>
+        getClientForInvoice(ex, ctx, { clientId: demo.demo.clients.orgJobClient, fileId }),
+      );
+      expect(buyer).toMatchObject({
+        name: "عيادة الشفاء الطبية",
+        hasTradeRegister: true,
+        rc: null,
+        address: "شارع أول نوفمبر، رقم 22، أم البواقي، أم البواقي",
+        missing: ["RC"],
+      });
     } finally {
       demo.close();
     }

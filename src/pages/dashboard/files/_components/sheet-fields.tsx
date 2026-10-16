@@ -455,13 +455,21 @@ export function StatusTicksField({ label, ticks }: { label: string; ticks: reado
 }
 
 /** A value the program gives: shown, never typed. */
-export function GivenValue({ label, value }: { label: string; value: string | null }) {
+export function GivenValue({ label, value, ltr = true }: { label: string; value: string | null; ltr?: boolean }) {
   const t = useTranslations("FileForm");
   return (
     <Field>
       <FieldLabel>{label}</FieldLabel>
       <p className="flex min-h-[52px] items-center rounded-lg border border-dashed px-4 text-muted-foreground">
-        {value ? <Ltr className="text-foreground">{value}</Ltr> : t("NumberOnSave")}
+        {value ? (
+          ltr ? (
+            <Ltr className="text-foreground">{value}</Ltr>
+          ) : (
+            <span className="text-foreground">{value}</span>
+          )
+        ) : (
+          t("NumberOnSave")
+        )}
       </p>
     </Field>
   );
