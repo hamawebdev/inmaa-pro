@@ -1,4 +1,5 @@
 import { requireSection } from "@/lib/access/session";
+import { staffName } from "@/lib/text/names";
 import { query } from "@/lib/service/action";
 import type { Executor, ServiceContext } from "@/lib/service/context";
 import { getSetting } from "@/lib/settings";
@@ -181,6 +182,25 @@ export interface PeriodReport {
   };
   forecast: Forecast;
   contracts: ContractLine[];
+  /** Each worker's period: the work done and what the store handed him (the per-worker report). */
+  workers: WorkerLine[];
+}
+
+export interface WorkerLine {
+  workerId: string;
+  number: string;
+  /** Surname then first name, as his form writes «اللقب و الاسم». */
+  name: string;
+  /** Visits done that he was on, and the minutes he worked on them. */
+  visits: number;
+  workedMin: number;
+  /** Visits he arrived late at (after the planned start). */
+  lateArrivals: number;
+  /** Hand-outs to him in the period; equipment still out with him today. */
+  handOuts: number;
+  equipmentOut: number;
+  /** What he lost or damaged in the period, at what it cost the store. */
+  lostOrDamaged: number;
 }
 
 const NOT_DONE: ReadonlySet<string> = new Set(["CANCELLED", "POSTPONED", "PROBLEM"]);
@@ -390,6 +410,7 @@ export async function getPeriodReport(
       ordersNotReturned,
     },
     forecast,
+    workers: await workerLines(ex, input.from, input.to),
     contracts: files
       .filter((file) => isDivision(file.division))
       .map((file) => ({
@@ -400,6 +421,112 @@ export async function getPeriodReport(
         ...lineOf(file.id),
       })),
   };
+}
+
+/**
+ * The per-worker report of a period: from the visits done (Operations' seats, read only) and the
+ * store's hand-outs and returns. Only workers with something in the period are listed.
+ */
+async function workerLines(ex: Executor, from: string, to: string): Promise<WorkerLine[]> {
+  const seats = await ex
+    .selectFrom("VisitWorker")
+    .innerJoin("Visit", "Visit.id", "VisitWorker.visitId")
+    .select(["VisitWorker.workerId", "VisitWorker.workedMin", "VisitWorker.lateMin"])
+    .where("Visit.status", "=", "DONE")
+    .where("VisitWorker.seatStatus", "=", "ASSIGNED")
+    .where("Visit.visitDate", ">=", localDate(from))
+    .where("Visit.visitDate", "<=", localDate(to))
+    .execute();
+  const handOuts = await ex
+    .selectFrom("HandOut")
+    .select(["HandOut.workerId"])
+    .where("HandOut.cancelledAt", "is", null)
+    .where("HandOut.date", ">=", localDate(from))
+    .where("HandOut.date", "<=", localDate(to))
+    .execute();
+  const returns = await ex
+    .selectFrom("HandOutReturn")
+    .innerJoin("HandOutLine", "HandOutLine.id", "HandOutReturn.handOutLineId")
+    .innerJoin("HandOut", "HandOut.id", "HandOutLine.handOutId")
+    .select(["HandOut.workerId", "HandOutReturn.qtyLost", "HandOutReturn.qtyDamaged", "HandOutLine.unitCost"])
+    .where("HandOutReturn.date", ">=", localDate(from))
+    .where("HandOutReturn.date", "<=", localDate(to))
+    .execute();
+  // Equipment out with each worker today: what his live hand-outs' equipment lines still have outside.
+  const lines = await ex
+    .selectFrom("HandOutLine")
+    .innerJoin("HandOut", "HandOut.id", "HandOutLine.handOutId")
+    .select(["HandOutLine.id", "HandOut.workerId", "HandOutLine.qty"])
+    .where("HandOut.cancelledAt", "is", null)
+    .where("HandOutLine.expectReturn", "=", 1)
+    .execute();
+  const back = lines.length
+    ? await ex
+        .selectFrom("HandOutReturn")
+        .select(["handOutLineId", "qtyReturned", "qtyLost", "qtyDamaged"])
+        .where(
+          "handOutLineId",
+          "in",
+          lines.map((line) => line.id),
+        )
+        .execute()
+    : [];
+
+  const byWorker = new Map<string, Omit<WorkerLine, "workerId" | "number" | "name">>();
+  const of = (workerId: string) => {
+    if (!byWorker.has(workerId)) {
+      byWorker.set(workerId, {
+        visits: 0,
+        workedMin: 0,
+        lateArrivals: 0,
+        handOuts: 0,
+        equipmentOut: 0,
+        lostOrDamaged: 0,
+      });
+    }
+    return (
+      byWorker.get(workerId) ?? {
+        visits: 0,
+        workedMin: 0,
+        lateArrivals: 0,
+        handOuts: 0,
+        equipmentOut: 0,
+        lostOrDamaged: 0,
+      }
+    );
+  };
+  for (const seat of seats) {
+    const line = of(seat.workerId);
+    line.visits += 1;
+    line.workedMin += seat.workedMin ?? 0;
+    if ((seat.lateMin ?? 0) > 0) line.lateArrivals += 1;
+  }
+  for (const handOut of handOuts) of(handOut.workerId).handOuts += 1;
+  for (const row of returns) {
+    of(row.workerId).lostOrDamaged += Math.round(((row.qtyLost + row.qtyDamaged) * (row.unitCost ?? 0)) / 1000);
+  }
+  for (const line of lines) {
+    const settled = back
+      .filter((row) => row.handOutLineId === line.id)
+      .reduce((sum, row) => sum + row.qtyReturned + row.qtyLost + row.qtyDamaged, 0);
+    const out = line.qty - settled;
+    // Only a worker who also did something in the period is listed for what he still holds.
+    if (out > 0 && byWorker.has(line.workerId)) of(line.workerId).equipmentOut += out;
+  }
+  if (byWorker.size === 0) return [];
+  const people = await ex
+    .selectFrom("StaffMember")
+    .select(["id", "number", "firstName", "lastName"])
+    .where("id", "in", [...byWorker.keys()])
+    .execute();
+  return people
+    .map((person) => ({
+      workerId: person.id,
+      number: person.number,
+      name: staffName(person),
+      ...of(person.id),
+    }))
+    .sort((a, b) => b.workedMin - a.workedMin || a.name.localeCompare(b.name));
 }
 
 /**

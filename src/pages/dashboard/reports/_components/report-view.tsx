@@ -30,7 +30,9 @@ export function ReportView({ report }: { report: PeriodReport }) {
   const money = useMoneyText();
   const dates = useDateText();
   const divisionLabel = useDivisionLabel();
-  const count = new Intl.NumberFormat(intlLocaleFor(useLocale()));
+  const locale = intlLocaleFor(useLocale());
+  const count = new Intl.NumberFormat(locale);
+  const hours = new Intl.NumberFormat(locale, { maximumFractionDigits: 1 });
   const { result, counts, forecast } = report;
 
   const signed = (amount: number, strong = false) => (
@@ -151,6 +153,56 @@ export function ReportView({ report }: { report: PeriodReport }) {
                 <TableCell>{signed(month.runningIfRenewed)}</TableCell>
               </TableRow>
             ))}
+          </TableBody>
+        </Table>
+      </section>
+
+      <section className="space-y-4 tall:space-y-5">
+        <SectionHeading>{t("ByWorker")}</SectionHeading>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>{t("Table.Worker")}</TableHead>
+              <TableHead>{t("Table.VisitsDone")}</TableHead>
+              <TableHead>{t("Table.Hours")}</TableHead>
+              <TableHead>{t("Table.Late")}</TableHead>
+              <TableHead>{t("Table.HandOuts")}</TableHead>
+              <TableHead>{t("Table.LostOrDamaged")}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {report.workers.length === 0 ? (
+              <TableEmpty colSpan={6}>{t("NoWorkers")}</TableEmpty>
+            ) : (
+              report.workers.map((worker) => (
+                <TableRow key={worker.workerId}>
+                  <TableCell>
+                    <span className="block max-w-40 truncate leading-tight font-bold xl:max-w-64">{worker.name}</span>
+                    <span className="block text-sm leading-tight text-muted-foreground">
+                      <Ltr>{worker.number}</Ltr>
+                    </span>
+                  </TableCell>
+                  <TableCell className="tabular-nums">{count.format(worker.visits)}</TableCell>
+                  <TableCell className="tabular-nums">{hours.format(worker.workedMin / 60)}</TableCell>
+                  <TableCell className="tabular-nums">
+                    {worker.lateArrivals > 0 ? (
+                      <span className="font-bold text-warning-ink">{count.format(worker.lateArrivals)}</span>
+                    ) : (
+                      "—"
+                    )}
+                  </TableCell>
+                  <TableCell className="tabular-nums">
+                    {count.format(worker.handOuts)}
+                    {worker.equipmentOut > 0 && (
+                      <span className="block text-sm text-muted-foreground">
+                        {t("StillOut", { count: worker.equipmentOut / 1000 })}
+                      </span>
+                    )}
+                  </TableCell>
+                  <TableCell>{worker.lostOrDamaged > 0 ? signed(-worker.lostOrDamaged) : "—"}</TableCell>
+                </TableRow>
+              ))
+            )}
           </TableBody>
         </Table>
       </section>

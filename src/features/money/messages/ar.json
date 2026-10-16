@@ -455,7 +455,13 @@
       "Invoiced": "المفوتر",
       "Received": "المحصَّل",
       "Outstanding": "الباقي اليوم",
-      "IfRenewed": "عند التجديد"
+      "IfRenewed": "عند التجديد",
+      "Worker": "العامل",
+      "VisitsDone": "الزيارات",
+      "Hours": "الساعات",
+      "Late": "التأخر",
+      "HandOuts": "التسليم",
+      "LostOrDamaged": "ضائع أو تالف"
     },
     "Figures": {
       "Invoiced": "{count, plural, =0 {المفوتر} one {المفوتر (فاتورة واحدة)} two {المفوتر (فاتورتان)} few {المفوتر (# فواتير)} many {المفوتر (# فاتورة)} other {المفوتر (# فاتورة)}}",
@@ -467,7 +473,10 @@
       "VisitsNotDone": "مؤجلة أو ملغاة أو بها مشكلة",
       "OrdersNotReturned": "أوامر مهمة لم تُسترجع"
     },
-    "PlusRenewals": "+ {amount} عند التجديد"
+    "PlusRenewals": "+ {amount} عند التجديد",
+    "ByWorker": "حسب العامل",
+    "NoWorkers": "لم يُنجز أي عامل زيارة ولم يستلم شيئًا في هذه الفترة.",
+    "StillOut": "{count, plural, one {قطعة واحدة لم تُسترجع} two {قطعتان لم تُسترجعا} few {# قطع لم تُسترجع} many {# قطعة لم تُسترجع} other {# قطعة لم تُسترجع}}"
   },
   "FileMoney": {
     "Of": "{client} · الملف {number}",

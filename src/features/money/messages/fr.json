@@ -455,7 +455,13 @@
       "Invoiced": "Facturé",
       "Received": "Encaissé",
       "Outstanding": "Dû aujourd'hui",
-      "IfRenewed": "Si renouvelé"
+      "IfRenewed": "Si renouvelé",
+      "Worker": "Agent",
+      "VisitsDone": "Visites",
+      "Hours": "Heures",
+      "Late": "Retards",
+      "HandOuts": "Remises",
+      "LostOrDamaged": "Perdu ou abîmé"
     },
     "Figures": {
       "Invoiced": "{count, plural, =0 {Facturé} one {Facturé (# facture)} other {Facturé (# factures)}}",
@@ -467,7 +473,10 @@
       "VisitsNotDone": "Reportées, annulées ou en problème",
       "OrdersNotReturned": "Ordres non encore retournés"
     },
-    "PlusRenewals": "+ {amount} si renouvelé"
+    "PlusRenewals": "+ {amount} si renouvelé",
+    "ByWorker": "Par agent",
+    "NoWorkers": "Aucun agent n'a fait de visite ni reçu de remise sur cette période.",
+    "StillOut": "{count, plural, one {# pièce dehors} other {# pièces dehors}}"
   },
   "FileMoney": {
     "Of": "{client} · dossier {number}",

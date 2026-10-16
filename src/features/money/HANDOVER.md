@@ -113,7 +113,7 @@ CSV, UTF-8 with a byte-order mark, `;` between columns, Windows line ends; amoun
 
 ## Open items
 
-- Not built: the per-worker report; renewals of contracts paid visit by visit in the forecast (their next visits are not planned).
+- Not built: renewals of contracts paid visit by visit in the forecast (their next visits are not planned).
 - «ربحية العقد» is drawn on the file's part التسديد; the hub can draw it too (`FileProfitabilityCard`, below).
 
 ## What I need from others

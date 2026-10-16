@@ -455,7 +455,13 @@
       "Invoiced": "Invoiced",
       "Received": "Received",
       "Outstanding": "Owed today",
-      "IfRenewed": "If renewed"
+      "IfRenewed": "If renewed",
+      "Worker": "Worker",
+      "VisitsDone": "Visits",
+      "Hours": "Hours",
+      "Late": "Late",
+      "HandOuts": "Hand-outs",
+      "LostOrDamaged": "Lost or damaged"
     },
     "Figures": {
       "Invoiced": "{count, plural, =0 {Invoiced} one {Invoiced (# invoice)} other {Invoiced (# invoices)}}",
@@ -467,7 +473,10 @@
       "VisitsNotDone": "Postponed, cancelled or with a problem",
       "OrdersNotReturned": "Orders not returned yet"
     },
-    "PlusRenewals": "+ {amount} if renewed"
+    "PlusRenewals": "+ {amount} if renewed",
+    "ByWorker": "By worker",
+    "NoWorkers": "No worker did a visit or received a hand-out in this period.",
+    "StillOut": "{count, plural, one {# piece still out} other {# pieces still out}}"
   },
   "FileMoney": {
     "Of": "{client} · file {number}",

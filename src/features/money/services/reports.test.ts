@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, expect, it } from "vitest";
 
 import { setSetting } from "@/lib/settings";
+import { localDate, minutes } from "@/lib/units";
 import { createTestDatabase, type TestDatabase } from "@/testing/database";
 
 import { divisionIncome, invoicedByDivision, outstandingByDivision } from "../rules/income";
@@ -244,4 +245,34 @@ it("counts in the forecast what an ending contract would bring if renewed, unles
   await test.raw.exec(`update "File" set "renewalDecision" = 'WILL_NOT_RENEW' where id = '${file.id}'`);
   const declined = await test.transact((ex, ctx) => getPeriodReport(ex, ctx, december));
   expect(declined.forecast.months.every((month) => month.receiptsIfRenewed === 0)).toBe(true);
+});
+
+it("reports each worker's period: the visits done, the hours, the lateness and what the store handed him", async () => {
+  await centreReady(test);
+  const file = await contractedFile(test);
+  for (const date of NOVEMBER_TUESDAYS) await visitOn(test, file.id, date);
+  const seat = await test.db
+    .selectFrom("VisitWorker")
+    .innerJoin("Visit", "Visit.id", "VisitWorker.visitId")
+    .select(["VisitWorker.id", "VisitWorker.workerId"])
+    .where("Visit.visitDate", "=", localDate(NOVEMBER_TUESDAYS[0]))
+    .executeTakeFirstOrThrow();
+  await test.db
+    .updateTable("VisitWorker")
+    .set({ lateMin: minutes(15) })
+    .where("id", "=", seat.id)
+    .execute();
+  await test.rows.insert("HandOut", { workerId: seat.workerId, date: "2026-11-03" } as never);
+
+  const report = await test.transact((ex, ctx) =>
+    getPeriodReport(ex, ctx, { from: "2026-11-01", to: "2026-11-30" } as never),
+  );
+  // Two workers on each of the four visits, three hours each.
+  expect(report.workers).toHaveLength(8);
+  expect(report.workers.every((worker) => worker.visits === 1 && worker.workedMin === 180)).toBe(true);
+  expect(report.workers.find((worker) => worker.workerId === seat.workerId)).toMatchObject({
+    lateArrivals: 1,
+    handOuts: 1,
+    lostOrDamaged: 0,
+  });
 });
