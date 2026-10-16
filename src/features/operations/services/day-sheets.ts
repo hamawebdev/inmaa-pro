@@ -164,6 +164,7 @@ export async function getSupervisorDaySheet(
     .select(["fileId", "kind", "details"])
     .where("fileId", "in", ["", ...new Set(visits.map((visit) => visit.fileId))])
     .where("status", "!=", "CLOSED")
+    .where("deletedAt", "is", null)
     .orderBy("occurredDate")
     .execute();
   const openIssues = problems.map((problem) => {

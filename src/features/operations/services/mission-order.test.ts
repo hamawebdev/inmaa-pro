@@ -50,7 +50,7 @@ async function visitWithTeam() {
     await test.rows.insert("VisitWorker", { visitId: visit.id, workerId: worker.id, seatStatus: "ASSIGNED" });
     workers.push(worker);
   }
-  return { visit, clientId: site.clientId, workers };
+  return { visit, fileId: file.id, clientId: site.clientId, workers };
 }
 
 it("holds the order of a suspended client until the manager releases it, with his reason (ACC-1)", async () => {
@@ -102,6 +102,29 @@ it("holds the order of a suspended client until the manager releases it, with hi
 
   const { printCount } = await test.transact((ex, ctx) => recordOrderPrinted(ex, ctx, { visitId: visit.id }));
   expect(printCount).toBe(1);
+});
+
+it("prints at once the order of a file registered on the manager's yes about that sanction (ACC-1)", async () => {
+  const { visit, fileId, clientId } = await visitWithTeam();
+  const sanction = await test.rows.insert("Sanction", {
+    subjectKind: "CLIENT",
+    clientId,
+    state: "PENALISED",
+    reason: "شكاوى متكررة",
+    startDate: localDate("2026-10-01"),
+  } as never);
+  const decision = await test.rows.insert("SanctionDecision", { sanctionId: sanction.id, status: "ALLOWED" } as never);
+  await test.db.updateTable("File").set({ sanctionDecisionId: decision.id }).where("id", "=", fileId).execute();
+
+  expect(await test.transact((ex, ctx) => getOrderHold(ex, ctx, { visitId: visit.id }))).toMatchObject({
+    covered: true,
+    released: null,
+  });
+  const { printCount } = await test.transact((ex, ctx) => recordOrderPrinted(ex, ctx, { visitId: visit.id }));
+  expect(printCount).toBe(1);
+  await expect(
+    test.transact((ex, ctx) => releaseSanctionedOrder(ex, ctx, { visitId: visit.id, reason: "لا حاجة" })),
+  ).rejects.toThrow("This client is not suspended or penalised: the order prints without a release.");
 });
 
 it("prints a client with no sanction at once, and names the client and each worker in the disclosure (ACC-1, LOG-12)", async () => {

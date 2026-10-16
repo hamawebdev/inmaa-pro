@@ -1,4 +1,5 @@
 import { getSiteForOrder } from "@/features/clients/services/exports";
+import { decisionCovers } from "@/features/people/services/sanction-decisions";
 import { getSanctionStates } from "@/features/people/services/sanctions";
 import { getHandOutsForVisit } from "@/features/stock/services/handouts";
 import { UNIT_LABEL } from "@/features/stock/sheets/print-labels";
@@ -105,6 +106,7 @@ async function returnedPart(
     .select("kind")
     .where("visitId", "=", visitId)
     .where("reportedVia", "=", "ORDER")
+    .where("deletedAt", "is", null)
     .execute();
   const yes = (value: number | null) => (value === null ? null : value === 1);
   return {
@@ -178,10 +180,9 @@ async function siteQrOf(ex: Executor, ctx: ServiceContext, siteId: string, fileI
 /**
  * A client «متوقف» or «معاقب» today (People's sanction on the client): his
  * visits stay, but each order prints only after the manager's release of that
- * visit (RULINGS item 12; `order.releaseSanctioned`). The file's own decision
- * would cover the sanction through People's `decisionCovers`, which People
- * does not export yet: until it does, every order of such a client needs the
- * release.
+ * visit (RULINGS item 12; `order.releaseSanctioned`), unless the manager's yes
+ * the file was registered on named that very sanction (People's
+ * `decisionCovers`): then its orders print without a release.
  */
 export interface OrderHold {
   sanctionId: string;
@@ -191,6 +192,8 @@ export interface OrderHold {
   since: string;
   until: string | null;
   client: { id: string; name: string };
+  /** The file was registered on the manager's yes about this sanction: its orders print without a release. */
+  covered: boolean;
   /** The release of this order, when the manager gave it (`date` and `time` in the centre's time). */
   released: { at: string; date: string; time: string; byUserId: string | null } | null;
 }
@@ -203,12 +206,15 @@ async function orderHoldOf(
   const client = await ex
     .selectFrom("File")
     .innerJoin("Client", "Client.id", "File.clientId")
-    .select(["Client.id", "Client.name"])
+    .select(["Client.id", "Client.name", "File.sanctionDecisionId"])
     .where("File.id", "=", visit.fileId)
     .executeTakeFirst();
   if (!client) return null;
   const sanction = (await getSanctionStates(ex, ctx, { kind: "CLIENT", ids: [client.id] }))[client.id];
   if (!sanction) return null;
+  const covered = client.sanctionDecisionId
+    ? await decisionCovers(ex, ctx, { decisionId: client.sanctionDecisionId, sanctionId: sanction.sanctionId })
+    : false;
   return {
     sanctionId: sanction.sanctionId,
     state: sanction.state,
@@ -216,6 +222,7 @@ async function orderHoldOf(
     since: sanction.since,
     until: sanction.until,
     client: { id: client.id, name: client.name },
+    covered,
     released: visit.orderReleasedAt
       ? { at: visit.orderReleasedAt, ...ctx.toLocal(visit.orderReleasedAt), byUserId: visit.orderReleasedByUserId }
       : null,
@@ -359,7 +366,9 @@ export async function releaseSanctionedOrder(
   const visit = await visitOf(ex, input.visitId);
   if (visit.status === "CANCELLED") throw new ServiceError("This visit is cancelled.");
   const hold = await orderHoldOf(ex, ctx, visit);
-  if (!hold) throw new ServiceError("This client is not suspended or penalised: the order prints without a release.");
+  if (!hold || hold.covered) {
+    throw new ServiceError("This client is not suspended or penalised: the order prints without a release.");
+  }
   if (hold.released) return { releasedAt: hold.released.at };
   const reason = input.reason.trim();
   if (!reason) throw new ServiceError("Write why.");
@@ -401,7 +410,7 @@ export async function recordOrderPrinted(
   const visit = await visitOf(ex, input.visitId);
   if (visit.status === "CANCELLED") throw new ServiceError("This visit is cancelled.");
   const hold = await orderHoldOf(ex, ctx, visit);
-  if (hold && !hold.released) {
+  if (hold && !hold.released && !hold.covered) {
     throw new ServiceError(
       "This client is suspended or penalised: the order prints only after the manager releases it.",
     );

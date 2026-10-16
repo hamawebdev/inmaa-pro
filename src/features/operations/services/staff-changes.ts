@@ -1,5 +1,5 @@
 import type { EventPayloads } from "@/lib/events";
-import { logChange } from "@/lib/log";
+import { logChange, logErase } from "@/lib/log";
 import { changedColumns } from "@/lib/service/changes";
 import type { Executor, ServiceContext } from "@/lib/service/context";
 import { localDate, type LocalDate } from "@/lib/units";
@@ -209,7 +209,18 @@ export async function applyStaffUnavailable(
           .set({ deletedAt: ctx.now, ...stamp })
           .where("id", "=", assignment.id)
           .execute();
-        changes[`FileAssignment.${assignment.id}.deletedAt`] = [null, ctx.now];
+        // A soft delete is an ERASE entry, with the reason typed for her leaving (LOG-X1).
+        await logErase(ex, ctx, {
+          owner: "OPERATIONS",
+          action: "SOFT_DELETE",
+          reason: input.reason,
+          entity: "FileAssignment",
+          entityId: assignment.id,
+          entityLabel: worker.number,
+          subject: { kind: "WORKER", id: worker.id, label: worker.number },
+          changes: { deletedAt: [null, ctx.now] },
+          context: { cause: input.cause, fromDate: input.fromDate },
+        });
         outcome.assignmentsRemoved += 1;
       } else if (assignment.validTo === null || assignment.validTo > lastDay) {
         await ex

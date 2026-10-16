@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ShieldAlert, ShieldCheck } from "lucide-react";
 import { useParams } from "react-router-dom";
 import { toast } from "sonner";
-import { useLocale, useTranslations } from "use-intl";
+import { useTranslations } from "use-intl";
 
 import { DetailScreen } from "@/components/detail-screen";
 import { ErrorState } from "@/components/error-state";
@@ -33,7 +33,6 @@ import { VISITS_PATH } from "@/features/operations/services/programme";
 import { MissionOrderSheet } from "@/features/operations/sheets/mission-order-sheet";
 import { sampleMissionOrder } from "@/features/operations/sheets/samples";
 import { useCan, useSectionLevel } from "@/hooks/use-session";
-import { intlLocaleFor } from "@/i18n/config";
 import { useErrorMessage } from "@/i18n/errors";
 import { useCodeLabel } from "@/i18n/use-code-label";
 import { pathKey } from "@/lib/compat/revalidate";
@@ -68,7 +67,8 @@ export default function VisitOrderPrintPage() {
     queryFn: () => getOrderHoldQuery({ visitId: id }),
     enabled: !blank,
   });
-  const held = !blank && (hold.data === undefined || (hold.data !== null && hold.data.released === null));
+  const held =
+    !blank && (hold.data === undefined || (hold.data !== null && !hold.data.covered && hold.data.released === null));
 
   // The order leaves the office: frozen, counted and logged first; nothing prints if that fails.
   const recordPrint = async () => {
@@ -102,15 +102,20 @@ export default function VisitOrderPrintPage() {
 /** The client is sanctioned: the order waits for the manager's release, or says it was given. */
 function HoldNotice({ visitId, hold }: { visitId: string; hold: OrderHold }) {
   const t = useTranslations("OperationsSheets.MissionOrder.Hold");
-  const locale = useLocale();
   const stateLabel = useCodeLabel("Sanctions.ClientStates");
   const mayRelease = useCan("order.releaseSanctioned");
   const [releasing, setReleasing] = React.useState(false);
-  const day = (date: string) =>
-    new Intl.DateTimeFormat(intlLocaleFor(locale), { dateStyle: "medium", timeZone: "UTC" }).format(
-      new Date(`${date.slice(0, 10)}T00:00:00Z`),
-    );
+  // Digits only, day first, inside <Ltr>: ar-DZ's own date text carries direction marks that scramble it there.
+  const day = (date: string) => date.slice(0, 10).split("-").reverse().join("/");
 
+  if (hold.covered) {
+    return (
+      <div className="mb-5 flex items-start gap-3 rounded-xl border border-success/30 bg-success/10 p-4">
+        <ShieldCheck className="mt-0.5 size-5 shrink-0 text-success" />
+        <p className="text-sm">{t("Covered", { state: stateLabel(hold.state) })}</p>
+      </div>
+    );
+  }
   if (hold.released) {
     return (
       <div className="mb-5 flex items-start gap-3 rounded-xl border border-success/30 bg-success/10 p-4">

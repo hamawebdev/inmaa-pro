@@ -153,6 +153,7 @@ export async function getWorkerQualityFigures(
     .where("VisitWorker.workerId", "=", worker.id)
     .where("VisitWorker.seatStatus", "=", "ASSIGNED")
     .where("ProblemReport.kind", "=", "DAMAGE_DURING_WORK")
+    .where("ProblemReport.deletedAt", "is", null)
     .where("ProblemReport.occurredDate", ">=", from)
     .where("ProblemReport.occurredDate", "<=", to)
     .executeTakeFirst();

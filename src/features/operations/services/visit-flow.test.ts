@@ -392,7 +392,7 @@ describe("the returned order", () => {
     });
   });
 
-  it("makes the visit «مشكلة» when the work was not done, and files the problems ticked (LOG-14)", async () => {
+  it("makes the visit «مشكلة» when the work was not done, and files the problems ticked; a tick taken off is soft-deleted (LOG-14)", async () => {
     const { visit } = await contractedFileWithTeam();
     const values: ReturnedOrderValues = {
       ...(await completeValues(visit.id)),
@@ -428,14 +428,26 @@ describe("the returned order", () => {
     );
     const left = await test.db
       .selectFrom("ProblemReport")
-      .select(["kind", "status", "actionTaken"])
+      .select(["kind", "status", "deletedAt", "deletedByUserId"])
       .where("visitId", "=", visit.id)
       .orderBy("kind")
       .execute();
     expect(left).toEqual([
-      { kind: "AREA_UNAVAILABLE", status: "CLOSED", actionTaken: "أزيلت العلامة عند إعادة إدخال الأمر: علامة خاطئة" },
-      { kind: "OBSTACLE", status: "OPEN", actionTaken: null },
+      {
+        kind: "AREA_UNAVAILABLE",
+        status: "OPEN",
+        deletedAt: expect.any(String),
+        deletedByUserId: test.manager.userId,
+      },
+      { kind: "OBSTACLE", status: "OPEN", deletedAt: null, deletedByUserId: null },
     ]);
+    const erased = await test.db
+      .selectFrom("AuditLog")
+      .selectAll()
+      .where("operation", "=", "ERASE")
+      .where("entity", "=", "ProblemReport")
+      .executeTakeFirstOrThrow();
+    expect(erased).toMatchObject({ action: "SOFT_DELETE", reason: "علامة خاطئة" });
     const entry = await test.db
       .selectFrom("AuditLog")
       .select(["changes", "reason"])

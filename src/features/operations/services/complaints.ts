@@ -652,6 +652,7 @@ export async function getComplaint(
     .selectFrom("ProblemReport")
     .select(["id", "kind", "occurredDate"])
     .where("complaintId", "=", row.id)
+    .where("deletedAt", "is", null)
     .orderBy("occurredDate")
     .execute();
   const repeatableVisits = row.visitId

@@ -11,7 +11,7 @@ import type {
 } from "@/lib/db/models";
 import { hydrate, newId } from "@/lib/db/rows";
 import { emit } from "@/lib/events";
-import { logChange, logCollect } from "@/lib/log";
+import { logChange, logCollect, logErase } from "@/lib/log";
 import { action, query } from "@/lib/service/action";
 import { changedColumns } from "@/lib/service/changes";
 import type { Executor, ServiceContext } from "@/lib/service/context";
@@ -47,9 +47,6 @@ import type {
 } from "../components/visit-entry/visit-entry-data";
 import { OPEN_STATUSES, VISITS_PATH } from "./programme";
 import { checklistOf, freezeChecklist, lineForKey } from "./tasks";
-
-/** What a problem report closed because its tick was taken off the order says first. */
-const RETYPED_OFF = "أزيلت العلامة عند إعادة إدخال الأمر";
 
 /**
  * The returned order (#12–#15): the office types the paper the team brought
@@ -255,15 +252,14 @@ export async function getVisitEntry(
 
   const reportRow = await ex.selectFrom("VisitReport").selectAll().where("visitId", "=", row.id).executeTakeFirst();
   const report = reportRow ? (hydrate<VisitReportRow>("VisitReport", reportRow) as VisitEntryReport) : null;
-  // The ticks on the sheet: a report closed because its tick was taken off is no longer one.
-  const problems = (
-    await ex
-      .selectFrom("ProblemReport")
-      .select(["kind", "status", "actionTaken"])
-      .where("visitId", "=", row.id)
-      .where("reportedVia", "=", "ORDER")
-      .execute()
-  ).filter((problem) => !(problem.status === "CLOSED" && (problem.actionTaken ?? "").startsWith(RETYPED_OFF)));
+  // The ticks on the sheet: a report whose tick was taken off is soft-deleted (LOG-14).
+  const problems = await ex
+    .selectFrom("ProblemReport")
+    .select(["kind"])
+    .where("visitId", "=", row.id)
+    .where("reportedVia", "=", "ORDER")
+    .where("deletedAt", "is", null)
+    .execute();
 
   return {
     visit,
@@ -577,14 +573,11 @@ export async function saveReturnedOrder(
     .selectAll()
     .where("visitId", "=", visit.id)
     .where("reportedVia", "=", "ORDER")
+    .where("deletedAt", "is", null)
     .execute();
   const details = blankToNull(values.problemDetails);
-  // A report closed because its tick was taken off is left as it is; the tick typed again makes a new one.
-  const live = current.filter(
-    (problem) => !(problem.status === "CLOSED" && (problem.actionTaken ?? "").startsWith(RETYPED_OFF)),
-  );
   for (const kind of wanted) {
-    const found = live.find((problem) => problem.kind === kind);
+    const found = current.find((problem) => problem.kind === kind);
     if (!found) changes[`problems.${kind}`] = [false, true];
     if (found) {
       if (found.details !== details && found.status === "OPEN") {
@@ -616,24 +609,27 @@ export async function saveReturnedOrder(
       })
       .execute();
   }
-  for (const problem of live) {
+  for (const problem of current) {
     if (wanted.has(problem.kind as ProblemKind)) continue;
-    // A tick typed by mistake: a report nobody has acted on is closed with the reason typed, never deleted
-    // (audit LOG-14; a soft delete waits for `ProblemReport.deletedAt`).
+    // A tick typed by mistake: a report nobody has acted on is soft-deleted with the reason typed, and the
+    // erasure logged (LOG-14); one somebody acted on stays.
     if (problem.status === "OPEN" && !problem.handedTo && !problem.complaintId && !problem.correctiveTaskId) {
       if (!reason) throw new ServiceError("Say why a problem ticked on this order is taken off.");
       await ex
         .updateTable("ProblemReport")
-        .set({
-          status: "CLOSED",
-          closedAt: ctx.now,
-          closedByUserId: ctx.userId,
-          actionTaken: `${RETYPED_OFF}: ${reason}`,
-          updatedAt: ctx.now,
-          updatedByUserId: ctx.userId,
-        })
+        .set({ deletedAt: ctx.now, deletedByUserId: ctx.userId, updatedAt: ctx.now, updatedByUserId: ctx.userId })
         .where("id", "=", problem.id)
         .execute();
+      await logErase(ex, ctx, {
+        owner: "OPERATIONS",
+        action: "SOFT_DELETE",
+        reason,
+        entity: "ProblemReport",
+        entityId: problem.id,
+        entityLabel: visit.number,
+        changes: { deletedAt: [null, ctx.now] },
+        context: { visit: visit.number, kind: problem.kind, source: "ORDER" },
+      });
       changes[`problems.${problem.kind}`] = [true, false];
     }
   }

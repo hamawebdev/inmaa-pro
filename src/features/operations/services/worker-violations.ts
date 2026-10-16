@@ -98,6 +98,7 @@ async function candidatesOf(
       .selectFrom("ProblemReport")
       .select(["id", "kind", "visitId", "occurredDate", "details"])
       .where("id", "=", sourceId)
+      .where("deletedAt", "is", null)
       .executeTakeFirst();
     if (!report) throw new ServiceError("This report does not exist.");
     if (report.kind === "DAMAGE_DURING_WORK" && report.visitId) {

@@ -20,7 +20,8 @@
         "Back": "Retour",
         "Confirm": "Autoriser",
         "Done": "L'ordre peut être imprimé.",
-        "Failed": "L'ordre n'a pas été autorisé."
+        "Failed": "L'ordre n'a pas été autorisé.",
+        "Covered": "Le client est marqué {state}, mais le dossier a été enregistré sur l'accord du directeur au sujet de cette sanction : ses ordres s'impriment sans autorisation."
       }
     },
     "InspectionSheet": {

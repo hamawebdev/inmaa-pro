@@ -146,7 +146,8 @@ export async function listProblemReports(
       "Assignee.lastName as assigneeLastName",
       "Complaint.id as complaintId",
       "Complaint.number as complaintNumber",
-    ]);
+    ])
+    .where("ProblemReport.deletedAt", "is", null);
   if (input.status === NOT_CLOSED) rows = rows.where("ProblemReport.status", "!=", "CLOSED");
   else if (input.status) rows = rows.where("ProblemReport.status", "=", input.status);
   if (input.kind) rows = rows.where("ProblemReport.kind", "=", input.kind);
@@ -304,6 +305,7 @@ async function reportForChange(ex: Executor, problemReportId: string) {
       "File.clientId",
     ])
     .where("ProblemReport.id", "=", problemReportId)
+    .where("ProblemReport.deletedAt", "is", null)
     .executeTakeFirst();
   if (!report) throw new ServiceError("This report does not exist.");
   return report;

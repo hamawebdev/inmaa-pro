@@ -20,7 +20,8 @@
         "Back": "Back",
         "Confirm": "Release",
         "Done": "The order may be printed.",
-        "Failed": "The order was not released."
+        "Failed": "The order was not released.",
+        "Covered": "The client is marked {state}, but the file was registered on the manager's yes about this sanction: its orders print without a release."
       }
     },
     "InspectionSheet": {

@@ -91,24 +91,30 @@ page; `decisionCovers` not exported by People yet, so every order of a sanctione
 (`seatsDropped` on the update), LAB-4 (rotation: `rotateRestDay` on by default for six visits a week; RESTING seats in
 turn; the team card replaces them with REST_ROTATION), LAB-9, LAB-10 (`seatsLeftOpen`), LAB-11 and LAB-X1
 (`placedStart`, `edgeSeatsByWorker`, `seatsForRules`), LAB-12, LOG-12, LOG-14 (a removed tick closes its report with
-the typed reason; the no-show undone is a CANCEL), LOG-Y1. Not done: LOG-X1 (needs the leaving reason in the
-`staff.unavailable` payload, or a ruling on the standard reason), LOG-14's true soft delete (needs
-`ProblemReport.deletedAt`).
+the typed reason; the no-show undone is a CANCEL), LOG-Y1. LOG-X1 and LOG-14's soft delete followed after the round (below).
 
 Import rule: `VISITS_PATH` now lives in `services/paths.ts` (programme.ts re-exports it): `programme.ts` imports
 `assignment.ts`, which may not import `programme.ts` back.
 
+## After round 3 (16 October)
+
+- LOG-X1: each future `FileAssignment` erased because a worker left is an ERASE entry with `staff.unavailable`'s
+  `reason` (`staff-changes.ts`).
+- LOG-14: a tick taken off a re-typed order soft-deletes its report (`deletedAt`, `deletedByUserId`, ERASE with the
+  typed reason); every read of `ProblemReport` filters `deletedAt IS NULL`.
+- ACC-1: an order prints without a release when People's `decisionCovers` says the file's own yes named the
+  client's sanction (`OrderHold.covered`).
+- Demo: «مقر شركة النخيل», six visits a week 15:00–17:00, rotation on (`{operations.sixVisitFile}`); its client is
+  suspended from today: `{operations.orderReleased}` released, `{operations.orderHeld}` held.
+
 ## Open items
 
-- LOG-X1: a leaving worker's future `FileAssignment` rows are soft-deleted without an ERASE entry: the
-  `staff.unavailable` payload carries no typed reason (contract change or ruling needed).
-- `ProblemReport.deletedAt` (Foundation) for LOG-14's soft delete; until then a tick taken off closes the report.
-- People's `decisionCovers` (CONTRACTS section 3): until it exists, every order of a sanctioned client needs the release.
 - `listVisitsForBilling` is not exported yet; Money reads `Visit`, `VisitReport`, `VisitWorker` itself.
 - `getWorkerHours` (CONTRACTS section 3) is not exported; People reads the seats itself.
 - `programme-changes.ts` and `staff-changes.ts` repeat a few private helpers of `programme.ts`; the complaint code
   lists live in `complaints.ts` and belong in `option-codes.ts`.
 - The programme update judges each seated worker at the new hours against her week as it stands (the other visits
   moved in the same update still at their old hours).
-- Clients' `getFileForScheduling` and `getSiteForOrder` exist now; `upstream.ts` still uses its own stand-ins except
-  for the order's QR, which reads `getSiteForOrder`.
+- The office has no switch for `rotateRestDay` yet: it is set at creation (on from six visits a week).
+- Clients' `getFileForScheduling` and `getSiteForOrder` exist; `upstream.ts` still uses its own stand-ins except for
+  the order's QR.

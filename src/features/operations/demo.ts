@@ -1,11 +1,16 @@
+import { DEMO_FILES } from "@/features/clients/demo";
+import { moveFileStage, registerFile } from "@/features/clients/services/files";
+import { setSanction } from "@/features/people/services/sanctions";
+import { newId } from "@/lib/db/rows";
 import type { Executor, ServiceContext } from "@/lib/service/context";
+import { localDate } from "@/lib/units";
 import type { DemoNames, DemoTools } from "@/testing/demo";
 
 import { entryValuesOf } from "./components/visit-entry/visit-entry-data";
 import { addDays, clockOf, minutesOf } from "./rules/calendar";
 import { assignVisitWorker, listSeatCandidates } from "./services/assignment";
 import { demoInspections } from "./services/inspections";
-import { recordOrderPrinted } from "./services/mission-order";
+import { recordOrderPrinted, releaseSanctionedOrder } from "./services/mission-order";
 import { demoComplaints } from "./services/problem-reports";
 import { assignZoneSupervisor } from "./services/supervisors";
 import { generateFileVisits, OPEN_STATUSES } from "./services/programme";
@@ -123,6 +128,105 @@ export async function seedDemo(ex: Executor, ctx: ServiceContext, tools: DemoToo
     names.visitPostponed = toPostpone.id;
     if (makeupVisitId) names.visitMakeup = makeupVisitId;
   }
+  Object.assign(names, await demoSixVisitContract(ex, ctx, tools));
+  return names;
+}
+
+/**
+ * One contract of six visits a week (Saturday to Thursday, 15:00 to 17:00, two workers), so that the rotating
+ * rest day can be seen (audit LAB-4): each member has one RESTING seat a week, to be replaced. Its client is then
+ * suspended (People's sanction), so that its orders are held for the manager's release (audit ACC-1): one is
+ * released, the next is not. Registered through Clients' services, the standing team written in this folder's
+ * own table. Run twice, it adds nothing.
+ */
+async function demoSixVisitContract(ex: Executor, ctx: ServiceContext, tools: DemoTools): Promise<DemoNames> {
+  const names: DemoNames = {};
+  const org = DEMO_FILES.find((file) => file.name === "orgContract");
+  const members = [tools.names.people?.workerLeader, tools.names.people?.workerDaily].filter((id): id is string =>
+    Boolean(id),
+  );
+  if (!org || members.length < 2) return names;
+  const already = await ex
+    .selectFrom("Site")
+    .select("id")
+    .where("commonName", "=", "مقر شركة النخيل")
+    .executeTakeFirst();
+  if (already) return names;
+
+  const registered = await registerFile(ex, tools.at("2026-10-05T09:00:00.000Z"), {
+    ...org.input,
+    values: {
+      ...org.input.values,
+      clientName: "شركة النخيل للخدمات",
+      commonName: "مقر شركة النخيل",
+      phone: "0661 40 50 60",
+      visitsPerWeek: 6,
+      executionDays: ["SAT", "SUN", "MON", "TUE", "WED", "THU"],
+      period: "EVENING",
+      periodFrom: "15:00",
+      periodTo: "17:00",
+      arrivalTime: "15:00",
+      departureTime: "17:00",
+      startDate: "2026-10-10",
+      endDate: "2026-12-31",
+      workersCount: 2,
+    },
+    siteOffice: {
+      receiverName: "بوشامة سليم",
+      receiverRole: "مسؤول الوسائل العامة",
+      receiverPhone: "0661 40 50 61",
+      allowedDays: ["SAT", "SUN", "MON", "TUE", "WED", "THU"],
+      allowedFrom: "14:30",
+      allowedTo: "18:00",
+    },
+  });
+  for (const [sortOrder, workerId] of members.entries()) {
+    await ex
+      .insertInto("FileAssignment")
+      .values({
+        id: newId(),
+        fileId: registered.fileId,
+        workerId,
+        role: sortOrder === 0 ? "LEADER" : "MEMBER",
+        validFrom: localDate("2026-10-10"),
+        sortOrder,
+        createdAt: ctx.now,
+        updatedAt: ctx.now,
+        createdByUserId: ctx.userId,
+        updatedByUserId: ctx.userId,
+      })
+      .execute();
+  }
+  await moveFileStage(ex, tools.at("2026-10-07T10:00:00.000Z"), { fileId: registered.fileId, to: "QUOTE" });
+  await moveFileStage(ex, tools.at("2026-10-08T10:00:00.000Z"), { fileId: registered.fileId, to: "CONTRACTED" });
+  names.sixVisitFile = registered.fileId;
+  names.sixVisitClient = registered.clientId;
+
+  // Suspended from today: its orders wait for the manager. Tomorrow's is released, the day after's is not.
+  await setSanction(ex, ctx, {
+    subjectKind: "CLIENT",
+    subjectId: registered.clientId,
+    state: "SUSPENDED",
+    reason: "مستحقات شهرين غير مسددة",
+    startDate: ctx.today,
+  });
+  const coming = await ex
+    .selectFrom("Visit")
+    .select("id")
+    .where("fileId", "=", registered.fileId)
+    .where("visitDate", ">", ctx.today)
+    .where("status", "in", [...OPEN_STATUSES])
+    .orderBy("visitDate")
+    .limit(2)
+    .execute();
+  if (coming[0]) {
+    await releaseSanctionedOrder(ex, ctx, {
+      visitId: coming[0].id,
+      reason: "اتفاق مع العميل على التسديد هذا الأسبوع",
+    });
+    names.orderReleased = coming[0].id;
+  }
+  if (coming[1]) names.orderHeld = coming[1].id;
   return names;
 }
 

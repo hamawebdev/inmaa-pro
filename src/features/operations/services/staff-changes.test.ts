@@ -167,7 +167,7 @@ describe("site.changed", () => {
 });
 
 describe("staff.unavailable", () => {
-  it("takes back the seats of a worker who left, and ends her teams and her supervisor", async () => {
+  it("takes back the seats of a worker who left, ends her teams and her supervisor, and logs each erased assignment (LOG-X1)", async () => {
     const { file, leader, member } = await contracted();
     await setVisit(file.id, "2026-11-16", { orderPrintedAt: "2026-10-12T07:00:00.000Z", orderPrintCount: 1 });
     // A file team she was to join in December, her team of the week, her own supervisor.
@@ -199,6 +199,7 @@ describe("staff.unavailable", () => {
         fromDate: localDate("2026-11-16"),
         toDate: null,
         cause: "LEFT",
+        reason: "استقالة مكتوبة بتاريخ 2026-10-11",
       }),
     );
 
@@ -236,6 +237,21 @@ describe("staff.unavailable", () => {
       validTo: null,
       deletedAt: "2026-10-12T08:00:00.000Z",
     });
+    const erased = await test.db
+      .selectFrom("AuditLog")
+      .selectAll()
+      .where("operation", "=", "ERASE")
+      .where("entity", "=", "FileAssignment")
+      .execute();
+    expect(erased).toEqual([
+      expect.objectContaining({
+        action: "SOFT_DELETE",
+        entityId: notStarted.id,
+        subjectKind: "WORKER",
+        subjectId: member.id,
+        reason: "استقالة مكتوبة بتاريخ 2026-10-11",
+      }),
+    ]);
     expect(
       (
         await test.db
@@ -274,6 +290,7 @@ describe("staff.unavailable", () => {
         fromDate: localDate("2026-11-09"),
         toDate: localDate("2026-11-14"),
         cause: "SANCTION_SET",
+        reason: "استقالة مكتوبة بتاريخ 2026-10-11",
       }),
     );
     const removed = (await seatsOf(member.id)).filter((seat) => seat.seatStatus === "REMOVED");
@@ -303,6 +320,7 @@ describe("staff.unavailable", () => {
         fromDate: localDate("2026-10-12"),
         toDate: null,
         cause: "SANCTION_LIFTED",
+        reason: "استقالة مكتوبة بتاريخ 2026-10-11",
       }),
     );
     expect(await seatsOf(member.id)).toEqual(seats);
