@@ -566,7 +566,8 @@
     "Correct": "Record the correction",
     "CorrectClosing": "Correct the closing",
     "Closed": "The day is closed.",
-    "CloseFailed": "The day could not be closed."
+    "CloseFailed": "The day could not be closed.",
+    "AccountFor": "Account for it"
   },
   "Profitability": {
     "Title": "Contract profitability",

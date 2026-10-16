@@ -566,7 +566,8 @@
     "Correct": "Enregistrer la correction",
     "CorrectClosing": "Corriger la clôture",
     "Closed": "La journée est clôturée.",
-    "CloseFailed": "La journée n'a pas pu être clôturée."
+    "CloseFailed": "La journée n'a pas pu être clôturée.",
+    "AccountFor": "Justifier"
   },
   "Profitability": {
     "Title": "Rentabilité du contrat",

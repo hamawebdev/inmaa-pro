@@ -566,7 +566,8 @@
     "Correct": "تسجيل التصحيح",
     "CorrectClosing": "تصحيح الإغلاق",
     "Closed": "أُغلق اليوم.",
-    "CloseFailed": "تعذر إغلاق اليوم."
+    "CloseFailed": "تعذر إغلاق اليوم.",
+    "AccountFor": "مآل السند"
   },
   "Profitability": {
     "Title": "ربحية العقد",

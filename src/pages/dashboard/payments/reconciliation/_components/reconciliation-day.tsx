@@ -1,6 +1,6 @@
 import * as React from "react";
 
-import { CircleOff, HandCoins, SearchX } from "lucide-react";
+import { ChevronDown, CircleOff, HandCoins, ListChecks, SearchX } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslations } from "use-intl";
 
@@ -9,6 +9,12 @@ import { PageActions, SectionHeading } from "@/components/screen";
 import { StatusChip, type StatusTone } from "@/components/status-chip";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -151,41 +157,41 @@ export function ReconciliationDayView({ day }: { day: ReconciliationDay }) {
                   )}
                 </TableCell>
                 <TableCell>
-                  {receipt.outcome === null && !day.closed && (
-                    <div className="flex items-center justify-end gap-2">
-                      {records && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          title={t("TypePayment")}
-                          onClick={() => setPaying(blank(receipt))}
-                        >
-                          <HandCoins />
-                          <span className="hidden xl:inline">{t("TypePayment")}</span>
-                        </Button>
-                      )}
-                      {mayClose && (
-                        <>
-                          <Button
-                            variant="outline"
-                            size="icon-sm"
-                            title={t("ReturnedUnused")}
-                            aria-label={t("ReturnedUnused")}
-                            onClick={() => setDeclaring({ receipt, outcome: "VOIDED" })}
-                          >
-                            <CircleOff />
+                  {receipt.outcome === null && !day.closed && (records || mayClose) && (
+                    // One named action per row, as the academy's rows name theirs; the three ways a blank ends are its menu.
+                    <div className="flex justify-end">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="outline" size="sm">
+                            <ListChecks />
+                            {t("AccountFor")}
+                            <ChevronDown />
                           </Button>
-                          <Button
-                            variant="outline"
-                            size="icon-sm"
-                            title={t("DeclareMissing")}
-                            aria-label={t("DeclareMissing")}
-                            onClick={() => setDeclaring({ receipt, outcome: "MISSING" })}
-                          >
-                            <SearchX />
-                          </Button>
-                        </>
-                      )}
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          {records && (
+                            <DropdownMenuItem onSelect={() => setPaying(blank(receipt))}>
+                              <HandCoins />
+                              {t("TypePayment")}
+                            </DropdownMenuItem>
+                          )}
+                          {mayClose && (
+                            <DropdownMenuItem onSelect={() => setDeclaring({ receipt, outcome: "VOIDED" })}>
+                              <CircleOff />
+                              {t("ReturnedUnused")}
+                            </DropdownMenuItem>
+                          )}
+                          {mayClose && (
+                            <DropdownMenuItem
+                              variant="destructive"
+                              onSelect={() => setDeclaring({ receipt, outcome: "MISSING" })}
+                            >
+                              <SearchX />
+                              {t("DeclareMissing")}
+                            </DropdownMenuItem>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   )}
                 </TableCell>
