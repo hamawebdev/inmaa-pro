@@ -64,6 +64,7 @@ import {
   LabelCell,
   ListCell,
   OpsSheetBody,
+  QrSymbol,
   RatingBoxes,
   SheetHeading,
   SignatureCell,
@@ -106,6 +107,8 @@ import {
 
 /** Six columns: three label and value pairs across the sheet. */
 const PAIRS = [26, 36, 26, 37, 26, 36] as const;
+/** The side of the site's QR (#26), in millimetres. */
+const QR_MM = 20;
 /** A label and the rest of the sheet. */
 const LABEL_AND_REST = [30, 157] as const;
 
@@ -200,6 +203,17 @@ export function MissionOrderSheet({ order }: { order: MissionOrderData }) {
             <LabelCell>طريقة الوصول</LabelCell>
             <ValueCell colSpan={2}>{order.site.directions}</ValueCell>
           </SheetRow>
+          {order.siteQr && (
+            <SheetRow heightMm={QR_MM + 3}>
+              <LabelCell>الموقع على الخريطة</LabelCell>
+              <SheetCell colSpan={5} align="start">
+                <div style={{ display: "flex", alignItems: "center", gap: "4mm" }}>
+                  <QrSymbol text={order.siteQr} sizeMm={QR_MM} />
+                  <span style={{ fontSize: "9pt" }}>امسح الرمز بهاتفك لفتح موقع المكان على الخريطة.</span>
+                </div>
+              </SheetCell>
+            </SheetRow>
+          )}
         </Block>
 
         <Block title="2- الشخص المسؤول في الموقع ودخول الفريق" columns={PAIRS}>

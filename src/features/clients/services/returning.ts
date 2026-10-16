@@ -1,5 +1,6 @@
 import { requireSection } from "@/lib/access/session";
-import { query } from "@/lib/service/action";
+import { logConsultOnce } from "@/lib/log";
+import { action, query } from "@/lib/service/action";
 import type { Executor, ServiceContext } from "@/lib/service/context";
 import { ServiceError } from "@/lib/service/errors";
 import { normaliseName } from "@/lib/text/normalise";
@@ -188,6 +189,16 @@ export async function getReturningFill(
     };
   }
 
+  // Reading his previous file is opening a person's file (audit LOG-15): once a day per reader and file.
+  await logConsultOnce(ex, ctx, {
+    owner: "CLIENTS",
+    action: "VIEW",
+    entity: "File",
+    entityId: record.file.id,
+    entityLabel: record.file.number,
+    subject: { kind: "CLIENT", id: client.id, label: client.name },
+    context: { purpose: "RETURNING_FILL" },
+  });
   const values = returningClientFill({
     kind: input.kind,
     previous: liveSheetValuesOf(record),
@@ -206,4 +217,5 @@ export async function getReturningFill(
 }
 
 export const findReturningClientsQuery = query(findReturningClients);
-export const getReturningFillQuery = query(getReturningFill);
+// The fill writes its line in the log: an action.
+export const getReturningFillAction = action(getReturningFill);

@@ -61,6 +61,10 @@ export interface PaymentReminderData {
   division: Division;
   items: readonly ReminderItem[];
   totalRemaining: Centimes;
+  /** Money received that no due holds (a payment an invoice or a void left over): set against the total. */
+  credit?: Centimes;
+  /** What is asked: the total less the credit. Its words are `totalRemainingWordsAr`. */
+  askedAmount?: Centimes;
   totalRemainingWordsAr: string;
   /** «طريقة السداد» as ticked on the file. */
   paymentMethods: readonly PaymentMethod[];
@@ -74,6 +78,7 @@ const ROW_STRONG = { ...TYPE.label, fontSize: "10.5pt" } as const;
 
 export function PaymentReminderSheet({ reminder }: { reminder: PaymentReminderData }) {
   const { seller } = reminder;
+  const asked = reminder.askedAmount ?? reminder.totalRemaining;
   const text = { ...TYPE.body, fontSize: "13pt", lineHeight: 1.7 };
 
   return (
@@ -158,11 +163,31 @@ export function PaymentReminderSheet({ reminder }: { reminder: PaymentReminderDa
             <Amount value={reminder.totalRemaining} /> {CURRENCY}
           </SheetCell>
         </SheetRow>
+        {(reminder.credit ?? 0) > 0 && (
+          <SheetRow heightMm={8}>
+            <SheetCell colSpan={6} style={TYPE.label}>
+              رصيدكم الدائن لدى المركز (يُخصم من المجموع)
+            </SheetCell>
+            <SheetCell colSpan={2} align="end" style={TYPE.label}>
+              <Amount value={-(reminder.credit ?? 0)} /> {CURRENCY}
+            </SheetCell>
+          </SheetRow>
+        )}
+        {(reminder.credit ?? 0) > 0 && (
+          <SheetRow heightMm={8}>
+            <SheetCell shaded colSpan={6} style={TYPE.heading}>
+              المبلغ المطلوب
+            </SheetCell>
+            <SheetCell shaded colSpan={2} align="end" style={TYPE.heading}>
+              <Amount value={asked} /> {CURRENCY}
+            </SheetCell>
+          </SheetRow>
+        )}
       </SheetTable>
       <Gap mm={5} />
 
       <p style={text}>
-        لذا نرجو منكم التفضل بتسديد المبلغ المتبقي وقدره <Amount value={reminder.totalRemaining} /> {CURRENCY} (
+        لذا نرجو منكم التفضل بتسديد المبلغ المتبقي وقدره <Amount value={asked} /> {CURRENCY} (
         {reminder.totalRemainingWordsAr}) في أقرب الآجال.
       </p>
       <Gap mm={4} />

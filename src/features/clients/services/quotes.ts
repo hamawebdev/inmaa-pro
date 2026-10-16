@@ -4,7 +4,7 @@ import { can, requireCapability, requireSection, sectionLevel } from "@/lib/acce
 import { addDays } from "@/lib/clock";
 import { newId } from "@/lib/db/rows";
 import type { DB } from "@/lib/db/schema";
-import { logChange, logCollect, logDisclose } from "@/lib/log";
+import { logChange, logCollect, logConsultOnce, logDisclose } from "@/lib/log";
 import { nextNumber } from "@/lib/numbering";
 import { action, query } from "@/lib/service/action";
 import { changedColumns } from "@/lib/service/changes";
@@ -184,7 +184,6 @@ export async function getFileQuotes(
       )
       .execute(),
   ]);
-  const seesCost = can(ctx, "cost.read");
 
   const quotes = rows.map((row): QuoteView => {
     const own = lines.filter((line) => line.quoteId === row.id);
@@ -252,8 +251,9 @@ export async function getFileQuotes(
               rows.filter((other) => other.id !== row.id),
             )
           : [],
-      costTotal: seesCost ? row.costTotal : null,
-      marginBp: seesCost ? row.marginBp : null,
+      // Restricted: served, and logged, by `openQuoteCosts` (audit LOG-6).
+      costTotal: null,
+      marginBp: null,
     };
   });
 
@@ -924,6 +924,34 @@ export async function listPendingQuotes(
     .filter((row) => !input.dueOnly || row.due);
 }
 
+/**
+ * The cost and margin each issued quote of a file froze from the study:
+ * restricted data, checked against `cost.read` and logged once a day per
+ * reader and quote, as the study itself is.
+ */
+export async function openQuoteCosts(
+  ex: Executor,
+  ctx: ServiceContext,
+  input: { fileId: string },
+): Promise<Record<string, { costTotal: number | null; marginBp: number | null }>> {
+  requireSection(ctx, "REQUESTS", "READ");
+  requireCapability(ctx, "cost.read");
+  const record = await requireFileRecord(ex, input.fileId);
+  const rows = await ex
+    .selectFrom("Quote")
+    .select(["id", "number", "version", "costTotal", "marginBp"])
+    .where("fileId", "=", record.file.id)
+    .where("deletedAt", "is", null)
+    .execute();
+  const costs: Record<string, { costTotal: number | null; marginBp: number | null }> = {};
+  for (const row of rows) {
+    if (row.costTotal === null && row.marginBp === null) continue;
+    await logConsultOnce(ex, ctx, { ...quoteLog(record, row), action: "VIEW_RESTRICTED" });
+    costs[row.id] = { costTotal: row.costTotal, marginBp: row.marginBp };
+  }
+  return costs;
+}
+
 // ── What the screens call ────────────────────────────────────────────────────
 
 export const getFileQuotesQuery = query(getFileQuotes);
@@ -938,3 +966,4 @@ export const cancelQuoteAction = action(cancelQuote, { revalidate: QUOTES_REFRES
 export const recordQuoteResultAction = action(recordQuoteResult, { revalidate: QUOTES_REFRESH });
 export const addQuoteFollowUpAction = action(addQuoteFollowUp, { revalidate: QUOTES_REFRESH });
 export const recordQuotePrintAction = action(recordQuotePrint);
+export const openQuoteCostsAction = action(openQuoteCosts);

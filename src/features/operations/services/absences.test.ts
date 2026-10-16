@@ -449,3 +449,92 @@ describe("month parts and shares", () => {
     expect(shares.reduce((sum, share) => sum + share, 0)).toBe(10000);
   });
 });
+
+describe("HR's acts on a leave (audit ACC-2, LAB-12)", () => {
+  const leave = (workerId: string, over: Partial<RecordWorkerAbsenceInput> = {}) => ({
+    workerId,
+    category: "LEAVE" as const,
+    leaveType: "ANNUAL" as const,
+    days: 1000,
+    ...over,
+  });
+
+  it("leaves deciding, cancelling and paying a leave to staff.write, and recording an absence to the office", async () => {
+    const { a } = await confirmedMonday();
+    const supervisor = await test.sessionFor("SUPERVISOR");
+    const hr = await test.sessionFor("HR_OFFICER");
+
+    // An ordinary absence: the office records and cancels it.
+    const sick = await record({ workerId: a.id }, supervisor);
+    await test.transact(
+      (ex, ctx) => cancelWorkerAbsence(ex, ctx, { absenceId: sick.absenceIds[0], reason: "Elle est venue" }),
+      supervisor,
+    );
+
+    const refused = "You do not have permission to do this.";
+    await expect(record(leave(a.id, { status: "APPROVED" }), supervisor)).rejects.toThrow(refused);
+    await expect(record({ workerId: a.id, paid: true }, supervisor)).rejects.toThrow(refused);
+    const asked = await record(leave(a.id, { status: "REQUESTED" }), supervisor);
+    const [absenceId] = asked.absenceIds;
+    await expect(
+      test.transact(
+        (ex, ctx) => decideWorkerLeave(ex, ctx, { absenceId, status: "APPROVED", reason: "accord" }),
+        supervisor,
+      ),
+    ).rejects.toThrow(refused);
+    await expect(
+      test.transact((ex, ctx) => cancelWorkerAbsence(ex, ctx, { absenceId, reason: "annulé" }), supervisor),
+    ).rejects.toThrow(refused);
+    await expect(
+      test.transact(
+        (ex, ctx) => setAbsencePayTreatment(ex, ctx, { absenceId, paid: true, justified: true }),
+        supervisor,
+      ),
+    ).rejects.toThrow(refused);
+
+    await test.transact(
+      (ex, ctx) => decideWorkerLeave(ex, ctx, { absenceId, status: "APPROVED", reason: "accord" }),
+      hr,
+    );
+    await test.transact((ex, ctx) => setAbsencePayTreatment(ex, ctx, { absenceId, paid: true, justified: true }), hr);
+    await test.transact((ex, ctx) => cancelWorkerAbsence(ex, ctx, { absenceId, reason: "annulé" }), hr);
+    expect((await absences(a.id)).map((row) => row.status)).toEqual(["CANCELLED", "CANCELLED"]);
+  });
+
+  it("refuses a leave of type sickness: a sickness is category SICK", async () => {
+    const a = await worker();
+    const sentence = "Record a sickness under the category Sick, not as a type of leave.";
+    await expect(record(leave(a.id, { leaveType: "SICK" }))).rejects.toThrow(sentence);
+    const { absenceIds } = await record(leave(a.id));
+    await expect(
+      test.transact((ex, ctx) =>
+        setAbsencePayTreatment(ex, ctx, { absenceId: absenceIds[0], paid: true, justified: true, leaveType: "SICK" }),
+      ),
+    ).rejects.toThrow(sentence);
+  });
+});
+
+describe("cancelling an absence under the working-time rules (audit LAB-10)", () => {
+  it("leaves a seat open when taking it back would put her on two visits at once", async () => {
+    const { monday, a, seatA } = await confirmedMonday();
+    const { absenceIds } = await record({ workerId: a.id });
+    // While she was absent, she was put on another visit at the same hour.
+    const other = await test.rows.insert("Visit", {
+      visitDate: localDate("2026-11-02"),
+      plannedStartTime: localTime("08:30"),
+      plannedDurationMin: minutes(120),
+      status: "CONFIRMED",
+    } as never);
+    await test.rows.insert("VisitWorker", { visitId: other.id, workerId: a.id, seatStatus: "ASSIGNED" });
+
+    const result = await test.transact((ex, ctx) =>
+      cancelWorkerAbsence(ex, ctx, { absenceId: absenceIds[0], reason: "Elle est venue finalement" }),
+    );
+    expect(result.seatsGivenBack).toEqual([]);
+    expect(result.seatsLeftOpen).toEqual([
+      expect.objectContaining({ seatId: seatA, why: "This worker already has a visit at that time." }),
+    ]);
+    expect(await seat(seatA)).toMatchObject({ seatStatus: "REMOVED", absenceId: null });
+    expect(await visitStatus(monday.id)).toBe("AWAITING_CONFIRMATION");
+  });
+});

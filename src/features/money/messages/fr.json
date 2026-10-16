@@ -200,7 +200,7 @@
     "VisitNotSignedOff": "Une visite effectuée n'est pas encore validée : saisissez d'abord son ordre de mission rendu.",
     "NoVisitDone": "Aucune visite effectuée ne peut être facturée.",
     "ChooseTaxRegime": "Choisissez le régime fiscal du centre dans les Paramètres avant la première facture.",
-    "SellerIncomplete": "Les numéros RC, NIS et NIF du centre sont nécessaires avant la première facture.",
+    "SellerIncomplete": "Le registre de commerce, le NIS, le NIF, l'article d'imposition et l'adresse du centre sont requis avant la première facture.",
     "BuyerNoAddress": "Ce client n'a pas d'adresse à imprimer sur la facture.",
     "BuyerNoTradeRegister": "Le numéro de registre du commerce de ce client est nécessaire sur la facture.",
     "NothingToInvoice": "Il n'y a rien à facturer : le total est nul.",
@@ -215,7 +215,9 @@
     "CashDifferenceNote": "Dites pourquoi les espèces diffèrent ou un reçu manque.",
     "DayNotCome": "Une journée ne peut être clôturée avant d'être venue.",
     "AmountNotNegative": "Un montant ne peut pas être négatif.",
-    "PeriodStartAfterEndMoney": "Le début de la période ne peut pas être après sa fin."
+    "PeriodStartAfterEndMoney": "Le début de la période ne peut pas être après sa fin.",
+    "BuyerTradeRegisterUnanswered": "Indiquez sur la fiche client si cet organisme a un registre de commerce avant sa première facture.",
+    "BuyerNoTaxIds": "Le NIF et le NIS de cet organisme sont requis sur la facture : saisissez-les sur la fiche client."
   },
   "Alerts": {
     "ContractEnding": {
@@ -412,7 +414,8 @@
       "UPCOMING": "Non échu",
       "PARTIAL": "Payé en partie"
     },
-    "NoDues": "Rien n'est dû."
+    "NoDues": "Rien n'est dû.",
+    "FileCredit": "Avoir du dossier : {amount}"
   },
   "ReceiptBatch": {
     "Title": "Reçus vierges pour un encaisseur",
@@ -504,7 +507,8 @@
       "Date": "Date",
       "Payer": "Payé par",
       "Receipt": "Reçu"
-    }
+    },
+    "Credit": "Avoir : {amount}"
   },
   "Reconciliation": {
     "Title": "Rapprochement quotidien",

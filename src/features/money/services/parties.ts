@@ -28,6 +28,7 @@ export async function readSeller(ex: Executor): Promise<SellerSnapshot> {
     "centre.bankName",
     "centre.bankAccount",
     "centre.ccpNumber",
+    "centre.city",
     "centre.ccpKey",
   ]);
   return {
@@ -45,6 +46,7 @@ export async function readSeller(ex: Executor): Promise<SellerSnapshot> {
     bankAccount: orNull(centre["centre.bankAccount"]),
     ccpNumber: orNull(centre["centre.ccpNumber"]),
     ccpKey: orNull(centre["centre.ccpKey"]),
+    city: orNull(centre["centre.city"]),
   };
 }
 
@@ -56,6 +58,8 @@ export interface FileParty {
   /** The site's address with its commune: what a statement and a slip print. */
   siteAddress: string;
   siteName: string | null;
+  /** «السجل التجاري»: نعم, لا, or not answered yet (null). An organisation's invoice waits for the answer (INV-4). */
+  tradeRegister: boolean | null;
   buyer: BuyerSnapshot;
 }
 
@@ -86,19 +90,23 @@ export async function readFileParty(ex: Executor, file: FileBilling): Promise<Fi
     .where("Site.id", "=", file.siteId)
     .executeTakeFirst();
 
-  const address = orNull(client.billingAddress) ?? orNull(site?.address);
+  // A billing address the office typed stands alone; the site's commune and wilaya go only with the site's address (INV-8).
+  const billing = orNull(client.billingAddress);
+  const address = billing ?? orNull(site?.address);
+  const siteAddress = [orNull(site?.address), orNull(site?.commune)].filter(Boolean).join("، ");
   return {
     clientId: client.id,
     clientName: client.name,
     clientNumber: client.number,
-    siteAddress: [orNull(site?.address), orNull(site?.commune)].filter(Boolean).join("، "),
+    siteAddress,
     siteName: orNull(site?.commonName),
+    tradeRegister: client.hasTradeRegister === null ? null : client.hasTradeRegister === 1,
     buyer: {
       name: orNull(client.billingName) ?? client.name,
       legalForm: orNull(client.legalForm),
       address,
-      commune: orNull(site?.commune),
-      wilayaCode: orNull(site?.wilayaCode),
+      commune: billing ? null : orNull(site?.commune),
+      wilayaCode: billing ? null : orNull(site?.wilayaCode),
       hasTradeRegister: client.hasTradeRegister === 1,
       rc: orNull(client.rcNumber),
       nis: orNull(client.nis),
@@ -106,6 +114,8 @@ export async function readFileParty(ex: Executor, file: FileBilling): Promise<Fi
       articleNumber: orNull(client.articleNumber),
       payerName: orNull(file.payerName),
       payerPhone: orNull(file.payerPhone),
+      siteAddress: siteAddress || null,
+      fileNumber: file.number,
     },
   };
 }

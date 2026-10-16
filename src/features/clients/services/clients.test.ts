@@ -14,6 +14,8 @@ import {
   type ContactInput,
 } from "./clients";
 import { getFileHub } from "./file-reads";
+import { missingIdentifiersOf } from "../rules/client-identifiers";
+
 import { registerFile, type RegisterFileInput } from "./files";
 
 let test: TestDatabase;
@@ -41,7 +43,7 @@ it("lists the clients with their files, their sanction and what an organisation'
   );
   const rows = await test.transact((ex, ctx) => listClients(ex, ctx, {}));
   expect(rows.map((row) => [row.name, row.files, row.sanction, row.missingIdentifiers])).toEqual([
-    ["شركة الأوراس للتوزيع", 1, null, ["rcNumber"]],
+    ["شركة الأوراس للتوزيع", 1, null, ["rcNumber", "nif", "nis"]],
     ["بوزيد سليم", 1, "PENALISED", []],
   ]);
   expect(await test.transact(async (ex, ctx) => (await listClients(ex, ctx, { search: "0661" })).length)).toBe(1);
@@ -51,7 +53,7 @@ it("lists the clients with their files, their sanction and what an organisation'
 
   // The organisation's file says so on its hub, until the card has the number.
   const hub = () => test.transact((ex, ctx) => getFileHub(ex, ctx, { fileId: org.fileId }));
-  expect((await hub()).missingIdentifiers).toEqual(["rcNumber"]);
+  expect((await hub()).missingIdentifiers).toEqual(["rcNumber", "nif", "nis"]);
   const saved = await test.transact((ex, ctx) =>
     saveClientIdentifiers(ex, ctx, {
       clientId: org.clientId,
@@ -129,4 +131,24 @@ it("keeps the client's contact people with their five flags, one coordinator per
   );
   await test.transact((ex, ctx) => removeContact(ex, ctx, { contactId, reason: "غادرت الشركة" }));
   expect((await test.transact((ex, ctx) => openClientCard(ex, ctx, { clientId: org.clientId }))).contacts).toEqual([]);
+});
+
+it("asks an organisation's card for its NIF and NIS always, its RC when it has a trade register, and an answer when none was given", () => {
+  const org = { clientType: "ORGANISATION", hasTradeRegister: null, rcNumber: null, nif: null, nis: null };
+  expect(missingIdentifiersOf(org)).toEqual(["tradeRegisterAnswer", "nif", "nis"]);
+  expect(missingIdentifiersOf({ ...org, hasTradeRegister: 0, nif: "1", nis: "2" })).toEqual([]);
+  expect(missingIdentifiersOf({ ...org, hasTradeRegister: 1, nif: "1", nis: "2" })).toEqual(["rcNumber"]);
+  expect(missingIdentifiersOf({ ...org, clientType: "INDIVIDUAL" })).toEqual([]);
+});
+
+it("takes the answer to «السجل التجاري» on the card", async () => {
+  const org = await register("orgContract");
+  await test.transact((ex, ctx) =>
+    saveClientIdentifiers(ex, ctx, {
+      clientId: org.clientId,
+      identifiers: { hasTradeRegister: false, nif: "1", nis: "2" },
+    }),
+  );
+  const card = await test.transact((ex, ctx) => openClientCard(ex, ctx, { clientId: org.clientId }));
+  expect(card).toMatchObject({ hasTradeRegister: false, missingIdentifiers: [] });
 });

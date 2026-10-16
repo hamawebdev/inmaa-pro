@@ -394,7 +394,8 @@ export async function handOverProblem(
   input: { problemReportId: string; to: HandedTo },
 ): Promise<{ status: ProblemStatus; handedTo: HandedTo }> {
   requireSection(ctx, "REQUESTS", "WRITE");
-  if (!(HANDED_TO as readonly string[]).includes(input.to)) throw new Error(`operations: cannot hand over to ${input.to}`);
+  if (!(HANDED_TO as readonly string[]).includes(input.to))
+    throw new Error(`operations: cannot hand over to ${input.to}`);
   const report = await reportForChange(ex, input.problemReportId);
   refuseClosed(report);
   if (report.handedTo) throw new ServiceError("This report is already handed over.");

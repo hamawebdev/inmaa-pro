@@ -159,7 +159,7 @@ export function useReasonDialog(): [(request: ReasonRequest) => Promise<ReasonAn
               {request.secondLabel}
             </Button>
           )}
-          <Button type="button" variant={request?.confirmTone ?? "default"} onClick={() => answer("confirm")}>
+          <Button type="button" variant={request?.confirmTone ?? "success"} onClick={() => answer("confirm")}>
             {request?.confirmLabel}
           </Button>
         </DialogFooter>

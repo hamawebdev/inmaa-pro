@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScreenDate } from "@/features/clients/components/screen-date";
-import { Fact, FieldGrid, TextField } from "@/features/clients/components/part-fields";
+import { ChoiceField, Fact, FieldGrid, TextField } from "@/features/clients/components/part-fields";
 import {
   CLIENTS_PATH,
   openClientCardAction,
@@ -28,6 +28,7 @@ import { useErrorMessage } from "@/i18n/errors";
 import { useCodeLabel } from "@/i18n/use-code-label";
 import { useRouter } from "@/lib/compat/navigation";
 import { pathKey } from "@/lib/compat/revalidate";
+import { phoneText } from "@/lib/text/phone";
 import { fileHubHref } from "@/navigation/file-parts";
 
 import { stageTone } from "../../files/_components/stage-tone";
@@ -77,6 +78,7 @@ export default function ClientCardPage() {
     },
   });
   const [draft, setDraft] = React.useState<ClientIdentifiers | null>(null);
+  const [tradeRegisterDraft, setTradeRegisterDraft] = React.useState<boolean | null | undefined>(undefined);
   const [busy, setBusy] = React.useState(false);
 
   if (!card.data) {
@@ -93,17 +95,26 @@ export default function ClientCardPage() {
 
   const client = card.data;
   const identifiers = draft ?? client.identifiers;
+  const tradeRegister = tradeRegisterDraft === undefined ? client.hasTradeRegister : tradeRegisterDraft;
+  const setTradeRegister = (value: boolean | null) => setTradeRegisterDraft(value);
   const set = (patch: Partial<ClientIdentifiers>) => setDraft({ ...identifiers, ...patch });
 
   async function save() {
     setBusy(true);
-    const result = await saveClientIdentifiersAction({ clientId: client.id, identifiers });
+    const result = await saveClientIdentifiersAction({
+      clientId: client.id,
+      identifiers: {
+        ...identifiers,
+        ...(tradeRegisterDraft === undefined ? {} : { hasTradeRegister: tradeRegisterDraft }),
+      },
+    });
     setBusy(false);
     if (!result.success) {
       toast.error(errorMessage(result.error, t("SaveFailed")));
       return;
     }
     setDraft(null);
+    setTradeRegisterDraft(undefined);
     toast.success(result.data.changed ? t("Saved") : t("Unchanged"));
   }
 
@@ -117,7 +128,11 @@ export default function ClientCardPage() {
       <div className="space-y-6">
         {client.missingIdentifiers.length > 0 && (
           <Alert className="text-start">
-            <AlertDescription className="text-base">{t("RcNeeded")}</AlertDescription>
+            <AlertDescription className="text-base">
+              {t("NeededForInvoice", {
+                list: client.missingIdentifiers.map((code) => t(`Missing.${code}`)).join("، "),
+              })}
+            </AlertDescription>
           </Alert>
         )}
 
@@ -133,13 +148,10 @@ export default function ClientCardPage() {
               </Fact>
               <Fact label={t("Name")}>{client.name}</Fact>
               <Fact label={t("Phone")} ltr>
-                {client.phone}
+                {phoneText(client.phone)}
               </Fact>
               {client.managerName && <Fact label={t("Manager")}>{client.managerName}</Fact>}
               {client.capacity && <Fact label={t("Capacity")}>{client.capacity}</Fact>}
-              {client.hasTradeRegister !== null && (
-                <Fact label={t("TradeRegister")}>{client.hasTradeRegister ? t("Yes") : t("No")}</Fact>
-              )}
             </div>
           </CardContent>
         </Card>
@@ -158,6 +170,17 @@ export default function ClientCardPage() {
             <CardContent>
               <fieldset disabled={!writes} className="m-0 min-w-0 border-0 p-0">
                 <FieldGrid>
+                  {client.clientType === "ORGANISATION" && (
+                    <ChoiceField
+                      label={t("TradeRegister")}
+                      value={tradeRegister === null ? null : tradeRegister ? "YES" : "NO"}
+                      options={["YES", "NO"] as const}
+                      labelOf={(code) => (code === "YES" ? t("Yes") : t("No"))}
+                      emptyLabel={t("NotAnswered")}
+                      onChange={(code) => setTradeRegister(code === null ? null : code === "YES")}
+                      className="sm:col-span-2"
+                    />
+                  )}
                   {IDENTIFIER_FIELDS.map(([key, ltr]) => (
                     <TextField
                       key={key}
@@ -181,7 +204,11 @@ export default function ClientCardPage() {
                   <Button type="button" variant="outline" onClick={() => router.back()}>
                     {tCommon("Cancel")}
                   </Button>
-                  <Button type="submit" variant="success" disabled={busy || draft === null}>
+                  <Button
+                    type="submit"
+                    variant="success"
+                    disabled={busy || (draft === null && tradeRegisterDraft === undefined)}
+                  >
                     {t("Save")}
                   </Button>
                 </PageActions>

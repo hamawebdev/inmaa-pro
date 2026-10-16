@@ -65,6 +65,8 @@ export async function listClients(
       "c.phone1",
       "c.hasTradeRegister",
       "c.rcNumber",
+      "c.nif",
+      "c.nis",
       "c.createdAt",
     ])
     .where("c.deletedAt", "is", null);
@@ -348,6 +350,8 @@ const optionalText = (max: number) =>
     });
 
 export const clientIdentifiersSchema = z.object({
+  /** «السجل التجاري» (لا / نعم) of an organisation, answered on the card when his form left it blank. */
+  hasTradeRegister: z.boolean().nullish(),
   legalForm: optionalText(60),
   rcNumber: optionalText(40),
   nis: optionalText(40),
@@ -390,9 +394,12 @@ export async function saveClientIdentifiers(
     .executeTakeFirst();
   if (!before) throw new ServiceError("This client does not exist.");
 
-  const values = parsed.data;
+  const { hasTradeRegister, ...values } = parsed.data;
   const { set, changes } = changedColumns(before, {
     ...values,
+    ...(hasTradeRegister === undefined
+      ? {}
+      : { hasTradeRegister: hasTradeRegister === null ? null : hasTradeRegister ? 1 : 0 }),
     // The second phone finds him too («قديم», the sanction check).
     phoneKeys: phoneKeys([before.phone1, values.phone2]),
   });

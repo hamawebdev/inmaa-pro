@@ -4,7 +4,7 @@ import { emit } from "@/lib/events";
 import { localDate, localTime } from "@/lib/units";
 import { createTestDatabase, type TestDatabase } from "@/testing/database";
 
-import { getCallList, getSupervisorDaySheet, nextWorkingDay } from "./day-sheets";
+import { getCallList, getSupervisorDaySheet, nextWorkingDay, recordDaySheetPrinted } from "./day-sheets";
 
 let test: TestDatabase;
 beforeEach(async () => {
@@ -107,5 +107,39 @@ describe("the client call list", () => {
   it("skips the rest day: after Thursday comes Saturday", async () => {
     const day = await test.transact((ex) => nextWorkingDay(ex, localDate("2026-10-15")));
     expect(day).toBe("2026-10-17");
+  });
+});
+
+describe("printing a day's sheets", () => {
+  const disclosures = () =>
+    test.db
+      .selectFrom("AuditLog")
+      .select(["subjectKind", "subjectId", "entityId"])
+      .where("operation", "=", "DISCLOSE")
+      .orderBy("chainSeq")
+      .execute();
+
+  it("names the supervisor, each client and each worker of his day sheet", async () => {
+    const { supervisor, file, worker } = await arrange();
+    await test.transact((ex, ctx) =>
+      recordDaySheetPrinted(ex, ctx, {
+        sheet: "SUPERVISOR_DAY",
+        date: localDate("2026-10-13"),
+        supervisorId: supervisor.id,
+      }),
+    );
+    expect(await disclosures()).toEqual([
+      expect.objectContaining({ subjectKind: "EMPLOYEE", subjectId: supervisor.id }),
+      expect.objectContaining({ subjectKind: "CLIENT", subjectId: file.clientId }),
+      expect.objectContaining({ subjectKind: "WORKER", subjectId: worker.id }),
+    ]);
+  });
+
+  it("names each client the call list calls", async () => {
+    const { file } = await arrange();
+    await test.transact((ex, ctx) =>
+      recordDaySheetPrinted(ex, ctx, { sheet: "CALL_LIST", date: localDate("2026-10-13") }),
+    );
+    expect(await disclosures()).toEqual([expect.objectContaining({ subjectKind: "CLIENT", subjectId: file.clientId })]);
   });
 });

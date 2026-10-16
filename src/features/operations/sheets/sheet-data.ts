@@ -119,6 +119,8 @@ export interface MissionOrderData {
   jobDay: { no: number; count: number } | null;
   /** The visit's rank in the team's day. */
   dayRank: { no: number; count: number } | null;
+  /** `geo:<lat>,<lng>` of the site (#26), printed as a QR when `feature.siteQrOnOrder` is on and the site has coordinates. */
+  siteQr?: string | null;
   site: {
     /** The building, the organisation, or the kind of dwelling. Not the client's file. */
     label: string | null;

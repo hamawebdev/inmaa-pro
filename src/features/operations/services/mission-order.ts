@@ -1,11 +1,14 @@
+import { getSiteForOrder } from "@/features/clients/services/exports";
+import { getSanctionStates } from "@/features/people/services/sanctions";
 import { getHandOutsForVisit } from "@/features/stock/services/handouts";
 import { UNIT_LABEL } from "@/features/stock/sheets/print-labels";
-import { requireSection } from "@/lib/access/session";
+import { requireCapability, requireSection } from "@/lib/access/session";
 import { phoneText } from "@/lib/text/phone";
-import { logDisclose } from "@/lib/log";
+import { logChange, logDisclose } from "@/lib/log";
 import { action, query } from "@/lib/service/action";
 import type { Executor, ServiceContext } from "@/lib/service/context";
 import { ServiceError } from "@/lib/service/errors";
+import { getSetting } from "@/lib/settings";
 import { staffName } from "@/lib/text/names";
 
 import { endTimeOf } from "../rules/visit-dates";
@@ -160,6 +163,65 @@ async function jobDayOf(ex: Executor, visit: { id: string; fileId: string; origi
   return days.length > 1 && no > 0 ? { no, count: days.length } : null;
 }
 
+/**
+ * The site's place as a `geo:` address for the QR on the order (#26), from
+ * Clients' `getSiteForOrder`: never a web link. Null when the site has no
+ * coordinates.
+ */
+async function siteQrOf(ex: Executor, ctx: ServiceContext, siteId: string, fileId: string): Promise<string | null> {
+  const site = await getSiteForOrder(ex, ctx, { siteId, fileId });
+  if (!site || site.latitude === null || site.longitude === null) return null;
+  const degrees = (micro: number) => (micro / 1_000_000).toFixed(6);
+  return `geo:${degrees(site.latitude)},${degrees(site.longitude)}`;
+}
+
+/**
+ * A client «متوقف» or «معاقب» today (People's sanction on the client): his
+ * visits stay, but each order prints only after the manager's release of that
+ * visit (RULINGS item 12; `order.releaseSanctioned`). The file's own decision
+ * would cover the sanction through People's `decisionCovers`, which People
+ * does not export yet: until it does, every order of such a client needs the
+ * release.
+ */
+export interface OrderHold {
+  sanctionId: string;
+  /** People's sanction state: SUSPENDED «متوقف» or PENALISED «معاقب». */
+  state: string;
+  reason: string;
+  since: string;
+  until: string | null;
+  client: { id: string; name: string };
+  /** The release of this order, when the manager gave it (`date` and `time` in the centre's time). */
+  released: { at: string; date: string; time: string; byUserId: string | null } | null;
+}
+
+async function orderHoldOf(
+  ex: Executor,
+  ctx: ServiceContext,
+  visit: { fileId: string; orderReleasedAt: string | null; orderReleasedByUserId: string | null },
+): Promise<OrderHold | null> {
+  const client = await ex
+    .selectFrom("File")
+    .innerJoin("Client", "Client.id", "File.clientId")
+    .select(["Client.id", "Client.name"])
+    .where("File.id", "=", visit.fileId)
+    .executeTakeFirst();
+  if (!client) return null;
+  const sanction = (await getSanctionStates(ex, ctx, { kind: "CLIENT", ids: [client.id] }))[client.id];
+  if (!sanction) return null;
+  return {
+    sanctionId: sanction.sanctionId,
+    state: sanction.state,
+    reason: sanction.reason,
+    since: sanction.since,
+    until: sanction.until,
+    client: { id: client.id, name: client.name },
+    released: visit.orderReleasedAt
+      ? { at: visit.orderReleasedAt, ...ctx.toLocal(visit.orderReleasedAt), byUserId: visit.orderReleasedByUserId }
+      : null,
+  };
+}
+
 /** Builds the order's picture. Shared by the print page and the print action. */
 async function buildOrder(
   ex: Executor,
@@ -171,6 +233,9 @@ async function buildOrder(
   if (!file) throw new Error(`operations: the file of visit ${visit.id} was not found`);
   const site = await readSiteForOrder(ex, { siteId: file.siteId, securityTicked: file.securityInstructions === true });
   const team = await orderTeam(ex, visit.id);
+  const siteQr = (await getSetting(ex, "feature.siteQrOnOrder"))
+    ? await siteQrOf(ex, ctx, file.siteId, visit.fileId)
+    : null;
   const supervisor = (await staffSummaries(ex, ctx, [visit.supervisorEmployeeId])).get(
     visit.supervisorEmployeeId ?? "",
   );
@@ -208,6 +273,7 @@ async function buildOrder(
     endTime: endTimeOf({ startTime: visit.plannedStartTime, durationMin: visit.plannedDurationMin }),
     jobDay: await jobDayOf(ex, visit),
     dayRank,
+    siteQr,
     site: {
       label: site?.commonName ?? null,
       address: site ? [site.address, site.floorAndDoor, site.district].filter(Boolean).join("، ") : null,
@@ -269,9 +335,62 @@ export async function getMissionOrder(
   return buildOrder(ex, ctx, visit, await checklistOf(ex, visit));
 }
 
+/** Whether the order of a visit is held back because its client is sanctioned, and whether it was released. */
+export async function getOrderHold(
+  ex: Executor,
+  ctx: ServiceContext,
+  input: { visitId: string },
+): Promise<OrderHold | null> {
+  requireSection(ctx, "REQUESTS", "READ");
+  return orderHoldOf(ex, ctx, await visitOf(ex, input.visitId));
+}
+
+/**
+ * The manager lets one order of a sanctioned client print (`order.releaseSanctioned`,
+ * held by nobody but the manager by default), with the reason he typed; logged
+ * as an OVERRIDE naming the client.
+ */
+export async function releaseSanctionedOrder(
+  ex: Executor,
+  ctx: ServiceContext,
+  input: { visitId: string; reason: string },
+): Promise<{ releasedAt: string }> {
+  requireCapability(ctx, "order.releaseSanctioned");
+  const visit = await visitOf(ex, input.visitId);
+  if (visit.status === "CANCELLED") throw new ServiceError("This visit is cancelled.");
+  const hold = await orderHoldOf(ex, ctx, visit);
+  if (!hold) throw new ServiceError("This client is not suspended or penalised: the order prints without a release.");
+  if (hold.released) return { releasedAt: hold.released.at };
+  const reason = input.reason.trim();
+  if (!reason) throw new ServiceError("Write why.");
+  await ex
+    .updateTable("Visit")
+    .set({
+      orderReleasedAt: ctx.now,
+      orderReleasedByUserId: ctx.userId,
+      updatedAt: ctx.now,
+      updatedByUserId: ctx.userId,
+    })
+    .where("id", "=", visit.id)
+    .execute();
+  await logChange(ex, ctx, {
+    owner: "OPERATIONS",
+    action: "OVERRIDE",
+    reason,
+    entity: "Visit",
+    entityId: visit.id,
+    entityLabel: visit.number,
+    subject: { kind: "CLIENT", id: hold.client.id, label: hold.client.name },
+    changes: { orderReleasedAt: [null, ctx.now] },
+    context: { sanctionId: hold.sanctionId, sanctionState: hold.state },
+  });
+  return { releasedAt: ctx.now };
+}
+
 /**
  * The order went to the printer: its tick lines are frozen on the first print,
- * the print is counted and logged (it names the team).
+ * the print is counted and logged (it names the client and the team). The
+ * order of a sanctioned client prints only once the manager released it.
  */
 export async function recordOrderPrinted(
   ex: Executor,
@@ -281,6 +400,12 @@ export async function recordOrderPrinted(
   requireSection(ctx, "REQUESTS", "WRITE");
   const visit = await visitOf(ex, input.visitId);
   if (visit.status === "CANCELLED") throw new ServiceError("This visit is cancelled.");
+  const hold = await orderHoldOf(ex, ctx, visit);
+  if (hold && !hold.released) {
+    throw new ServiceError(
+      "This client is suspended or penalised: the order prints only after the manager releases it.",
+    );
+  }
   await freezeChecklist(ex, ctx, visit);
   const printCount = visit.orderPrintCount + 1;
   await ex
@@ -295,16 +420,39 @@ export async function recordOrderPrinted(
     .where("id", "=", visit.id)
     .execute();
   const team = await orderTeam(ex, visit.id);
+  const client = await ex
+    .selectFrom("File")
+    .innerJoin("Client", "Client.id", "File.clientId")
+    .select(["Client.id", "Client.name"])
+    .where("File.id", "=", visit.fileId)
+    .executeTakeFirst();
+  // One disclosure per person the order names: the client (the person on site and his phone), then each worker.
   await logDisclose(ex, ctx, {
     owner: "OPERATIONS",
     action: "PRINT",
+    disclosure: "PRINT",
     entity: "Visit",
     entityId: visit.id,
     entityLabel: visit.number,
+    subject: client ? { kind: "CLIENT", id: client.id, label: client.name } : undefined,
     context: { sheet: "MISSION_ORDER", printCount, workers: team.map((seat) => seat.workerId) },
   });
+  for (const seat of team) {
+    await logDisclose(ex, ctx, {
+      owner: "OPERATIONS",
+      action: "PRINT",
+      disclosure: "PRINT",
+      entity: "Visit",
+      entityId: visit.id,
+      entityLabel: visit.number,
+      subject: { kind: "WORKER", id: seat.workerId, label: seat.number },
+      context: { sheet: "MISSION_ORDER", printCount },
+    });
+  }
   return { printCount };
 }
 
 export const getMissionOrderQuery = query(getMissionOrder);
+export const getOrderHoldQuery = query(getOrderHold);
 export const recordOrderPrintedAction = action(recordOrderPrinted, { revalidate: [VISITS_PATH] });
+export const releaseSanctionedOrderAction = action(releaseSanctionedOrder, { revalidate: [VISITS_PATH] });

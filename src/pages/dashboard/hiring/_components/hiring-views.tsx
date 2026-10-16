@@ -3,7 +3,7 @@ import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Ban, CalendarPlus, ClipboardCheck, Gavel, ListChecks, Scale, Star, Trash2, UserCheck } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useTranslations } from "use-intl";
 
 import { Ltr } from "@/components/ltr";
@@ -14,6 +14,8 @@ import type { useConductEntries } from "@/features/people/components/conduct-ent
 import { DayDate, Nothing } from "@/features/people/components/figures";
 import { ListTable } from "@/features/people/components/list-table";
 import { useMay } from "@/features/people/components/may";
+import { usePeopleDates } from "@/features/people/components/people-dates";
+import { RowMenu } from "@/features/people/components/row-menu";
 import { SimpleTable } from "@/features/people/components/simple-table";
 import { STATUS_TONE } from "@/features/people/components/status-tones";
 import {
@@ -54,6 +56,8 @@ export function CandidatesView({ entries }: { entries: Entries }) {
     queryFn: () => listCandidatesQuery(undefined),
   });
   const { scheduleInterview, recordOutcome, decide } = entries;
+  const dates = usePeopleDates();
+  const navigate = useNavigate();
 
   const columns = React.useMemo<ColumnDef<CandidateRow>[]>(
     () => [
@@ -72,23 +76,18 @@ export function CandidatesView({ entries }: { entries: Entries }) {
         ),
       },
       {
-        id: "status",
-        header: t("Table.Status"),
-        cell: ({ row }) => (
-          <StatusChip tone={STATUS_TONE[row.original.status]} label={tWorkers(`Statuses.${row.original.status}`)} />
-        ),
-      },
-      {
         id: "interview",
         header: t("Table.Interview"),
         cell: ({ row }) =>
           row.original.interview ? (
-            <span className="flex flex-wrap items-center gap-2 whitespace-nowrap">
+            <span className="flex items-center gap-2 whitespace-nowrap">
               <DayDate date={row.original.interview.date} />
-              <StatusChip
-                tone={INTERVIEW_TONE[row.original.interview.status]}
-                label={t(`InterviewStatuses.${row.original.interview.status}`)}
-              />
+              {row.original.interview.status !== "SCHEDULED" && (
+                <StatusChip
+                  tone={INTERVIEW_TONE[row.original.interview.status]}
+                  label={t(`InterviewStatuses.${row.original.interview.status}`)}
+                />
+              )}
             </span>
           ) : (
             <Nothing />
@@ -99,12 +98,12 @@ export function CandidatesView({ entries }: { entries: Entries }) {
         header: t("Table.Decision"),
         cell: ({ row }) =>
           row.original.decision?.trialEndDate && row.original.status === "ON_TRIAL" ? (
-            <span className="flex flex-wrap items-center gap-2 whitespace-nowrap">
-              {t("Table.TrialUntil")} <DayDate date={row.original.decision.trialEndDate} />
-              {row.original.trialEnding && <StatusChip tone="warning" label={t("Table.TrialEnding")} />}
-            </span>
+            <StatusChip
+              tone={row.original.trialEnding ? "warning" : "info"}
+              label={`${t("Table.TrialUntil")} ${dates.short(row.original.decision.trialEndDate)}`}
+            />
           ) : row.original.decision ? (
-            tForm(`Decisions.${row.original.decision.decision}`)
+            <span className="whitespace-nowrap">{tForm(`Decisions.${row.original.decision.decision}`)}</span>
           ) : (
             <Nothing />
           ),
@@ -126,38 +125,38 @@ export function CandidatesView({ entries }: { entries: Entries }) {
         header: "",
         cell: ({ row }) => {
           const interview = row.original.interview;
+          const scheduled = interview?.status === "SCHEDULED";
           return (
             <div className="flex items-center justify-end gap-2">
-              {keepsFiles &&
-                (interview?.status === "SCHEDULED" ? (
-                  <Button variant="outline" size="sm" onClick={() => void recordOutcome(interview.id)}>
-                    <ClipboardCheck />
-                    {t("Table.Outcome")}
-                  </Button>
-                ) : (
-                  <Button variant="outline" size="sm" onClick={() => void scheduleInterview(row.original.id)}>
-                    <CalendarPlus />
-                    {t("Table.Interview")}
-                  </Button>
-                ))}
-              <Button variant="outline" size="sm" asChild>
-                <Link to={`/dashboard/workers/${row.original.id}#worker-card-hiringScore`}>
-                  <Star />
-                  {t("Table.Score")}
-                </Link>
-              </Button>
-              {decides && (
-                <Button variant="outline" size="sm" onClick={() => void decide(row.original.id)}>
-                  <UserCheck />
-                  {t("Table.Decide")}
+              {keepsFiles && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => void (scheduled ? recordOutcome(interview.id) : scheduleInterview(row.original.id))}
+                >
+                  {scheduled ? <ClipboardCheck /> : <CalendarPlus />}
+                  {t(scheduled ? "Table.Outcome" : "Table.Interview")}
                 </Button>
               )}
+              <RowMenu
+                label={t("Table.More")}
+                items={[
+                  {
+                    label: t("Table.Score"),
+                    icon: <Star />,
+                    onSelect: () => navigate(`/dashboard/workers/${row.original.id}#worker-card-hiringScore`),
+                  },
+                  ...(decides
+                    ? [{ label: t("Table.Decide"), icon: <UserCheck />, onSelect: () => void decide(row.original.id) }]
+                    : []),
+                ]}
+              />
             </div>
           );
         },
       },
     ],
-    [t, tWorkers, tForm, keepsFiles, decides, scheduleInterview, recordOutcome, decide],
+    [t, tWorkers, tForm, dates, navigate, keepsFiles, decides, scheduleInterview, recordOutcome, decide],
   );
 
   return (
@@ -276,13 +275,9 @@ export function ViolationsView({ entries, staffId }: { entries: Entries; staffId
       {
         id: "number",
         header: t("Table.Number"),
-        cell: ({ row }) => (
-          <div className="whitespace-nowrap">
-            <Ltr className="block font-bold">{row.original.number}</Ltr>
-            <DayDate date={row.original.date} className="text-muted-foreground" />
-          </div>
-        ),
+        cell: ({ row }) => <Ltr className="font-bold whitespace-nowrap">{row.original.number}</Ltr>,
       },
+      { id: "date", header: t("Table.Date"), cell: ({ row }) => <DayDate date={row.original.date} /> },
       {
         id: "worker",
         header: t("Table.Name"),
@@ -299,31 +294,27 @@ export function ViolationsView({ entries, staffId }: { entries: Entries; staffId
         id: "what",
         header: t("Table.Violation"),
         cell: ({ row }) => (
-          <div className="min-w-0 space-y-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <StatusChip
-                tone={row.original.severity === "SERIOUS" ? "danger" : "info"}
-                label={t(`Severities.${row.original.severity}`)}
-              />
-              {row.original.article && <span>{t(`Articles.${row.original.article}`)}</span>}
-            </div>
-            <p className="max-w-60 truncate text-muted-foreground" title={row.original.description}>
-              {row.original.description}
-            </p>
-          </div>
+          <span className="flex items-center gap-2 whitespace-nowrap" title={row.original.description}>
+            <StatusChip
+              tone={row.original.severity === "SERIOUS" ? "danger" : "info"}
+              label={t(`Severities.${row.original.severity}`)}
+            />
+            {row.original.article ? t(`Articles.${row.original.article}`) : <Nothing />}
+          </span>
         ),
       },
       {
         id: "status",
         header: t("Table.Status"),
         cell: ({ row }) => (
-          <div className="flex flex-wrap items-center gap-2">
-            <StatusChip
-              tone={VIOLATION_TONE[row.original.status]}
-              label={t(`ViolationStatuses.${row.original.status}`)}
-            />
-            {row.original.action && <span className="whitespace-nowrap">{t(`Actions.${row.original.action}`)}</span>}
-          </div>
+          <StatusChip
+            tone={VIOLATION_TONE[row.original.status]}
+            label={
+              row.original.status === "DECIDED" && row.original.action
+                ? t(`Actions.${row.original.action}`)
+                : t(`ViolationStatuses.${row.original.status}`)
+            }
+          />
         ),
       },
       {
@@ -332,9 +323,14 @@ export function ViolationsView({ entries, staffId }: { entries: Entries; staffId
         cell: ({ row }) =>
           keepsFiles && row.original.status === "OPEN" ? (
             <div className="flex items-center justify-end gap-2">
-              <Button variant="outline" size="sm" onClick={() => void decideViolation(row.original)}>
+              <Button
+                variant="outline"
+                size="icon-sm"
+                aria-label={t("Table.Decide")}
+                title={t("Table.Decide")}
+                onClick={() => void decideViolation(row.original)}
+              >
                 <Gavel />
-                {t("Table.Decide")}
               </Button>
               <Button
                 variant="outline"

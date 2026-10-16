@@ -186,7 +186,7 @@ export function useEntryDialog(): [(request: EntryRequest) => Promise<EntryValue
             <Button type="button" variant="outline" onClick={() => settle(null)}>
               {t("Cancel")}
             </Button>
-            <Button type="submit" variant={request?.confirmTone ?? "default"}>
+            <Button type="submit" variant={request?.confirmTone ?? "success"}>
               {request?.confirmLabel}
             </Button>
           </DialogFooter>

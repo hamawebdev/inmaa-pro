@@ -31,6 +31,7 @@ import {
 
 import { readStampSettings } from "./money-settings";
 import { readFileParty, readSeller } from "./parties";
+import { settleCredit } from "./credit";
 import { MONEY_PATHS } from "./paths";
 import { readFileBilling } from "./terms";
 
@@ -135,6 +136,8 @@ export async function recordPayment(
   const party = await readFileParty(ex, file);
 
   // ── Which dues it settles ──
+  // The file's credit goes first: money already received is placed before this payment is (INV-2).
+  await settleCredit(ex, ctx, { fileId: file.id });
   const open = (
     await ex
       .selectFrom("PaymentDue")
@@ -307,11 +310,21 @@ export async function voidPayment(
   if (!payment) throw new ServiceError("This payment does not exist.");
   if (await isVoided(ex, "paymentId", payment.id)) throw new ServiceError("This payment is already voided.");
 
+  // The allocations still in force: an invoice may have moved part of the payment already (credit.ts).
   const allocations = await ex
     .selectFrom("PaymentAllocation")
     .select(["id", "dueId", "amount"])
     .where("paymentId", "=", payment.id)
     .where("reversesAllocationId", "is", null)
+    .where(({ not, exists, selectFrom }) =>
+      not(
+        exists(
+          selectFrom("PaymentAllocation as Reversal")
+            .select("Reversal.id")
+            .whereRef("Reversal.reversesAllocationId", "=", "PaymentAllocation.id"),
+        ),
+      ),
+    )
     .orderBy("chainSeq")
     .execute();
   for (const allocation of allocations) {

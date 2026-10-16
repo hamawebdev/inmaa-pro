@@ -187,7 +187,7 @@ describe("issuing an invoice", () => {
     expect(proposal.lines.map((line) => [line.kind, line.quantity, line.unitPrice, line.amount])).toEqual([
       ["SERVICE", 1000, da(45_000), da(45_000)],
       // One of four was missed; the visit the client made impossible is billed.
-      ["MISSED_VISIT", 1000, da(11_250), -da(11_250)],
+      ["MISSED_VISIT", 1000, -da(11_250), -da(11_250)],
     ]);
     expect(proposal.lines[1].description).toBe("زيارات غير منجزة (1 من 4)");
     expect(proposal.visits.map((visit) => [visit.completion, visit.billable, visit.remark])).toEqual([

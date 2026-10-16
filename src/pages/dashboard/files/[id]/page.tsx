@@ -34,6 +34,7 @@ import { useCodeLabel } from "@/i18n/use-code-label";
 import { pathKey } from "@/lib/compat/revalidate";
 import { WILAYAS } from "@/lib/geo/wilayas";
 import { cn } from "@/lib/utils";
+import { phoneText } from "@/lib/text/phone";
 import { FILE_PARTS, filePartHref, type FilePartId } from "@/navigation/file-parts";
 
 import { filesHref } from "../_components/files-filter";
@@ -107,7 +108,7 @@ function Summary({ hub }: { hub: FileHub }) {
             items={[
               { label: label("clientName"), value: hub.client.name },
               { label: tForm("Labels.dossierNumber"), value: <Ltr>{hub.client.number}</Ltr> },
-              { label: label("phone"), value: <Ltr>{hub.client.phone}</Ltr> },
+              { label: label("phone"), value: <Ltr>{phoneText(hub.client.phone)}</Ltr> },
               ...(hub.client.managerName ? [{ label: label("managerName"), value: hub.client.managerName }] : []),
               ...(hub.client.capacity ? [{ label: label("capacity"), value: hub.client.capacity }] : []),
             ]}
@@ -285,6 +286,7 @@ function History({ hub }: { hub: FileHub }) {
 }
 
 export default function FileHubPage() {
+  const tClients = useTranslations("Clients");
   const { id = "" } = useParams();
   const t = useTranslations("FileHub");
   const tNav = useTranslations("Nav");
@@ -341,7 +343,11 @@ export default function FileHubPage() {
         {hub.missingIdentifiers.length > 0 && (
           <Alert className="text-start">
             <AlertDescription className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-2 text-base">
-              <span>{t("RcMissing")}</span>
+              <span>
+                {t("IdentifiersMissing", {
+                  list: hub.missingIdentifiers.map((code) => tClients(`Missing.${code}`)).join("، "),
+                })}
+              </span>
               <Button asChild variant="outline" size="sm">
                 <Link to={`/dashboard/clients/${encodeURIComponent(hub.client.id)}`}>{t("OpenClientCard")}</Link>
               </Button>

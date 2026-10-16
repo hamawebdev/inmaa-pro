@@ -21,6 +21,7 @@ import {
   type ContactView,
 } from "@/features/clients/services/clients";
 import { useErrorMessage } from "@/i18n/errors";
+import { phoneText } from "@/lib/text/phone";
 
 import { ReasonDialog } from "../../../files/_components/reason-dialog";
 
@@ -98,7 +99,7 @@ export function ContactsCard({ client, writes }: { client: ClientCard; writes: b
                     {[one.role, one.siteId ? siteName(one.siteId) : null].filter(Boolean).join(" · ")}
                   </p>
                 </div>
-                {one.phone && <Ltr className="tabular-nums">{one.phone}</Ltr>}
+                {one.phone && <Ltr className="tabular-nums">{phoneText(one.phone)}</Ltr>}
                 <div className="flex min-w-0 flex-wrap gap-1.5">
                   {CONTACT_FLAGS.filter((flag) => one.flags[flag]).map((flag) => (
                     <StatusChip key={flag} tone="info" label={t(`ContactFlags.${flag}`)} />

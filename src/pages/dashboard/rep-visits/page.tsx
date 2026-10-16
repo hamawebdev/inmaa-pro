@@ -24,6 +24,7 @@ import { useSectionLevel } from "@/hooks/use-session";
 import { useCodeLabel } from "@/i18n/use-code-label";
 import { pathKey } from "@/lib/compat/revalidate";
 import { cn } from "@/lib/utils";
+import { phoneText } from "@/lib/text/phone";
 import { SECTION_ACCENT } from "@/navigation/sections";
 
 /**
@@ -65,7 +66,7 @@ export default function RepVisitsPage() {
             <p className="truncate text-sm text-muted-foreground">
               {divisionLabel(row.original.prospectKind)}
               {row.original.phone ? " · " : ""}
-              {row.original.phone && <Ltr>{row.original.phone}</Ltr>}
+              {row.original.phone && <Ltr>{phoneText(row.original.phone)}</Ltr>}
             </p>
           </div>
         ),

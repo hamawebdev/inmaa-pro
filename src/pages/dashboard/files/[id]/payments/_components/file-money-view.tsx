@@ -45,6 +45,7 @@ export function FileMoneyView({ money: file }: { money: FileMoney }) {
         <div className="flex flex-wrap items-center gap-3">
           <SectionHeading>{t("State")}</SectionHeading>
           {summary.amount > 0 && <PaymentStateChip state={summary.state} />}
+          {file.credit > 0 && <StatusChip tone="info" label={t("Credit", { amount: money(file.credit) })} />}
         </div>
         <div className="grid min-w-0 grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 tall:gap-6">
           <StatCard

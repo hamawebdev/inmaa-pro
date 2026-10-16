@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, expect, it } from "vitest";
 
 import { loadFeatureDaily, runDayStart } from "@/lib/daily";
+import { localDate } from "@/lib/units";
 import { createTestDatabase, type TestDatabase } from "@/testing/database";
 
 let test: TestDatabase;
@@ -15,8 +16,8 @@ const statusOf = async (id: string) =>
 
 it("marks an inspection left planned past its days as missed, as the program, once", async () => {
   // Today is 12 October 2026; seven days are allowed by default.
-  const late = await test.rows.insert("Inspection", { status: "PLANNED", plannedDate: "2026-10-04" });
-  const recent = await test.rows.insert("Inspection", { status: "PLANNED", plannedDate: "2026-10-06" });
+  const late = await test.rows.insert("Inspection", { status: "PLANNED", plannedDate: localDate("2026-10-04") });
+  const recent = await test.rows.insert("Inspection", { status: "PLANNED", plannedDate: localDate("2026-10-06") });
 
   const report = await runDayStart(test.db, test.clock);
   expect(report.failed).toEqual([]);

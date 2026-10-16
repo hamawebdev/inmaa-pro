@@ -908,9 +908,9 @@
       "Status": "État",
       "Interview": "Entretien",
       "Decision": "Décision",
-      "TrialUntil": "Essai jusqu'au",
+      "TrialUntil": "Essai au",
       "TrialEnding": "Se termine bientôt",
-      "Training": "Jours de formation",
+      "Training": "Formation",
       "TrainingDone": "Terminée",
       "Outcome": "Résultat",
       "Score": "Notation",
@@ -926,7 +926,8 @@
       "Recommendation": "Recommandation",
       "Since": "Depuis",
       "LastTotal": "Dernier résultat",
-      "Evaluate": "Évaluer"
+      "Evaluate": "Évaluer",
+      "More": "Plus"
     },
     "InterviewStatuses": {
       "SCHEDULED": "Prévu",
@@ -1219,7 +1220,7 @@
   },
   "Cards": {
     "Title": "Carte professionnelle",
-    "Hint": "{count} cartes à leur taille réelle (85,6 × 54 mm), huit par page, avec leurs traits de coupe.",
+    "Hint": "À leur taille réelle (85,6 × 54 mm), huit par page, avec leurs traits de coupe.",
     "Loading": "Chargement…",
     "NoneChosen": "Choisissez d'abord les agents dans la liste.",
     "Failed": "Les cartes n'ont pas pu être préparées.",

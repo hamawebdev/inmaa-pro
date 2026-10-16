@@ -24,6 +24,7 @@ import { useMoneyText } from "@/hooks/use-money-text";
 import { useCodeLabel } from "@/i18n/use-code-label";
 import { pathKey } from "@/lib/compat/revalidate";
 import { cn } from "@/lib/utils";
+import { phoneText } from "@/lib/text/phone";
 import { FILES_PATH, filePartHref } from "@/navigation/file-parts";
 import { SECTION_ACCENT } from "@/navigation/sections";
 
@@ -73,7 +74,7 @@ export default function PendingQuotesPage() {
           <div className="max-w-56 min-w-32">
             <p className="truncate font-bold">{row.original.clientName}</p>
             <p className="truncate text-sm text-muted-foreground">
-              <Ltr>{row.original.phone}</Ltr>
+              <Ltr>{phoneText(row.original.phone)}</Ltr>
             </p>
           </div>
         ),

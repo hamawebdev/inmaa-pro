@@ -12,6 +12,7 @@ import {
   TickBox,
 } from "@/components/print";
 import { CLEANLINESS_AR, CLEANLINESS_LEVELS, TRANSPORT_MEANS, TRANSPORT_MEANS_AR } from "@/lib/options";
+import { phoneText } from "@/lib/text/phone";
 
 import { formatSheetDate, formatSheetQty } from "../forms/answers";
 import type { InspectionSheetData } from "../services/first-visits";
@@ -96,7 +97,7 @@ export function InspectionSheet({ data }: { data: InspectionSheetData }) {
           <Ltr>{data.fileNumber}</Ltr>
         </Line>
         <Line label="العميل:">{data.clientName}</Line>
-        <Line label="رقم الهاتف:">{data.phone ? <Ltr>{data.phone}</Ltr> : null}</Line>
+        <Line label="رقم الهاتف:">{data.phone ? <Ltr>{phoneText(data.phone)}</Ltr> : null}</Line>
         <Line label="الموقع:">{data.siteName}</Line>
         <Line label="العنوان:">{[data.address, data.commune].filter(Boolean).join("، ")}</Line>
         <Line label="المعاين:">{data.inspectorName}</Line>

@@ -11,12 +11,13 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Input } from "@/components/ui/input";
 import {
   findReturningClientsQuery,
-  getReturningFillQuery,
+  getReturningFillAction,
   type ReturningFillResult,
 } from "@/features/clients/services/returning";
 import { FORM_KIND_OF, type FormKind } from "@/features/clients/validators/option-lists";
 import { useErrorMessage } from "@/i18n/errors";
 import { pathKey } from "@/lib/compat/revalidate";
+import { phoneText } from "@/lib/text/phone";
 import { FILES_PATH } from "@/navigation/file-parts";
 
 /**
@@ -64,7 +65,9 @@ export function ReturningDialog({
   async function pick(clientId: string, siteId: string | null) {
     setPicking(`${clientId}:${siteId ?? ""}`);
     try {
-      onPick(await getReturningFillQuery({ kind, clientId, siteId }));
+      const result = await getReturningFillAction({ kind, clientId, siteId });
+      if (!result.success) throw new Error(result.error);
+      onPick(result.data);
       onOpenChange(false);
       setSearch("");
     } catch (error) {
@@ -112,7 +115,7 @@ export function ReturningDialog({
                     <span className="text-muted-foreground">
                       {t("ClientNumber")} <Ltr className="tabular-nums">{client.number}</Ltr>
                     </span>
-                    <Ltr className="text-muted-foreground tabular-nums">{client.phone}</Ltr>
+                    <Ltr className="text-muted-foreground tabular-nums">{phoneText(client.phone)}</Ltr>
                   </div>
                   <div className="mt-3 flex min-w-0 flex-wrap gap-2">
                     {sites.map((site) => (

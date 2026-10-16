@@ -10,7 +10,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScreenDate } from "@/features/clients/components/screen-date";
 import { fileQueryPath } from "@/features/clients/services/file-reads";
-import { getFileQuotesQuery } from "@/features/clients/services/quotes";
+import { getFileQuotesQuery, openQuoteCostsAction } from "@/features/clients/services/quotes";
+import { useCan } from "@/hooks/use-session";
 import { useMoneyText } from "@/hooks/use-money-text";
 import { useCodeLabel } from "@/i18n/use-code-label";
 import { pathKey } from "@/lib/compat/revalidate";
@@ -44,6 +45,17 @@ export default function FileQuotePage() {
     queryKey: [...pathKey(fileQueryPath(id)), "quotes"],
     queryFn: () => getFileQuotesQuery({ fileId: id }),
   });
+  // Cost and margin are restricted: read, and logged, only for who may read costs.
+  const seesCost = useCan("cost.read");
+  const costs = useQuery({
+    queryKey: [...pathKey(fileQueryPath(id)), "quote-costs"],
+    queryFn: async () => {
+      const result = await openQuoteCostsAction({ fileId: id });
+      if (!result.success) throw new Error(result.error);
+      return result.data;
+    },
+    enabled: seesCost,
+  });
 
   if (!quotes.data) {
     return (
@@ -58,11 +70,12 @@ export default function FileQuotePage() {
   }
 
   const { file, suggested, canStart, contract } = quotes.data;
+  const all = quotes.data.quotes.map((quote) => ({ ...quote, ...(costs.data?.[quote.id] ?? {}) }));
   // The newest version that was not given up is the file's quote; the others are its history.
-  const current = quotes.data.quotes.find((quote) => quote.status !== "CANCELLED") ?? null;
+  const current = all.find((quote) => quote.status !== "CANCELLED") ?? null;
   const working = current && current.steps.includes("EDIT") ? current : null;
-  const issued = quotes.data.quotes.find((quote) => quote.status === "ISSUED" && quote.id !== current?.id) ?? null;
-  const earlier = quotes.data.quotes.filter((quote) => quote.id !== current?.id && quote.id !== issued?.id);
+  const issued = all.find((quote) => quote.status === "ISSUED" && quote.id !== current?.id) ?? null;
+  const earlier = all.filter((quote) => quote.id !== current?.id && quote.id !== issued?.id);
   const onContract = file.serviceType === "CONTRACT";
 
   return (

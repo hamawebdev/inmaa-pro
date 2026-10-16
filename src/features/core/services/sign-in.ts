@@ -8,6 +8,7 @@ import {
   normalizeRecoveryCode,
   verifySecret,
 } from "@/lib/auth";
+import { checkClock } from "@/lib/clock/sanity";
 import { logSecurity } from "@/lib/log";
 import { action, asProgram, query } from "@/lib/service/action";
 import type { Executor, ServiceContext, Session } from "@/lib/service/context";
@@ -104,6 +105,21 @@ async function activeAccount(ex: Executor, userId: string) {
   return account;
 }
 
+/**
+ * Nobody signs in on a PC whose date is earlier than the work already
+ * recorded: everything this person did would be logged at a wrong date. A date
+ * that jumped forward does not stop the sign-in; the program asks the manager
+ * before anything legal is issued, and before the day's own work runs.
+ */
+async function refuseClockBehind(ex: Executor, ctx: ServiceContext): Promise<void> {
+  const found = await checkClock(ex, ctx);
+  if (found.state === "behind") {
+    throw new ServiceError(
+      "The date of this PC is earlier than the last recorded operation. Correct the date and time of the PC first.",
+    );
+  }
+}
+
 async function recordSignIn(
   ex: Executor,
   ctx: ServiceContext,
@@ -174,6 +190,7 @@ export async function signIn(
     await recordFailure(ex, ctx, account, "PASSWORD");
     return { ok: false, reason: "WRONG_PASSWORD" };
   }
+  await refuseClockBehind(ex, ctx);
   if (account.mustChangePassword === 1) {
     if (input.newPassword === undefined) return { ok: false, reason: "NEW_PASSWORD_NEEDED" };
     if (normalizePassword(input.newPassword) === normalizePassword(input.password)) {
@@ -242,6 +259,7 @@ export async function setFirstPassword(
 ): Promise<PasswordChosen> {
   const account = await activeAccount(ex, input.userId);
   if (account.passwordHash.trim() !== "") throw new ServiceError("This account already has a password.");
+  await refuseClockBehind(ex, ctx);
   const { recoveryCode } = await writePassword(ex, ctx, account, input.password, "FIRST", {
     iterations: input.iterations,
     newRecoveryCode: true,
@@ -289,6 +307,7 @@ export async function resetManagerPassword(
     await recordFailure(ex, ctx, account, "RECOVERY_CODE");
     return { ok: false, reason: "WRONG_CODE" };
   }
+  await refuseClockBehind(ex, ctx);
   const { recoveryCode } = await writePassword(ex, ctx, account, input.newPassword, "RECOVERY", {
     iterations: input.iterations,
     newRecoveryCode: true,

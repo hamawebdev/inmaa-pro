@@ -24,6 +24,7 @@ import { SanctionChip } from "@/features/people/components/sanction-chip";
 import { useCodeLabel } from "@/i18n/use-code-label";
 import { pathKey } from "@/lib/compat/revalidate";
 import { DIVISIONS } from "@/lib/options";
+import { phoneText } from "@/lib/text/phone";
 
 /**
  * «العملاء» (plan feature 1): every client the centre knows, with his
@@ -70,7 +71,7 @@ export default function ClientsPage() {
           <div className="max-w-64 min-w-36">
             <p className="truncate font-bold">{row.original.name}</p>
             <p className="truncate text-sm text-muted-foreground">
-              <Ltr>{row.original.phone}</Ltr>
+              <Ltr>{phoneText(row.original.phone)}</Ltr>
             </p>
           </div>
         ),
@@ -99,7 +100,7 @@ export default function ClientsPage() {
         cell: ({ row }) => (
           <div className="flex flex-wrap gap-1.5">
             {row.original.sanction && <SanctionChip kind="CLIENT" state={row.original.sanction} />}
-            {row.original.missingIdentifiers.length > 0 && <StatusChip tone="warning" label={t("NoRc")} />}
+            {row.original.missingIdentifiers.length > 0 && <StatusChip tone="warning" label={t("MissingForInvoice")} />}
             {!row.original.sanction && row.original.missingIdentifiers.length === 0 && (
               <span className="text-muted-foreground">—</span>
             )}

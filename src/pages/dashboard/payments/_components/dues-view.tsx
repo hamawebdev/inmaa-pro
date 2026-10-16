@@ -129,6 +129,11 @@ export function DuesView({ onRecord }: { onRecord?: (fileId: string) => void }) 
         cell: ({ row }) => (
           <div className="max-w-32 min-w-0 xl:max-w-56">
             <p className="leading-tight font-bold whitespace-nowrap tabular-nums">{money(row.original.remaining)}</p>
+            {row.original.fileCredit > 0 && (
+              <p className="truncate text-sm leading-tight text-info">
+                {t("FileCredit", { amount: money(row.original.fileCredit) })}
+              </p>
+            )}
             {row.original.paidAmount > 0 && (
               <p className="truncate text-sm leading-tight text-muted-foreground">
                 {t("PaidOf", { paid: money(row.original.paidAmount), amount: money(row.original.amount) })}

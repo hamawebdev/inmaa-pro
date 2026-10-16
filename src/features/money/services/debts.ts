@@ -12,6 +12,7 @@ import { diffDays, formatDate } from "../rules/dates";
 import type { PaymentReminderData, ReminderItem } from "../sheets/payment-reminder-sheet";
 import { DIVISIONS, type Division, type DueKind, type DueState } from "../validators/option-codes";
 
+import { fileCredit, filesCredit } from "./credit";
 import { getFilePaymentSummary, listFileDues, type DueLine, type FilePaymentSummary } from "./dues";
 import { readInvoiceList, type InvoiceListRow } from "./invoices";
 import { readSeller } from "./parties";
@@ -47,6 +48,8 @@ export interface OpenDueRow {
   invoiceNumber: string | null;
   state: DueState;
   daysLate: number;
+  /** The file's credit, when it has some: what the office may set against this due. */
+  fileCredit: number;
 }
 
 const divisionOf = (value: string): Division =>
@@ -88,6 +91,10 @@ export async function listOpenDues(ex: Executor, ctx: ServiceContext): Promise<O
     .orderBy("File.number")
     .orderBy("PaymentDue.seq")
     .execute();
+  const credits = await filesCredit(
+    ex,
+    rows.map((row) => row.fileId),
+  );
   return rows.map((row) => {
     const remaining = row.amount - row.paidAmount;
     return {
@@ -113,6 +120,7 @@ export async function listOpenDues(ex: Executor, ctx: ServiceContext): Promise<O
         leadDays,
       ),
       daysLate: Math.max(0, diffDays(row.dueDate, ctx.today)),
+      fileCredit: credits.get(row.fileId) ?? 0,
     };
   });
 }
@@ -138,6 +146,8 @@ export interface FileMoney {
   dues: DueLine[];
   invoices: InvoiceListRow[];
   payments: PaymentListRow[];
+  /** Money received that no due holds: offered first to the next payment (credit.ts). */
+  credit: number;
 }
 
 /** A file's part «التسديد»: its dues with their state, its invoices and the payments received. */
@@ -161,6 +171,7 @@ export async function getFileMoney(ex: Executor, ctx: ServiceContext, input: { f
     dues: await listFileDues(ex, ctx, { fileId: file.id }),
     invoices: await readInvoiceList(ex, { fileId: file.id }),
     payments: await readPaymentList(ex, { fileId: file.id }),
+    credit: await fileCredit(ex, file.id),
   };
 }
 
@@ -215,6 +226,8 @@ export async function getPaymentReminder(
     daysLate: diffDays(due.dueDate, ctx.today),
   }));
   const totalRemaining = money(items.reduce((sum, item) => sum + item.remaining, 0));
+  const credit = money(await fileCredit(ex, file.id));
+  const askedAmount = money(Math.max(0, totalRemaining - credit));
   return {
     date: ctx.today,
     place: await getSetting(ex, "centre.city"),
@@ -226,7 +239,9 @@ export async function getPaymentReminder(
     division: file.division,
     items,
     totalRemaining,
-    totalRemainingWordsAr: amountInWordsAr(totalRemaining),
+    credit,
+    askedAmount,
+    totalRemainingWordsAr: amountInWordsAr(askedAmount),
     paymentMethods: file.paymentMethods,
     paymentPlace: file.paymentPlace,
   };

@@ -64,6 +64,17 @@ describe("«قديم»: a client the centre already knows", () => {
       expect(same.values[key], key).toBeUndefined();
     }
     expect(same.siteOffice).toMatchObject({ keysHeld: true, womenOnly: true, landmark: "قرب مسجد النور" });
+    // Reading his previous file is logged once a day per reader (audit LOG-15).
+    await test.transact((ex, ctx) =>
+      getReturningFill(ex, ctx, { kind: "HOUSING_REQUEST", clientId: house.clientId, siteId: house.siteId }),
+    );
+    const consults = await test.db
+      .selectFrom("AuditLog")
+      .select(["entityId", "action"])
+      .where("operation", "=", "CONSULT")
+      .where("entity", "=", "File")
+      .execute();
+    expect(consults).toEqual([{ entityId: house.fileId, action: "VIEW" }]);
 
     // A new site of his, or a file of another division: only who he is.
     const other = await test.transact((ex, ctx) =>

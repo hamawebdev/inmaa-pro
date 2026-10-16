@@ -29,6 +29,7 @@ import {
 import { useCodeLabel } from "@/i18n/use-code-label";
 import { pathKey } from "@/lib/compat/revalidate";
 import { DIVISIONS, SERVICE_TYPES } from "@/lib/options";
+import { phoneText } from "@/lib/text/phone";
 import { fileHubHref, FILES_PATH } from "@/navigation/file-parts";
 
 import { ALL, filesHref, useFilesFilter } from "./files-filter";
@@ -91,7 +92,7 @@ export function FilesView() {
           <div className="min-w-36">
             <p className="font-bold">{row.original.clientName}</p>
             <p className="text-sm text-muted-foreground">
-              <Ltr>{row.original.phone}</Ltr>
+              <Ltr>{phoneText(row.original.phone)}</Ltr>
             </p>
           </div>
         ),

@@ -126,7 +126,7 @@ export function csvCell(value: string | number | null | undefined): string {
 
 /** The whole file: the byte-order mark, the header, one line per row, Windows line ends. */
 export function csvText(header: readonly string[], rows: readonly (readonly (string | number | null)[])[]): string {
-  return `﻿${[header, ...rows].map((row) => row.map(csvCell).join(";")).join("\r\n")}\r\n`;
+  return `\uFEFF${[header, ...rows].map((row) => row.map(csvCell).join(";")).join("\r\n")}\r\n`;
 }
 
 async function invoiceRows(ex: Executor, from: string, to: string) {

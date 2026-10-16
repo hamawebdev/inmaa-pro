@@ -44,6 +44,7 @@ function dayVisits(ex: Executor, date: LocalDate) {
       "File.siteId",
       "File.serviceType",
       "File.securityInstructions",
+      "File.clientId",
       "Client.name as clientName",
       "Client.phone1 as clientPhone",
     ])
@@ -64,6 +65,8 @@ async function seatsOf(ex: Executor, visitIds: readonly string[]) {
       "VisitWorker.seatStatus",
       "VisitWorker.replacesVisitWorkerId",
       "VisitWorker.createdAt",
+      "VisitWorker.workerId",
+      "StaffMember.number",
       "StaffMember.firstName",
       "StaffMember.lastName",
       "StaffMember.phone",
@@ -214,19 +217,7 @@ export async function getCallList(
 ): Promise<CallListData> {
   requireSection(ctx, "REQUESTS", "READ");
   const settings = await getSettings(ex, ["reminder.mode", "centre.phone"]);
-  const visits = await dayVisits(ex, input.visitsDate).execute();
-  const programmes = await ex
-    .selectFrom("FileProgramme")
-    .select(["fileId", "reminderMode"])
-    .where("fileId", "in", ["", ...new Set(visits.map((visit) => visit.fileId))])
-    .execute();
-  const firstVisits = await ex
-    .selectFrom("Visit")
-    .select(["fileId", (eb) => eb.fn.min("visitDate").as("firstDate")])
-    .where("fileId", "in", ["", ...new Set(visits.map((visit) => visit.fileId))])
-    .where("status", "!=", "CANCELLED")
-    .groupBy("fileId")
-    .execute();
+  const visits = await callListVisits(ex, input.visitsDate);
   const supervisors = await ex
     .selectFrom("StaffMember")
     .select(["id", "firstName", "lastName"])
@@ -237,12 +228,7 @@ export async function getCallList(
     .execute();
 
   const rows: CallListRow[] = [];
-  for (const visit of visits) {
-    const mode = programmes.find((row) => row.fileId === visit.fileId)?.reminderMode ?? settings["reminder.mode"];
-    if (mode === "NONE") continue;
-    const first = firstVisits.find((row) => row.fileId === visit.fileId)?.firstDate === input.visitsDate;
-    const changed = visit.planChangedAt !== null || visit.isManuallyEdited === 1;
-    if (mode === "FIRST_AND_CHANGED" && visit.serviceType === "CONTRACT" && !first && !changed) continue;
+  for (const { changed, ...visit } of visits) {
     const site = await readSiteForOrder(ex, { siteId: visit.siteId, securityTicked: false });
     const supervisor = supervisors.find((row) => row.id === visit.supervisorEmployeeId);
     const phones = [site?.personOnSite?.phone, visit.clientPhone].filter(
@@ -266,6 +252,38 @@ export async function getCallList(
   };
 }
 
+/**
+ * The visits of a day whose client is called the day before: every visit of a
+ * file whose reminder mode is not NONE; with FIRST_AND_CHANGED, a contract's
+ * visit only on its first day or when its plan changed.
+ */
+async function callListVisits(ex: Executor, visitsDate: LocalDate) {
+  const settings = await getSettings(ex, ["reminder.mode"]);
+  const visits = await dayVisits(ex, visitsDate).execute();
+  const programmes = await ex
+    .selectFrom("FileProgramme")
+    .select(["fileId", "reminderMode"])
+    .where("fileId", "in", ["", ...new Set(visits.map((visit) => visit.fileId))])
+    .execute();
+  const firstVisits = await ex
+    .selectFrom("Visit")
+    .select(["fileId", (eb) => eb.fn.min("visitDate").as("firstDate")])
+    .where("fileId", "in", ["", ...new Set(visits.map((visit) => visit.fileId))])
+    .where("status", "!=", "CANCELLED")
+    .groupBy("fileId")
+    .execute();
+  const kept: Array<(typeof visits)[number] & { changed: boolean }> = [];
+  for (const visit of visits) {
+    const mode = programmes.find((row) => row.fileId === visit.fileId)?.reminderMode ?? settings["reminder.mode"];
+    if (mode === "NONE") continue;
+    const first = firstVisits.find((row) => row.fileId === visit.fileId)?.firstDate === visitsDate;
+    const changed = visit.planChangedAt !== null || visit.isManuallyEdited === 1;
+    if (mode === "FIRST_AND_CHANGED" && visit.serviceType === "CONTRACT" && !first && !changed) continue;
+    kept.push({ ...visit, changed });
+  }
+  return kept;
+}
+
 // ── Printing ────────────────────────────────────────────────────────────────
 
 /** A day sheet or a call list went to the printer: both name people (their phones too), so it is logged. */
@@ -275,15 +293,69 @@ export async function recordDaySheetPrinted(
   input: { sheet: "SUPERVISOR_DAY" | "CALL_LIST"; date: LocalDate; supervisorId?: string | null },
 ): Promise<void> {
   requireSection(ctx, "REQUESTS", "READ");
-  await logDisclose(ex, ctx, {
-    owner: "OPERATIONS",
-    action: "PRINT",
-    entity: input.sheet === "SUPERVISOR_DAY" ? "StaffMember" : "Visit",
-    entityId: input.supervisorId ?? undefined,
+  // One disclosure per person the sheet names, so that a person's disclosures are found by the subject index.
+  const disclose = (entry: { entity: string; entityId?: string; entityLabel: string; subject?: DisclosedSubject }) =>
+    logDisclose(ex, ctx, {
+      owner: "OPERATIONS",
+      action: "PRINT",
+      disclosure: "PRINT",
+      ...entry,
+      context: { sheet: input.sheet, date: input.date },
+    });
+
+  if (input.sheet === "CALL_LIST") {
+    const visits = await callListVisits(ex, input.date);
+    if (visits.length === 0) await disclose({ entity: "Visit", entityLabel: input.date });
+    for (const visit of visits) {
+      await disclose({
+        entity: "Visit",
+        entityId: visit.id,
+        entityLabel: visit.number,
+        subject: { kind: "CLIENT", id: visit.clientId, label: visit.clientName },
+      });
+    }
+    return;
+  }
+
+  const supervisorId = input.supervisorId ?? null;
+  const supervisor = supervisorId
+    ? await ex.selectFrom("StaffMember").select(["id", "number"]).where("id", "=", supervisorId).executeTakeFirst()
+    : undefined;
+  await disclose({
+    entity: "StaffMember",
+    entityId: supervisor?.id,
     entityLabel: input.date,
-    context: { sheet: input.sheet, date: input.date },
+    subject: supervisor ? { kind: "EMPLOYEE", id: supervisor.id, label: supervisor.number } : undefined,
   });
+  if (!supervisor) return;
+  const visits = await dayVisits(ex, input.date).where("Visit.supervisorEmployeeId", "=", supervisor.id).execute();
+  const seats = await seatsOf(
+    ex,
+    visits.map((visit) => visit.id),
+  );
+  const clients = new Map(visits.map((visit) => [visit.clientId, visit]));
+  for (const [clientId, visit] of clients) {
+    await disclose({
+      entity: "Visit",
+      entityId: visit.id,
+      entityLabel: visit.number,
+      subject: { kind: "CLIENT", id: clientId, label: visit.clientName },
+    });
+  }
+  const workers = new Map(
+    seats.filter((seat) => seat.seatStatus === "ASSIGNED").map((seat) => [seat.workerId, seat] as const),
+  );
+  for (const [workerId, seat] of workers) {
+    await disclose({
+      entity: "Visit",
+      entityId: seat.visitId,
+      entityLabel: input.date,
+      subject: { kind: "WORKER", id: workerId, label: seat.number },
+    });
+  }
 }
+
+type DisclosedSubject = { kind: "CLIENT" | "WORKER" | "EMPLOYEE"; id: string; label?: string };
 
 export const getSupervisorDaySheetQuery = query(getSupervisorDaySheet);
 export const getCallListQuery = query(getCallList);

@@ -54,7 +54,11 @@ async function building() {
     visitDate: localDate("2026-10-10"),
     status: "DONE",
   });
-  const worker = await test.rows.insert("StaffMember", { kind: "WORKER", firstName: "سعاد", lastName: "بوزيد" } as never);
+  const worker = await test.rows.insert("StaffMember", {
+    kind: "WORKER",
+    firstName: "سعاد",
+    lastName: "بوزيد",
+  } as never);
   return { site, file, visit, worker, clientId: site.clientId };
 }
 
@@ -71,7 +75,8 @@ async function fromOrder(fileId: string, visitId: string, kind: string, details:
   } as never);
 }
 
-const report = (id: string) => test.db.selectFrom("ProblemReport").selectAll().where("id", "=", id).executeTakeFirstOrThrow();
+const report = (id: string) =>
+  test.db.selectFrom("ProblemReport").selectAll().where("id", "=", id).executeTakeFirstOrThrow();
 const lastLog = () =>
   test.db.selectFrom("AuditLog").selectAll().orderBy("chainSeq", "desc").limit(1).executeTakeFirstOrThrow();
 const logReport = (input: LogProblemReportInput) => test.transact((ex, ctx) => logProblemReport(ex, ctx, input));
@@ -332,7 +337,11 @@ describe("demoComplaints", () => {
       );
       expect(counter.state).toBe("RUNNING");
       expect(
-        await demo.db.selectFrom("ProblemReport").selectAll().where("id", "=", names.problemHandedOver).executeTakeFirst(),
+        await demo.db
+          .selectFrom("ProblemReport")
+          .selectAll()
+          .where("id", "=", names.problemHandedOver)
+          .executeTakeFirst(),
       ).toMatchObject({ handedTo: "STOCK", status: "IN_PROGRESS", kind: "MATERIAL_SHORTAGE" });
 
       expect(await demo.transact((ex, ctx) => demoComplaints(ex, ctx, tools))).toEqual({});

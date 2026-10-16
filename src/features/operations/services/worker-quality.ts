@@ -113,7 +113,7 @@ export async function getWorkerQualityFigures(
     .where("Visit.visitDate", ">=", from)
     .where("Visit.visitDate", "<=", to)
     .execute();
-  const late = seats.map((seat) => seat.lateMin ?? 0).filter((minutes) => minutes > 0);
+  const late = seats.map((seat) => Number(seat.lateMin ?? 0)).filter((minutes) => minutes > 0);
   const overall = seats.flatMap((seat) => (seat.ratingOverall === null ? [] : [seat.ratingOverall]));
   const behaviour = seats.flatMap((seat) => (seat.ratingBehaviour === null ? [] : [seat.ratingBehaviour]));
 

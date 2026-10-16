@@ -908,9 +908,9 @@
       "Status": "Status",
       "Interview": "Interview",
       "Decision": "Decision",
-      "TrialUntil": "Trial until",
+      "TrialUntil": "Trial to",
       "TrialEnding": "Ends soon",
-      "Training": "Training days",
+      "Training": "Training",
       "TrainingDone": "Completed",
       "Outcome": "Result",
       "Score": "Score",
@@ -926,7 +926,8 @@
       "Recommendation": "Recommendation",
       "Since": "Since",
       "LastTotal": "Last result",
-      "Evaluate": "Evaluate"
+      "Evaluate": "Evaluate",
+      "More": "More"
     },
     "InterviewStatuses": {
       "SCHEDULED": "Scheduled",
@@ -1219,7 +1220,7 @@
   },
   "Cards": {
     "Title": "ID card",
-    "Hint": "{count} cards at their real size (85.6 × 54 mm), eight to a page, with their cutting marks.",
+    "Hint": "At their real size (85.6 × 54 mm), eight to a page, with their cutting marks.",
     "Loading": "Loading…",
     "NoneChosen": "Choose the workers in the list first.",
     "Failed": "The cards could not be prepared.",

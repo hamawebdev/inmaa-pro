@@ -49,6 +49,8 @@ export const PERIOD_UNIT_LABEL: Readonly<Record<Exclude<PaymentFrequency, "PER_V
 };
 export const VISIT_UNIT_LABEL = "زيارة";
 export const JOB_UNIT_LABEL = "خدمة";
+/** A deduction that does not divide into whole centimes per visit is one line of one lump sum (INV-6). */
+export const LUMP_SUM_UNIT_LABEL = "جزافي";
 
 export const NOBODY_TO_SIGN_LABEL = "لم يوقّع أحد";
 export const CLIENT_AT_FAULT_REMARK = "تعذرت بسبب العميل";

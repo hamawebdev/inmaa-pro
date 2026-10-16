@@ -5,7 +5,23 @@
       "Title": "Mission order",
       "Description": "Printed for the team, filled in on site, then brought back to be typed in.",
       "Back": "The visit",
-      "PrintNotRecorded": "The print could not be recorded."
+      "PrintNotRecorded": "The print could not be recorded.",
+      "Hold": {
+        "Title": "{client} ({state}): this order prints only once the manager releases it.",
+        "Since": "Since",
+        "Until": "until",
+        "ManagerHint": "The visit stays planned. Release this order if the team must still go, and write why.",
+        "WaitHint": "The visit stays planned. Only the manager can release this order; it cannot be printed before.",
+        "Release": "Release this order",
+        "Released": "The manager released this order of a client marked {state}:",
+        "DialogTitle": "Release the order of a sanctioned client",
+        "DialogDescription": "This order alone may then print. Your reason is kept in the log under your name.",
+        "Reason": "Why the team still goes",
+        "Back": "Back",
+        "Confirm": "Release",
+        "Done": "The order may be printed.",
+        "Failed": "The order was not released."
+      }
     },
     "InspectionSheet": {
       "Title": "Supervisor inspection sheet",
@@ -378,7 +394,10 @@
     "ReportNotHandedOver": "This report was not handed over.",
     "PeriodInvalid": "Enter a valid period.",
     "NotAtFaultOnRecord": "This record does not find this worker at fault.",
-    "ViolationAlreadyRecorded": "A violation is already recorded for this worker on this record."
+    "ViolationAlreadyRecorded": "A violation is already recorded for this worker on this record.",
+    "OrderNotHeld": "This client is not suspended or penalised: the order prints without a release.",
+    "OrderHeldForClient": "This client is suspended or penalised: the order prints only after the manager releases it.",
+    "SickNotLeave": "Record a sickness under the category Sick, not as a type of leave."
   },
   "FileVisits": {
     "ProgrammeTitle": "Programme",

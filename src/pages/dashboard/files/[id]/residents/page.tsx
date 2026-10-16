@@ -14,6 +14,7 @@ import { countResidentsQuery } from "@/features/clients/services/contracts";
 import { fileQueryPath, getFileHubQuery, openResidentListAction } from "@/features/clients/services/file-reads";
 import { useCan, useSectionLevel } from "@/hooks/use-session";
 import { pathKey } from "@/lib/compat/revalidate";
+import { phoneText } from "@/lib/text/phone";
 import { fileHubHref, filePartHref } from "@/navigation/file-parts";
 
 import { ltr } from "../../_components/ltr-text";
@@ -106,7 +107,9 @@ export default function FileResidentsPage() {
                   <li key={resident.id} className="flex min-w-0 flex-wrap items-baseline gap-x-6 gap-y-1 py-3">
                     <Ltr className="w-10 shrink-0 font-bold tabular-nums">{resident.number}</Ltr>
                     <span className="min-w-0 flex-1 truncate font-medium">{resident.name}</span>
-                    {resident.phone && <Ltr className="text-muted-foreground tabular-nums">{resident.phone}</Ltr>}
+                    {resident.phone && (
+                      <Ltr className="text-muted-foreground tabular-nums">{phoneText(resident.phone)}</Ltr>
+                    )}
                     {resident.registeredDate && (
                       <ScreenDate className="text-muted-foreground" date={resident.registeredDate} />
                     )}

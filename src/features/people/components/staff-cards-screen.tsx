@@ -83,7 +83,7 @@ export function StaffCardsScreen({
         <p className="text-base text-muted-foreground">{t(ids.length === 0 ? "NoneChosen" : "Loading")}</p>
       ) : (
         <div className="space-y-4">
-          <p className="text-base text-muted-foreground">{t("Hint", { count: data.cards.length })}</p>
+          <p className="text-base text-muted-foreground">{t("Hint")}</p>
           <IdCardsSheet data={data} photos={photos} />
         </div>
       )}

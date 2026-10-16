@@ -58,7 +58,7 @@ it("exports the sales journal with the void marked, records the export and logs 
   const out = await test.transact((ex, ctx) => buildAccountantExport(ex, ctx, { kind: "INVOICES", ...december }));
   expect(out.fileName).toBe("inmaa-journal-ventes-2026-12-01-2026-12-31.csv");
   expect(out.rowCount).toBe(2);
-  expect(out.text.startsWith("﻿رقم الفاتورة;تاريخ الفاتورة;")).toBe(true);
+  expect(out.text.startsWith("\uFEFFرقم الفاتورة;تاريخ الفاتورة;")).toBe(true);
   const [, firstLine, secondLine] = out.text.split("\r\n");
   expect(firstLine.split(";")).toEqual(
     expect.arrayContaining([first.number, "01/12/2026", "45000,00", "ملغاة", "خطأ في الفترة"]),
@@ -95,7 +95,7 @@ it("exports the receipts, the payments and the expenses of the period", async ()
   );
   const expenses = await test.transact((ex, ctx) => buildAccountantExport(ex, ctx, { kind: "EXPENSES", ...december }));
   expect(expenses.rowCount).toBe(0);
-  expect(expenses.text).toBe("﻿التاريخ;القسم;البند;المبلغ;طريقة الدفع;المستفيد;المصدر;ملاحظة\r\n");
+  expect(expenses.text).toBe("\uFEFFالتاريخ;القسم;البند;المبلغ;طريقة الدفع;المستفيد;المصدر;ملاحظة\r\n");
 });
 
 it("is the accountant's: reception may not export", async () => {

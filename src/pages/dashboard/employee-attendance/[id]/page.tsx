@@ -20,6 +20,12 @@ import { Ltr } from "@/components/ltr";
 import { StatCard } from "@/components/stat-card";
 import { StatusChip } from "@/components/status-chip";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { DayDate, Days, Duration, Nothing } from "@/features/people/components/figures";
 import { monthBounds } from "@/features/people/components/format";
@@ -162,37 +168,47 @@ export default function EmployeeAttendanceDetailPage() {
                       header: t("Days.Checks"),
                       cell: (day) => (
                         <div className="flex flex-wrap items-center gap-2">
-                          {day.checks.map((check) => (
-                            <span
-                              key={check.id}
-                              className="border-app inline-flex items-center gap-2 rounded-lg border-border bg-muted/40 px-2 py-1"
-                            >
-                              <span className={check.type === "CHECK_IN" ? "text-success" : "text-warning-ink"}>
-                                {t(`CheckTypes.${check.type}`)}
+                          {day.checks.map((check) => {
+                            const chip = (
+                              <span className="border-app inline-flex items-center gap-2 rounded-lg border-border bg-muted/40 px-2 py-1">
+                                <span className={check.type === "CHECK_IN" ? "text-success" : "text-warning-ink"}>
+                                  {t(`CheckTypes.${check.type}`)}
+                                </span>
+                                <Ltr className="font-bold tabular-nums">{check.time}</Ltr>
                               </span>
-                              <Ltr className="font-bold tabular-nums">{check.time}</Ltr>
-                              {edits && (
-                                <>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon-sm"
+                            );
+                            // Changing or taking off a time is on the chip itself: the row stays one line high.
+                            return edits ? (
+                              <DropdownMenu key={check.id}>
+                                <DropdownMenuTrigger asChild>
+                                  <button
+                                    type="button"
+                                    className="cursor-pointer rounded-lg"
                                     aria-label={t("Table.Edit")}
-                                    onClick={() => void entries.editCheck({ ...check, date: day.date })}
+                                  >
+                                    {chip}
+                                  </button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="start">
+                                  <DropdownMenuItem
+                                    onSelect={() => void entries.editCheck({ ...check, date: day.date })}
                                   >
                                     <PencilLine />
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon-sm"
-                                    aria-label={t("Table.Delete")}
-                                    onClick={() => void entries.deleteCheck(check.id)}
+                                    {t("Table.Edit")}
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    className="text-destructive"
+                                    onSelect={() => void entries.deleteCheck(check.id)}
                                   >
                                     <Trash2 />
-                                  </Button>
-                                </>
-                              )}
-                            </span>
-                          ))}
+                                    {t("Table.Delete")}
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            ) : (
+                              <span key={check.id}>{chip}</span>
+                            );
+                          })}
                         </div>
                       ),
                     },
@@ -319,7 +335,7 @@ export default function EmployeeAttendanceDetailPage() {
                                 </Button>
                               </>
                             )}
-                            {(leave.status === "REQUESTED" || leave.status === "APPROVED") && (
+                            {leave.status === "APPROVED" && (
                               <Button variant="outline" size="sm" onClick={() => void entries.cancelLeave(leave.id)}>
                                 <Ban />
                                 {t("Table.CancelLeave")}

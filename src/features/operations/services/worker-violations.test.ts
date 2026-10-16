@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, expect, it } from "vitest";
 
+import { localDate } from "@/lib/units";
 import { createTestDatabase, type TestDatabase } from "@/testing/database";
 
 import { listViolationCandidates, recordWorkerViolation } from "./worker-violations";
@@ -28,7 +29,7 @@ const violationsOf = (staffId: string) =>
 
 it("hands the worker a complaint settled at fault names to HR, once", async () => {
   const worker = await test.rows.insert("StaffMember", { kind: "WORKER" });
-  const visit = await test.rows.insert("Visit", { visitDate: "2026-10-08", status: "DONE" });
+  const visit = await test.rows.insert("Visit", { visitDate: localDate("2026-10-08"), status: "DONE" });
   const complaint = await test.rows.insert("Complaint", {
     workerId: worker.id,
     visitId: visit.id,
@@ -77,8 +78,8 @@ it("offers the workers an inspection noted or found absent, and a damage report'
   const fine = await test.rows.insert("StaffMember", { kind: "WORKER" });
   const inspection = await test.rows.insert("Inspection", {
     status: "DONE",
-    plannedDate: "2026-10-05",
-    doneDate: "2026-10-05",
+    plannedDate: localDate("2026-10-05"),
+    doneDate: localDate("2026-10-05"),
   });
   await test.rows.insert("InspectionWorkerNote", {
     inspectionId: inspection.id,
@@ -123,17 +124,17 @@ it("offers the workers an inspection noted or found absent, and a damage report'
     }),
   ]);
 
-  const visit = await test.rows.insert("Visit", { visitDate: "2026-10-10", status: "DONE" });
+  const visit = await test.rows.insert("Visit", { visitDate: localDate("2026-10-10"), status: "DONE" });
   await test.rows.insert("VisitWorker", { visitId: visit.id, workerId: fine.id, seatStatus: "ASSIGNED" });
   const shortage = await test.rows.insert("ProblemReport", {
     visitId: visit.id,
     kind: "MATERIAL_SHORTAGE",
-    occurredDate: "2026-10-10",
+    occurredDate: localDate("2026-10-10"),
   });
   const damage = await test.rows.insert("ProblemReport", {
     visitId: visit.id,
     kind: "DAMAGE_DURING_WORK",
-    occurredDate: "2026-10-10",
+    occurredDate: localDate("2026-10-10"),
   });
   expect(
     await test.transact((ex, ctx) =>

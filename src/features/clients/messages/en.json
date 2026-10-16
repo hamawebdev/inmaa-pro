@@ -83,8 +83,8 @@
     "Registered": "The file was registered",
     "Parts": "Parts of the file",
     "OpenPart": "Open",
-    "RcMissing": "This organisation's RC number is not on its card: its first invoice cannot be issued without it.",
-    "OpenClientCard": "Open the client's card"
+    "OpenClientCard": "Open the client's card",
+    "IdentifiersMissing": "This organisation's card lacks what its first invoice needs: {list}."
   },
   "FileForm": {
     "NewTitle": "New file",
@@ -609,7 +609,11 @@
     "RepVisitFuture": "A visit cannot be dated after today.",
     "ContactName": "The contact's name is required.",
     "ContactNotFound": "This contact does not exist.",
-    "SiteHasCoordinator": "This site already has a coordinator."
+    "SiteHasCoordinator": "This site already has a coordinator.",
+    "InvoiceTradeRegisterAnswer": "Say on the client's card whether the organisation has a trade register.",
+    "InvoiceNif": "This client's tax identification number (NIF) is needed on the invoice.",
+    "InvoiceNis": "This client's statistical identification number (NIS) is needed on the invoice.",
+    "FileJobDoneOnDemand": "Only a job on demand ends when its last visit is done."
   },
   "Alerts": {
     "QuoteFollowUp": {
@@ -810,7 +814,6 @@
       "State": "State"
     },
     "FilesCount": "{count} ({live} contracted)",
-    "NoRc": "RC missing",
     "Open": "Open",
     "SearchPlaceholder": "Name, phone or file number",
     "Division": "Division",
@@ -818,7 +821,6 @@
     "Empty": "No client.",
     "NotFound": "This client does not exist.",
     "CardDescription": "Client file no. {number}",
-    "RcNeeded": "This organisation has a trade register: its RC number is needed before its first invoice. Type it below.",
     "Identity": "As his forms name him",
     "IdentityHint": "Changed from a file's «الاستمارة».",
     "Number": "File no.",
@@ -869,6 +871,15 @@
       "isCoordinator": "Coordinator of the site",
       "holdsKey": "Holds a key",
       "followsService": "Follows the service"
+    },
+    "MissingForInvoice": "Missing for invoicing",
+    "NeededForInvoice": "Before this organisation's first invoice, its card needs: {list}.",
+    "NotAnswered": "Not answered",
+    "Missing": {
+      "tradeRegisterAnswer": "whether it has a trade register",
+      "rcNumber": "its trade register number (RC)",
+      "nif": "its NIF",
+      "nis": "its NIS"
     }
   },
   "Contract": {

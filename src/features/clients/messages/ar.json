@@ -83,8 +83,8 @@
     "Registered": "سُجّل الملف",
     "Parts": "أجزاء الملف",
     "OpenPart": "فتح",
-    "RcMissing": "رقم السجل التجاري لهذه المؤسسة غير مسجل في بطاقتها: لا تصدر أول فاتورة بدونه.",
-    "OpenClientCard": "فتح بطاقة العميل"
+    "OpenClientCard": "فتح بطاقة العميل",
+    "IdentifiersMissing": "تنقص بطاقة هذه المؤسسة ما تحتاجه أول فاتورة: {list}."
   },
   "FileForm": {
     "NewTitle": "ملف جديد",
@@ -609,7 +609,11 @@
     "RepVisitFuture": "لا يمكن أن يكون تاريخ الزيارة بعد اليوم.",
     "ContactName": "اسم الشخص المسؤول مطلوب.",
     "ContactNotFound": "هذا الشخص غير موجود.",
-    "SiteHasCoordinator": "لهذا الموقع منسق من قبل."
+    "SiteHasCoordinator": "لهذا الموقع منسق من قبل.",
+    "InvoiceTradeRegisterAnswer": "حدد في بطاقة العميل هل للمؤسسة سجل تجاري.",
+    "InvoiceNif": "رقم التعريف الجبائي (NIF) لهذا العميل مطلوب في الفاتورة.",
+    "InvoiceNis": "رقم التعريف الإحصائي (NIS) لهذا العميل مطلوب في الفاتورة.",
+    "FileJobDoneOnDemand": "لا ينتهي بانتهاء آخر زيارة إلا العمل عند الطلب."
   },
   "Alerts": {
     "QuoteFollowUp": {
@@ -810,7 +814,6 @@
       "State": "الحالة"
     },
     "FilesCount": "{count} ({live} متعاقد)",
-    "NoRc": "ينقصه السجل التجاري",
     "Open": "فتح",
     "SearchPlaceholder": "الاسم أو رقم الهاتف أو رقم الملف",
     "Division": "القسم",
@@ -818,7 +821,6 @@
     "Empty": "لا يوجد عميل.",
     "NotFound": "هذا العميل غير موجود.",
     "CardDescription": "ملف العميل رقم {number}",
-    "RcNeeded": "لهذه المؤسسة سجل تجاري: رقمه مطلوب قبل أول فاتورة. اكتبه أدناه.",
     "Identity": "كما تذكره الاستمارات",
     "IdentityHint": "يُعدَّل من «الاستمارة» في أحد ملفاته.",
     "Number": "رقم الملف",
@@ -869,6 +871,15 @@
       "isCoordinator": "منسق الموقع",
       "holdsKey": "يحتفظ بمفتاح",
       "followsService": "يتابع الخدمة"
+    },
+    "MissingForInvoice": "ناقص للفوترة",
+    "NeededForInvoice": "قبل أول فاتورة لهذه المؤسسة تحتاج بطاقتها إلى: {list}.",
+    "NotAnswered": "لم يُجب عنه",
+    "Missing": {
+      "tradeRegisterAnswer": "هل لها سجل تجاري",
+      "rcNumber": "رقم السجل التجاري",
+      "nif": "رقم التعريف الجبائي (NIF)",
+      "nis": "رقم التعريف الإحصائي (NIS)"
     }
   },
   "Contract": {

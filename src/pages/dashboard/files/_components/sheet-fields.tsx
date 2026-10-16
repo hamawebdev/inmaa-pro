@@ -43,14 +43,6 @@ const REQUIRED_KEYS: ReadonlySet<FieldKey> = new Set(["clientName", "phone", "ad
 
 const answerPath = (key: string) => `answers.${key}` as Path;
 
-/**
- * The shared radio button marks its ticked state with a class that matches
- * nothing (`data-checked:`, where the library sets `data-state="checked"`), so
- * a ticked option looks like the others. Until the shared one is corrected, the
- * ticked state is named here.
- */
-const RADIO_CHECKED = "data-[state=checked]:border-primary data-[state=checked]:bg-primary";
-
 /** An option's words on screen: his in Arabic, the code's label otherwise. */
 function useOptionText(list: OptionListName | undefined) {
   const t = useTranslations("FileForm");
@@ -227,7 +219,7 @@ function SingleChoice({
                 const id = `file-${path.replace(/\./g, "-")}-${code}`;
                 return (
                   <div key={code} className="flex items-center gap-3">
-                    <RadioGroupItem value={code} id={id} className={RADIO_CHECKED} />
+                    <RadioGroupItem value={code} id={id} />
                     <Label htmlFor={id} className="font-normal">
                       {optionText(option, code)}
                     </Label>

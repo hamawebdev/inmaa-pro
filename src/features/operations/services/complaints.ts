@@ -95,7 +95,12 @@ export const COMPLAINT_LIST_STATES = ["open", "late", "settled", "all"] as const
 export type ComplaintListState = (typeof COMPLAINT_LIST_STATES)[number];
 
 /** The ways in the office types a complaint itself: one on the order is opened by the returned order. */
-export const TYPED_COMPLAINT_CHANNELS = ["PHONE", "AT_OFFICE", "SUPERVISOR", "VIA_WORKER"] as const satisfies readonly ComplaintChannel[];
+export const TYPED_COMPLAINT_CHANNELS = [
+  "PHONE",
+  "AT_OFFICE",
+  "SUPERVISOR",
+  "VIA_WORKER",
+] as const satisfies readonly ComplaintChannel[];
 
 /** The description of a complaint opened from a sign-off whose client wrote no note. */
 export const SIGNOFF_COMPLAINT_TEXT = "الخدمة غير مقبولة عند الاستلام";
@@ -558,7 +563,8 @@ export async function listComplaints(
   let rows = complaintRows(ex);
   if (state === "open" || state === "late") rows = rows.where("Complaint.status", "in", [...OPEN_COMPLAINT_STATUSES]);
   // Late: no answer, and its due moment passed (the counter's LATE).
-  if (state === "late") rows = rows.where("Complaint.firstResponseAt", "is", null).where("Complaint.dueAt", "<", ctx.now);
+  if (state === "late")
+    rows = rows.where("Complaint.firstResponseAt", "is", null).where("Complaint.dueAt", "<", ctx.now);
   if (state === "settled") rows = rows.where("Complaint.status", "in", [...CLOSED_COMPLAINT_STATUSES]);
   if (from) rows = rows.where("Complaint.receivedAt", ">=", startOf(ctx, from));
   if (to) rows = rows.where("Complaint.receivedAt", "<", startOf(ctx, addDays(to, 1)));

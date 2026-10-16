@@ -1172,11 +1172,15 @@ export async function closeFile(
   if (!(CLOSE_REASONS as readonly string[]).includes(input.reason)) {
     throw new Error(`clients: unknown close reason ${input.reason}`);
   }
+  // Every reason needs the right to write the requests: Operations' sign-off, which closes a finished job, holds it.
+  requireSection(ctx, "REQUESTS", "WRITE");
   const jobDone = input.reason === "JOB_DONE";
-  if (!jobDone) requireSection(ctx, "REQUESTS", "WRITE");
   const record = await loadFileRecord(ex, input.fileId);
   if (!record) throw new ServiceError("This file does not exist.");
   const { file } = record;
+  if (jobDone && file.serviceType !== "ON_DEMAND") {
+    throw new ServiceError("Only a job on demand ends when its last visit is done.");
+  }
   if (file.closedAt !== null) {
     if (jobDone) return { fileId: file.id, closed: false };
     throw new ServiceError("This file is closed and can no longer be changed.");

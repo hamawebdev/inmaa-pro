@@ -4,6 +4,7 @@ import { Ltr } from "@/components/ltr";
 import { DottedBlank, KeepTogether, PrintSheet, SHEET_FONT, SheetCell, SheetRow, SheetTable } from "@/components/print";
 import { amountInWordsAr } from "@/features/money/rules/amount-in-words-ar";
 import { formatMoney, formatMoneyAr } from "@/lib/units";
+import { phoneText } from "@/lib/text/phone";
 
 import { formatSheetDate, formatSheetQty } from "../forms/answers";
 import type { QuoteSheetData } from "../services/quotes";
@@ -72,7 +73,7 @@ export function QuoteSheet({ data }: { data: QuoteSheetData }) {
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", columnGap: "8mm", rowGap: "1mm" }}>
         <Line label="العميل:">{client.name}</Line>
-        <Line label="رقم الهاتف:">{client.phone ? <Ltr>{client.phone}</Ltr> : null}</Line>
+        <Line label="رقم الهاتف:">{client.phone ? <Ltr>{phoneText(client.phone)}</Ltr> : null}</Line>
         {client.managerName && <Line label="المسير:">{client.managerName}</Line>}
         <Line label="العنوان:">{[site.address ?? client.address, site.commune].filter(Boolean).join("، ")}</Line>
         {site.name && <Line label="الموقع:">{site.name}</Line>}

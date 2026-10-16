@@ -1,5 +1,5 @@
 import type { SectionLevel } from "@/lib/access/catalogue";
-import { requireSection, sectionLevel } from "@/lib/access/session";
+import { requireCapability, requireSection, sectionLevel } from "@/lib/access/session";
 import { newId } from "@/lib/db/rows";
 import { emit } from "@/lib/events";
 import { logChange, logCollect } from "@/lib/log";
@@ -110,6 +110,22 @@ function requireAbsenceRight(ctx: ServiceContext, level: SectionLevel): void {
   if (!held.some((each) => each === "WRITE" || (level === "READ" && each === "READ"))) {
     throw new ServiceError("You do not have permission to do this.");
   }
+}
+
+/**
+ * Deciding a worker's leave, recording one already approved, cancelling a
+ * leave, and the pay treatment (paid, justified) are HR's acts: `staff.write`
+ * (HR) or the manager (DESIGN.md section 12; audit ACC-2, ruled). Recording
+ * or cancelling an ordinary absence stays with the writers of the visit.
+ */
+function requireLeaveRight(ctx: ServiceContext): void {
+  requireCapability(ctx, "staff.write");
+}
+
+/** A sickness is category SICK, never a leave of type SICK (RULINGS item 13; audit LAB-12). */
+function refuseSickLeave(leaveType: string | null | undefined): void {
+  if (leaveType === "SICK")
+    throw new ServiceError("Record a sickness under the category Sick, not as a type of leave.");
 }
 
 // ── Rows ────────────────────────────────────────────────────────────────────
@@ -281,6 +297,8 @@ export async function recordWorkerAbsence(
 ): Promise<RecordedAbsence> {
   requireAbsenceRight(ctx, "WRITE");
   const status = input.status ?? "RECORDED";
+  if (status === "APPROVED" || input.paid || input.justified) requireLeaveRight(ctx);
+  refuseSickLeave(input.category === "LEAVE" ? input.leaveType : null);
   if (
     !oneOf(["RECORDED", "REQUESTED", "APPROVED"] as const, status) ||
     !oneOf(ABSENCE_TYPES, input.type) ||
@@ -393,6 +411,7 @@ export async function decideWorkerLeave(
   input: { absenceId: string; status: "APPROVED" | "REFUSED"; reason: string },
 ): Promise<RecordedAbsence> {
   requireAbsenceRight(ctx, "WRITE");
+  requireLeaveRight(ctx);
   if (!oneOf(["APPROVED", "REFUSED"] as const, input.status)) throw new ServiceError("Choose one of the options.");
   const reason = input.reason?.trim() ?? "";
   if (!reason) throw new ServiceError("A reason is required.");
@@ -435,6 +454,8 @@ export interface CancelledAbsence {
   seatsGivenBack: SeatHit[];
   /** Seats another worker had taken over: they stay with her replacement. */
   seatsReplaced: SeatHit[];
+  /** Seats she could not take back without breaking a working-time rule: left open, to fill by hand. */
+  seatsLeftOpen: Array<SeatHit & { why: string }>;
 }
 
 /**
@@ -454,6 +475,7 @@ export async function cancelWorkerAbsence(
   if (group.every((row) => row.status === "CANCELLED" || row.status === "REFUSED")) {
     throw new ServiceError("This absence is already cancelled or refused.");
   }
+  if (group.some((row) => row.category === "LEAVE")) requireLeaveRight(ctx);
 
   for (const row of group) {
     const { set, changes } = changedColumns(row, { status: "CANCELLED" });
@@ -501,12 +523,17 @@ export async function cancelWorkerAbsence(
 
   const seatsGivenBack: SeatHit[] = [];
   const seatsReplaced: SeatHit[] = [];
+  const seatsLeftOpen: Array<SeatHit & { why: string }> = [];
   for (const seat of seats) {
     const replaced = takenOver.has(seat.seatId);
-    const { set } = changedColumns(
-      { seatStatus: seat.seatStatus, absenceId: seat.absenceId },
-      replaced ? { seatStatus: "REPLACED" } : { seatStatus: "ASSIGNED", absenceId: null },
-    );
+    // A seat comes back only as a new seat would be given: under the working-time rules, with no override (LAB-10).
+    const why = replaced ? null : await whySeatStaysOpen(ex, ctx, group[0].workerId, seat.visitId);
+    const next = replaced
+      ? { seatStatus: "REPLACED" }
+      : why === null
+        ? { seatStatus: "ASSIGNED", absenceId: null }
+        : { seatStatus: "REMOVED", absenceId: null };
+    const { set } = changedColumns({ seatStatus: seat.seatStatus, absenceId: seat.absenceId }, next);
     await ex
       .updateTable("VisitWorker")
       .set({ ...set, updatedAt: ctx.now, updatedByUserId: ctx.userId })
@@ -518,9 +545,11 @@ export async function cancelWorkerAbsence(
       visitNumber: seat.visitNumber,
       visitDate: seat.visitDate,
     };
-    (replaced ? seatsReplaced : seatsGivenBack).push(hit);
+    if (replaced) seatsReplaced.push(hit);
+    else if (why === null) seatsGivenBack.push(hit);
+    else seatsLeftOpen.push({ ...hit, why });
   }
-  await settleVisits(ex, ctx, [...seatsGivenBack, ...seatsReplaced]);
+  await settleVisits(ex, ctx, [...seatsGivenBack, ...seatsReplaced, ...seatsLeftOpen]);
 
   const worker = await workerOf(ex, group[0].workerId);
   await logChange(ex, ctx, {
@@ -536,10 +565,32 @@ export async function cancelWorkerAbsence(
       absenceIds: ids,
       seatsGivenBack: seatsForLog(seatsGivenBack),
       seatsReplaced: seatsForLog(seatsReplaced),
+      seatsLeftOpen: seatsLeftOpen.map((seat) => ({ visit: seat.visitNumber, why: seat.why })),
     },
   });
   for (const id of ids) await emit(ex, ctx, "absence.recorded", { absenceId: id });
-  return { absenceIds: ids, seatsGivenBack, seatsReplaced };
+  return { absenceIds: ids, seatsGivenBack, seatsReplaced, seatsLeftOpen };
+}
+
+/**
+ * Why a seat left by a cancelled absence cannot come back to her: a rule the
+ * seat would break now (two visits at once, over 48 hours, a sanction…), as
+ * `judgeSeat` words it. Null when it can.
+ */
+async function whySeatStaysOpen(
+  ex: Executor,
+  ctx: ServiceContext,
+  workerId: string,
+  visitId: string,
+): Promise<string | null> {
+  try {
+    const worker = await workerForSeat(ex, ctx, workerId);
+    await judgeSeat(ex, ctx, worker, await readVisitForSeat(ex, visitId), null);
+    return null;
+  } catch (error) {
+    if (error instanceof ServiceError) return error.message;
+    throw error;
+  }
 }
 
 /** People's treatment of one row for pay: paid, justified, the leave days and type. Changed columns only. */
@@ -549,6 +600,7 @@ export async function setAbsencePayTreatment(
   input: { absenceId: string; paid: boolean; justified: boolean; days?: number | null; leaveType?: LeaveType | null },
 ): Promise<{ absenceId: string; changed: boolean }> {
   requireAbsenceRight(ctx, "WRITE");
+  requireLeaveRight(ctx);
   if (input.leaveType != null && !oneOf(LEAVE_TYPES, input.leaveType))
     throw new ServiceError("Choose one of the options.");
   if (input.days != null && (!Number.isSafeInteger(input.days) || input.days < 0)) {
@@ -559,6 +611,7 @@ export async function setAbsencePayTreatment(
 
   const isLeave = before.category === "LEAVE";
   const leaveType = isLeave ? (input.leaveType === undefined ? before.leaveType : input.leaveType) : null;
+  if (input.leaveType !== undefined) refuseSickLeave(leaveType);
   const days = input.days === undefined ? before.days : input.days === null ? null : qty(input.days);
   if (isLeave && (!leaveType || days === null))
     throw new ServiceError("A leave needs its type and its number of days.");
@@ -740,7 +793,8 @@ async function visitsAtSiteBefore(ex: Executor, siteId: string, date: LocalDate)
 async function replaceableSeat(ex: Executor, seatId: string) {
   const seat = await ex.selectFrom("VisitWorker").selectAll().where("id", "=", seatId).executeTakeFirst();
   if (!seat) throw new ServiceError("This seat does not exist.");
-  if (seat.seatStatus !== "ASSIGNED" && seat.seatStatus !== "ABSENT") {
+  // A RESTING seat is a member's rotating rest day (LAB-4): replaced as an absence is.
+  if (seat.seatStatus !== "ASSIGNED" && seat.seatStatus !== "ABSENT" && seat.seatStatus !== "RESTING") {
     throw new ServiceError("Only a seat held or left by an absence can be replaced.");
   }
   return seat;

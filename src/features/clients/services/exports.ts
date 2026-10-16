@@ -4,6 +4,8 @@ import type { LocalDate, LocalTime } from "@/lib/units";
 
 import { OPTION_LISTS, type FormKind } from "../validators/option-lists";
 
+import { missingIdentifiersOf, type MissingIdentifier } from "../rules/client-identifiers";
+
 import { asFormKind } from "./file-records";
 
 /**
@@ -631,8 +633,11 @@ export interface ClientForInvoice {
   phones: string[];
   /** `billingAddress`, else the file's site address with its commune and wilaya. */
   address: string | null;
-  /** What is missing before a first invoice: a missing address blocks the issue; the RC when it has a trade register. */
-  missing: ("ADDRESS" | "RC")[];
+  /**
+   * What is missing before a first invoice: the address (Money's BUYER_NO_ADDRESS), and an
+   * organisation's identifiers (`MissingIdentifier`, each with its sentence in `MISSING_FOR_INVOICE`).
+   */
+  missing: ("ADDRESS" | MissingIdentifier)[];
 }
 
 /** `getClientForInvoice(clientId, fileId)` (CONTRACTS.md section 3): the buyer block of an invoice. */
@@ -664,9 +669,10 @@ export async function getClientForInvoice(
     }
   }
   const hasTradeRegister = client.hasTradeRegister === 1;
-  const missing: ClientForInvoice["missing"] = [];
-  if (!address) missing.push("ADDRESS");
-  if (hasTradeRegister && !client.rcNumber) missing.push("RC");
+  const missing: ClientForInvoice["missing"] = [
+    ...(address ? [] : (["ADDRESS"] as const)),
+    ...missingIdentifiersOf(client),
+  ];
   return {
     id: client.id,
     name: client.billingName ?? client.name,

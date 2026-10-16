@@ -200,7 +200,7 @@
     "VisitNotSignedOff": "A visit that was done is not signed off yet: type its returned order in first.",
     "NoVisitDone": "No visit was done that can be invoiced.",
     "ChooseTaxRegime": "Choose the centre's tax regime in Settings before the first invoice.",
-    "SellerIncomplete": "The centre's trade register, NIS and NIF numbers are needed before the first invoice.",
+    "SellerIncomplete": "The centre's trade register, NIS, NIF, article number and address are needed before the first invoice.",
     "BuyerNoAddress": "This client has no address to print on the invoice.",
     "BuyerNoTradeRegister": "This client's trade register number is needed on the invoice.",
     "NothingToInvoice": "There is nothing to invoice: the total is zero.",
@@ -215,7 +215,9 @@
     "CashDifferenceNote": "Say why the cash differs or a receipt is missing.",
     "DayNotCome": "A day cannot be closed before it has come.",
     "AmountNotNegative": "An amount cannot be negative.",
-    "PeriodStartAfterEndMoney": "The start of the period cannot be after its end."
+    "PeriodStartAfterEndMoney": "The start of the period cannot be after its end.",
+    "BuyerTradeRegisterUnanswered": "Say on the client card whether this organisation has a trade register before its first invoice.",
+    "BuyerNoTaxIds": "This organisation's NIF and NIS are needed on the invoice: type them on the client card."
   },
   "Alerts": {
     "ContractEnding": {
@@ -412,7 +414,8 @@
       "UPCOMING": "Not yet due",
       "PARTIAL": "Partly paid"
     },
-    "NoDues": "Nothing is owed."
+    "NoDues": "Nothing is owed.",
+    "FileCredit": "The file's credit: {amount}"
   },
   "ReceiptBatch": {
     "Title": "Blank receipts for a collector",
@@ -504,7 +507,8 @@
       "Date": "Date",
       "Payer": "Paid by",
       "Receipt": "Receipt"
-    }
+    },
+    "Credit": "Credit: {amount}"
   },
   "Reconciliation": {
     "Title": "Daily reconciliation",

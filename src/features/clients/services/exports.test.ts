@@ -242,18 +242,23 @@ describe("closing a file", () => {
     expect(seen).toHaveLength(1);
   });
 
-  it("is done as whoever typed the order in for a finished job, and needs the requests for anything else", async () => {
+  it("needs the requests for every reason, and ends only a job on demand as done (audit ACC-3)", async () => {
     const accountant = await test.sessionFor("ACCOUNTANT");
     const { fileId } = await signedRequest();
-    await expect(
-      test.transact((ex, ctx) => closeFile(ex, ctx, { fileId, reason: "CLIENT_CANCELLED" }), accountant),
-    ).rejects.toThrow("You do not have permission to do this.");
+    for (const reason of ["CLIENT_CANCELLED", "JOB_DONE"] as const) {
+      await expect(test.transact((ex, ctx) => closeFile(ex, ctx, { fileId, reason }), accountant)).rejects.toThrow(
+        "You do not have permission to do this.",
+      );
+    }
     await expect(
       test.transact((ex, ctx) => closeFile(ex, ctx, { fileId, reason: "CLIENT_CANCELLED" })),
     ).rejects.toThrow("A signed file is ended from its stage, with the kind of ending.");
+    const contract = await test.transact((ex, ctx) =>
+      registerFile(ex, ctx, structuredClone(DEMO_FILES.find((file) => file.name === "orgContract")!.input) as never),
+    );
     await expect(
-      test.transact((ex, ctx) => closeFile(ex, ctx, { fileId, reason: "JOB_DONE" }), accountant),
-    ).resolves.toEqual({ fileId, closed: true });
+      test.transact((ex, ctx) => closeFile(ex, ctx, { fileId: contract.fileId, reason: "JOB_DONE" })),
+    ).rejects.toThrow("Only a job on demand ends when its last visit is done.");
   });
 });
 
@@ -312,7 +317,7 @@ describe("the billing terms and the buyer, for Money", () => {
         hasTradeRegister: true,
         rc: null,
         address: "شارع أول نوفمبر، رقم 22، أم البواقي، أم البواقي",
-        missing: ["RC"],
+        missing: ["rcNumber", "nif", "nis"],
       });
     } finally {
       demo.close();

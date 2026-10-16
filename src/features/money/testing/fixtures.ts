@@ -13,7 +13,7 @@ import type { TestDatabase } from "@/testing/database";
 
 export const da = (dinars: number) => Math.round(dinars * 100);
 
-/** The centre as a first run leaves it once the office typed its tax file: IFU, with its three numbers. */
+/** The centre as a first run leaves it once the office typed its tax file: IFU, its three numbers, its article and address. */
 export async function centreReady(test: TestDatabase, taxMode: "IFU" | "VAT" = "IFU") {
   await test.transact(async (ex, ctx) => {
     await setSetting(ex, ctx, "tax.mode", taxMode);
@@ -21,12 +21,15 @@ export async function centreReady(test: TestDatabase, taxMode: "IFU" | "VAT" = "
     await setSetting(ex, ctx, "centre.nis", "198104010012345");
     await setSetting(ex, ctx, "centre.nif", "198104010012345");
     await setSetting(ex, ctx, "centre.address", "حي 500 مسكن، أم البواقي");
+    await setSetting(ex, ctx, "centre.articleNumber", "04011234567");
   });
 }
 
 /** A building's contract at «متعاقد»: 45 000,00 a month for three months from 1 November, paid in cash at each month's end. */
 export async function contractedFile(test: TestDatabase, over: Record<string, unknown> = {}) {
-  const site = await test.rows.insert("Site", { division: "BUILDING", address: "حي النصر، عمارة B7" } as never);
+  // The site is of the file's division: the database refuses a file on a site of another one.
+  const division = typeof over.division === "string" ? over.division : "BUILDING";
+  const site = await test.rows.insert("Site", { division, address: "حي النصر، عمارة B7" } as never);
   return test.rows.insert("File", {
     siteId: site.id,
     clientId: site.clientId,

@@ -101,20 +101,6 @@ export default function PayRunPage() {
       },
       { id: "gross", header: t("Slips.Gross"), cell: ({ row }) => <Amount value={row.original.grossAmount} /> },
       {
-        id: "off",
-        header: t("Slips.TakenOff"),
-        cell: ({ row }) => (
-          <Amount
-            value={
-              row.original.cnasAmount +
-              row.original.irgAmount +
-              row.original.advanceRepayment +
-              row.original.otherDeductions
-            }
-          />
-        ),
-      },
-      {
         id: "net",
         header: t("Slips.Net"),
         cell: ({ row }) => <Amount value={row.original.netAmount} className="font-bold" />,

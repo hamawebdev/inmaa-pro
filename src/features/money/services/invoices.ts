@@ -17,12 +17,13 @@ import { amountInWordsAr } from "../rules/amount-in-words-ar";
 import { amountInWordsFr } from "../rules/amount-in-words-fr";
 import { shareByWeights } from "../rules/centimes";
 import { formatDate } from "../rules/dates";
-import { computeInvoiceTotals, missedVisitDeduction, visitPrice, type InvoiceTotals } from "../rules/invoice-totals";
+import { computeInvoiceTotals, missedVisitDeduction, type InvoiceTotals } from "../rules/invoice-totals";
 import type { BuyerSnapshot, InvoiceSheetData, SellerSnapshot } from "../sheets/invoice-sheet";
 import {
   CLIENT_AT_FAULT_REMARK,
   COMPLETION_LABEL,
   JOB_UNIT_LABEL,
+  LUMP_SUM_UNIT_LABEL,
   MAKEUP_REMARK,
   NOBODY_TO_SIGN_LABEL,
   NOT_SIGNED_OFF_REMARK,
@@ -47,6 +48,7 @@ import {
 
 import { readInvoiceSettings, readStampSettings, readTaxSettings } from "./money-settings";
 import { readFileParty, readSeller } from "./parties";
+import { rebalanceFile } from "./credit";
 import { MONEY_PATHS } from "./paths";
 import { readFileBilling, type FileBilling } from "./terms";
 import { awaitsSignOff, isBilled, isOpenVisit, isProgrammeVisit, readBillingVisits, type BillingVisit } from "./visits";
@@ -216,7 +218,9 @@ export const INVOICE_BLOCKERS = [
   "NO_TAX_MODE",
   "SELLER_INCOMPLETE",
   "BUYER_NO_ADDRESS",
+  "BUYER_TRADE_REGISTER_UNANSWERED",
   "BUYER_NO_TRADE_REGISTER",
+  "BUYER_NO_TAX_IDS",
   "NOTHING_TO_INVOICE",
 ] as const;
 export type InvoiceBlocker = (typeof INVOICE_BLOCKERS)[number];
@@ -231,9 +235,13 @@ export const INVOICE_REFUSALS: Readonly<Record<InvoiceBlocker, string>> = {
   AWAITING_SIGNOFF: "A visit that was done is not signed off yet: type its returned order in first.",
   NOTHING_DONE: "No visit was done that can be invoiced.",
   NO_TAX_MODE: "Choose the centre's tax regime in Settings before the first invoice.",
-  SELLER_INCOMPLETE: "The centre's trade register, NIS and NIF numbers are needed before the first invoice.",
+  SELLER_INCOMPLETE:
+    "The centre's trade register, NIS, NIF, article number and address are needed before the first invoice.",
   BUYER_NO_ADDRESS: "This client has no address to print on the invoice.",
+  BUYER_TRADE_REGISTER_UNANSWERED:
+    "Say on the client card whether this organisation has a trade register before its first invoice.",
   BUYER_NO_TRADE_REGISTER: "This client's trade register number is needed on the invoice.",
+  BUYER_NO_TAX_IDS: "This organisation's NIF and NIS are needed on the invoice: type them on the client card.",
   NOTHING_TO_INVOICE: "There is nothing to invoice: the total is zero.",
 };
 
@@ -374,9 +382,17 @@ async function prepare(ex: Executor, ctx: ServiceContext, input: InvoiceInput): 
   const tax = await readTaxSettings(ex);
   const settings = await readInvoiceSettings(ex);
   if (tax.mode === null) block("NO_TAX_MODE");
-  if (!seller.rc || !seller.nis || !seller.nif) block("SELLER_INCOMPLETE");
+  // Decree 05-468 and DESIGN.md section 11: the seller's identifiers, article number and address (INV-3).
+  if (!seller.rc || !seller.nis || !seller.nif || !seller.articleNumber || !seller.address) block("SELLER_INCOMPLETE");
   if (!party.buyer.address) block("BUYER_NO_ADDRESS");
-  if (party.buyer.hasTradeRegister && !party.buyer.rc) block("BUYER_NO_TRADE_REGISTER");
+  if (file.division === "ORGANISATION") {
+    // An organisation: «السجل التجاري» answered, its RC when نعم, its NIF and NIS always (INV-4).
+    if (party.tradeRegister === null) block("BUYER_TRADE_REGISTER_UNANSWERED");
+    else if (party.tradeRegister && !party.buyer.rc) block("BUYER_NO_TRADE_REGISTER");
+    if (!party.buyer.nif || !party.buyer.nis) block("BUYER_NO_TAX_IDS");
+  } else if (party.buyer.hasTradeRegister && !party.buyer.rc) {
+    block("BUYER_NO_TRADE_REGISTER");
+  }
 
   const wanted = [...new Set(input.dueIds)];
   if (wanted.length === 0) block("NO_DUE_CHOSEN");
@@ -476,15 +492,16 @@ async function prepare(ex: Executor, ctx: ServiceContext, input: InvoiceInput): 
         fixedAmount: settings.fixedAmount ?? 0,
       });
       if (deduction !== 0) {
+        // Every line multiplies out (INV-6): so many visits at a price each when the deduction divides into whole
+        // centimes per visit, else one lump sum, the count of the visits in its description.
+        const perVisit = deduction / missed;
+        const divides = Number.isInteger(perVisit);
         lines.push({
           kind: "MISSED_VISIT",
           description: `زيارات غير منجزة (${missed} من ${programme.length})`,
-          quantity: missed * 1000,
-          unitLabel: VISIT_UNIT_LABEL,
-          unitPrice:
-            settings.rule === "FIXED_AMOUNT"
-              ? (settings.fixedAmount ?? 0)
-              : visitPrice(due.expectedAmount, programme.length),
+          quantity: divides ? missed * 1000 : 1000,
+          unitLabel: divides ? VISIT_UNIT_LABEL : LUMP_SUM_UNIT_LABEL,
+          unitPrice: divides ? perVisit : deduction,
           amount: deduction,
           dueId: due.id,
           visitId: null,
@@ -687,6 +704,8 @@ export async function issueInvoice(
       .where("id", "=", due.id)
       .execute();
   }
+  // A due now below what was paid on it gives the excess to the file's next dues, else to its credit (INV-2).
+  await rebalanceFile(ex, ctx, { fileId: file.id });
 
   await logChange(ex, ctx, {
     owner: "MONEY",
@@ -730,7 +749,7 @@ export async function voidInvoice(
   if (!reason) throw new ServiceError("A reason is required.");
   const invoice = await ex
     .selectFrom("Invoice")
-    .select(["id", "number", "clientId"])
+    .select(["id", "number", "clientId", "fileId"])
     .where("id", "=", input.invoiceId)
     .executeTakeFirst();
   if (!invoice) throw new ServiceError("This invoice does not exist.");
@@ -758,6 +777,8 @@ export async function voidInvoice(
       .where("id", "=", due.id)
       .execute();
   }
+  // Back to its amount before the invoice, a due may now hold less than was paid on it (INV-2).
+  await rebalanceFile(ex, ctx, { fileId: invoice.fileId });
   await logChange(ex, ctx, {
     owner: "MONEY",
     action: "VOID",
@@ -922,8 +943,13 @@ export async function getInvoiceSheet(
     .execute();
   const voidEvent = await voidEventOf(ex, invoice.id);
   const voided = voidEvent ? { date: ctx.toLocal(voidEvent.createdAt).date, reason: voidEvent.reason ?? "" } : null;
-  const place = await getSetting(ex, "centre.city");
+  // Everything the sheet says comes from what was frozen at issue (INV-7, INV-X1); an invoice issued
+  // before the city, the site's address and the file number were frozen falls back to the rows as they are.
+  const seller = JSON.parse(invoice.sellerSnapshot) as SellerSnapshot;
   const buyer = JSON.parse(invoice.buyerSnapshot) as BuyerSnapshot;
+  const place = seller.city ?? (await getSetting(ex, "centre.city"));
+  const fileNumber = buyer.fileNumber ?? file.number;
+  const siteAddress = buyer.siteAddress ?? [file.address, file.commune].filter(Boolean).join("، ");
   const division = oneOf(DIVISIONS, invoice.division, "division");
   const serviceType = oneOf(SERVICE_TYPES, invoice.serviceType, "service type");
 
@@ -931,12 +957,12 @@ export async function getInvoiceSheet(
     number: invoice.number,
     issueDate: invoice.issueDate,
     place,
-    fileNumber: file.number,
+    fileNumber,
     division,
     serviceType,
     periodStart: invoice.periodStart,
     periodEnd: invoice.periodEnd,
-    seller: JSON.parse(invoice.sellerSnapshot) as SellerSnapshot,
+    seller,
     buyer,
     lines: lines.map((line) => ({
       seq: line.seq,
@@ -972,9 +998,9 @@ export async function getInvoiceSheet(
       : {
           invoiceNumber: invoice.number,
           issueDate: invoice.issueDate,
-          fileNumber: file.number,
+          fileNumber,
           clientName: buyer.name,
-          siteAddress: [file.address, file.commune].filter(Boolean).join("، "),
+          siteAddress,
           division,
           serviceType,
           periodStart: invoice.periodStart,

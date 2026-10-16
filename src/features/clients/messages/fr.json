@@ -83,8 +83,8 @@
     "Registered": "Le dossier a été enregistré",
     "Parts": "Parties du dossier",
     "OpenPart": "Ouvrir",
-    "RcMissing": "Le numéro RC de cette entreprise n'est pas sur sa fiche : sa première facture ne peut pas être émise sans lui.",
-    "OpenClientCard": "Ouvrir la fiche du client"
+    "OpenClientCard": "Ouvrir la fiche du client",
+    "IdentifiersMissing": "Il manque à la fiche de cette entreprise ce que sa première facture exige : {list}."
   },
   "FileForm": {
     "NewTitle": "Nouveau dossier",
@@ -609,7 +609,11 @@
     "RepVisitFuture": "Une visite ne peut pas être datée après aujourd'hui.",
     "ContactName": "Le nom de la personne de contact est obligatoire.",
     "ContactNotFound": "Cette personne de contact n'existe pas.",
-    "SiteHasCoordinator": "Ce site a déjà un coordinateur."
+    "SiteHasCoordinator": "Ce site a déjà un coordinateur.",
+    "InvoiceTradeRegisterAnswer": "Indiquez sur la fiche du client si l'entreprise a un registre de commerce.",
+    "InvoiceNif": "Le numéro d'identification fiscale (NIF) de ce client est nécessaire sur la facture.",
+    "InvoiceNis": "Le numéro d'identification statistique (NIS) de ce client est nécessaire sur la facture.",
+    "FileJobDoneOnDemand": "Seule une prestation ponctuelle prend fin avec sa dernière visite."
   },
   "Alerts": {
     "QuoteFollowUp": {
@@ -810,7 +814,6 @@
       "State": "État"
     },
     "FilesCount": "{count} ({live} sous contrat)",
-    "NoRc": "RC manquant",
     "Open": "Ouvrir",
     "SearchPlaceholder": "Nom, téléphone ou n° de dossier",
     "Division": "Division",
@@ -818,7 +821,6 @@
     "Empty": "Aucun client.",
     "NotFound": "Ce client n'existe pas.",
     "CardDescription": "Dossier client n° {number}",
-    "RcNeeded": "Cette entreprise a un registre de commerce : son numéro RC est nécessaire avant sa première facture. Saisissez-le ci-dessous.",
     "Identity": "Tel que ses formulaires le nomment",
     "IdentityHint": "Se modifie depuis «الاستمارة» d'un de ses dossiers.",
     "Number": "N° de dossier",
@@ -869,6 +871,15 @@
       "isCoordinator": "Coordinateur du site",
       "holdsKey": "Détient une clé",
       "followsService": "Suit la prestation"
+    },
+    "MissingForInvoice": "Manque pour facturer",
+    "NeededForInvoice": "Avant la première facture de cette entreprise, sa fiche doit indiquer : {list}.",
+    "NotAnswered": "Sans réponse",
+    "Missing": {
+      "tradeRegisterAnswer": "si elle a un registre de commerce",
+      "rcNumber": "son numéro RC",
+      "nif": "son NIF",
+      "nis": "son NIS"
     }
   },
   "Contract": {

@@ -343,7 +343,11 @@ describe("listComplaints", () => {
     expect(await list("settled")).toMatchObject([
       { id: third.complaintId, status: "REJECTED", closed: { date: "2026-10-12", time: "10:00" } },
     ]);
-    expect((await list("all")).map((line) => line.id)).toEqual([third.complaintId, second.complaintId, first.complaintId]);
+    expect((await list("all")).map((line) => line.id)).toEqual([
+      third.complaintId,
+      second.complaintId,
+      first.complaintId,
+    ]);
     // The default is the open list.
     expect(await test.transact((ex, ctx) => listComplaints(ex, ctx))).toHaveLength(2);
   });
@@ -358,9 +362,7 @@ describe("listComplaints", () => {
       test.transact((ex, ctx) => listComplaints(ex, ctx, { state: "all", from, to }));
     expect((await range("2026-10-11", "2026-10-12")).map((line) => line.id)).toEqual([today.complaintId]);
     expect(await range("2026-10-01", "2026-10-31")).toHaveLength(2);
-    await expect(range("2026-10-12", "2026-10-01")).rejects.toThrow(
-      "The end date must not be before the start date.",
-    );
+    await expect(range("2026-10-12", "2026-10-01")).rejects.toThrow("The end date must not be before the start date.");
     await expect(range("12/10/2026", "2026-10-12")).rejects.toThrow("Enter a valid date.");
   });
 });
@@ -419,7 +421,13 @@ describe("getComplaint", () => {
       visitDate: localDate("2026-10-20"),
       status: "CONFIRMED",
     });
-    const { complaintId } = await open({ channel: "PHONE", clientId, fileId: file.id, kind: "QUALITY", description: "x" });
+    const { complaintId } = await open({
+      channel: "PHONE",
+      clientId,
+      fileId: file.id,
+      kind: "QUALITY",
+      description: "x",
+    });
     const detail = await test.transact((ex, ctx) => getComplaint(ex, ctx, { complaintId }));
     expect(detail.repeatableVisits.map((each) => each.id)).toEqual([later.id, visit.id]);
   });
@@ -485,9 +493,9 @@ describe("settleComplaint", () => {
       redoVisit: { id: redo.id, visitDate: "2026-10-14", status: "AWAITING_CONFIRMATION" },
       closed: { date: "2026-10-12", time: "09:45" },
     });
-    await expect(
-      settle({ complaintId, centreAtFault: "YES", settlement: "NONE" }),
-    ).rejects.toThrow("This complaint is closed.");
+    await expect(settle({ complaintId, centreAtFault: "YES", settlement: "NONE" })).rejects.toThrow(
+      "This complaint is closed.",
+    );
   });
 
   it("needs a visit to repeat and a day to come for a redo", async () => {
@@ -495,7 +503,12 @@ describe("settleComplaint", () => {
     const other = await test.rows.insert("Client", {});
     const loose = await open({ channel: "PHONE", clientId: other.id, kind: "QUALITY", description: "x" });
     await expect(
-      settle({ complaintId: loose.complaintId, centreAtFault: "YES", settlement: "REDO_SERVICE", redo: { date: "2026-10-14" } }),
+      settle({
+        complaintId: loose.complaintId,
+        centreAtFault: "YES",
+        settlement: "REDO_SERVICE",
+        redo: { date: "2026-10-14" },
+      }),
     ).rejects.toThrow("A redo visit needs a visit of this client file to repeat.");
     await expect(
       settle({
@@ -506,7 +519,13 @@ describe("settleComplaint", () => {
       }),
     ).rejects.toThrow("This visit belongs to another client file.");
 
-    const { complaintId } = await open({ channel: "PHONE", clientId, visitId: visit.id, kind: "QUALITY", description: "x" });
+    const { complaintId } = await open({
+      channel: "PHONE",
+      clientId,
+      visitId: visit.id,
+      kind: "QUALITY",
+      description: "x",
+    });
     await expect(
       settle({ complaintId, centreAtFault: "YES", settlement: "REDO_SERVICE", redo: { date: "2026-10-01" } }),
     ).rejects.toThrow("An extra visit is planned for today or later.");
@@ -644,9 +663,9 @@ describe("rejectComplaint and recordClientTold", () => {
     await expect(test.transact((ex, ctx) => recordClientTold(ex, ctx, { complaintId }))).rejects.toThrow(
       "Settle or reject the complaint first.",
     );
-    await expect(
-      test.transact((ex, ctx) => rejectComplaint(ex, ctx, { complaintId, reason: "   " })),
-    ).rejects.toThrow("Write why the complaint is rejected.");
+    await expect(test.transact((ex, ctx) => rejectComplaint(ex, ctx, { complaintId, reason: "   " }))).rejects.toThrow(
+      "Write why the complaint is rejected.",
+    );
 
     test.clock.advance({ minutes: 10 });
     await test.transact((ex, ctx) =>

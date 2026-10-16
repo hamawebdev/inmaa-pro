@@ -5,7 +5,23 @@
       "Title": "Ordre de mission",
       "Description": "Imprimé pour l'équipe, rempli sur place, puis rapporté au bureau pour la saisie.",
       "Back": "La visite",
-      "PrintNotRecorded": "L'impression n'a pas pu être enregistrée."
+      "PrintNotRecorded": "L'impression n'a pas pu être enregistrée.",
+      "Hold": {
+        "Title": "{client} ({state}) : cet ordre ne s'imprime qu'après l'autorisation du directeur.",
+        "Since": "Depuis le",
+        "Until": "jusqu'au",
+        "ManagerHint": "La visite reste planifiée. Autorisez cet ordre si l'équipe doit quand même y aller, et indiquez pourquoi.",
+        "WaitHint": "La visite reste planifiée. Seul le directeur peut autoriser cet ordre ; il ne s'imprime pas avant.",
+        "Release": "Autoriser cet ordre",
+        "Released": "Le directeur a autorisé cet ordre d'un client marqué {state} :",
+        "DialogTitle": "Autoriser l'ordre d'un client sanctionné",
+        "DialogDescription": "Seul cet ordre pourra alors s'imprimer. Votre motif est gardé au journal sous votre nom.",
+        "Reason": "Pourquoi l'équipe y va quand même",
+        "Back": "Retour",
+        "Confirm": "Autoriser",
+        "Done": "L'ordre peut être imprimé.",
+        "Failed": "L'ordre n'a pas été autorisé."
+      }
     },
     "InspectionSheet": {
       "Title": "Fiche d'inspection du superviseur",
@@ -378,7 +394,10 @@
     "ReportNotHandedOver": "Ce signalement n'a pas été transmis.",
     "PeriodInvalid": "Saisissez une période valide.",
     "NotAtFaultOnRecord": "Cet enregistrement ne met pas cet agent en faute.",
-    "ViolationAlreadyRecorded": "Une infraction est déjà enregistrée pour cet agent sur cet enregistrement."
+    "ViolationAlreadyRecorded": "Une infraction est déjà enregistrée pour cet agent sur cet enregistrement.",
+    "OrderNotHeld": "Ce client n'est ni suspendu ni sanctionné : l'ordre s'imprime sans autorisation.",
+    "OrderHeldForClient": "Ce client est suspendu ou sanctionné : l'ordre ne s'imprime qu'après l'autorisation du directeur.",
+    "SickNotLeave": "Enregistrez une maladie dans la catégorie Maladie, pas comme un type de congé."
   },
   "FileVisits": {
     "ProgrammeTitle": "Programme",

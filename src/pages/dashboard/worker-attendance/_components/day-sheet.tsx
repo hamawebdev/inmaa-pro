@@ -96,7 +96,9 @@ export function DaySheet({
       {
         id: "last",
         header: t("Day.Columns.Last"),
-        cell: ({ row }) => <LastTimes arrival={row.original.lastArrival} departure={row.original.lastDeparture} day={day} />,
+        cell: ({ row }) => (
+          <LastTimes arrival={row.original.lastArrival} departure={row.original.lastDeparture} day={day} />
+        ),
       },
       {
         id: "actions",
@@ -366,7 +368,8 @@ function LastTimes({
   const dates = useDates();
   const when = (moment: LocalMoment) =>
     `${moment.date.slice(0, 4) === day.slice(0, 4) ? dates.dayMonth(moment.date) : dates.short(moment.date)} ${moment.time}`;
-  const whole = (label: string, moment: LocalMoment) => `${label} ${ltrText(`${dates.short(moment.date)} ${moment.time}`)}`;
+  const whole = (label: string, moment: LocalMoment) =>
+    `${label} ${ltrText(`${dates.short(moment.date)} ${moment.time}`)}`;
   return (
     <div className="min-w-0 whitespace-nowrap">
       <span

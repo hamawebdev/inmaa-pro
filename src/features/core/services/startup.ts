@@ -1,6 +1,7 @@
 import { reconcileAnchor, writeAnchor, type AnchorComparison } from "@/lib/chain/anchor";
 import { desktopAnchorStore } from "@/lib/chain/anchor-desktop";
-import { systemClock } from "@/lib/clock";
+import { systemClock, type Clock } from "@/lib/clock";
+import { checkClock, type ClockState } from "@/lib/clock/sanity";
 import { db } from "@/lib/db";
 import { loadFeatureAlerts } from "@/lib/alerts";
 import { loadFeatureDaily } from "@/lib/daily";
@@ -22,43 +23,87 @@ import { firstRun, isFirstRunDone } from "./first-run";
  *     owners, the alerts, and what each owner does when a day starts;
  *  4. nobody is signed in: the first screen is the sign-in window
  *     (src/main.tsx), and everything here runs as the program itself;
- *  5. the anchor against the database. What it found is kept for the screen
- *     that will ask the manager (`startupAnchor`); nothing is decided here;
- *  6. the day's own work, when the anchor found nothing to ask about.
+ *  5. the anchor against the database, and the PC's clock against the work
+ *     already recorded. What they found is kept for the screens that ask the
+ *     manager (`startupAnchor`, `startupClock`); nothing is decided here;
+ *  6. the day's own work, when neither found anything to ask about.
  */
-let anchorAtStart: AnchorComparison | null = null;
-const anchorListeners = new Set<() => void>();
+/**
+ * What the anchor said when the program started: the comparison, or
+ * "unchecked" when it could not be made (a read that failed). An unchecked
+ * database is treated as one in question: nothing is worked on until the
+ * comparison succeeds (the screen offers to try again).
+ */
+export type StartupAnchor = AnchorComparison | { state: "unchecked"; error: string };
 
-/** What the anchor said when the program started: "normal", or the state the manager must answer. */
-export const startupAnchor = (): AnchorComparison | null => anchorAtStart;
+let anchorAtStart: StartupAnchor | null = null;
+let clockAtStart: ClockState | null = null;
+const listeners = new Set<() => void>();
 
-/** Calls `listener` when the anchor's answer changes (the manager answered). Returns how to stop. */
+export const startupAnchor = (): StartupAnchor | null => anchorAtStart;
+/** Where the PC's clock stood when the program started (src/lib/clock/sanity.ts). */
+export const startupClock = (): ClockState | null => clockAtStart;
+
+/** Calls `listener` when the anchor's answer or the clock's changes. Returns how to stop. */
 export function subscribeToStartupAnchor(listener: () => void): () => void {
-  anchorListeners.add(listener);
-  return () => anchorListeners.delete(listener);
+  listeners.add(listener);
+  return () => listeners.delete(listener);
+}
+export const subscribeToStartupClock = subscribeToStartupAnchor;
+
+function changed(): void {
+  for (const listener of listeners) listener();
 }
 
-function setStartupAnchor(next: AnchorComparison | null): void {
-  anchorAtStart = next;
-  for (const listener of anchorListeners) listener();
+async function compareAtStart(clock: Clock): Promise<void> {
+  try {
+    anchorAtStart = await reconcileAnchor(db, desktopAnchorStore, clock.now().toISOString());
+  } catch (error) {
+    console.error("anchor: could not be compared at start", error);
+    anchorAtStart = { state: "unchecked", error: error instanceof Error ? error.message : String(error) };
+  }
+}
+
+async function checkClockAtStart(clock: Clock): Promise<void> {
+  try {
+    clockAtStart = await checkClock(db, buildContext(SYSTEM_SESSION, clock));
+  } catch (error) {
+    console.error("clock: could not be checked at start", error);
+    clockAtStart = null;
+  }
 }
 
 /**
- * Compares the anchor again, after the manager's answer wrote a new one. When
- * it now agrees, the day's own work starts: it was held back until then.
+ * The day's own work (contracts past their end, suspensions ending, the daily
+ * copy) is the program writing by itself, at the PC's date. It waits while the
+ * database is in question (anchor) or the date is (clock): the manager answers
+ * first.
  */
-export async function recheckStartupAnchor(): Promise<AnchorComparison> {
-  const clock = programClock();
-  const comparison = await reconcileAnchor(db, desktopAnchorStore, clock.now().toISOString());
-  setStartupAnchor(comparison);
-  if (comparison.state === "normal") {
-    try {
-      await startDayWatch(clock);
-    } catch (error) {
-      console.error("daily: the day could not be started", error);
-    }
+async function startTheDayIfClear(clock: Clock): Promise<void> {
+  if (anchorAtStart?.state !== "normal" || clockAtStart?.state !== "ok") return;
+  try {
+    await startDayWatch(clock);
+  } catch (error) {
+    console.error("daily: the day could not be started", error);
   }
-  return comparison;
+}
+
+/** Compares the anchor again: after the manager's answer wrote a new one, or after a comparison that failed. */
+export async function recheckStartupAnchor(): Promise<StartupAnchor | null> {
+  const clock = programClock();
+  await compareAtStart(clock);
+  changed();
+  await startTheDayIfClear(clock);
+  return anchorAtStart;
+}
+
+/** Checks the clock again: after the manager confirmed the date, or after the PC's date was corrected. */
+export async function recheckStartupClock(): Promise<ClockState | null> {
+  const clock = programClock();
+  await checkClockAtStart(clock);
+  changed();
+  await startTheDayIfClear(clock);
+  return clockAtStart;
 }
 
 export async function startProgram(): Promise<void> {
@@ -79,20 +124,8 @@ export async function startProgram(): Promise<void> {
     if (!(await desktopAnchorStore.read())) await writeAnchor(db, desktopAnchorStore, ctx.now);
   }
 
-  try {
-    setStartupAnchor(await reconcileAnchor(db, desktopAnchorStore, clock.now().toISOString()));
-  } catch (error) {
-    console.error("anchor: could not be compared at start", error);
-  }
-
-  // The day's own work (contracts past their end, suspensions ending) is the
-  // program writing by itself. A database found behind or apart from its anchor
-  // is the manager's to answer first: nothing is written to it before then.
-  if (anchorAtStart?.state === "normal") {
-    try {
-      await startDayWatch(clock);
-    } catch (error) {
-      console.error("daily: the day could not be started", error);
-    }
-  }
+  await compareAtStart(clock);
+  await checkClockAtStart(clock);
+  changed();
+  await startTheDayIfClear(clock);
 }

@@ -17,6 +17,7 @@ import {
   getQuoteSheet,
   issueQuote,
   listPendingQuotes,
+  openQuoteCosts,
   recordQuoteResult,
   reviseQuote,
   saveQuote,
@@ -203,6 +204,20 @@ describe("a quote", () => {
     });
     expect(await stageOf()).toBe("QUOTE");
 
+    // Cost and margin come only through the logged read (audit LOG-6), once a day per reader and quote.
+    const costs = await test.transact((ex, ctx) => openQuoteCosts(ex, ctx, { fileId }));
+    expect(costs).toEqual({ [saved.quoteId]: { costTotal: 1102500, marginBp: 5873 } });
+    await test.transact((ex, ctx) => openQuoteCosts(ex, ctx, { fileId }));
+    const consults = await test.db
+      .selectFrom("AuditLog")
+      .select("id")
+      .where("operation", "=", "CONSULT")
+      .where("entity", "=", "Quote")
+      .execute();
+    expect(consults).toHaveLength(1);
+    await expect(test.transact((ex, ctx) => openQuoteCosts(ex, ctx, { fileId }), reception)).rejects.toThrow(
+      "You do not have permission to do this.",
+    );
     // Who cannot read costs sees the quote without them, on screen and on its sheet.
     const seen = await test.transact((ex, ctx) => getFileQuotes(ex, ctx, { fileId }), reception);
     expect(seen.quotes[0]).toMatchObject({ costTotal: null, marginBp: null, steps: ["ANSWER", "REVISE"] });

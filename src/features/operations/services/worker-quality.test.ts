@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, expect, it } from "vitest";
 
+import { localDate, localTime, minutes } from "@/lib/units";
 import { createTestDatabase, type TestDatabase } from "@/testing/database";
 
 import { getWorkerQualityFigures } from "./worker-quality";
@@ -18,8 +19,18 @@ async function workedVisit(
   marks: { ratingOverall: number | null; ratingBehaviour: number | null },
   status: "DONE" | "PROBLEM" | "CANCELLED" = "DONE",
 ) {
-  const visit = await test.rows.insert("Visit", { visitDate, status, plannedStartTime: "08:00" });
-  await test.rows.insert("VisitWorker", { visitId: visit.id, workerId, seatStatus: "ASSIGNED", ...seat });
+  const visit = await test.rows.insert("Visit", {
+    visitDate: localDate(visitDate),
+    status,
+    plannedStartTime: localTime("08:00"),
+  });
+  await test.rows.insert("VisitWorker", {
+    visitId: visit.id,
+    workerId,
+    seatStatus: "ASSIGNED",
+    arrivedTime: seat.arrivedTime === null ? null : localTime(seat.arrivedTime),
+    lateMin: seat.lateMin === null ? null : minutes(seat.lateMin),
+  });
   await test.rows.insert("VisitReport", { visitId: visit.id, entryState: "COMPLETE", ...marks });
   return visit;
 }
@@ -80,8 +91,8 @@ it("gives a worker's visits, lateness, ratings, complaints, inspections and dama
 
   const inspection = await test.rows.insert("Inspection", {
     status: "DONE",
-    plannedDate: "2026-09-15",
-    doneDate: "2026-09-15",
+    plannedDate: localDate("2026-09-15"),
+    doneDate: localDate("2026-09-15"),
     scoreTotal: 74,
     belowThreshold: 1,
   });
@@ -93,8 +104,8 @@ it("gives a worker's visits, lateness, ratings, complaints, inspections and dama
   });
   const absentAt = await test.rows.insert("Inspection", {
     status: "DONE",
-    plannedDate: "2026-09-22",
-    doneDate: "2026-09-22",
+    plannedDate: localDate("2026-09-22"),
+    doneDate: localDate("2026-09-22"),
     scoreTotal: 91,
     belowThreshold: 0,
   });
@@ -103,7 +114,7 @@ it("gives a worker's visits, lateness, ratings, complaints, inspections and dama
   await test.rows.insert("ProblemReport", {
     visitId: first.id,
     kind: "DAMAGE_DURING_WORK",
-    occurredDate: "2026-09-03",
+    occurredDate: localDate("2026-09-03"),
   });
 
   const figures = await test.transact((ex, ctx) =>

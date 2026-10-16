@@ -76,6 +76,8 @@ export interface SellerSnapshot {
   bankAccount: string | null;
   ccpNumber: string | null;
   ccpKey: string | null;
+  /** «حررت: ب…», frozen at issue (INV-7). Absent on a document written before it was frozen. */
+  city?: string | null;
 }
 
 /** The client as it stood when the invoice was issued. */
@@ -94,6 +96,9 @@ export interface BuyerSnapshot {
   /** «مسدد أتعاب» and his phone. */
   payerName: string | null;
   payerPhone: string | null;
+  /** The site's address with its commune, and the file's number, as the visit statement prints them (INV-X1). */
+  siteAddress?: string | null;
+  fileNumber?: string | null;
 }
 
 export interface InvoiceSheetLine {
