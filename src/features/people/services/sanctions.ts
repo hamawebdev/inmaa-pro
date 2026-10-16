@@ -180,15 +180,26 @@ export async function checkSanction(
       .where("id", "=", input.decisionId)
       .executeTakeFirst();
     if (!decision) throw new ServiceError("This decision of the manager does not exist.");
-    const about = matches.some((match) => match.sanctionId === decision.sanctionId);
+    // The sanctions the question named: its own, and every other the person matched when it was asked.
+    const named = new Set([
+      decision.sanctionId,
+      ...(
+        await ex
+          .selectFrom("SanctionDecisionMatch")
+          .select("sanctionId")
+          .where("decisionId", "=", decision.id)
+          .execute()
+      ).map((row) => row.sanctionId),
+    ]);
+    const about = matches.some((match) => named.has(match.sanctionId));
     if (about && decision.status === "REFUSED") return { outcome: "REFUSED", matches };
-    // A yes is about one sanction and one attempt: it allows only when it covers every match.
+    // A yes is about one attempt: it allows when it named every sanction matched now.
     const freshYes =
       decision.status === "ALLOWED" &&
       decision.consumedAt === null &&
       decision.context === input.context &&
       decision.attemptKind === input.subjectKind;
-    if (freshYes && matches.every((match) => match.sanctionId === decision.sanctionId)) {
+    if (freshYes && matches.every((match) => named.has(match.sanctionId))) {
       return { outcome: "ALLOWED", matches };
     }
   }
@@ -395,6 +406,7 @@ export async function setSanction(
       fromDate: startDate,
       toDate: endDate,
       cause: "SANCTION_SET",
+      reason,
     });
   }
   return { sanctionId };
@@ -442,6 +454,7 @@ export async function liftSanction(
       fromDate: ctx.today,
       toDate: null,
       cause: "SANCTION_LIFTED",
+      reason,
     });
   }
 }

@@ -257,7 +257,9 @@ describe("leaving and coming back", () => {
       leftDate: "2026-10-20",
       leftReason: "انتقل إلى ولاية أخرى",
     });
-    expect(unavailable).toEqual([{ workerId: id, fromDate: "2026-10-20", toDate: null, cause: "LEFT" }]);
+    expect(unavailable).toEqual([
+      { workerId: id, fromDate: "2026-10-20", toDate: null, cause: "LEFT", reason: "انتقل إلى ولاية أخرى" },
+    ]);
     await expect(
       test.transact((ex, ctx) => recordWorkerLeaving(ex, ctx, { id, leftDate: "2026-10-21", reason: "x" })),
     ).rejects.toThrow("This person has already left.");

@@ -5,9 +5,10 @@ Owner of features 21, 25, 37, 38: centre employees, cleaning workers, his worker
 ## Round 4, done
 
 - **ID cards (scope R9):** `services/cards.ts` (`staffCardsForPrint`, `recordCardPrint`, one DISCLOSE line per card), `sheets/id-cards.tsx` (ISO ID-1, 85.6 × 54 mm, eight to an A4 page with cutting marks; photo or the empty frame, name surname first, number, role in his words, the centre), `components/staff-cards-screen.tsx`. Pages: `workers/:id/print-card`, `employees/:id/print-card`, and `workers/print-cards?ids=` for the workers chosen in the list. A person who left gets no card.
-- **One file per document:** `setStaffDocumentFile` in `services/documents.ts`; the worker's documents card attaches, copies and removes each scan, stored restricted under `DOCUMENT_FILE_CAPABILITY` (`staff.health.read` until Foundation names `staff.documents.read`). The worker's file reads `fileUrl` per document.
+- **One file per document:** `setStaffDocumentFile` in `services/documents.ts`; the worker's documents card attaches, copies and removes each scan, stored and opened restricted under `DOCUMENT_FILE_CAPABILITY`, which is `staff.documents.read`. The worker's file reads `fileUrl` per document.
 - **The Checker's S-22 to S-27:** dialogs commit in `success` (`entry-dialog`, `reason-dialog`); the employees' run, the candidates and the violations lists fit their box at 1024 and 1440 px in Arabic and French, rows 81/71 px; a time's edit and delete are on its chip; a row's other actions in `RowMenu`.
 - **`phoneText`:** `components/format.ts` re-exports Foundation's helper (`formatPhone` stays as an alias).
+- **After round 4:** the scans are under `staff.documents.read`; a request for the manager's decision writes one `SanctionDecisionMatch` row per sanction matched, the log entry lists them (`sanctionIds`), and his yes covers them all; `decisionCovers(ex, ctx, { decisionId, sanctionId })` exported; every `staff.unavailable` carries the reason of its act (the leaving reason, the sanction's reason, the lift's reason, or the sanction's own reason when it reached its end date).
 - **The verified audit findings (`scratchpad/audit/for-people.md`), all fixed and tested:**
   - LAB-1: a wage per task's overtime and rest-day premiums are typed on the payslip (`overtime`, `restDayPremium`), flagged until then, and the run refuses to close before.
   - LAB-5: a late seat's week, already closed, is priced again in the next run: the overtime and rest-day work it adds are paid as arrears.
@@ -162,7 +163,7 @@ Owner of features 21, 25, 37, 38: centre employees, cleaning workers, his worker
 
 1. Weekly pay runs: only monthly runs are built. A weekly payment is an advance.
 2. A file per document on the worker's file (`StaffDocument.fileUrl`).
-3. One yes for every sanction a person matches (the coordinator's ruling) waits for the column asked of Foundation.
+3. (done) A request names every sanction matched (`SanctionDecisionMatch`); one yes covers them all; `decisionCovers` answers Clients and Operations.
 4. File consultations: switch to Foundation's once-a-day helper when it lands.
 5. The payslip's employer number prints from `centre.cnasEmployerNumber`, empty until Foundation's card has it.
 
@@ -172,9 +173,7 @@ Owner of features 21, 25, 37, 38: centre employees, cleaning workers, his worker
   - handle `payout.recorded` and `payout.voided` in its `events.ts`: `postPayoutExpense` reads `getPayoutForExpense(ex, ctx, { staffPayoutId })`;
   - call `addDebtEntry` for equipment lost or damaged (`handOutReturnId`).
 - **Foundation:**
-  - `staff.documents.read` (HR_OFFICER) for the scans of a staff member's documents; until then they use `staff.health.read`;
   - `<MediaUploadField>` has no restricted mode (its preview and its copy cannot reach a restricted file), so the document scans use the signed scan's pattern: a file button, a restricted copy, a remove;
-  - for the ruling "one yes covers every sanction matched": a column `SanctionDecision.matchedSanctionIds` (JSON array), so a request names them all and the yes covers them;
   - the IRG scale in Settings (`pay.irgTable`), on قواعد العمل;
   - `centre.cnasEmployerNumber` on the centre's card and in the demo identity;
   - the consult logged once a day per user and record;

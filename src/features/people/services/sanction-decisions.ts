@@ -218,6 +218,22 @@ export async function requestDecision(
     })
     .execute();
 
+  // Every sanction in force the person matches at this moment is named on the request: one yes covers them all,
+  // for this one registration (the coordinator's ruling). A match on the name alone counts once the clerk said it
+  // is the same person.
+  const covered = check.matches
+    .filter((found) => found.foundBy !== "NAME_ONLY" || input.nameConfirmed === true)
+    .map((found) => ({
+      sanctionId: found.sanctionId,
+      matchBasis: (found.foundBy === "NAME_ONLY" ? "NAME_CONFIRMED" : found.foundBy) as MatchBasis,
+    }));
+  for (const each of covered) {
+    await ex
+      .insertInto("SanctionDecisionMatch")
+      .values({ id: newId(), decisionId, sanctionId: each.sanctionId, matchBasis: each.matchBasis, createdAt: ctx.now })
+      .execute();
+  }
+
   await logCollect(ex, ctx, {
     owner: "PEOPLE",
     action: "CREATE",
@@ -225,7 +241,12 @@ export async function requestDecision(
     entityId: decisionId,
     entityLabel: attemptNameOf(attemptIdentity),
     subject: sanctionSubject(match),
-    context: { context: input.context, sanctionId: match.sanctionId, matchBasis },
+    context: {
+      context: input.context,
+      sanctionId: match.sanctionId,
+      matchBasis,
+      sanctionIds: covered.map((each) => each.sanctionId),
+    },
   });
   return { decisionId, status: "PENDING" };
 }
@@ -286,6 +307,34 @@ export async function answerDecision(
     changes: { status: ["PENDING", status] },
   });
   return { decisionId: decision.id, status };
+}
+
+/**
+ * For Clients and Operations (CONTRACTS section 3): whether the manager's yes
+ * on a decision was given about this sanction. True when the decision was
+ * ALLOWED and named the sanction, as its own or among every sanction the person
+ * matched when it was asked (`SanctionDecisionMatch`). Used, the yes still
+ * covers: a file registered on it prints its orders without a release per visit.
+ */
+export async function decisionCovers(
+  ex: Executor,
+  _ctx: ServiceContext,
+  input: { decisionId: string; sanctionId: string },
+): Promise<boolean> {
+  const decision = await ex
+    .selectFrom("SanctionDecision")
+    .select(["status", "sanctionId"])
+    .where("id", "=", input.decisionId)
+    .executeTakeFirst();
+  if (!decision || decision.status !== "ALLOWED") return false;
+  if (decision.sanctionId === input.sanctionId) return true;
+  const named = await ex
+    .selectFrom("SanctionDecisionMatch")
+    .select("id")
+    .where("decisionId", "=", input.decisionId)
+    .where("sanctionId", "=", input.sanctionId)
+    .executeTakeFirst();
+  return named !== undefined;
 }
 
 /** The question and the manager's answer at once, when the manager is the one registering. */

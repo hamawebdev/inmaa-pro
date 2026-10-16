@@ -161,7 +161,7 @@ describe("People's day-start job", () => {
       { event: "sanction.changed", payload: { sanctionId } },
       {
         event: "staff.unavailable",
-        payload: { workerId: id, fromDate: "2026-10-15", toDate: null, cause: "SANCTION_LIFTED" },
+        payload: { workerId: id, fromDate: "2026-10-15", toDate: null, cause: "SANCTION_LIFTED", reason: "تأخر" },
       },
     ]);
     // A second start the same day, and the next day: nothing new.

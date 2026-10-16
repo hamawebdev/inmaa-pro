@@ -80,7 +80,7 @@ describe("ID cards", () => {
 });
 
 describe("a document's scan", () => {
-  it("is filed restricted on the current row of its type, replaced, and taken off", async () => {
+  it("is filed restricted under staff.documents.read on the current row of its type, replaced, and taken off", async () => {
     const id = await aWorker();
     const stored = () =>
       saveUpload(test.db, test.ctx(), test.files, {
@@ -88,7 +88,7 @@ describe("a document's scan", () => {
         field: "fileUrl",
         file: { name: "cert.pdf", type: "application/pdf", bytes: PDF },
         rule: RECEIPT_UPLOAD_RULE,
-        restrictedCapability: "staff.health.read",
+        restrictedCapability: "staff.documents.read",
       });
     const first = (await stored()).url;
     await test.transact((ex, ctx) => setStaffDocumentFile(ex, ctx, { staffId: id, type: "MEDICAL_CERT", url: first }));

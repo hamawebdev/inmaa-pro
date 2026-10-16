@@ -312,7 +312,13 @@ describe("setSanction and liftSanction", () => {
       { event: "sanction.changed", payload: { sanctionId } },
       {
         event: "staff.unavailable",
-        payload: { workerId: id, fromDate: "2026-10-12", toDate: "2026-10-26", cause: "SANCTION_SET" },
+        payload: {
+          workerId: id,
+          fromDate: "2026-10-12",
+          toDate: "2026-10-26",
+          cause: "SANCTION_SET",
+          reason: "غياب ثلاثة أيام دون مبرر",
+        },
       },
     ]);
     expect(

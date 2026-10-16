@@ -90,12 +90,10 @@ export async function renewStaffDocument(
 }
 
 /**
- * Who files and opens the scan of a staff member's document. The documents of
- * his form (identity, birth, residence, medical certificate, criminal record)
- * are kept by HR: until Foundation names a capability of their own
- * (`staff.documents.read` is asked for), the one HR holds for the signed form.
+ * Who files and opens the scan of a staff member's document: the capability of
+ * its own, held by HR by default. The scans are stored and opened under it.
  */
-export const DOCUMENT_FILE_CAPABILITY = "staff.health.read";
+export const DOCUMENT_FILE_CAPABILITY = "staff.documents.read";
 
 /**
  * Puts the scan of a document on the worker's current row of that type, or

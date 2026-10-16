@@ -8,6 +8,7 @@ import {
   answerDecision,
   cancelDecision,
   decideOnTheSpot,
+  decisionCovers,
   getDecision,
   listDecisions,
   requestDecision,
@@ -276,5 +277,52 @@ describe("the manager's yes or no", () => {
         list: [{ hiringScores: {}, ok: true }],
       }),
     ).toEqual({ lastName: "x", nested: { keep: 1 }, list: [{ ok: true }] });
+  });
+});
+
+describe("one yes for every sanction matched (the coordinator's ruling)", () => {
+  it("names every sanction the person matches on the request, and the manager's yes covers them all", async () => {
+    const { sanctionId: samira } = await suspendedSamira();
+    // Another worker under sanction, with the same name and birth date as the person being registered.
+    const { id: other } = await register({ ...SAME_PHONE, phone: "0770 00 11 22" });
+    const { sanctionId: second } = await test.transact((ex, ctx) =>
+      setSanction(ex, ctx, {
+        subjectKind: "WORKER",
+        subjectId: other,
+        state: "PENALISED",
+        reason: "إهمال",
+        startDate: "2026-10-05",
+      }),
+    );
+    const hr = await test.sessionFor("HR_OFFICER");
+    const { decisionId } = await ask(question(samira), hr);
+    const named = await test.db
+      .selectFrom("SanctionDecisionMatch")
+      .select(["sanctionId", "matchBasis"])
+      .where("decisionId", "=", decisionId)
+      .orderBy("matchBasis")
+      .execute();
+    expect(named).toEqual([
+      { sanctionId: second, matchBasis: "NAME_AND_BIRTHDATE" },
+      { sanctionId: samira, matchBasis: "PHONE" },
+    ]);
+    const entry = await test.db
+      .selectFrom("AuditLog")
+      .select("context")
+      .where("entity", "=", "SanctionDecision")
+      .where("entityId", "=", decisionId)
+      .executeTakeFirstOrThrow();
+    expect(JSON.parse(entry.context ?? "{}").sanctionIds.sort()).toEqual([samira, second].sort());
+
+    await test.transact((ex, ctx) => answerDecision(ex, ctx, { decisionId, allow: true, reason: "تعهد مكتوب" }));
+    const registered = await register({ ...SAME_PHONE, hiringDecision: undefined, decisionId }, hr);
+    expect(registered.id).toBeTruthy();
+
+    // decisionCovers, for Operations' orders and Clients' files: both sanctions, used or not; never an unrelated one.
+    const covers = (sanctionId: string) =>
+      test.transact((ex, ctx) => decisionCovers(ex, ctx, { decisionId, sanctionId }));
+    expect(await covers(samira)).toBe(true);
+    expect(await covers(second)).toBe(true);
+    expect(await covers("sanction-unknown")).toBe(false);
   });
 });

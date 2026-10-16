@@ -28,7 +28,7 @@ export async function announceEndedSanctions(
   if (input.to < input.from) return 0;
   const ended = await ex
     .selectFrom("Sanction")
-    .select(["id", "subjectKind", "staffId", "endDate", "liftedAt"])
+    .select(["id", "subjectKind", "staffId", "endDate", "liftedAt", "reason"])
     .where("endDate", ">=", input.from)
     .where("endDate", "<=", input.to)
     .orderBy("endDate")
@@ -45,6 +45,8 @@ export async function announceEndedSanctions(
         fromDate: addDays(sanction.endDate, 1),
         toDate: null,
         cause: "SANCTION_LIFTED",
+        // The sanction came to its end date: its own reason says what it was.
+        reason: sanction.reason,
       });
     }
     told += 1;

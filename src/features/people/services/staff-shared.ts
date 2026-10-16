@@ -256,7 +256,13 @@ export async function recordLeaving(
     changes: changes ?? undefined,
   });
   if (kind === "WORKER") {
-    await emit(ex, ctx, "staff.unavailable", { workerId: before.id, fromDate: leftDate, toDate: null, cause: "LEFT" });
+    await emit(ex, ctx, "staff.unavailable", {
+      workerId: before.id,
+      fromDate: leftDate,
+      toDate: null,
+      cause: "LEFT",
+      reason,
+    });
   }
 }
 
