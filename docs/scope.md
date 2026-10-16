@@ -260,5 +260,8 @@ These came out of the data model. Each has a working default that is a setting o
 10. Friday and public holidays. Default: client forms offer six days; a Friday visit only by hand.
 11. When «على عاتق صاحبها» is ticked, does the amount beside it mean anything? Default: stored, ignored in totals.
 12. A first deep clean followed by a periodic contract. Default: one file and one sheet, with the first job as an extra amount due.
+13. Who types the sales rep's visits (feature 40)? Default: whoever writes the employees section (the manager and الإدارة); the manager can give reception the right in Settings.
+14. Wording the program had to invent, where his documents give none, for him to confirm or replace: the first visit's results (مناسب للخدمة، يحتاج إلى دراسة، يحتاج إلى تنظيف أولي عميق، يحتاج إلى معدات، يحتاج إلى فريق إضافي، يحتاج إلى خدمات خاصة), the site's condition factors (بقايا إسمنت أو طلاء، دهون، روائح قوية، حيوانات أليفة، نفايات متراكمة، أشغال حديثة، أجهزة حساسة), the rep visit's interest levels and the contact roles. Default: as worded.
+15. An organisation without a trade register (an administration, an association): the program asks for its NIF and NIS on every first invoice, and its RC only when «السجل التجاري» is نعم. Is that what his accountant wants?
 
 Two lists were checked on 2026-10-12. The 29 communes of the wilaya of أم البواقي match the 2008 census list and its official codes (0401 to 0429), with one correction («الراحية»). The 69 wilayas still need one check: the eleven created on 16 November 2025 are numbered 59 to 69 as the press reported them, not yet against the Journal officiel.
