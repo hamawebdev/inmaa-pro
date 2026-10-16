@@ -1,4 +1,4 @@
-import { RefreshCw } from "lucide-react";
+import { Download, FileX, Paperclip, RefreshCw } from "lucide-react";
 import * as React from "react";
 
 import { toast } from "sonner";
@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { useMay } from "@/features/people/components/may";
 import { STATUS_TONE } from "@/features/people/components/status-tones";
 import type { DocumentState } from "@/features/people/rules/documents";
+import { DOCUMENT_FILE_CAPABILITY, setStaffDocumentFileAction } from "@/features/people/services/documents";
 import { setWorkerPhotoAction, setWorkerSignedScanAction } from "@/features/people/services/worker-files";
 import type { StaffDocumentType } from "@/features/people/validators/staff-codes";
 import type { WorkerFile } from "@/features/people/services/worker-reads";
@@ -186,13 +187,58 @@ export function WorkerAttachmentsCard({ file }: { file: WorkerFile }) {
 export function WorkerDocumentsCard({
   file,
   onRenew,
+  filesScans = false,
 }: {
   file: WorkerFile;
   /** A document handed in again: a new certificate for one that expires. */
   onRenew?: (type: StaffDocumentType) => void;
+  /** Whether the reader files and opens the scans (HR): they are stored restricted. */
+  filesScans?: boolean;
 }) {
   const t = useTranslations("Workers.File");
   const tForm = useTranslations("WorkerForm");
+  const errorMessage = useErrorMessage();
+  const input = React.useRef<HTMLInputElement>(null);
+  const [attaching, setAttaching] = React.useState<StaffDocumentType | null>(null);
+  const [busy, setBusy] = React.useState(false);
+  const subject = { kind: "WORKER" as const, id: file.id, label: staffName(file.values) };
+  const report = (result: { success: boolean; error?: string }, done: string) => {
+    if (result.success) toast.success(done);
+    else toast.error(errorMessage(result.error, t("FileFailed")));
+  };
+
+  const attach = async (picked: File | undefined) => {
+    const type = attaching;
+    if (!picked || !type) return;
+    const problem = checkUploadFile(picked, RECEIPT_UPLOAD_RULE);
+    if (problem) {
+      toast.error(t(problem === "type" ? "ScanWrongType" : "ScanTooLarge"));
+      return;
+    }
+    setBusy(true);
+    try {
+      const url = await saveManagedUpload({
+        entity: "StaffDocument",
+        field: "fileUrl",
+        file: picked,
+        rule: RECEIPT_UPLOAD_RULE,
+        restrictedCapability: DOCUMENT_FILE_CAPABILITY,
+      });
+      report(await setStaffDocumentFileAction({ staffId: file.id, type, url }), t("DocumentFileSaved"));
+    } catch (error) {
+      toast.error(errorMessage(error instanceof Error ? error.message : null, t("FileFailed")));
+    } finally {
+      setBusy(false);
+      setAttaching(null);
+      if (input.current) input.current.value = "";
+    }
+  };
+  const copy = async (url: string) => {
+    const result = await saveUploadCopy(url, t("DocumentCopyFile"), { owner: "PEOPLE", subject });
+    if (result.success) toast.success(t("ScanCopied", { path: result.path }));
+    else if (!result.cancelled) toast.error(errorMessage(result.error, t("FileFailed")));
+  };
+
   return (
     <Card id="worker-card-documents-state">
       <CardHeader>
@@ -200,6 +246,13 @@ export function WorkerDocumentsCard({
         <CardDescription>{t("DocumentsHint")}</CardDescription>
       </CardHeader>
       <CardContent>
+        <input
+          ref={input}
+          type="file"
+          className="hidden"
+          accept={RECEIPT_UPLOAD_RULE.accept}
+          onChange={(event) => void attach(event.target.files?.[0])}
+        />
         <ul className="grid gap-2 sm:grid-cols-2">
           {file.documents.map((document) => (
             <li
@@ -207,9 +260,55 @@ export function WorkerDocumentsCard({
               className="border-app flex flex-wrap items-center justify-between gap-2 rounded-lg border-border px-4 py-2"
             >
               <span className="min-w-0">{tForm(`Documents.${document.type}`)}</span>
-              <span className="flex items-center gap-2">
+              <span className="flex flex-wrap items-center gap-2">
                 {document.expiryDate && <Ltr className="text-muted-foreground tabular-nums">{document.expiryDate}</Ltr>}
                 <StatusChip tone={DOCUMENT_TONE[document.state]} label={t(`DocumentStates.${document.state}`)} />
+                {filesScans && document.fileUrl && (
+                  <>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon-sm"
+                      aria-label={t("DocumentCopyFile")}
+                      title={t("DocumentCopyFile")}
+                      onClick={() => void copy(document.fileUrl as string)}
+                    >
+                      <Download />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon-sm"
+                      disabled={busy}
+                      aria-label={t("DocumentRemoveFile")}
+                      title={t("DocumentRemoveFile")}
+                      onClick={async () =>
+                        report(
+                          await setStaffDocumentFileAction({ staffId: file.id, type: document.type, url: null }),
+                          t("DocumentFileRemoved"),
+                        )
+                      }
+                    >
+                      <FileX />
+                    </Button>
+                  </>
+                )}
+                {filesScans && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon-sm"
+                    disabled={busy}
+                    aria-label={t("DocumentAttach")}
+                    title={t("DocumentAttach")}
+                    onClick={() => {
+                      setAttaching(document.type);
+                      input.current?.click();
+                    }}
+                  >
+                    <Paperclip />
+                  </Button>
+                )}
                 {onRenew && (
                   <Button
                     type="button"

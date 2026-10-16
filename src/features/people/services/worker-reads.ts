@@ -135,6 +135,8 @@ export interface WorkerDocumentLine {
   state: DocumentState;
   daysLeft: number | null;
   isRestricted: boolean;
+  /** The scan of the document: restricted, opened only through `openRestrictedUpload`. */
+  fileUrl: string | null;
 }
 
 export interface WorkerFile {
@@ -189,7 +191,7 @@ export async function openWorkerFile(ex: Executor, ctx: ServiceContext, input: {
       : Promise.resolve(undefined),
     ex
       .selectFrom("StaffDocument")
-      .select(["type", "delivered", "deliveredDate", "expiryDate", "isRestricted"])
+      .select(["type", "delivered", "deliveredDate", "expiryDate", "isRestricted", "fileUrl"])
       .where("staffId", "=", worker.id)
       .where("isCurrent", "=", 1)
       .where("deletedAt", "is", null)
@@ -253,6 +255,7 @@ export async function openWorkerFile(ex: Executor, ctx: ServiceContext, input: {
         state: documentState(line, ctx.today, leadDays),
         daysLeft: line.delivered && line.expiryDate ? daysBetween(ctx.today, line.expiryDate) : null,
         isRestricted: held?.isRestricted === 1,
+        fileUrl: held?.fileUrl ?? null,
       };
     }),
     decisions: decisions.map((decision) => ({

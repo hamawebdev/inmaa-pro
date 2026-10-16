@@ -231,7 +231,13 @@
       "Hours": "الساعات",
       "Pay": "الأجور والتسبيقات",
       "ConductTitle": "المخالفات والتقييم الدوري",
-      "Renew": "تجديد"
+      "Renew": "تجديد",
+      "DocumentAttach": "إرفاق النسخة",
+      "DocumentCopyFile": "حفظ نسخة",
+      "DocumentRemoveFile": "حذف النسخة",
+      "DocumentFileSaved": "تم حفظ النسخة.",
+      "DocumentFileRemoved": "تم حذف النسخة.",
+      "DocumentHasFile": "نسخة محفوظة"
     },
     "Resume": {
       "PENDING": "لم يجب المدير بعد بخصوص {name}.",
@@ -1208,6 +1214,19 @@
     "ViolationAlreadyDecided": "سبق البتّ في هذه المخالفة.",
     "ResidenceCommuneRequired": "اختر بلدية الإقامة.",
     "PayItemTypeRequired": "اختر منحة أو اقتطاعًا.",
-    "PayItemNotFound": "هذه المنحة أو الاقتطاع غير موجود."
+    "PayItemNotFound": "هذه المنحة أو الاقتطاع غير موجود.",
+    "PersonLeftNoCard": "هذا الشخص غادر: لا تُطبع له بطاقة."
+  },
+  "Cards": {
+    "Title": "بطاقة التعريف",
+    "Hint": "{count} بطاقة بحجمها الحقيقي (85,6 × 54 مم)، ثماني بطاقات في الصفحة، مع علامات القص.",
+    "Loading": "جارٍ التحميل…",
+    "NoneChosen": "اختر العمال من القائمة أولًا.",
+    "Failed": "تعذر تحضير البطاقات.",
+    "BackToFile": "الملف",
+    "Print": "بطاقة التعريف",
+    "PrintSelected": "طباعة {count} بطاقات تعريف",
+    "Select": "اختيار",
+    "SelectAll": "اختيار كل الصفحة"
   }
 }

@@ -1,6 +1,12 @@
 # People: handover
 
-Owner of features 21, 25, 37, 38: centre employees, cleaning workers, his worker form, hiring and training, hours, pay, and the suspended-or-penalised check. Paths: `src/features/people/**`, pages `employees/`, `employee-attendance/`, `workers/`, `hiring/`, `hours-pay/`. Updated at the end of round 3.
+Owner of features 21, 25, 37, 38: centre employees, cleaning workers, his worker form, hiring and training, hours, pay, and the suspended-or-penalised check. Paths: `src/features/people/**`, pages `employees/`, `employee-attendance/`, `workers/`, `hiring/`, `hours-pay/`. Updated at the end of round 4.
+
+## Round 4, done
+
+- **ID cards (scope R9):** `services/cards.ts` (`staffCardsForPrint`, `recordCardPrint`, one DISCLOSE line per card), `sheets/id-cards.tsx` (ISO ID-1, 85.6 × 54 mm, eight to an A4 page with cutting marks; photo or the empty frame, name surname first, number, role in his words, the centre), `components/staff-cards-screen.tsx`. Pages: `workers/:id/print-card`, `employees/:id/print-card`, and `workers/print-cards?ids=` for the workers chosen in the list. A person who left gets no card.
+- **One file per document:** `setStaffDocumentFile` in `services/documents.ts`; the worker's documents card attaches, copies and removes each scan, stored restricted under `DOCUMENT_FILE_CAPABILITY` (`staff.health.read` until Foundation names `staff.documents.read`). The worker's file reads `fileUrl` per document.
+- **Not this round:** the phone helper (Foundation's move has not landed); the labour-rules findings (not received); one yes for several sanctions (needs a column, see "Needs").
 
 ## Round 3, done
 
@@ -148,6 +154,9 @@ Owner of features 21, 25, 37, 38: centre employees, cleaning workers, his worker
   - handle `payout.recorded` and `payout.voided` in its `events.ts`: `postPayoutExpense` reads `getPayoutForExpense(ex, ctx, { staffPayoutId })`;
   - call `addDebtEntry` for equipment lost or damaged (`handOutReturnId`).
 - **Foundation:**
+  - `staff.documents.read` (HR_OFFICER) for the scans of a staff member's documents; until then they use `staff.health.read`;
+  - `<MediaUploadField>` has no restricted mode (its preview and its copy cannot reach a restricted file), so the document scans use the signed scan's pattern: a file button, a restricted copy, a remove;
+  - for the ruling "one yes covers every sanction matched": a column `SanctionDecision.matchedSanctionIds` (JSON array), so a request names them all and the yes covers them;
   - the IRG scale in Settings (`pay.irgTable`), on قواعد العمل;
   - `centre.cnasEmployerNumber` on the centre's card and in the demo identity;
   - the consult logged once a day per user and record;

@@ -8,7 +8,7 @@ import {
   type PaginationState,
   useReactTable,
 } from "@tanstack/react-table";
-import { FileText } from "lucide-react";
+import { FileText, IdCard } from "lucide-react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useTranslations } from "use-intl";
 
@@ -16,6 +16,7 @@ import { DataTable, TablePager, TableSearch } from "@/components/data-table-shel
 import { Ltr } from "@/components/ltr";
 import { StatusChip } from "@/components/status-chip";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { formatPhone } from "@/features/people/components/format";
 import { SanctionChip } from "@/features/people/components/sanction-chip";
@@ -51,6 +52,19 @@ export function WorkersTable({
   const [pagination, setPagination] = React.useState<PaginationState>({ pageIndex: 0, pageSize: 25 });
   const [search, setSearch] = React.useState("");
   const [status, setStatus] = React.useState(params.get("status") ?? ALL);
+  // The workers chosen for a batch of ID cards (scope R9).
+  const [chosen, setChosen] = React.useState<ReadonlySet<string>>(new Set());
+  const tCards = useTranslations("Cards");
+  const toggle = React.useCallback(
+    (id: string, on: boolean) =>
+      setChosen((current) => {
+        const next = new Set(current);
+        if (on) next.add(id);
+        else next.delete(id);
+        return next;
+      }),
+    [],
+  );
   const [zone, setZone] = React.useState(ALL);
   const [role, setRole] = React.useState(ALL);
   const [documents, setDocuments] = React.useState(params.get("documents") === TO_RENEW ? TO_RENEW : ALL);
@@ -58,6 +72,18 @@ export function WorkersTable({
 
   const columns = React.useMemo<ColumnDef<WorkerListRow>[]>(
     () => [
+      {
+        id: "choose",
+        header: "",
+        cell: ({ row }) =>
+          row.original.status === "LEFT" ? null : (
+            <Checkbox
+              aria-label={tCards("Select")}
+              checked={chosen.has(row.original.id)}
+              onCheckedChange={(checked) => toggle(row.original.id, checked === true)}
+            />
+          ),
+      },
       {
         id: "number",
         header: t("Table.Number"),
@@ -125,7 +151,7 @@ export function WorkersTable({
         ),
       },
     ],
-    [t, tOptions],
+    [t, tOptions, tCards, chosen, toggle],
   );
 
   const filtered = React.useMemo(() => {
@@ -216,9 +242,19 @@ export function WorkersTable({
           { value: TO_RENEW, label: t("Table.DocumentsToRenewOnly") },
         ])}
       </div>
-      <p className="text-base text-muted-foreground">
-        {t("Table.Count", { shown: filtered.length, total: rows.length })}
-      </p>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-base text-muted-foreground">
+          {t("Table.Count", { shown: filtered.length, total: rows.length })}
+        </p>
+        {chosen.size > 0 && (
+          <Button asChild variant="outline">
+            <Link to={`/dashboard/workers/print-cards?ids=${[...chosen].join(",")}`}>
+              <IdCard />
+              {tCards("PrintSelected", { count: chosen.size })}
+            </Link>
+          </Button>
+        )}
+      </div>
       <DataTable table={table} columnCount={columns.length} emptyMessage={t("Table.Empty")} />
       <TablePager table={table} />
     </div>

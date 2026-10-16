@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { Clock, LogOut, Printer, RotateCcw, Scale, ShieldAlert, Wallet } from "lucide-react";
+import { Clock, IdCard, LogOut, Printer, RotateCcw, Scale, ShieldAlert, Wallet } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import { useTranslations } from "use-intl";
@@ -11,6 +11,7 @@ import { StatusChip } from "@/components/status-chip";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useConductEntries } from "@/features/people/components/conduct-entries";
+import { DOCUMENT_FILE_CAPABILITY } from "@/features/people/services/documents";
 import { todayAtTheCentre, useMay } from "@/features/people/components/may";
 import { useReasonDialog } from "@/features/people/components/reason-dialog";
 import { SanctionCard } from "@/features/people/components/sanction-card";
@@ -65,8 +66,10 @@ export default function WorkerPage() {
   });
   const back = { href: "/dashboard/workers", label: tNav("WorkersList") };
   const keepsFiles = useMay("staff.write");
+  const holdsDocuments = useMay(DOCUMENT_FILE_CAPABILITY);
   const conduct = useConductEntries();
   const tHiring = useTranslations("Hiring");
+  const tCards = useTranslations("Cards");
   const readsPay = useMay("pay.read");
   const printsFilledForm = useMay("staff.printFilledForm");
 
@@ -137,6 +140,14 @@ export default function WorkerPage() {
                 {t("File.Leave")}
               </Button>
             ))}
+          {keepsFiles && file.status !== "LEFT" && (
+            <Button asChild variant="outline">
+              <Link to={`/dashboard/workers/${id}/print-card`}>
+                <IdCard />
+                {tCards("Print")}
+              </Link>
+            </Button>
+          )}
           {printsFilledForm && (
             <Button asChild variant="info">
               <Link to={`/dashboard/workers/${id}/print`}>
@@ -186,6 +197,7 @@ export default function WorkerPage() {
         <WorkerDocumentsCard
           file={file}
           onRenew={keepsFiles ? (type) => void conduct.renewDocument(id, type) : undefined}
+          filesScans={keepsFiles && holdsDocuments}
         />
         <Card id="worker-card-conduct">
           <CardHeader>

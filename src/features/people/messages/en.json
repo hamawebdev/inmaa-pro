@@ -231,7 +231,13 @@
       "Hours": "Hours",
       "Pay": "Pay and advances",
       "ConductTitle": "Violations and periodic evaluation",
-      "Renew": "Renew"
+      "Renew": "Renew",
+      "DocumentAttach": "Attach the scan",
+      "DocumentCopyFile": "Save a copy",
+      "DocumentRemoveFile": "Remove the scan",
+      "DocumentFileSaved": "The scan is filed.",
+      "DocumentFileRemoved": "The scan is removed.",
+      "DocumentHasFile": "Scan filed"
     },
     "Resume": {
       "PENDING": "The manager has not answered yet about {name}.",
@@ -1208,6 +1214,19 @@
     "ViolationAlreadyDecided": "This violation has already been decided.",
     "ResidenceCommuneRequired": "Choose the commune of residence.",
     "PayItemTypeRequired": "Choose an allowance or a deduction.",
-    "PayItemNotFound": "This allowance or deduction does not exist."
+    "PayItemNotFound": "This allowance or deduction does not exist.",
+    "PersonLeftNoCard": "This person has left: no card is printed."
+  },
+  "Cards": {
+    "Title": "ID card",
+    "Hint": "{count} cards at their real size (85.6 × 54 mm), eight to a page, with their cutting marks.",
+    "Loading": "Loading…",
+    "NoneChosen": "Choose the workers in the list first.",
+    "Failed": "The cards could not be prepared.",
+    "BackToFile": "The file",
+    "Print": "ID card",
+    "PrintSelected": "Print {count} ID cards",
+    "Select": "Choose",
+    "SelectAll": "Choose all on this page"
   }
 }

@@ -231,7 +231,13 @@
       "Hours": "Heures",
       "Pay": "Paie et avances",
       "ConductTitle": "Infractions et évaluation périodique",
-      "Renew": "Renouveler"
+      "Renew": "Renouveler",
+      "DocumentAttach": "Joindre la copie",
+      "DocumentCopyFile": "Enregistrer une copie",
+      "DocumentRemoveFile": "Retirer la copie",
+      "DocumentFileSaved": "La copie est classée.",
+      "DocumentFileRemoved": "La copie est retirée.",
+      "DocumentHasFile": "Copie classée"
     },
     "Resume": {
       "PENDING": "Le directeur n'a pas encore répondu au sujet de {name}.",
@@ -1208,6 +1214,19 @@
     "ViolationAlreadyDecided": "Cette infraction a déjà été décidée.",
     "ResidenceCommuneRequired": "Choisissez la commune de résidence.",
     "PayItemTypeRequired": "Choisissez une prime ou une retenue.",
-    "PayItemNotFound": "Cette prime ou retenue n'existe pas."
+    "PayItemNotFound": "Cette prime ou retenue n'existe pas.",
+    "PersonLeftNoCard": "Cette personne est partie : aucune carte n'est imprimée."
+  },
+  "Cards": {
+    "Title": "Carte professionnelle",
+    "Hint": "{count} cartes à leur taille réelle (85,6 × 54 mm), huit par page, avec leurs traits de coupe.",
+    "Loading": "Chargement…",
+    "NoneChosen": "Choisissez d'abord les agents dans la liste.",
+    "Failed": "Les cartes n'ont pas pu être préparées.",
+    "BackToFile": "Le dossier",
+    "Print": "Carte",
+    "PrintSelected": "Imprimer {count} cartes",
+    "Select": "Choisir",
+    "SelectAll": "Tout choisir sur la page"
   }
 }

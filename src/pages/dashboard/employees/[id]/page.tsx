@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { CalendarCheck, LogOut, RotateCcw, Wallet } from "lucide-react";
+import { CalendarCheck, IdCard, LogOut, RotateCcw, Wallet } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import { useTranslations } from "use-intl";
@@ -64,6 +64,7 @@ export default function EmployeePage() {
   });
   const back = { href: "/dashboard/employees", label: tNav("EmployeesList") };
   const keepsFiles = useMay("staff.write");
+  const tCards = useTranslations("Cards");
   // Pay is a tab of the workers' section: an account that does not reach it is not sent there.
   const holdsPay = useMay("pay.read");
   const reachesPay = useMayIn("WORKERS", "READ");
@@ -126,10 +127,18 @@ export default function EmployeePage() {
             {t("File.Readmit")}
           </Button>
         ) : (
-          <Button type="button" variant="outline" onClick={leave}>
-            <LogOut />
-            {t("File.Leave")}
-          </Button>
+          <div className="flex flex-wrap gap-3">
+            <Button type="button" variant="outline" onClick={leave}>
+              <LogOut />
+              {t("File.Leave")}
+            </Button>
+            <Button asChild variant="outline">
+              <Link to={`/dashboard/employees/${id}/print-card`}>
+                <IdCard />
+                {tCards("Print")}
+              </Link>
+            </Button>
+          </div>
         ))
       }
     >
