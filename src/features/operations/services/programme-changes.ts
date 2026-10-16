@@ -28,7 +28,7 @@ import {
   type ProgrammeWarning,
   type VisitStatus,
 } from "../validators/option-codes";
-import { settleVisitTeam } from "./assignment";
+import { judgeSeat, readVisitForSeat, settleVisitTeam, workerForSeat } from "./assignment";
 import { OPEN_STATUSES, VISITS_PATH, ensureProgramme, generateFileVisits, programmeSettings } from "./programme";
 import { readFileForScheduling, type FileForScheduling } from "./upstream";
 
@@ -234,6 +234,17 @@ export interface FutureVisitsUpdate {
   /** Future visits the change concerns, left as they were: printed, edited by hand, or in another status. */
   left: { printed: number; edited: number; otherStatus: number };
   leftVisits: Array<{ id: string; number: string; visitDate: LocalDate; reason: LeftReason }>;
+  /**
+   * Workers who cannot follow their visit to its new hours without breaking a working-time rule (audit LAB-3):
+   * their seat is removed and the visit waits for confirmation; the office fills it, with the manager if he allows.
+   */
+  seatsDropped: Array<{
+    visitId: string;
+    visitNumber: string;
+    visitDate: LocalDate;
+    workerNumber: string;
+    why: string;
+  }>;
   /** The weekly slots: given new hours or headcount, added, switched off. */
   slots: { updated: number; added: number; deactivated: number };
   warnings: ProgrammeWarning[];
@@ -365,7 +376,68 @@ async function planFutureVisits(ex: Executor, ctx: ServiceContext, file: FileFor
   return plan;
 }
 
-function summaryOf(plan: FuturePlan, outcome: { added: number; canUpdate: boolean }): FutureVisitsUpdate {
+/**
+ * The seated workers of a visit who could not stay on it at the new hours and
+ * length: each judged as a new seat would be (two visits at once, 48 hours, the
+ * day span, night work by a woman, a rest day, a sanction), with no override.
+ * Writes nothing.
+ */
+async function seatsThatCannotFollow(
+  ex: Executor,
+  ctx: ServiceContext,
+  visit: { id: string; number: string; visitDate: LocalDate },
+  to: { startTime: string; durationMin: number },
+): Promise<Array<{ seatId: string; workerNumber: string; why: string }>> {
+  const seats = await ex
+    .selectFrom("VisitWorker")
+    .select(["id", "workerId"])
+    .where("visitId", "=", visit.id)
+    .where("seatStatus", "=", "ASSIGNED")
+    .execute();
+  if (seats.length === 0) return [];
+  const moved = {
+    ...(await readVisitForSeat(ex, visit.id)),
+    plannedStartTime: localTime(to.startTime),
+    plannedDurationMin: to.durationMin,
+  };
+  const dropped: Array<{ seatId: string; workerNumber: string; why: string }> = [];
+  for (const seat of seats) {
+    let number = "";
+    try {
+      const worker = await workerForSeat(ex, ctx, seat.workerId);
+      number = worker.number;
+      await judgeSeat(ex, ctx, worker, moved, null);
+    } catch (error) {
+      if (!(error instanceof ServiceError)) throw error;
+      dropped.push({ seatId: seat.id, workerNumber: number, why: error.message });
+    }
+  }
+  return dropped;
+}
+
+async function droppedSeatsOf(ex: Executor, ctx: ServiceContext, plan: FuturePlan) {
+  const all: FutureVisitsUpdate["seatsDropped"] = [];
+  const bySeat: Array<{ seatId: string; visitId: string }> = [];
+  for (const { visit, to } of plan.move) {
+    if (to.startTime === visit.plannedStartTime && to.durationMin === visit.plannedDurationMin) continue;
+    for (const seat of await seatsThatCannotFollow(ex, ctx, visit, to)) {
+      all.push({
+        visitId: visit.id,
+        visitNumber: visit.number,
+        visitDate: visit.visitDate,
+        workerNumber: seat.workerNumber,
+        why: seat.why,
+      });
+      bySeat.push({ seatId: seat.seatId, visitId: visit.id });
+    }
+  }
+  return { all, bySeat };
+}
+
+function summaryOf(
+  plan: FuturePlan,
+  outcome: { added: number; canUpdate: boolean; seatsDropped?: FutureVisitsUpdate["seatsDropped"] },
+): FutureVisitsUpdate {
   const count = (reason: LeftReason) => plan.left.filter((entry) => entry.reason === reason).length;
   return {
     canUpdate: outcome.canUpdate,
@@ -385,6 +457,7 @@ function summaryOf(plan: FuturePlan, outcome: { added: number; canUpdate: boolea
       deactivated: plan.slots.deactivations.length,
     },
     warnings: plan.warnings,
+    seatsDropped: outcome.seatsDropped ?? [],
   };
 }
 
@@ -458,7 +531,10 @@ async function applyPlan(ex: Executor, ctx: ServiceContext, plan: FuturePlan): P
     for (const visit of plan.cancel) changes[`${visit.number}.status`] = [visit.status, "CANCELLED"];
   }
 
-  // 3. Visits that take their slot's new hours, length or headcount; a new headcount settles the team.
+  // 3. Visits that take their slot's new hours, length or headcount; a new headcount settles the team. A worker
+  // who cannot follow her visit to its new hours under the working-time rules leaves it (audit LAB-3): judged
+  // before anything moves, so that each is judged on the week as it stands.
+  const dropped = await droppedSeatsOf(ex, ctx, plan);
   for (const { visit, to } of plan.move) {
     const { set, changes: visitChanges } = changedColumns(visit, {
       plannedStartTime: localTime(to.startTime),
@@ -472,7 +548,18 @@ async function applyPlan(ex: Executor, ctx: ServiceContext, plan: FuturePlan): P
       .where("id", "=", visit.id)
       .execute();
     for (const [field, pair] of Object.entries(visitChanges)) changes[`${visit.number}.${field}`] = pair;
-    if (set.workersNeeded !== undefined) await settleVisitTeam(ex, ctx, visit.id);
+    const leaving = dropped.bySeat.filter((seat) => seat.visitId === visit.id);
+    for (const seat of leaving) {
+      await ex
+        .updateTable("VisitWorker")
+        .set({ seatStatus: "REMOVED", ...stamp })
+        .where("id", "=", seat.seatId)
+        .execute();
+    }
+    for (const seat of dropped.all.filter((each) => each.visitId === visit.id)) {
+      changes[`${visit.number}.${seat.workerNumber}.seatStatus`] = ["ASSIGNED", "REMOVED"];
+    }
+    if (set.workersNeeded !== undefined || leaving.length > 0) await settleVisitTeam(ex, ctx, visit.id);
   }
 
   // 4. The visits now missing, from tomorrow on (and the tasks of service ticks added since).
@@ -493,7 +580,7 @@ async function applyPlan(ex: Executor, ctx: ServiceContext, plan: FuturePlan): P
     changes.formChangedAt = [mark.formChangedAt, null];
   }
 
-  const summary = summaryOf(plan, { added: generation.created, canUpdate: true });
+  const summary = summaryOf(plan, { added: generation.created, canUpdate: true, seatsDropped: dropped.all });
   if (Object.keys(changes).length > 0 || generation.created > 0) {
     await logChange(ex, ctx, {
       owner: "OPERATIONS",
@@ -508,6 +595,7 @@ async function applyPlan(ex: Executor, ctx: ServiceContext, plan: FuturePlan): P
         added: summary.added,
         cancelled: summary.cancelled,
         left: summary.leftVisits.map((visit) => ({ visit: visit.number, reason: visit.reason })),
+        seatsDropped: summary.seatsDropped.map((seat) => ({ visit: seat.visitNumber, worker: seat.workerNumber })),
       },
     });
   }
@@ -565,7 +653,12 @@ export async function previewFutureVisitsUpdate(
   const file = await readFileForScheduling(ex, input.fileId);
   if (!file) throw new ServiceError("This client file does not exist.");
   const plan = await planFutureVisits(ex, ctx, file);
-  return summaryOf(plan, { added: plan.missing, canUpdate: isLive(file) && !plan.blocked });
+  const dropped = await droppedSeatsOf(ex, ctx, plan);
+  return summaryOf(plan, {
+    added: plan.missing,
+    canUpdate: isLive(file) && !plan.blocked,
+    seatsDropped: dropped.all,
+  });
 }
 
 // ── Renewal ─────────────────────────────────────────────────────────────────

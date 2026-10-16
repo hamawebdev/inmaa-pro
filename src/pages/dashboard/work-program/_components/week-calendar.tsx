@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import {
   DndContext,
@@ -15,7 +15,10 @@ import { restrictToWindowEdges } from "@dnd-kit/modifiers";
 import { useLocale, useTranslations } from "use-intl";
 
 import { Ltr } from "@/components/ltr";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { VisitStatusChip } from "@/features/operations/components/visit-status-chip";
 import { clockOf } from "@/features/operations/rules/calendar";
+import { endTimeOf as visitEndTime } from "@/features/operations/rules/visit-dates";
 import type { MoveTarget, WeekProgramme, WeekVisit } from "@/features/operations/services/week-programme";
 import { intlLocaleFor } from "@/i18n/config";
 import { cn } from "@/lib/utils";
@@ -33,6 +36,8 @@ import {
   layoutDay,
   slotsOf,
   type DropCell,
+  capLanes,
+  maxLanesFor,
 } from "./week-layout";
 
 /**
@@ -98,17 +103,36 @@ export function WeekCalendar({
   const draggedAt = useRef(0);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
+  // How many lanes a day's column can hold, from its width (S-20): the others go under the day's «+n».
+  const frame = useRef<HTMLDivElement>(null);
+  const [maxLanes, setMaxLanes] = useState(2);
+  useEffect(() => {
+    const element = frame.current;
+    if (!element) return;
+    const measure = () => setMaxLanes(maxLanesFor((element.clientWidth - 56) / Math.max(1, week.dates.length)));
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [week.dates.length]);
+
   const grid = useMemo(() => gridHours(week.visits), [week.visits]);
   const slots = useMemo(() => slotsOf(grid), [grid]);
   const hours = useMemo(() => Array.from({ length: grid.end - grid.start }, (_, index) => grid.start + index), [grid]);
   const byDay = useMemo(() => {
-    const days = new Map<string, { visits: WeekVisit[]; lanes: ReturnType<typeof layoutDay> }>();
+    const days = new Map<
+      string,
+      { visits: WeekVisit[]; all: WeekVisit[]; lanes: ReturnType<typeof layoutDay>; hidden: number }
+    >();
     for (const date of week.dates) {
-      const visits = week.visits.filter((visit) => visit.date === date);
-      days.set(date, { visits, lanes: layoutDay(visits) });
+      const all = week.visits
+        .filter((visit) => visit.date === date)
+        .sort((a, b) => a.startTime.localeCompare(b.startTime));
+      const { shown, hidden } = capLanes(layoutDay(all), maxLanes);
+      days.set(date, { visits: all.filter((visit) => shown.has(visit.id)), all, lanes: shown, hidden: hidden.length });
     }
     return days;
-  }, [week.dates, week.visits]);
+  }, [week.dates, week.visits, maxLanes]);
   const workers = useMemo(() => new Map(week.workers.map((worker) => [worker.id, worker])), [week.workers]);
 
   const problem =
@@ -147,6 +171,7 @@ export function WeekCalendar({
 
   return (
     <div
+      ref={frame}
       className={cn("relative overflow-auto rounded-lg border bg-background", busy && "pointer-events-none opacity-60")}
       aria-busy={busy}
       aria-label={t("Calendar")}
@@ -178,6 +203,14 @@ export function WeekCalendar({
                 >
                   {dayFormat.format(dayOf(date))}
                 </span>
+                {(byDay.get(date)?.hidden ?? 0) > 0 && (
+                  <DayList
+                    visits={byDay.get(date)?.all ?? []}
+                    more={byDay.get(date)?.hidden ?? 0}
+                    title={longWeekdayFormat.format(dayOf(date))}
+                    onOpen={open}
+                  />
+                )}
               </div>
             );
           })}
@@ -254,5 +287,59 @@ export function WeekCalendar({
         </DndContext>
       </div>
     </div>
+  );
+}
+
+/** «+n»: the visits a crowded day could not draw; the list holds the whole day, each opening its visit. */
+function DayList({
+  visits,
+  more,
+  title,
+  onOpen,
+}: {
+  visits: readonly WeekVisit[];
+  more: number;
+  title: string;
+  onOpen: (visit: WeekVisit) => void;
+}) {
+  const t = useTranslations("WeekProgramme");
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className="mt-1 rounded-full bg-primary/10 px-2 text-xs font-bold text-primary hover:bg-primary/20"
+          title={t("DayListTitle", { day: title })}
+        >
+          <Ltr>{`+${more}`}</Ltr>
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-80 p-2" align="center">
+        <p className="px-2 pt-1 pb-2 text-sm font-bold">{t("DayListTitle", { day: title })}</p>
+        <ul className="max-h-80 space-y-1 overflow-y-auto">
+          {visits.map((visit) => (
+            <li key={visit.id}>
+              <button
+                type="button"
+                className="flex w-full min-w-0 items-center justify-between gap-2 rounded-md px-2 py-1.5 text-start hover:bg-muted"
+                onClick={() => onOpen(visit)}
+              >
+                <span className="min-w-0">
+                  <span className="block truncate text-sm font-bold" title={visit.siteLabel}>
+                    <bdi>{visit.siteLabel}</bdi>
+                  </span>
+                  <span className="block text-xs leading-4 text-muted-foreground">
+                    <Ltr>
+                      {visit.startTime} – {visitEndTime({ startTime: visit.startTime, durationMin: visit.durationMin })}
+                    </Ltr>
+                  </span>
+                </span>
+                <VisitStatusChip status={visit.status} />
+              </button>
+            </li>
+          ))}
+        </ul>
+      </PopoverContent>
+    </Popover>
   );
 }

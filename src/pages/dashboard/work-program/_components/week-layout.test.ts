@@ -2,13 +2,15 @@ import { describe, expect, it } from "vitest";
 
 import {
   blockBox,
+  capLanes,
   dropProblem,
-  gridHours,
-  layoutDay,
-  slotsOf,
   endTimeOf,
+  gridHours,
   HOUR_HEIGHT_PX,
+  layoutDay,
+  maxLanesFor,
   MIN_BLOCK_PX,
+  slotsOf,
 } from "./week-layout";
 
 const visit = (id: string, startTime: string, durationMin: number) => ({ id, startTime, durationMin });
@@ -82,5 +84,25 @@ describe("dropProblem", () => {
     expect(dropProblem(moving, { date: "2026-10-14", minute: 420 }, context)).toBeNull();
     // Its own seat at the old time is not in the way.
     expect(dropProblem(moving, { date: "2026-10-13", minute: 540 }, context)).toBeNull();
+  });
+});
+
+describe("capLanes (S-20)", () => {
+  it("keeps the lanes a column can hold and lists the visits past them", () => {
+    const lanes = layoutDay([
+      { id: "a", startTime: "08:00", durationMin: 240 },
+      { id: "b", startTime: "08:00", durationMin: 120 },
+      { id: "c", startTime: "08:30", durationMin: 60 },
+      { id: "d", startTime: "08:30", durationMin: 60 },
+      { id: "e", startTime: "14:00", durationMin: 60 },
+    ]);
+    const { shown, hidden } = capLanes(lanes, 2);
+    expect([...shown.keys()].sort()).toEqual(["a", "b", "e"]);
+    expect(hidden.sort()).toEqual(["c", "d"]);
+    expect(shown.get("a")).toEqual({ lane: 0, lanes: 2 });
+    expect(shown.get("e")).toEqual({ lane: 0, lanes: 1 });
+    expect(maxLanesFor(189)).toBe(2);
+    expect(maxLanesFor(120)).toBe(1);
+    expect(maxLanesFor(40)).toBe(1);
   });
 });

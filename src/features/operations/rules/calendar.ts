@@ -153,6 +153,21 @@ export function minutesNear(time: ClockTime, anchor: ClockTime): number {
   return at + offset;
 }
 
+/**
+ * Where a seat starts, as the working-time rules read it: the typed time when
+ * there is one, on the day nearest the planned start (DESIGN.md section 2), so
+ * a night visit planned Monday 23:00 and typed «00:15» starts Tuesday 00:15.
+ */
+export function placedStart(
+  visitDate: IsoDate,
+  plannedStart: ClockTime,
+  typed: ClockTime | null,
+): { date: IsoDate; startTime: ClockTime } {
+  if (!typed) return { date: visitDate, startTime: plannedStart };
+  const start = minutesNear(typed, plannedStart);
+  return { date: addDays(visitDate, Math.floor(start / MINUTES_PER_DAY)), startTime: clockOf(start) };
+}
+
 /** The weekday numbers of a stored list of weekday codes (`["SAT","MON"]`), in week order. Unknown codes are dropped. */
 export function weekdaysOfCodes(codes: readonly string[] | string | null | undefined): Weekday[] {
   let list: unknown = codes ?? [];

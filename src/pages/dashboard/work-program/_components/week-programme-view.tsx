@@ -55,7 +55,8 @@ export function WeekProgrammeView() {
   const placeLabel = useCodeLabel("ProgrammeWarnings");
   const clock = useCentreClock();
   const [params, setParams] = useSearchParams();
-  const canMove = useSectionLevel("REQUESTS") === "WRITE";
+  // Moving a visit from «برنامج العمل» is an act of عمال النظافة (audit ACC-X1): the service checks the same.
+  const canMove = useSectionLevel("WORKERS") === "WRITE";
   const canOverride = useCan("schedule.overrideRule");
   const [focusWorkerId, setFocusWorkerId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);

@@ -9,7 +9,15 @@ import { ServiceError } from "@/lib/service/errors";
 import { getSettings } from "@/lib/settings";
 import { localDate, minutes, type LocalDate, type LocalTime } from "@/lib/units";
 
-import { MINUTES_PER_DAY, addDays, minutesOf, weekStartOf, weekdaysOfCodes, type IsoDate } from "../rules/calendar";
+import {
+  MINUTES_PER_DAY,
+  addDays,
+  minutesOf,
+  placedStart,
+  weekStartOf,
+  weekdaysOfCodes,
+  type IsoDate,
+} from "../rules/calendar";
 import {
   checkWorkerSeats,
   loadMin,
@@ -19,7 +27,7 @@ import {
   type WorkTimeSettings,
 } from "../rules/working-time";
 import type { Sex, VisitStatus, WorkRuleLevel } from "../validators/option-codes";
-import { VISITS_PATH } from "./programme";
+import { VISITS_PATH } from "./paths";
 import {
   SCHEDULABLE_ENGAGEMENTS,
   readSiteForOrder,
@@ -170,9 +178,49 @@ export async function weekSeatsByWorker(
   date: IsoDate,
   options: { workerIds?: readonly string[]; exceptVisitId?: string } = {},
 ): Promise<Map<string, Seat[]>> {
+  const from = weekStartOf(date);
+  return seatsBetween(ex, from, addDays(from, 6), options);
+}
+
+/**
+ * Her seats of the day before the week starts and the day after it ends: a
+ * night visit across the Friday-to-Saturday edge and a visit early the next
+ * morning are in two program weeks (audit LAB-X1). Given to the rules with the
+ * week's seats, they add the overlap and the travel gap; the weekly load and the
+ * rest day are counted per week, so they do not change.
+ */
+export async function edgeSeatsByWorker(
+  ex: Executor,
+  date: IsoDate,
+  options: { workerIds?: readonly string[]; exceptVisitId?: string } = {},
+): Promise<Map<string, Seat[]>> {
+  const from = weekStartOf(date);
+  const before = await seatsBetween(ex, addDays(from, -1), addDays(from, -1), options);
+  const after = await seatsBetween(ex, addDays(from, 7), addDays(from, 7), options);
+  for (const [workerId, seats] of after) before.set(workerId, [...(before.get(workerId) ?? []), ...seats]);
+  return before;
+}
+
+/** The week's seats and the edge days' together, for the rules only (never for a load). */
+export async function seatsForRules(
+  ex: Executor,
+  date: IsoDate,
+  options: { workerIds?: readonly string[]; exceptVisitId?: string } = {},
+): Promise<{ week: Map<string, Seat[]>; withEdges: (workerId: string) => Seat[] }> {
+  const week = await weekSeatsByWorker(ex, date, options);
+  const edges = await edgeSeatsByWorker(ex, date, options);
+  return { week, withEdges: (workerId) => [...(week.get(workerId) ?? []), ...(edges.get(workerId) ?? [])] };
+}
+
+/** Shared. These workers' held seats between two dates, placed where they fall (generation judges a run of weeks at once). */
+export async function seatsBetween(
+  ex: Executor,
+  from: IsoDate,
+  to: IsoDate,
+  options: { workerIds?: readonly string[]; exceptVisitId?: string },
+): Promise<Map<string, Seat[]>> {
   const byWorker = new Map<string, Seat[]>();
   if (options.workerIds && options.workerIds.length === 0) return byWorker;
-  const from = weekStartOf(date);
   let seats = ex
     .selectFrom("VisitWorker")
     .innerJoin("Visit", "Visit.id", "VisitWorker.visitId")
@@ -191,16 +239,18 @@ export async function weekSeatsByWorker(
     .where("VisitWorker.seatStatus", "=", "ASSIGNED")
     .where("Visit.status", "not in", [...NOT_WORKED])
     .where("Visit.visitDate", ">=", localDate(from))
-    .where("Visit.visitDate", "<=", localDate(addDays(from, 6)));
+    .where("Visit.visitDate", "<=", localDate(to));
   if (options.exceptVisitId) seats = seats.where("Visit.id", "!=", options.exceptVisitId);
   if (options.workerIds) seats = seats.where("VisitWorker.workerId", "in", [...new Set(options.workerIds)]);
   for (const row of await seats.execute()) {
     const list = byWorker.get(row.workerId) ?? [];
+    // A typed time sits on the day nearest the planned start (audit LAB-11).
+    const placed = placedStart(row.visitDate, row.plannedStartTime, row.workStartTime ?? row.arrivedTime);
     list.push({
       visitId: row.visitId,
       siteId: row.siteId,
-      date: row.visitDate,
-      startTime: row.workStartTime ?? row.arrivedTime ?? row.plannedStartTime,
+      date: placed.date,
+      startTime: placed.startTime,
       durationMin: row.workedMin ?? row.plannedDurationMin,
     });
     byWorker.set(row.workerId, list);
@@ -352,9 +402,9 @@ export async function judgeSeat(
   }
 
   const settings = await workTimeSettings(ex);
-  const seats = await weekSeatsByWorker(ex, visit.visitDate, { workerIds: [worker.id], exceptVisitId: visit.id });
+  const seats = await seatsForRules(ex, visit.visitDate, { workerIds: [worker.id], exceptVisitId: visit.id });
   const absence = (await absencesOnVisit(ex, visit, [worker.id])).get(worker.id);
-  const findings = findingsWithVisit(worker, seats.get(worker.id) ?? [], absence?.absent ?? false, visit, settings);
+  const findings = findingsWithVisit(worker, seats.withEdges(worker.id), absence?.absent ?? false, visit, settings);
 
   if (findings.some((finding) => finding.level === "REFUSED")) {
     throw new ServiceError("This worker already has a visit at that time.");
@@ -564,7 +614,7 @@ export async function listSeatCandidates(
   if (workers.length === 0) return [];
 
   const settings = await workTimeSettings(ex);
-  const weekSeats = await weekSeatsByWorker(ex, visit.visitDate, { exceptVisitId: visit.id });
+  const weekSeats = await seatsForRules(ex, visit.visitDate, { exceptVisitId: visit.id });
   const absences = await absencesOnVisit(ex, visit);
   const sanctioned = await sanctionedWorkers(
     ex,
@@ -574,9 +624,15 @@ export async function listSeatCandidates(
   );
 
   const candidates = workers.map((worker): SeatCandidate => {
-    const seats = weekSeats.get(worker.id) ?? [];
+    const seats = weekSeats.week.get(worker.id) ?? [];
     const absence = absences.get(worker.id);
-    const findings = findingsWithVisit(worker, seats, absence?.absent ?? false, visit, settings);
+    const findings = findingsWithVisit(
+      worker,
+      weekSeats.withEdges(worker.id),
+      absence?.absent ?? false,
+      visit,
+      settings,
+    );
     return {
       id: worker.id,
       number: worker.number,

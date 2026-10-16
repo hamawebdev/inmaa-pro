@@ -35,6 +35,7 @@ import {
   findingsWithVisit,
   judgeSeat,
   readVisitForSeat,
+  seatsForRules,
   sanctionedWorkers,
   weekSeatsByWorker,
   workTimeSettings,
@@ -199,7 +200,8 @@ export async function getWeekProgramme(
   ctx: ServiceContext,
   input: WeekProgrammeInput,
 ): Promise<WeekProgramme> {
-  requireSection(ctx, "REQUESTS", "READ");
+  // «برنامج العمل» is a tab of عمال النظافة: its reads and its moves follow that section (audit ACC-X1, ruled).
+  requireSection(ctx, "WORKERS", "READ");
   if (!isIsoDate(input.weekStart)) throw new ServiceError("Enter a valid date.");
   const weekStart = localDate(weekStartOf(input.weekStart));
   const weekEnd = localDate(addDays(weekStart, 6));
@@ -512,14 +514,14 @@ export async function previewVisitMove(
   ctx: ServiceContext,
   input: MoveTarget,
 ): Promise<{ checks: MoveCheck[]; placeWarnings: ProgrammeWarning[] }> {
-  requireSection(ctx, "REQUESTS", "READ");
+  requireSection(ctx, "WORKERS", "READ");
   const target = checkTarget(input);
   const visit = await readVisitForSeat(ex, input.visitId);
   const moved: VisitForSeat = { ...visit, visitDate: target.date, plannedStartTime: target.startTime };
   const team = await seatedWorkers(ex, ctx, visit.id);
   const ids = team.map(({ worker }) => worker.id);
   const settings = await workTimeSettings(ex);
-  const weekSeats = await weekSeatsByWorker(ex, moved.visitDate, { workerIds: ids, exceptVisitId: visit.id });
+  const forRules = await seatsForRules(ex, moved.visitDate, { workerIds: ids, exceptVisitId: visit.id });
   const absences = await absencesOnVisit(ex, moved, ids);
   const checks = team.map(
     ({ worker }): MoveCheck => ({
@@ -529,7 +531,7 @@ export async function previewVisitMove(
       lastName: worker.lastName,
       findings: findingsWithVisit(
         worker,
-        weekSeats.get(worker.id) ?? [],
+        forRules.withEdges(worker.id),
         absences.get(worker.id)?.absent ?? false,
         moved,
         settings,
@@ -549,7 +551,7 @@ export async function previewVisitMove(
  * manager passed.
  */
 export async function moveVisit(ex: Executor, ctx: ServiceContext, input: MoveVisitInput): Promise<MoveVisitResult> {
-  requireSection(ctx, "REQUESTS", "WRITE");
+  requireSection(ctx, "WORKERS", "WRITE");
   const target = checkTarget(input);
   const visit = await readVisitForSeat(ex, input.visitId);
   if (!MOVABLE_STATUSES.includes(visit.status)) {

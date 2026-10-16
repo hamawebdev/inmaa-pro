@@ -219,6 +219,43 @@ describe("updateFutureVisits", () => {
     );
   });
 
+  it("takes off a woman who cannot follow her visits into the night (LAB-3)", async () => {
+    const woman = await test.rows.insert("StaffMember", {
+      role: "CLEANER",
+      sex: "FEMALE",
+      engagementStatus: "ACCEPTED",
+      availableDays: JSON.stringify(["SAT", "SUN", "MON", "TUE", "WED", "THU", "FRI"]),
+    } as never);
+    const { file } = await contracted({ workersCount: 1 }, async (fileId) => {
+      await test.rows.insert("FileAssignment", {
+        fileId,
+        workerId: woman.id,
+        role: "LEADER",
+        validFrom: localDate("2026-11-01"),
+        sortOrder: 0,
+      });
+    });
+    expect((await visitsOf(file.id)).every((visit) => visit.status === "CONFIRMED")).toBe(true);
+
+    await setFile(file.id, { arrivalTime: localTime("21:30"), departureTime: localTime("23:30"), period: "EVENING" });
+    const seen = await preview(file.id);
+    expect(seen.seatsDropped).toHaveLength(13);
+    expect(seen.seatsDropped[0].why).toBe("This seat breaks a working-time rule. Only the manager can allow it.");
+
+    const done = await update(file.id);
+    expect(done.seatsDropped).toHaveLength(13);
+    const visits = await visitsOf(file.id);
+    expect(
+      visits.every((visit) => visit.plannedStartTime === "21:30" && visit.status === "AWAITING_CONFIRMATION"),
+    ).toBe(true);
+    const seats = await test.db
+      .selectFrom("VisitWorker")
+      .select("seatStatus")
+      .where("workerId", "=", woman.id)
+      .execute();
+    expect(seats.every((seat) => seat.seatStatus === "REMOVED")).toBe(true);
+  });
+
   it("moves an on-demand job to its new days", async () => {
     const site = await test.rows.insert("Site", { division: "HOUSING" });
     const file = await test.rows.insert("File", {

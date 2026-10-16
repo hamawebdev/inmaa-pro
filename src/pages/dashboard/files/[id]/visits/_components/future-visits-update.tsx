@@ -87,6 +87,24 @@ export function FutureVisitsUpdate({ fileId, changed }: { fileId: string; change
                   {t("Left", { printed: plan.left.printed, edited: plan.left.edited, other: plan.left.otherStatus })}
                 </p>
               )}
+              {plan.seatsDropped.length > 0 && (
+                <div className="space-y-1">
+                  <p className="flex items-center gap-2 font-semibold text-warning-ink">
+                    <TriangleAlert className="size-4 shrink-0" />
+                    {t("SeatsDropped", { count: plan.seatsDropped.length })}
+                  </p>
+                  <ul className="space-y-0.5 ps-6 text-sm text-muted-foreground">
+                    {plan.seatsDropped.slice(0, 5).map((seat) => (
+                      <li key={`${seat.visitId}-${seat.workerNumber}`}>
+                        <Ltr>
+                          {seat.visitNumber} · {seat.workerNumber}
+                        </Ltr>{" "}
+                        · {errorMessage(seat.why, seat.why)}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
               {plan.warnings.length > 0 && (
                 <ul className="space-y-1">
                   {plan.warnings.map((warning) => (

@@ -182,7 +182,12 @@ export function RatingsView() {
   const columns = React.useMemo<ColumnDef<RatingRow>[]>(() => {
     const criterion = (key: RatingCriterion): ColumnDef<RatingRow> => ({
       id: key,
-      header: () => <span className="block max-w-24 leading-tight whitespace-normal">{t(`Criteria.${key}`)}</span>,
+      // A short head, the whole name in its tooltip: five marks and the rest fit the box in every language.
+      header: () => (
+        <span className="whitespace-nowrap" title={t(`Criteria.${key}`)}>
+          {t(`CriteriaShort.${key}`)}
+        </span>
+      ),
       cell: ({ row }) => (
         <Ltr className={cn("font-bold tabular-nums", scoreInk(row.original.scores[key]))}>
           {formats.score(row.original.scores[key])}
@@ -194,7 +199,7 @@ export function RatingsView() {
         id: "who",
         header: t(`Columns.${by}`),
         cell: ({ row }) => (
-          <div className="max-w-56 min-w-0">
+          <div className="max-w-40 min-w-0 xl:max-w-56">
             {row.original.titleLtr ? (
               <span className="block font-bold whitespace-nowrap">
                 <Ltr>{row.original.title}</Ltr>
@@ -222,7 +227,11 @@ export function RatingsView() {
       ...RATING_CRITERIA.map(criterion),
       {
         id: "recommend",
-        header: () => <span className="block max-w-24 leading-tight whitespace-normal">{t("Columns.Recommend")}</span>,
+        header: () => (
+          <span className="whitespace-nowrap" title={t("Columns.Recommend")}>
+            {t("Columns.RecommendShort")}
+          </span>
+        ),
         cell: ({ row }) => {
           const recommend = row.original.recommend;
           if ("answer" in recommend) {

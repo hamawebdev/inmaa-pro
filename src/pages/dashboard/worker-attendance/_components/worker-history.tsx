@@ -22,6 +22,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { VisitStatusChip } from "@/features/operations/components/visit-status-chip";
 import { hoursAndMinutes } from "@/features/operations/components/visit-entry/visit-entry-notes";
 import type { AbsenceLine, AttendanceSeat } from "@/features/operations/services/worker-attendance";
+import { useCan } from "@/hooks/use-session";
 
 import {
   AbsenceKind,
@@ -33,7 +34,7 @@ import {
   PresenceProofNote,
   SeatStatusChip,
 } from "./attendance-bits";
-import { CANCELLABLE, useDates, workerName } from "./attendance-helpers";
+import { mayCancel, useDates, workerName } from "./attendance-helpers";
 import { monthRange, shiftMonth } from "./attendance-params";
 import { historyQuery } from "./attendance-queries";
 
@@ -287,6 +288,7 @@ function HistoryAbsences({
   loading: boolean;
   onCancel?: (line: AbsenceLine) => void;
 }) {
+  const decidesLeave = useCan("staff.write");
   const t = useTranslations("WorkerAttendance");
   const [pagination, setPagination] = React.useState<PaginationState>({ pageIndex: 0, pageSize: 25 });
   const columns = React.useMemo<ColumnDef<AbsenceLine>[]>(
@@ -310,7 +312,7 @@ function HistoryAbsences({
         id: "actions",
         header: "",
         cell: ({ row }) =>
-          onCancel && CANCELLABLE.includes(row.original.status) ? (
+          onCancel && mayCancel(row.original, decidesLeave) ? (
             <div className="flex items-center justify-end">
               <Button variant="outline" size="sm" onClick={() => onCancel(row.original)}>
                 <Ban />
@@ -320,7 +322,7 @@ function HistoryAbsences({
           ) : null,
       },
     ],
-    [t, onCancel],
+    [t, onCancel, decidesLeave],
   );
   const table = useReactTable({
     data: lines,

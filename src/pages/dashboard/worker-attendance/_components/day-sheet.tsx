@@ -192,7 +192,8 @@ export function DayCounts({ rows }: { rows: readonly AttendanceDayRow[] }) {
     count: rows.filter((row) => row.state === state).length,
   })).filter(({ count }) => count > 0);
   return (
-    <div className="flex min-w-0 flex-wrap items-center gap-2" aria-label={t("Day.Counts")}>
+    // Beside the heading on a wide window only: at 1024 px the first rows of the sheet come first (S-19).
+    <div className="hidden min-w-0 flex-wrap items-center gap-2 xl:flex" aria-label={t("Day.Counts")}>
       <span className="me-1 text-base font-bold">{t("Day.Total", { count: rows.length })}</span>
       {counts.map(({ state, count }) => (
         <span key={state} className="inline-flex items-center gap-1.5">

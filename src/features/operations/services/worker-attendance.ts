@@ -470,6 +470,8 @@ export interface AttendanceOverview {
   graceMin: number;
   /** `work.period.morning` and `work.period.evening`: the two halves of a day an absence may take. */
   periods: { MORNING: Period; EVENING: Period };
+  /** `work.restDay`: the weekly rest day a leave does not count (People's pay leaves it out too, audit LAB-8). */
+  restDay: string;
 }
 
 /**
@@ -497,7 +499,12 @@ export async function listAttendanceOverview(
   const arrivals = await lastTyped(ex, date, "arrival");
   const departures = await lastTyped(ex, date, "departure");
   const absences = await absencesOnDay(ex, date);
-  const settings = await getSettings(ex, ["work.arrivalGraceMin", "work.period.morning", "work.period.evening"]);
+  const settings = await getSettings(ex, [
+    "work.arrivalGraceMin",
+    "work.period.morning",
+    "work.period.evening",
+    "work.restDay",
+  ]);
 
   const rows = workers.map((worker): AttendanceDayRow => {
     const own = seats.filter((seat) => seat.workerId === worker.id).map(({ workerId: _workerId, ...seat }) => seat);
@@ -518,6 +525,7 @@ export async function listAttendanceOverview(
     rows,
     graceMin: settings["work.arrivalGraceMin"],
     periods: { MORNING: settings["work.period.morning"], EVENING: settings["work.period.evening"] },
+    restDay: settings["work.restDay"],
   };
 }
 

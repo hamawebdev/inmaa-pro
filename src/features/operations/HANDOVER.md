@@ -73,35 +73,42 @@ Blank sheets: `visits/blank-<division>/print`, `visits/calls/blank/print`, `supe
 - Checker's audit (docs/checker/screens.md): the rules under "Screens" above; the heading row's `actions` slot
   keeps the print action.
 
-## Round 3 status (in progress)
+## Round 3 (done, 16 October)
 
-Done: visit lifecycle (`services/visit-status.ts`: postpone with make-up visit, cancel, reopen; menu on the visit
-page), extra-visit proposals with dismissal (`dismissExtraVisitProposal`, card on File › الزيارات), «تحديث
-الزيارات القادمة» dialog (update calls Money's `syncDues`), generation leaves suspended or departed members' seats
-open, names surname first (`staffName`), phones grouped (`phoneText`), S-03 (counts in the visits tab's heading
-row; 3.8 rows in view at 1024×640, the academy's attendance list 3.7), the 30 inspection criteria seeded
-(`seeds.ts`), `alerts.ts` (eight tiles), `home.tsx` (`homeSlots`), the visits tab's lists `?list=not-returned` and
-`?list=awaiting`, the quality services (`inspections.ts`, `corrective-tasks.ts`, `complaints.ts`,
-`problem-reports.ts`, `ratings.ts`), the demo (inspections, complaints, a proposal waiting, a postponed visit, a
-seat short today). Helpers at work: the quality screens (inspections and corrective; complaints, problems and
-ratings) and the Checker's S-18 to S-21. Left: الموظفون › المشرفون (only `assignZoneSupervisor` exists), the
-day-start job (`markMissedInspections`, `planInspections`), final shots and checks.
+Built: visit lifecycle (`visit-status.ts`), extra-visit proposals and their dismissal, «تحديث الزيارات القادمة»
+(calls Money's `syncDues`), names surname first, phones grouped, S-03, the 30 inspection criteria (`seeds.ts`),
+`alerts.ts`, `home.tsx`, the quality tab (inspections with the sheet printed from the stored inspection, corrective
+tasks, complaints with their page, problem reports, ratings), الموظفون › المشرفون (`supervisors/`), `daily.ts`,
+`getWorkerQualityFigures` (`worker-quality.ts`), «تسجيل مخالفة» (`worker-violations.ts`, People's
+`createViolationFromSource`), the site's QR (`geo:`) on the order (`feature.siteQrOnOrder`), `listVisitWorkers`
+(`visit-workers.ts`, for Money). Screens: S-18/S-19 (counts beside the heading from `xl` only), S-20 (lanes capped by
+the column's width, «+n» day list, hours on their own line), S-21 (success commit, search, inner scroll).
+
+Audit (`scratchpad/audit/for-operations.md`): ACC-1 (`getOrderHold`, `releaseSanctionedOrder`, notice on the print
+page; `decisionCovers` not exported by People yet, so every order of a sanctioned client needs the release), ACC-2
+(`staff.write` for deciding, cancelling, paying a leave), ACC-7, ACC-X1 (programme under WORKERS), ACC-11, ACC-Y1
+(typed times locked without `visit.correctTimes`), LAB-2 (generation judges every standing seat, `seatsHeld`), LAB-3
+(`seatsDropped` on the update), LAB-4 (rotation: `rotateRestDay` on by default for six visits a week; RESTING seats in
+turn; the team card replaces them with REST_ROTATION), LAB-9, LAB-10 (`seatsLeftOpen`), LAB-11 and LAB-X1
+(`placedStart`, `edgeSeatsByWorker`, `seatsForRules`), LAB-12, LOG-12, LOG-14 (a removed tick closes its report with
+the typed reason; the no-show undone is a CANCEL), LOG-Y1. Not done: LOG-X1 (needs the leaving reason in the
+`staff.unavailable` payload, or a ruling on the standard reason), LOG-14's true soft delete (needs
+`ProblemReport.deletedAt`).
+
+Import rule: `VISITS_PATH` now lives in `services/paths.ts` (programme.ts re-exports it): `programme.ts` imports
+`assignment.ts`, which may not import `programme.ts` back.
 
 ## Open items
 
-- Round 3 (next): quality screens (supervisor inspections with the sheet printed from a stored inspection,
-  complaints with the counter, ratings), supervisors and zones (screen on `assignZoneSupervisor`, worker's own
-  supervisor), alert tiles in `alerts.ts` (no arrival reported, orders not returned, complaints past their
-  target), `homeSlots` in `home.tsx` (today's tiles three to a row:
-  `grid min-w-0 grid-cols-1 gap-5 md:grid-cols-3 tall:gap-6`).
-- No screen yet for: extra-visit proposals (`listExtraVisitProposals`, `planExtraVisit`), «تحديث الزيارات
-  القادمة» (`updateFutureVisits` with its preview) on File › الزيارات, postponing or cancelling one visit.
-- Visits an update adds are announced by no event: Money's dues for a per-visit file follow only the cancelled
-  ones (`visit.statusChanged`). Needs a ruling: call Money's `syncDues`, or a new event.
-- `generateFileVisits` seats the standing team without reading sanctions (People's list now carries them).
-- `programme-changes.ts` and `staff-changes.ts` repeat a few private helpers of `programme.ts`; the complaint
-  code lists live in `complaints.ts` and belong in `option-codes.ts`.
-- In Naskh the blank mission order is three pages (the third is the tear-off slip alone); a filled one is two.
-- The day board shows three visits at 1024×640 (the academy's attendance list shows four: it has one row of
-  controls fewer).
-- Clients' `getFileForScheduling` and `getSiteForOrder` are not exported yet (`upstream.ts`).
+- LOG-X1: a leaving worker's future `FileAssignment` rows are soft-deleted without an ERASE entry: the
+  `staff.unavailable` payload carries no typed reason (contract change or ruling needed).
+- `ProblemReport.deletedAt` (Foundation) for LOG-14's soft delete; until then a tick taken off closes the report.
+- People's `decisionCovers` (CONTRACTS section 3): until it exists, every order of a sanctioned client needs the release.
+- `listVisitsForBilling` is not exported yet; Money reads `Visit`, `VisitReport`, `VisitWorker` itself.
+- `getWorkerHours` (CONTRACTS section 3) is not exported; People reads the seats itself.
+- `programme-changes.ts` and `staff-changes.ts` repeat a few private helpers of `programme.ts`; the complaint code
+  lists live in `complaints.ts` and belong in `option-codes.ts`.
+- The programme update judges each seated worker at the new hours against her week as it stands (the other visits
+  moved in the same update still at their old hours).
+- Clients' `getFileForScheduling` and `getSiteForOrder` exist now; `upstream.ts` still uses its own stand-ins except
+  for the order's QR, which reads `getSiteForOrder`.

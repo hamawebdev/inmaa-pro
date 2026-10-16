@@ -13,7 +13,7 @@ import { VisitStatusMenu } from "@/features/operations/components/visit-status/v
 import { VisitTeamCard } from "@/features/operations/components/visit-team/visit-team-card";
 import { VISITS_PATH } from "@/features/operations/services/programme";
 import { getVisitEntryQuery } from "@/features/operations/services/visit-entry";
-import { useSectionLevel } from "@/hooks/use-session";
+import { useSectionLevel, useCan } from "@/hooks/use-session";
 import { pathKey } from "@/lib/compat/revalidate";
 
 /**
@@ -30,6 +30,8 @@ export default function VisitPage() {
   const tNav = useTranslations("Nav");
   const clock = useCentreClock();
   const mayWrite = useSectionLevel("REQUESTS") === "WRITE";
+  // Typing the returned order is `visit.enterOrder`'s (audit ACC-11); the service refuses anybody else.
+  const mayEnterOrder = useCan("visit.enterOrder");
   const entry = useQuery({
     queryKey: pathKey(`${VISITS_PATH}/${id}`),
     queryFn: () => getVisitEntryQuery({ visitId: id }),
@@ -65,7 +67,7 @@ export default function VisitPage() {
             key={`${entry.data.visit.id}:${entry.data.workers.map((worker) => `${worker.seat.id}-${worker.seat.seatStatus}`).join(",")}`}
             data={entry.data}
             clock={clock}
-            readOnly={!mayWrite}
+            readOnly={!(mayWrite && mayEnterOrder)}
           />
         </div>
       ) : (

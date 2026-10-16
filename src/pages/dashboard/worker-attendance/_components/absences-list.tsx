@@ -18,11 +18,12 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ABSENCE_STATUSES } from "@/features/operations/services/absences";
 import type { AbsenceLine } from "@/features/operations/services/worker-attendance";
+import { useCan } from "@/hooks/use-session";
 import { useCodeLabel } from "@/i18n/use-code-label";
 import { normaliseName } from "@/lib/text/normalise";
 
 import { AbsenceKind, AbsencePay, AbsenceStatusChip, AbsenceWhen, PeriodSwitch, WorkerCell } from "./attendance-bits";
-import { CANCELLABLE, useDates, workerName } from "./attendance-helpers";
+import { mayCancel, useDates, workerName } from "./attendance-helpers";
 import { monthRange, shiftMonth } from "./attendance-params";
 import { absencesQuery } from "./attendance-queries";
 
@@ -54,6 +55,7 @@ export function AbsencesList({
   /** The tab's view switch, first in the month switch's row. */
   tabs?: React.ReactNode;
 }) {
+  const decidesLeave = useCan("staff.write");
   const t = useTranslations("WorkerAttendance");
   const statusLabel = useCodeLabel("WorkerAttendance.AbsenceStatuses");
   const dates = useDates();
@@ -111,7 +113,7 @@ export function AbsencesList({
                 <span className="sr-only 2xl:not-sr-only">{t("OpenHistory")}</span>
               </Link>
             </Button>
-            {onCancel && CANCELLABLE.includes(row.original.status) && (
+            {onCancel && mayCancel(row.original, decidesLeave) && (
               <Button variant="outline" size="sm" title={t("Absences.Cancel")} onClick={() => onCancel(row.original)}>
                 <Ban />
                 <span className="sr-only 2xl:not-sr-only">{t("Absences.Cancel")}</span>
@@ -121,7 +123,7 @@ export function AbsencesList({
         ),
       },
     ],
-    [t, historyHref, onCancel],
+    [t, historyHref, onCancel, decidesLeave],
   );
 
   const table = useReactTable({

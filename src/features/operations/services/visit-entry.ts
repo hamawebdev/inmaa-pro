@@ -24,6 +24,7 @@ import {
   minutesFromTo,
   minutesNear,
   minutesOf,
+  placedStart,
   weekStartOf,
   type IsoDate,
 } from "../rules/calendar";
@@ -33,6 +34,7 @@ import type { EntryState, ProblemKind, VisitStatus } from "../validators/option-
 import {
   missingForComplete,
   presenceProofOf,
+  RETURNED_WORKER_TIMES,
   returnedOrderSchema,
   weakestPresenceProof,
   type ReturnedOrderValues,
@@ -45,6 +47,9 @@ import type {
 } from "../components/visit-entry/visit-entry-data";
 import { OPEN_STATUSES, VISITS_PATH } from "./programme";
 import { checklistOf, freezeChecklist, lineForKey } from "./tasks";
+
+/** What a problem report closed because its tick was taken off the order says first. */
+const RETYPED_OFF = "أزيلت العلامة عند إعادة إدخال الأمر";
 
 /**
  * The returned order (#12–#15): the office types the paper the team brought
@@ -89,16 +94,21 @@ async function weekSeats(ex: Executor, workerId: string, visitId: string, visitD
     .where("VisitWorker.seatStatus", "=", "ASSIGNED")
     .where("Visit.id", "!=", visitId)
     .where("Visit.status", "not in", ["CANCELLED", "POSTPONED"])
-    .where("Visit.visitDate", ">=", localDate(from))
-    .where("Visit.visitDate", "<=", localDate(addDays(from, 6)))
+    // The day before and the day after the week too: two visits across the week's edge (audit LAB-X1).
+    .where("Visit.visitDate", ">=", localDate(addDays(from, -1)))
+    .where("Visit.visitDate", "<=", localDate(addDays(from, 7)))
     .execute();
-  return rows.map((row) => ({
-    visitId: row.id,
-    siteId: row.siteId,
-    date: row.visitDate,
-    startTime: row.workStartTime ?? row.arrivedTime ?? row.plannedStartTime,
-    durationMin: row.workedMin ?? row.plannedDurationMin,
-  }));
+  return rows.map((row) => {
+    // A typed time sits on the day nearest the planned start (audit LAB-11).
+    const placed = placedStart(row.visitDate, row.plannedStartTime, row.workStartTime ?? row.arrivedTime);
+    return {
+      visitId: row.id,
+      siteId: row.siteId,
+      date: placed.date,
+      startTime: placed.startTime,
+      durationMin: row.workedMin ?? row.plannedDurationMin,
+    };
+  });
 }
 
 /** The days of the week of the visit that an absence or a leave in force covers. */
@@ -182,12 +192,25 @@ export async function getVisitEntry(
       "StaffMember.availableDays",
     ])
     .where("VisitWorker.visitId", "=", row.id)
-    .where("VisitWorker.seatStatus", "in", ["ASSIGNED", "ABSENT"])
+    .where("VisitWorker.seatStatus", "in", ["ASSIGNED", "ABSENT", "RESTING"])
     .orderBy("VisitWorker.createdAt")
     .execute();
+  // A member resting that day in turn (audit LAB-4) is not on the order: the team card shows her, to replace.
+  const replacedSeats = new Set(
+    (
+      await ex
+        .selectFrom("VisitWorker")
+        .select("replacesVisitWorkerId")
+        .where("visitId", "=", row.id)
+        .where("replacesVisitWorkerId", "is not", null)
+        .where("seatStatus", "in", ["ASSIGNED", "ABSENT"])
+        .execute()
+    ).map((each) => each.replacesVisitWorkerId),
+  );
   const workers: VisitEntryWorker[] = [];
+  const resting: Array<VisitEntryWorker & { replaced: boolean }> = [];
   for (const seat of seats) {
-    workers.push({
+    const entry: VisitEntryWorker = {
       seat: {
         id: seat.id,
         workerId: seat.workerId,
@@ -211,7 +234,9 @@ export async function getVisitEntry(
       } satisfies Pick<StaffMemberRow, keyof VisitEntryWorker["worker"]>,
       otherSeats: await weekSeats(ex, seat.workerId, row.id, row.visitDate),
       absentDates: await absentDatesOf(ex, seat.workerId, row.visitDate),
-    });
+    };
+    if (seat.seatStatus === "RESTING") resting.push({ ...entry, replaced: replacedSeats.has(seat.id) });
+    else workers.push(entry);
   }
 
   const lines = await checklistOf(ex, row);
@@ -230,12 +255,15 @@ export async function getVisitEntry(
 
   const reportRow = await ex.selectFrom("VisitReport").selectAll().where("visitId", "=", row.id).executeTakeFirst();
   const report = reportRow ? (hydrate<VisitReportRow>("VisitReport", reportRow) as VisitEntryReport) : null;
-  const problems = await ex
-    .selectFrom("ProblemReport")
-    .select("kind")
-    .where("visitId", "=", row.id)
-    .where("reportedVia", "=", "ORDER")
-    .execute();
+  // The ticks on the sheet: a report closed because its tick was taken off is no longer one.
+  const problems = (
+    await ex
+      .selectFrom("ProblemReport")
+      .select(["kind", "status", "actionTaken"])
+      .where("visitId", "=", row.id)
+      .where("reportedVia", "=", "ORDER")
+      .execute()
+  ).filter((problem) => !(problem.status === "CLOSED" && (problem.actionTaken ?? "").startsWith(RETYPED_OFF)));
 
   return {
     visit,
@@ -253,6 +281,7 @@ export async function getVisitEntry(
     zone: zone ? ({ name: zone.name } satisfies Pick<ZoneRow, "name">) : null,
     supervisor: supervisor ?? null,
     workers,
+    resting,
     checklist,
     report,
     problemKinds: problems.map((problem) => problem.kind as ProblemKind),
@@ -286,8 +315,10 @@ export function workedMinutes(times: {
   workEndTime: string | null;
   leftTime: string | null;
 }): number | null {
-  if (times.workStartTime && times.workEndTime) return minutesFromTo(times.workStartTime, times.workEndTime);
-  if (times.arrivedTime && times.leftTime) return minutesFromTo(times.arrivedTime, times.leftTime);
+  // An end equal to its start is no time worked (a site found shut); only an end before the start is the next day.
+  const span = (start: string, end: string) => (start === end ? 0 : minutesFromTo(start, end));
+  if (times.workStartTime && times.workEndTime) return span(times.workStartTime, times.workEndTime);
+  if (times.arrivedTime && times.leftTime) return span(times.arrivedTime, times.leftTime);
   return null;
 }
 
@@ -336,6 +367,14 @@ export async function saveReturnedOrder(
 
     if (!worker.attended) {
       if (seat.seatStatus === "ABSENT") continue;
+      // Times already typed for her are erased: a correction, with its right and its reason (audit LOG-Y1).
+      const erased = RETURNED_WORKER_TIMES.filter((name) => seat[name] !== null);
+      if (erased.length > 0) {
+        requireCapability(ctx, "visit.correctTimes");
+        if (!reason) throw new ServiceError("Say why a time already typed is changed.");
+        for (const name of erased) changes[`${label}.${name}`] = [seat[name], null];
+        if (seat.workedMin !== null) changes[`${label}.workedMin`] = [seat.workedMin, null];
+      }
       // She did not come: an absence for the visit's hours, for People to treat.
       const absenceId = newId();
       await ex
@@ -400,11 +439,24 @@ export async function saveReturnedOrder(
       if (!absence || absence.reportedVia !== "NO_SHOW" || absence.startDate !== visit.visitDate) {
         throw new ServiceError("This worker is recorded absent that day. Cancel the absence first.");
       }
+      // Undoing a no-show cancels her absence: it needs the reason typed, and is logged on the absence (audit LOG-14).
+      if (!reason) throw new ServiceError("Say why a worker marked absent on this order came after all.");
       await ex
         .updateTable("WorkerAbsence")
         .set({ status: "CANCELLED", updatedAt: ctx.now, updatedByUserId: ctx.userId })
         .where("id", "=", absence.id)
         .execute();
+      await logChange(ex, ctx, {
+        owner: "OPERATIONS",
+        action: "CANCEL",
+        reason,
+        entity: "WorkerAbsence",
+        entityId: absence.id,
+        entityLabel: visit.number,
+        subject: { kind: "WORKER", id: seat.workerId, label },
+        changes: { status: [absence.status, "CANCELLED"] },
+        context: { visit: visit.number, source: "ORDER" },
+      });
       await ex
         .updateTable("VisitWorker")
         .set({ seatStatus: "ASSIGNED", absenceId: null, updatedAt: ctx.now, updatedByUserId: ctx.userId })
@@ -527,8 +579,13 @@ export async function saveReturnedOrder(
     .where("reportedVia", "=", "ORDER")
     .execute();
   const details = blankToNull(values.problemDetails);
+  // A report closed because its tick was taken off is left as it is; the tick typed again makes a new one.
+  const live = current.filter(
+    (problem) => !(problem.status === "CLOSED" && (problem.actionTaken ?? "").startsWith(RETYPED_OFF)),
+  );
   for (const kind of wanted) {
-    const found = current.find((problem) => problem.kind === kind);
+    const found = live.find((problem) => problem.kind === kind);
+    if (!found) changes[`problems.${kind}`] = [false, true];
     if (found) {
       if (found.details !== details && found.status === "OPEN") {
         await ex
@@ -559,11 +616,25 @@ export async function saveReturnedOrder(
       })
       .execute();
   }
-  for (const problem of current) {
+  for (const problem of live) {
     if (wanted.has(problem.kind as ProblemKind)) continue;
-    // A tick typed by mistake: only a report nobody has acted on goes.
+    // A tick typed by mistake: a report nobody has acted on is closed with the reason typed, never deleted
+    // (audit LOG-14; a soft delete waits for `ProblemReport.deletedAt`).
     if (problem.status === "OPEN" && !problem.handedTo && !problem.complaintId && !problem.correctiveTaskId) {
-      await ex.deleteFrom("ProblemReport").where("id", "=", problem.id).execute();
+      if (!reason) throw new ServiceError("Say why a problem ticked on this order is taken off.");
+      await ex
+        .updateTable("ProblemReport")
+        .set({
+          status: "CLOSED",
+          closedAt: ctx.now,
+          closedByUserId: ctx.userId,
+          actionTaken: `${RETYPED_OFF}: ${reason}`,
+          updatedAt: ctx.now,
+          updatedByUserId: ctx.userId,
+        })
+        .where("id", "=", problem.id)
+        .execute();
+      changes[`problems.${problem.kind}`] = [true, false];
     }
   }
 

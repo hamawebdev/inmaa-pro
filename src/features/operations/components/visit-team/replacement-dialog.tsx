@@ -56,6 +56,7 @@ export function ReplacementDialog({
   seatId,
   workerName,
   absent,
+  resting = false,
   open,
   onOpenChange,
 }: {
@@ -64,6 +65,8 @@ export function ReplacementDialog({
   workerName: string;
   /** The seat is held by an absence: the reason defaults to it. */
   absent: boolean;
+  /** The seat is a member's rotating rest day: the reason defaults to REST_ROTATION. */
+  resting?: boolean;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
@@ -71,7 +74,9 @@ export function ReplacementDialog({
   const errorMessage = useErrorMessage();
   const reasonLabel = useCodeLabel("ReplacementReasons");
   const [chosen, setChosen] = React.useState("");
-  const [reason, setReason] = React.useState<ReplacementReason>(absent ? "ABSENCE" : "SCHEDULE_CHANGE");
+  const [reason, setReason] = React.useState<ReplacementReason>(
+    resting ? "REST_ROTATION" : absent ? "ABSENCE" : "SCHEDULE_CHANGE",
+  );
   const [override, setOverride] = React.useState<OverrideDraft>(EMPTY_OVERRIDE);
   const [busy, setBusy] = React.useState(false);
 

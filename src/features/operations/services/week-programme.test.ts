@@ -218,13 +218,14 @@ describe("moveVisit", () => {
     expect(JSON.parse(update?.context ?? "{}")).toMatchObject({ ruleOverrideIds: [overrides[0].id] });
   });
 
-  it("does not let a supervisor pass a rule, but lets him move a visit that breaks none", async () => {
+  it("does not let operations pass a rule, but lets it move a visit that breaks none", async () => {
     const { on } = await contracted();
     const saturday = on("2026-11-07");
     const one = await worker();
     await assign(saturday.id, one.id);
     await heavyWeek(one.id);
-    const supervisor = await test.sessionFor("SUPERVISOR");
+    // The operations role writes عمال النظافة but does not hold schedule.overrideRule.
+    const supervisor = await test.sessionFor("OPERATIONS");
 
     await expect(move(saturday.id, "2026-11-02", "08:00", undefined, supervisor)).rejects.toThrow(
       "This seat breaks a working-time rule. Only the manager can allow it.",
@@ -487,5 +488,16 @@ describe("getWeekProgramme", () => {
     await expect(move(on("2026-11-02").id, "2026-11-03", "08:00", undefined, accountant)).rejects.toThrow(
       "You do not have permission to do this.",
     );
+  });
+
+  it("follows the workers section, the programme's own (ACC-X1)", async () => {
+    const { on } = await contracted();
+    // A supervisor writes the requests but only reads عمال النظافة; HR writes it.
+    await expect(
+      move(on("2026-11-02").id, "2026-11-03", "08:00", undefined, await test.sessionFor("SUPERVISOR")),
+    ).rejects.toThrow("You do not have permission to do this.");
+    expect(
+      await move(on("2026-11-02").id, "2026-11-03", "08:00", undefined, await test.sessionFor("HR_OFFICER")),
+    ).toMatchObject({ moved: true });
   });
 });

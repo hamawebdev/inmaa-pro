@@ -124,7 +124,8 @@
       "Signoff": "Réception et évaluation",
       "SignoffHint": "Le coupon tel que le client l'a rempli.",
       "Correction": "Correction d'heures déjà saisies",
-      "CorrectionHint": "Une heure déjà saisie a changé. Indiquez pourquoi : le journal garde l'ancienne heure et votre motif."
+      "CorrectionHint": "Une heure déjà saisie a changé. Indiquez pourquoi : le journal garde l'ancienne heure et votre motif.",
+      "CorrectionHintAll": "Une heure saisie modifiée, un agent coché absent ou de nouveau présent, ou un problème retiré : le journal garde pourquoi."
     },
     "OrderNumber": "Numéro de l'ordre",
     "VisitDate": "Date",
@@ -224,7 +225,8 @@
     "SavedComplete": "L'ordre retourné est enregistré et la visite est réceptionnée.",
     "SavedPartial": "Enregistré. La saisie n'est pas encore complète.",
     "CorrectionReason": "Motif de la correction",
-    "NoWorkers": "Aucun agent n'est encore affecté à cette visite."
+    "NoWorkers": "Aucun agent n'est encore affecté à cette visite.",
+    "TimesLocked": "Les heures déjà saisies sont corrigées par un superviseur, les opérations ou le directeur."
   },
   "ProblemKinds": {
     "MATERIAL_SHORTAGE": "Manque de produits",
@@ -397,7 +399,9 @@
     "ViolationAlreadyRecorded": "Une infraction est déjà enregistrée pour cet agent sur cet enregistrement.",
     "OrderNotHeld": "Ce client n'est ni suspendu ni sanctionné : l'ordre s'imprime sans autorisation.",
     "OrderHeldForClient": "Ce client est suspendu ou sanctionné : l'ordre ne s'imprime qu'après l'autorisation du directeur.",
-    "SickNotLeave": "Enregistrez une maladie dans la catégorie Maladie, pas comme un type de congé."
+    "SickNotLeave": "Enregistrez une maladie dans la catégorie Maladie, pas comme un type de congé.",
+    "NoShowUndoWhy": "Dites pourquoi un agent noté absent sur cet ordre est finalement venu.",
+    "ProblemTickOffWhy": "Dites pourquoi un problème coché sur cet ordre est retiré."
   },
   "FileVisits": {
     "ProgrammeTitle": "Programme",
@@ -422,7 +426,9 @@
     "Open": "Ouvrir",
     "Order": "Ordre",
     "Loading": "Lecture des visites du dossier…",
-    "NoVisits": "Ce dossier n'a encore aucune visite."
+    "NoVisits": "Ce dossier n'a encore aucune visite.",
+    "RestRotation": "Les membres se reposent à tour de rôle, un jour par semaine chacun : {count} jours de repos dans les visites à créer.",
+    "SeatsHeld": "{count} places de l'équipe fixe restent libres : une règle du temps de travail serait enfreinte. Pourvoyez-les sur la visite."
   },
   "VisitTeam": {
     "Title": "Équipe",
@@ -469,7 +475,9 @@
       "Reason": "Motif du directeur",
       "Derogation": "Référence de la dérogation de l'inspecteur du travail"
     },
-    "WeekHours": "Heures de la semaine"
+    "WeekHours": "Heures de la semaine",
+    "Resting": "Repos par roulement",
+    "RestingReplaced": "Repos, remplacé"
   },
   "ReplacementReasons": {
     "ABSENCE": "Absence",
@@ -523,7 +531,8 @@
       "Capacity": "Volume hebdomadaire",
       "HoursOf": "Heures de {name} cette semaine",
       "ShowHerVisits": "N'afficher que les visites de cet agent dans le calendrier"
-    }
+    },
+    "DayListTitle": "Visites du {day}"
   },
   "FileTasks": {
     "AddTask": "Ajouter une tâche",
@@ -617,7 +626,9 @@
       "ROOM": "Pièce",
       "SPACE": "Espace",
       "OTHER": "Autres emplacements"
-    }
+    },
+    "CatalogSearch": "Rechercher dans la liste des tâches",
+    "CatalogNoMatch": "Aucune tâche ne correspond à la recherche."
   },
   "WorkerAttendance": {
     "Views": {
@@ -695,7 +706,7 @@
       "Columns": {
         "State": "La journée",
         "Visits": "Visites du jour",
-        "Last": "Dernières arrivée et sortie"
+        "Last": "Dernier pointage"
       },
       "Absence": "Absence",
       "NoWorkers": "Aucun agent ne peut encore recevoir de visites.",
@@ -869,7 +880,8 @@
     "Confirm": "Mettre à jour",
     "Cancel": "Annuler",
     "Done": "{moved} visites modifiées, {added} ajoutées, {cancelled} annulées.",
-    "SaveFailed": "Les visites n'ont pas pu être mises à jour."
+    "SaveFailed": "Les visites n'ont pas pu être mises à jour.",
+    "SeatsDropped": "{count} agents ne peuvent pas suivre leur visite aux nouveaux horaires selon les règles du temps de travail : ils en sont retirés."
   },
   "OperationsHome": {
     "TodayVisits": "Visites du jour",
@@ -1439,8 +1451,9 @@
       "file": "Dossier",
       "worker": "Agent",
       "visit": "Visite",
-      "Visits": "Visites évaluées",
-      "Recommend": "Nous recommanderait"
+      "Visits": "Visites",
+      "Recommend": "Nous recommanderait",
+      "RecommendShort": "Recomm."
     },
     "Criteria": {
       "quality": "Qualité du nettoyage",
@@ -1469,6 +1482,13 @@
       "OutOfFive": "sur 5",
       "Recommend": "Nous recommanderaient",
       "Answers": "{yes} sur {count} réponses"
+    },
+    "CriteriaShort": {
+      "quality": "Nettoyage",
+      "punctuality": "Ponctualité",
+      "behaviour": "Conduite",
+      "materials": "Produits",
+      "overall": "Global"
     }
   },
   "SupervisorZones": {

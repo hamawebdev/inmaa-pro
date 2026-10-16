@@ -8,6 +8,7 @@ import { useTranslations } from "use-intl";
 import type { z } from "zod";
 
 import { Button } from "@/components/ui/button";
+import { TableSearch } from "@/components/data-table-shell";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
@@ -33,6 +34,7 @@ import { fileTaskSchema, TASK_PRIORITIES } from "@/features/operations/validator
 import { TASK_FREQUENCIES, type TaskFrequency } from "@/features/operations/validators/option-codes";
 import { useErrorMessage } from "@/i18n/errors";
 import { useCodeLabel } from "@/i18n/use-code-label";
+import { normaliseName } from "@/lib/text/normalise";
 import { WEEKDAYS } from "@/lib/options";
 
 import { placeName, placeOfValue, placeValue, WHOLE_SITE } from "./task-format";
@@ -205,7 +207,7 @@ function TaskForm({
               </Button>
               <Button
                 type="button"
-                variant="add"
+                variant="success"
                 loading={busy}
                 disabled={chosen.size === 0}
                 onClick={() => void addChosen()}
@@ -248,6 +250,14 @@ function CatalogPicker({
 }) {
   const t = useTranslations("FileTasks");
   const frequencyLabel = useCodeLabel("TaskFrequencies");
+  const [search, setSearch] = React.useState("");
+  const words = normaliseName(search);
+  const shown = words
+    ? catalog.filter((entry) => {
+        const text = normaliseName(`${entry.label} ${entry.heading ?? ""}`);
+        return words.split(" ").every((word) => text.includes(word));
+      })
+    : catalog;
   const toggle = (code: string, on: boolean) => {
     const next = new Set(chosen);
     if (on) next.add(code);
@@ -257,12 +267,16 @@ function CatalogPicker({
 
   return (
     <>
+      {catalog.length > 0 && <TableSearch placeholder={t("CatalogSearch")} value={search} onChange={setSearch} />}
       {catalog.length === 0 ? (
         <p className="text-base text-muted-foreground">{t("CatalogEmpty")}</p>
+      ) : shown.length === 0 ? (
+        <p className="text-base text-muted-foreground">{t("CatalogNoMatch")}</p>
       ) : (
-        <div className="space-y-6">
+        // The list scrolls inside the dialog, so that its foot stays in view (S-21).
+        <div className="max-h-[42vh] space-y-6 overflow-y-auto pe-1">
           {TASK_FREQUENCIES.map((frequency) => {
-            const entries = catalog.filter((entry) => entry.frequency === frequency);
+            const entries = shown.filter((entry) => entry.frequency === frequency);
             if (entries.length === 0) return null;
             return (
               <fieldset key={frequency} className="min-w-0 space-y-3">

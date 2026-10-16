@@ -53,7 +53,7 @@ async function visitWithTeam() {
   return { visit, clientId: site.clientId, workers };
 }
 
-it("holds the order of a suspended client until the manager releases it, with his reason", async () => {
+it("holds the order of a suspended client until the manager releases it, with his reason (ACC-1)", async () => {
   const { visit, clientId } = await visitWithTeam();
   await test.rows.insert("Sanction", {
     subjectKind: "CLIENT",
@@ -104,7 +104,7 @@ it("holds the order of a suspended client until the manager releases it, with hi
   expect(printCount).toBe(1);
 });
 
-it("prints a client with no sanction at once, and names the client and each worker in the disclosure", async () => {
+it("prints a client with no sanction at once, and names the client and each worker in the disclosure (ACC-1, LOG-12)", async () => {
   const { visit, clientId, workers } = await visitWithTeam();
   expect(await test.transact((ex, ctx) => getOrderHold(ex, ctx, { visitId: visit.id }))).toBeNull();
   await test.transact((ex, ctx) => recordOrderPrinted(ex, ctx, { visitId: visit.id }));
@@ -123,7 +123,7 @@ it("prints a client with no sanction at once, and names the client and each work
   expect(entries).toHaveLength(3);
 });
 
-it("carries the site's place as a geo: address for the QR only when the setting is on", async () => {
+it("carries the site's place as a geo: address for the QR only when the setting is on (feature 26)", async () => {
   const { visit } = await visitWithTeam();
   const off = await test.transact((ex, ctx) => getMissionOrder(ex, ctx, { visitId: visit.id }));
   expect(off.siteQr).toBeNull();

@@ -86,6 +86,32 @@ export function layoutDay(visits: readonly (Timed & { id: string })[]): Map<stri
   return placed;
 }
 
+/** The narrowest lane a block may have: narrower, its time and its site cannot be read (S-20). */
+export const MIN_LANE_PX = 88;
+
+/** How many lanes a day's column of this width can hold, at least one. */
+export function maxLanesFor(columnPx: number): number {
+  return Math.max(1, Math.floor(columnPx / MIN_LANE_PX));
+}
+
+/**
+ * The lanes a day's column can show: a visit in a lane past the last is left
+ * out of the column, and listed under the day's «+n» instead; the others share
+ * at most that many lanes.
+ */
+export function capLanes(
+  lanes: ReadonlyMap<string, Lane>,
+  max: number,
+): { shown: Map<string, Lane>; hidden: string[] } {
+  const shown = new Map<string, Lane>();
+  const hidden: string[] = [];
+  for (const [id, lane] of lanes) {
+    if (lane.lane >= max) hidden.push(id);
+    else shown.set(id, { lane: lane.lane, lanes: Math.min(lane.lanes, max) });
+  }
+  return { shown, hidden };
+}
+
 /** Where a block sits in its day's column, in pixels: cut at the grid's end (a night visit runs on past midnight). */
 export function blockBox(visit: Timed, grid: { start: number; end: number }): { top: number; height: number } {
   const start = startMinOf(visit);

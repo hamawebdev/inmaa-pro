@@ -6,6 +6,8 @@ import { createTestDatabase, type TestDatabase } from "@/testing/database";
 
 import { generateVisits, previewVisitGeneration } from "./programme";
 
+const EVERY_DAY = JSON.stringify(["SAT", "SUN", "MON", "TUE", "WED", "THU", "FRI"]);
+
 let test: TestDatabase;
 beforeEach(async () => {
   test = await createTestDatabase();
@@ -139,7 +141,7 @@ describe("file.contracted", () => {
     ]);
   });
 
-  it("leaves the seat of a suspended or departed member open", async () => {
+  it("leaves the seat of a suspended or departed member open (RULINGS 11)", async () => {
     const { file } = await contractFile();
     const suspended = await test.rows.insert("StaffMember", { role: "CLEANER", engagementStatus: "ACCEPTED" });
     const departed = await test.rows.insert("StaffMember", { role: "CLEANER", engagementStatus: "LEFT" });
@@ -275,5 +277,125 @@ describe("file.ended", () => {
       .where("fileId", "=", file.id)
       .executeTakeFirstOrThrow();
     expect(programme.inspectionIsActive).toBe(0);
+  });
+});
+
+describe("the working-time rules at generation (audit LAB-2)", () => {
+  it("leaves a woman's seat on a night slot open, and a man already elsewhere at that hour, and lists them (LAB-2)", async () => {
+    const { file } = await contractFile({
+      period: "EVENING",
+      arrivalTime: localTime("21:30"),
+      departureTime: localTime("23:30"),
+      workersCount: 2,
+    });
+    const woman = await test.rows.insert("StaffMember", {
+      role: "CLEANER",
+      sex: "FEMALE",
+      engagementStatus: "ACCEPTED",
+      availableDays: EVERY_DAY,
+    } as never);
+    const man = await test.rows.insert("StaffMember", {
+      role: "CLEANER",
+      sex: "MALE",
+      engagementStatus: "ACCEPTED",
+      availableDays: EVERY_DAY,
+    } as never);
+    for (const [sortOrder, workerId] of [woman.id, man.id].entries()) {
+      await test.rows.insert("FileAssignment", {
+        fileId: file.id,
+        workerId,
+        role: "MEMBER",
+        validFrom: localDate("2026-11-01"),
+        sortOrder,
+      });
+    }
+    // He already works elsewhere on Monday 2 November from 21:00.
+    const elsewhere = await test.rows.insert("Visit", {
+      visitDate: localDate("2026-11-02"),
+      plannedStartTime: localTime("21:00"),
+      plannedDurationMin: 120,
+      status: "CONFIRMED",
+    } as never);
+    await test.rows.insert("VisitWorker", { visitId: elsewhere.id, workerId: man.id, seatStatus: "ASSIGNED" });
+
+    const preview = await test.transact((ex, ctx) => previewVisitGeneration(ex, ctx, { fileId: file.id }));
+    expect(preview.seatsHeld.filter((held) => held.workerId === woman.id)).toHaveLength(13);
+    expect(preview.seatsHeld.find((held) => held.workerId === woman.id)?.codes).toContain("NIGHT_WOMAN");
+    expect(preview.seatsHeld.filter((held) => held.workerId === man.id).map((held) => held.date)).toEqual([
+      "2026-11-02",
+    ]);
+
+    await test.transact((ex, ctx) => emit(ex, ctx, "file.contracted", { fileId: file.id }));
+    const visits = await visitsOf(file.id);
+    const seats = await test.db
+      .selectFrom("VisitWorker")
+      .select(["visitId", "workerId", "seatStatus"])
+      .where(
+        "visitId",
+        "in",
+        visits.map((visit) => visit.id),
+      )
+      .execute();
+    expect(seats.some((seat) => seat.workerId === woman.id)).toBe(false);
+    const monday = visits.find((visit) => visit.visitDate === "2026-11-02")!;
+    expect(seats.filter((seat) => seat.visitId === monday.id)).toEqual([]);
+    expect(visits.every((visit) => visit.status === "AWAITING_CONFIRMATION")).toBe(true);
+    expect(seats.filter((seat) => seat.workerId === man.id)).toHaveLength(12);
+  });
+});
+
+describe("the rotating rest day (audit LAB-4)", () => {
+  it("gives each member of a six-visit contract one rest seat a week, on a different day in turn (LAB-4)", async () => {
+    const { file } = await contractFile({
+      executionDays: JSON.stringify(["SAT", "SUN", "MON", "TUE", "WED", "THU"]),
+      visitsPerWeek: 6,
+      workersCount: 2,
+      startDate: localDate("2026-11-07"),
+      endDate: localDate("2026-11-20"),
+    });
+    const members = [];
+    for (let sortOrder = 0; sortOrder < 2; sortOrder += 1) {
+      const member = await test.rows.insert("StaffMember", {
+        role: "CLEANER",
+        sex: "MALE",
+        engagementStatus: "ACCEPTED",
+        availableDays: EVERY_DAY,
+      } as never);
+      await test.rows.insert("FileAssignment", {
+        fileId: file.id,
+        workerId: member.id,
+        role: "MEMBER",
+        validFrom: localDate("2026-11-01"),
+        sortOrder,
+      });
+      members.push(member);
+    }
+    await test.transact((ex, ctx) => emit(ex, ctx, "file.contracted", { fileId: file.id }));
+
+    const programme = await test.db
+      .selectFrom("FileProgramme")
+      .select("rotateRestDay")
+      .where("fileId", "=", file.id)
+      .executeTakeFirstOrThrow();
+    expect(programme.rotateRestDay).toBe(1);
+    const visits = await visitsOf(file.id);
+    const resting = await test.db
+      .selectFrom("VisitWorker")
+      .innerJoin("Visit", "Visit.id", "VisitWorker.visitId")
+      .select(["VisitWorker.workerId", "Visit.visitDate", "Visit.status"])
+      .where("Visit.fileId", "=", file.id)
+      .where("VisitWorker.seatStatus", "=", "RESTING")
+      .orderBy("Visit.visitDate")
+      .execute();
+    // Two weeks (7-13 and 14-20 November), two members: four rest seats, never two on one day.
+    expect(resting).toHaveLength(4);
+    for (const member of members) {
+      const days = resting.filter((seat) => seat.workerId === member.id).map((seat) => seat.visitDate);
+      expect(days).toHaveLength(2);
+      expect(days[0]).not.toBe(days[1]);
+    }
+    expect(new Set(resting.map((seat) => seat.visitDate)).size).toBe(4);
+    expect(resting.every((seat) => seat.status === "AWAITING_CONFIRMATION")).toBe(true);
+    expect(visits.filter((visit) => visit.status === "CONFIRMED")).toHaveLength(visits.length - 4);
   });
 });

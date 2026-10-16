@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useUnsavedChanges } from "@/hooks/use-unsaved-changes";
 import { intlLocaleFor } from "@/i18n/config";
+import { useCan } from "@/hooks/use-session";
 import { useErrorMessage } from "@/i18n/errors";
 import { useCodeLabel } from "@/i18n/use-code-label";
 
@@ -82,14 +83,21 @@ export function VisitEntryForm({
   useUnsavedChanges(form.formState.isDirty);
 
   const errorMessage = useErrorMessage();
+  const mayCorrect = useCan("visit.correctTimes");
   const [correctionReason, setCorrectionReason] = useState("");
-  // A time typed before and changed now is a correction: the log keeps why (F1 article 14).
-  const correcting = data.workers.some((worker, index) =>
-    RETURNED_WORKER_TIMES.some((name) => {
-      const before = worker.seat[name] ?? "";
-      return before !== "" && (values.workers?.[index]?.[name] ?? "") !== before;
-    }),
-  );
+  // A time typed before and changed now is a correction: the log keeps why (F1 article 14). So is a worker
+  // ticked absent or present again, and a problem taken off the sheet (audit LOG-Y1, LOG-14).
+  const savedProblems = data.report?.problemOnSite === true ? data.problemKinds : [];
+  const problemsNow = values.problemOnSite === true ? (values.problemKinds ?? []) : [];
+  const correcting =
+    data.workers.some((worker, index) => {
+      const typed = values.workers?.[index];
+      if (worker.seat.seatStatus === "ABSENT") return typed?.attended !== false;
+      return RETURNED_WORKER_TIMES.some((name) => {
+        const before = worker.seat[name] ?? "";
+        return before !== "" && (typed?.attended === false || (typed?.[name] ?? "") !== before);
+      });
+    }) || savedProblems.some((kind) => !problemsNow.includes(kind));
 
   const onSubmit = form.handleSubmit(
     async (submitted) => {
@@ -113,7 +121,13 @@ export function VisitEntryForm({
     <form onSubmit={onSubmit} noValidate className="space-y-6">
       <fieldset disabled={readOnly} className="min-w-0 space-y-6">
         <OrderCard data={data} control={form.control} notes={notes} />
-        <AttendanceCard data={data} control={form.control} values={values} notes={notes.workers} />
+        <AttendanceCard
+          data={data}
+          control={form.control}
+          values={values}
+          notes={notes.workers}
+          mayCorrect={mayCorrect}
+        />
         <ChecklistCard data={data} control={form.control} setValue={form.setValue} />
         <WorkerNotesCard control={form.control} />
         <CompletionCard control={form.control} notes={notes} />
@@ -122,7 +136,7 @@ export function VisitEntryForm({
           <Card>
             <CardHeader>
               <CardTitle>{t("Cards.Correction")}</CardTitle>
-              <CardDescription>{t("Cards.CorrectionHint")}</CardDescription>
+              <CardDescription>{t("Cards.CorrectionHintAll")}</CardDescription>
             </CardHeader>
             <CardContent>
               <Field>
@@ -222,11 +236,14 @@ function AttendanceCard({
   control,
   values,
   notes,
+  mayCorrect,
 }: {
   data: VisitEntryData;
   control: Control<Values>;
   values: Values;
   notes: WorkerNotes[];
+  /** Whether this reader may change a time already typed (`visit.correctTimes`); without it those fields are locked. */
+  mayCorrect: boolean;
 }) {
   const t = useTranslations("VisitEntry");
   const roleLabel = useCodeLabel("Options.WorkerRole");
@@ -247,6 +264,9 @@ function AttendanceCard({
           const seat = typed ? workedSeat(data, typed) : null;
           const anyTime = typed && (typed.arrivedTime || typed.workStartTime || typed.workEndTime || typed.leftTime);
           const role = entry.worker.sex === "FEMALE" ? roleLabelFeminine(entry.seat.role) : roleLabel(entry.seat.role);
+          // A time typed before stays as it is for a reader who may not correct it (audit ACC-Y1).
+          const locked = (name: (typeof RETURNED_WORKER_TIMES)[number]) => !mayCorrect && Boolean(entry.seat[name]);
+          const anyLocked = RETURNED_WORKER_TIMES.some(locked);
           return (
             <section key={entry.seat.id} className="border-app space-y-4 rounded-xl border-border p-4 tall:p-5">
               <div className="flex min-w-0 flex-wrap items-start justify-between gap-x-6 gap-y-3">
@@ -266,6 +286,7 @@ function AttendanceCard({
                     <label className="flex cursor-pointer items-center gap-3 text-base font-semibold">
                       <Checkbox
                         checked={field.value === false}
+                        disabled={anyLocked && entry.seat.seatStatus !== "ABSENT"}
                         onCheckedChange={(checked) => field.onChange(checked !== true)}
                       />
                       {t("DidNotCome")}
@@ -280,7 +301,7 @@ function AttendanceCard({
                   name={`workers.${index}.arrivedTime`}
                   label={t("Times.arrivedTime")}
                   kind="time"
-                  disabled={!attended}
+                  disabled={!attended || locked("arrivedTime")}
                   notes={workerNotes.arrivedTime}
                 >
                   <TickField
@@ -295,7 +316,7 @@ function AttendanceCard({
                   name={`workers.${index}.workStartTime`}
                   label={t("Times.workStartTime")}
                   kind="time"
-                  disabled={!attended}
+                  disabled={!attended || locked("workStartTime")}
                   notes={workerNotes.workStartTime}
                 />
                 <TextField
@@ -303,7 +324,7 @@ function AttendanceCard({
                   name={`workers.${index}.workEndTime`}
                   label={t("Times.workEndTime")}
                   kind="time"
-                  disabled={!attended}
+                  disabled={!attended || locked("workEndTime")}
                   notes={workerNotes.workEndTime}
                 />
                 <TextField
@@ -311,7 +332,7 @@ function AttendanceCard({
                   name={`workers.${index}.leftTime`}
                   label={t("Times.leftTime")}
                   kind="time"
-                  disabled={!attended}
+                  disabled={!attended || locked("leftTime")}
                   notes={workerNotes.leftTime}
                 >
                   <TickField
@@ -323,6 +344,7 @@ function AttendanceCard({
                 </TextField>
               </div>
               <RuleNotes notes={workerNotes.initials} />
+              {anyLocked && <p className="text-sm text-muted-foreground">{t("TimesLocked")}</p>}
 
               <div className="grid grid-cols-1 items-start gap-4 sm:grid-cols-2">
                 <TextField

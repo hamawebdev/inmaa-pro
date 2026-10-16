@@ -20,6 +20,15 @@ export function mayRecordAbsence(): boolean {
 /** An absence that still counts can be cancelled; a leave asked for is withdrawn the same way. */
 export const CANCELLABLE: readonly AbsenceStatus[] = ["RECORDED", "APPROVED", "REQUESTED"];
 
+/**
+ * Whether this reader may cancel this absence: an ordinary absence by the
+ * writers of the visits, a leave by HR (`staff.write`) or the manager only
+ * (audit ACC-2, ruled). The service refuses the others too.
+ */
+export function mayCancel(line: { status: AbsenceStatus; category: string }, decidesLeave: boolean): boolean {
+  return CANCELLABLE.includes(line.status) && (line.category !== "LEAVE" || decidesLeave);
+}
+
 export const workerName = (worker: Pick<AttendanceWorker, "firstName" | "lastName">) => staffName(worker);
 
 const atMidnight = (date: string) => new Date(`${date}T00:00:00Z`);

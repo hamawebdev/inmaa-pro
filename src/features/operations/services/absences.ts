@@ -30,9 +30,9 @@ import {
   insertSeat,
   judgeSeat,
   readVisitForSeat,
+  seatsForRules,
   sanctionedWorkers,
   settleVisitTeam,
-  weekSeatsByWorker,
   workerForSeat,
   workTimeSettings,
   workersOnVisit,
@@ -818,7 +818,8 @@ export async function suggestReplacements(
   const workers = (await readWorkers(ex, ctx, { date: visit.visitDate })).filter((worker) => !onVisit.has(worker.id));
 
   const settings = await workTimeSettings(ex);
-  const weekSeats = await weekSeatsByWorker(ex, visit.visitDate, { exceptVisitId: visit.id });
+  const forRules = await seatsForRules(ex, visit.visitDate, { exceptVisitId: visit.id });
+  const weekSeats = forRules.week;
   const absences = await absencesOnVisit(ex, visit);
   const sanctioned = await sanctionedWorkers(
     ex,
@@ -866,7 +867,7 @@ export async function suggestReplacements(
       return {
         ...ranked,
         ...names(ranked.workerId),
-        findings: worker ? findingsWithVisit(worker, weekSeats.get(worker.id) ?? [], false, visit, settings) : [],
+        findings: worker ? findingsWithVisit(worker, forRules.withEdges(worker.id), false, visit, settings) : [],
         leaveRequested: absences.get(ranked.workerId)?.requested ?? false,
       };
     }),

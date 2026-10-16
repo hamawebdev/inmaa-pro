@@ -292,7 +292,7 @@ describe("the returned order", () => {
     expect(entry.reason).toBe("خطأ في النقل من الورقة");
   });
 
-  it("records a worker who did not come as absent, and gives the seat back if it was a mistake", async () => {
+  it("records a worker who did not come as absent, and gives the seat back if it was a mistake (LOG-14)", async () => {
     const { visit, member } = await contractedFileWithTeam();
     const values = await completeValues(visit.id);
     const absentIndex = 1;
@@ -337,9 +337,62 @@ describe("the returned order", () => {
       .where("id", "=", absence.id)
       .executeTakeFirstOrThrow();
     expect(cancelled.status).toBe("CANCELLED");
+    // Undoing the no-show is logged on the absence, with the worker and the reason (audit LOG-14).
+    const cancel = await test.db
+      .selectFrom("AuditLog")
+      .selectAll()
+      .where("action", "=", "CANCEL")
+      .where("entityId", "=", absence.id)
+      .executeTakeFirstOrThrow();
+    expect(cancel).toMatchObject({ reason: "حضرت", subjectKind: "WORKER", subjectId: member.id });
   });
 
-  it("makes the visit «مشكلة» when the work was not done, and files the problems ticked", async () => {
+  it("asks the right and the reason to tick absent a worker whose times are typed (LOG-Y1)", async () => {
+    const { visit, member } = await contractedFileWithTeam();
+    const values = await completeValues(visit.id);
+    await test.transact((ex, ctx) => saveReturnedOrder(ex, ctx, { visitId: visit.id, values }));
+    const absent = structuredClone(values);
+    absent.workers[1] = {
+      ...absent.workers[1],
+      attended: false,
+      arrivedTime: "",
+      workStartTime: "",
+      workEndTime: "",
+      leftTime: "",
+      arrivalInitialled: false,
+      departureInitialled: false,
+    };
+    const reception = await test.sessionFor("RECEPTION_SALES");
+    await expect(
+      test.transact(
+        (ex, ctx) => saveReturnedOrder(ex, ctx, { visitId: visit.id, values: absent, correctionReason: "غابت" }),
+        reception,
+      ),
+    ).rejects.toThrow("You do not have permission to do this.");
+    await expect(
+      test.transact((ex, ctx) => saveReturnedOrder(ex, ctx, { visitId: visit.id, values: absent })),
+    ).rejects.toThrow("Say why a time already typed is changed.");
+    await test.transact((ex, ctx) =>
+      saveReturnedOrder(ex, ctx, { visitId: visit.id, values: absent, correctionReason: "غابت فعلاً" }),
+    );
+    const entry = await test.db
+      .selectFrom("AuditLog")
+      .select(["changes", "reason"])
+      .where("entity", "=", "Visit")
+      .where("entityId", "=", visit.id)
+      .orderBy("chainSeq", "desc")
+      .executeTakeFirstOrThrow();
+    const number = (
+      await test.db.selectFrom("StaffMember").select("number").where("id", "=", member.id).executeTakeFirstOrThrow()
+    ).number;
+    expect(entry.reason).toBe("غابت فعلاً");
+    expect(JSON.parse(entry.changes ?? "{}")).toMatchObject({
+      [`${number}.seatStatus`]: ["ASSIGNED", "ABSENT"],
+      [`${number}.arrivedTime`]: [values.workers[1].arrivedTime, null],
+    });
+  });
+
+  it("makes the visit «مشكلة» when the work was not done, and files the problems ticked (LOG-14)", async () => {
     const { visit } = await contractedFileWithTeam();
     const values: ReturnedOrderValues = {
       ...(await completeValues(visit.id)),
@@ -365,12 +418,33 @@ describe("the returned order", () => {
       { kind: "OBSTACLE", details: "لم يُفتح المكتب", status: "OPEN" },
     ]);
 
-    // One tick taken back: its report goes.
+    // One tick taken back: it needs the reason typed; its report is closed with it, never deleted (audit LOG-14).
+    const retyped = { ...values, problemKinds: ["OBSTACLE" as const] };
+    await expect(
+      test.transact((ex, ctx) => saveReturnedOrder(ex, ctx, { visitId: visit.id, values: retyped })),
+    ).rejects.toThrow("Say why a problem ticked on this order is taken off.");
     await test.transact((ex, ctx) =>
-      saveReturnedOrder(ex, ctx, { visitId: visit.id, values: { ...values, problemKinds: ["OBSTACLE"] } }),
+      saveReturnedOrder(ex, ctx, { visitId: visit.id, values: retyped, correctionReason: "علامة خاطئة" }),
     );
-    const left = await test.db.selectFrom("ProblemReport").select("kind").where("visitId", "=", visit.id).execute();
-    expect(left).toEqual([{ kind: "OBSTACLE" }]);
+    const left = await test.db
+      .selectFrom("ProblemReport")
+      .select(["kind", "status", "actionTaken"])
+      .where("visitId", "=", visit.id)
+      .orderBy("kind")
+      .execute();
+    expect(left).toEqual([
+      { kind: "AREA_UNAVAILABLE", status: "CLOSED", actionTaken: "أزيلت العلامة عند إعادة إدخال الأمر: علامة خاطئة" },
+      { kind: "OBSTACLE", status: "OPEN", actionTaken: null },
+    ]);
+    const entry = await test.db
+      .selectFrom("AuditLog")
+      .select(["changes", "reason"])
+      .where("entity", "=", "Visit")
+      .where("entityId", "=", visit.id)
+      .orderBy("chainSeq", "desc")
+      .executeTakeFirstOrThrow();
+    expect(entry.reason).toBe("علامة خاطئة");
+    expect(JSON.parse(entry.changes ?? "{}")).toMatchObject({ "problems.AREA_UNAVAILABLE": [true, false] });
   });
 
   it("refuses a cancelled visit", async () => {
@@ -403,7 +477,7 @@ describe("minutes from the times on the sheet", () => {
     expect(lateMinutes(null, "08:00")).toBeNull();
   });
 
-  it("counts work from start to end, else from arrival to departure, else nothing", () => {
+  it("counts work from start to end, else from arrival to departure, else nothing (LAB-9)", () => {
     expect(
       workedMinutes({ arrivedTime: "08:00", workStartTime: "08:10", workEndTime: "11:00", leftTime: "11:10" }),
     ).toBe(170);
@@ -411,5 +485,10 @@ describe("minutes from the times on the sheet", () => {
       240,
     );
     expect(workedMinutes({ arrivedTime: "08:00", workStartTime: null, workEndTime: null, leftTime: null })).toBeNull();
+    // An end equal to its start is no time worked, not a whole day (audit LAB-9).
+    expect(workedMinutes({ arrivedTime: "08:00", workStartTime: null, workEndTime: null, leftTime: "08:00" })).toBe(0);
+    expect(
+      workedMinutes({ arrivedTime: "08:00", workStartTime: "09:00", workEndTime: "09:00", leftTime: "11:00" }),
+    ).toBe(0);
   });
 });

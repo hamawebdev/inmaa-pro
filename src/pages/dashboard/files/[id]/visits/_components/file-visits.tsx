@@ -50,6 +50,7 @@ export function FileVisits({ fileId }: { fileId: string }) {
   const errorMessage = useErrorMessage();
   const weekdayLabel = useCodeLabel("Options.Weekday");
   const warningLabel = useCodeLabel("ProgrammeWarnings");
+  const ruleLabel = useCodeLabel("WorkRules");
   const [making, setMaking] = React.useState(false);
   const mayWrite = useSectionLevel("REQUESTS") === "WRITE";
   const [pagination, setPagination] = React.useState<PaginationState>({ pageIndex: 0, pageSize: 25 });
@@ -246,6 +247,27 @@ export function FileVisits({ fileId }: { fileId: string }) {
                     </li>
                   ))}
                 </ul>
+              )}
+              {summary.restRotation && (
+                <p className="text-sm text-muted-foreground">{t("RestRotation", { count: summary.restDays.length })}</p>
+              )}
+              {summary.seatsHeld.length > 0 && (
+                <div className="space-y-1">
+                  <p className="flex items-center gap-2 font-semibold text-warning-ink">
+                    <TriangleAlert className="size-4 shrink-0" />
+                    {t("SeatsHeld", { count: summary.seatsHeld.length })}
+                  </p>
+                  <ul className="space-y-0.5 ps-6 text-sm text-muted-foreground">
+                    {summary.seatsHeld.slice(0, 5).map((held) => (
+                      <li key={`${held.date}-${held.startTime}-${held.workerId}`}>
+                        <Ltr>
+                          {held.date} {held.startTime} · {held.number}
+                        </Ltr>{" "}
+                        · {held.codes.map((code) => ruleLabel(code)).join("، ")}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               )}
             </>
           )}

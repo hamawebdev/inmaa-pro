@@ -8,7 +8,7 @@ import { ServiceError } from "@/lib/service/errors";
 import { getSettings } from "@/lib/settings";
 import { localDate, localTime, minutes, type LocalDate } from "@/lib/units";
 
-import { weekdayOf, weekdaysOfCodes, type IsoDate } from "../rules/calendar";
+import { addDays, weekStartOf, weekdayOf, weekdaysOfCodes, type IsoDate } from "../rules/calendar";
 import {
   contractVisits,
   onDemandVisits,
@@ -21,7 +21,10 @@ import {
   type ProgrammeSettings,
   type WeeklySlot,
 } from "../rules/visit-dates";
+import { contractWeekIndex, restDatesForWeek, type Seat } from "../rules/working-time";
 import type { DayPeriod, DurationUnit, ProgrammeWarning, VisitStatus } from "../validators/option-codes";
+import { findingsWithVisit, seatsBetween, workTimeSettings, type VisitForSeat } from "./assignment";
+import { VISITS_PATH } from "./paths";
 import { readFileForScheduling, readSiteForOrder, readWorkers, type FileForScheduling } from "./upstream";
 import { seedTasksFromServices } from "./tasks";
 
@@ -39,7 +42,7 @@ import { seedTasksFromServices } from "./tasks";
  * database refuses a second one. Visits that exist are never touched here.
  */
 
-export const VISITS_PATH = "/dashboard/visits";
+export { VISITS_PATH };
 
 /** Statuses of a visit that is still to happen. */
 export const OPEN_STATUSES: readonly VisitStatus[] = ["CONFIRMED", "AWAITING_CONFIRMATION"];
@@ -61,6 +64,15 @@ export interface GenerationSummary {
   /** Visits per weekday, Saturday first. */
   perWeekday: number[];
   warnings: ProgrammeWarning[];
+  /**
+   * Standing seats left open because seating the member would break a working-time rule (audit LAB-2): her visit
+   * waits for confirmation and the office fills the seat by hand, with the manager where only he may pass the rule.
+   */
+  seatsHeld: Array<{ date: IsoDate; startTime: string; workerId: string; number: string; codes: string[] }>;
+  /** Seats written as a member's rotating rest day on a six-visit contract (audit LAB-4): to be replaced. */
+  restDays: Array<{ date: IsoDate; workerId: string; number: string }>;
+  /** Whether the file's members rest in turn (`FileProgramme.rotateRestDay`). */
+  restRotation: boolean;
 }
 
 // ── Settings ────────────────────────────────────────────────────────────────
@@ -92,7 +104,7 @@ function formTimesOf(file: FileForScheduling): FormTimes {
 export async function ensureProgramme(
   ex: Executor,
   ctx: ServiceContext,
-  file: Pick<FileForScheduling, "id" | "serviceType" | "startDate">,
+  file: Pick<FileForScheduling, "id" | "serviceType" | "startDate"> & { visitsPerWeek?: number | null },
 ): Promise<{ id: string }> {
   const found = await ex.selectFrom("FileProgramme").select("id").where("fileId", "=", file.id).executeTakeFirst();
   if (found) return found;
@@ -112,6 +124,8 @@ export async function ensureProgramme(
       fileId: file.id,
       inspectionFrequency: frequency,
       inspectionStartDate: frequency === "NONE" ? null : (file.startDate ?? ctx.today),
+      // Six visits a week: the members rest in turn (scope section 5; audit LAB-4, ruled).
+      rotateRestDay: file.serviceType === "CONTRACT" && (file.visitsPerWeek ?? 0) >= 6 ? 1 : 0,
       createdAt: ctx.now,
       updatedAt: ctx.now,
       createdByUserId: ctx.userId,
@@ -261,6 +275,11 @@ function summarise(
   visits: readonly PlannedVisit[],
   outcome: { created: number; missing: number; canGenerate: boolean },
   warnings: ProgrammeWarning[],
+  seats: Pick<GenerationSummary, "seatsHeld" | "restDays" | "restRotation"> = {
+    seatsHeld: [],
+    restDays: [],
+    restRotation: false,
+  },
 ): GenerationSummary {
   const perWeekday = [0, 0, 0, 0, 0, 0, 0];
   for (const visit of visits) perWeekday[weekdayOf(visit.date)] += 1;
@@ -272,6 +291,7 @@ function summarise(
     lastDate: dates[dates.length - 1] ?? null,
     perWeekday,
     warnings: [...new Set(warnings)],
+    ...seats,
   };
 }
 
@@ -384,68 +404,43 @@ export async function generateFileVisits(
   if (toCreate.length === 0) return summarise(planned, { created: 0, missing: 0, canGenerate: true }, warnings);
 
   const dates = toCreate.map((visit) => visit.date).sort();
-  const team = await standingTeam(ex, file.id);
-  const absences = await blockingAbsences(
-    ex,
-    team.map((seat) => seat.workerId),
-    dates[0],
-    dates[dates.length - 1],
-  );
   const supervisors = await zoneSupervisors(ex, site?.zoneId ?? null);
   const origin = file.serviceType === "CONTRACT" ? "CONTRACT" : "ON_DEMAND";
-
-  // People's word on each member (RULINGS item 11): one who has left, or is not in post, is given no seat;
-  // one suspended or penalised is given none while the sanction lasts. Her seat stays open.
-  const people = await readWorkers(ex, ctx, { ids: team.map((seat) => seat.workerId), date: ctx.today });
-  const blocking = (await getSettings(ex, ["sanction.blockingStates"]))["sanction.blockingStates"].WORKER ?? [];
-  const unavailable = (workerId: string, date: string) => {
-    const worker = people.find((person) => person.id === workerId);
-    if (!worker || !worker.activeOnDate) return true;
-    const sanction = worker.sanction;
-    return (
-      sanction !== null &&
-      blocking.includes(sanction.state) &&
-      sanction.since <= date &&
-      (!sanction.until || sanction.until >= date)
-    );
-  };
+  const ordered = [...toCreate].sort((a, b) =>
+    a.date === b.date ? a.startTime.localeCompare(b.startTime) : a.date < b.date ? -1 : 1,
+  );
+  const plan = await planSeats(
+    ex,
+    ctx,
+    { file, siteId: file.siteId, zoneId: site?.zoneId ?? null, origin },
+    planned,
+    ordered,
+  );
 
   // One block of numbers per calendar year: the visit number's year is its date's (A6).
-  const byYear = new Map<string, PlannedVisit[]>();
-  for (const visit of [...toCreate].sort((a, b) =>
-    a.date === b.date ? a.startTime.localeCompare(b.startTime) : a.date < b.date ? -1 : 1,
-  )) {
+  const byYear = new Map<string, number[]>();
+  for (const [index, visit] of ordered.entries()) {
     const year = visit.date.slice(0, 4);
-    byYear.set(year, [...(byYear.get(year) ?? []), visit]);
+    byYear.set(year, [...(byYear.get(year) ?? []), index]);
   }
 
-  for (const visits of byYear.values()) {
-    const numbers = await nextNumbers(ex, ctx, "VISIT", { date: localDate(visits[0].date), count: visits.length });
-    for (const [index, visit] of visits.entries()) {
-      const seats = team
-        .filter(
-          (seat) =>
-            (seat.fileSlotId === null || seat.fileSlotId === visit.slotId) &&
-            seat.validFrom <= visit.date &&
-            (!seat.validTo || seat.validTo >= visit.date) &&
-            !unavailable(seat.workerId, visit.date) &&
-            !absences.some(
-              (absence) =>
-                absence.workerId === seat.workerId && absence.startDate <= visit.date && absence.endDate >= visit.date,
-            ),
-        )
-        .filter((seat, position, all) => all.findIndex((other) => other.workerId === seat.workerId) === position)
-        .slice(0, visit.workersNeeded);
+  for (const indexes of byYear.values()) {
+    const numbers = await nextNumbers(ex, ctx, "VISIT", {
+      date: localDate(ordered[indexes[0]].date),
+      count: indexes.length,
+    });
+    for (const [position, index] of indexes.entries()) {
+      const visit = ordered[index];
+      const seats = plan.visits[index];
       const status: VisitStatus =
-        origin === "CONTRACT" && seats.length >= visit.workersNeeded ? "CONFIRMED" : "AWAITING_CONFIRMATION";
-      const id = newId();
+        origin === "CONTRACT" && seats.assigned.length >= visit.workersNeeded ? "CONFIRMED" : "AWAITING_CONFIRMATION";
       await ex
         .insertInto("Visit")
         .values({
-          id,
-          numberSeq: numbers[index].seq,
-          numberYear: numbers[index].year,
-          number: numbers[index].display,
+          id: seats.visitId,
+          numberSeq: numbers[position].seq,
+          numberYear: numbers[position].year,
+          number: numbers[position].display,
           fileId: file.id,
           fileSlotId: visit.slotId,
           origin,
@@ -465,15 +460,19 @@ export async function generateFileVisits(
           updatedByUserId: ctx.userId,
         })
         .execute();
-      for (const seat of seats) {
+      const written = [
+        ...seats.assigned.map((seat) => ({ seat, seatStatus: "ASSIGNED" as const })),
+        ...seats.resting.map((seat) => ({ seat, seatStatus: "RESTING" as const })),
+      ];
+      for (const { seat, seatStatus } of written) {
         await ex
           .insertInto("VisitWorker")
           .values({
             id: newId(),
-            visitId: id,
+            visitId: seats.visitId,
             workerId: seat.workerId,
             role: seat.role,
-            seatStatus: "ASSIGNED",
+            seatStatus,
             createdAt: ctx.now,
             updatedAt: ctx.now,
             createdByUserId: ctx.userId,
@@ -490,9 +489,176 @@ export async function generateFileVisits(
     entity: "File",
     entityId: file.id,
     entityLabel: file.number,
-    context: { visitsCreated: toCreate.length, firstDate: dates[0], lastDate: dates[dates.length - 1] },
+    context: {
+      visitsCreated: toCreate.length,
+      firstDate: dates[0],
+      lastDate: dates[dates.length - 1],
+      seatsHeld: plan.seatsHeld.length,
+      restDays: plan.restDays.length,
+    },
   });
-  return summarise(planned, { created: toCreate.length, missing: 0, canGenerate: true }, warnings);
+  return summarise(planned, { created: toCreate.length, missing: 0, canGenerate: true }, warnings, plan);
+}
+
+interface VisitSeats {
+  visitId: string;
+  assigned: StandingSeat[];
+  resting: StandingSeat[];
+}
+
+/**
+ * Who sits on each visit about to be made, in date order. Writes nothing.
+ *
+ * - A member who has left, is not in post, is suspended or penalised that day (RULINGS item 11), or is absent, has
+ *   no seat.
+ * - On a file whose members rest in turn (`rotateRestDay`, six visits a week), each member's seat on her rest day of
+ *   the week is RESTING: the visit is a seat short and her replacement is suggested as for an absence (audit LAB-4).
+ * - Every other member is judged as the seat picker judges her, on her week as it stands with the seats given in
+ *   this run, with the day before and after the week: a seat that breaks a rule the manager alone may pass, or two
+ *   visits at once, is left open and listed (audit LAB-2).
+ */
+async function planSeats(
+  ex: Executor,
+  ctx: ServiceContext,
+  where: { file: FileForScheduling; siteId: string; zoneId: string | null; origin: string },
+  programme: readonly PlannedVisit[],
+  ordered: readonly PlannedVisit[],
+): Promise<{ visits: VisitSeats[] } & Pick<GenerationSummary, "seatsHeld" | "restDays" | "restRotation">> {
+  const { file } = where;
+  const empty = { visits: [], seatsHeld: [], restDays: [], restRotation: false };
+  if (ordered.length === 0) return empty;
+  const first = ordered[0].date;
+  const last = ordered[ordered.length - 1].date;
+  const team = await standingTeam(ex, file.id);
+  const ids = [...new Set(team.map((seat) => seat.workerId))];
+  const absences = await blockingAbsences(ex, ids, first, last);
+
+  // People's word on each member (RULINGS item 11).
+  const people = await readWorkers(ex, ctx, { ids, date: ctx.today });
+  const blocking = (await getSettings(ex, ["sanction.blockingStates"]))["sanction.blockingStates"].WORKER ?? [];
+  const unavailable = (workerId: string, date: string) => {
+    const worker = people.find((person) => person.id === workerId);
+    if (!worker || !worker.activeOnDate) return true;
+    const sanction = worker.sanction;
+    return (
+      sanction !== null &&
+      blocking.includes(sanction.state) &&
+      sanction.since <= date &&
+      (!sanction.until || sanction.until >= date)
+    );
+  };
+
+  // The rotating rest day: each member's rest date in each week, by the order of the standing team.
+  const programmeRow = await ex
+    .selectFrom("FileProgramme")
+    .select("rotateRestDay")
+    .where("fileId", "=", file.id)
+    .executeTakeFirst();
+  const rotation =
+    file.serviceType === "CONTRACT" &&
+    (programmeRow ? programmeRow.rotateRestDay === 1 : (file.visitsPerWeek ?? 0) >= 6);
+  const contractStart = file.startDate ?? programme[0]?.date ?? first;
+  const restOf = new Map<string, Record<string, IsoDate>>();
+  const restDateOf = (workerId: string, date: IsoDate): IsoDate | undefined => {
+    if (!rotation) return undefined;
+    const week = weekStartOf(date);
+    let rests = restOf.get(week);
+    if (!rests) {
+      const weekDates = programme.filter((visit) => weekStartOf(visit.date) === week).map((visit) => visit.date);
+      const members = [
+        ...new Set(
+          team
+            .filter((seat) => seat.validFrom <= addDays(week, 6) && (!seat.validTo || seat.validTo >= week))
+            .map((seat) => seat.workerId),
+        ),
+      ];
+      rests = restDatesForWeek(contractWeekIndex(contractStart, date), members, weekDates);
+      restOf.set(week, rests);
+    }
+    return rests[workerId];
+  };
+
+  // Her seats as they stand, from the day before the first week to the day after the last.
+  const settings = await workTimeSettings(ex);
+  const held = await seatsBetween(ex, addDays(weekStartOf(first), -1), addDays(weekStartOf(last), 7), {
+    workerIds: ids,
+  });
+  const seatsNear = (workerId: string, date: IsoDate) => {
+    const from = addDays(weekStartOf(date), -1);
+    const to = addDays(weekStartOf(date), 7);
+    return (held.get(workerId) ?? []).filter((seat) => seat.date >= from && seat.date <= to);
+  };
+  const numberOf = (workerId: string) => people.find((person) => person.id === workerId)?.number ?? "";
+
+  const visits: VisitSeats[] = [];
+  const seatsHeld: GenerationSummary["seatsHeld"] = [];
+  const restDays: GenerationSummary["restDays"] = [];
+  for (const visit of ordered) {
+    const visitId = newId();
+    const candidates = team
+      .filter(
+        (seat) =>
+          (seat.fileSlotId === null || seat.fileSlotId === visit.slotId) &&
+          seat.validFrom <= visit.date &&
+          (!seat.validTo || seat.validTo >= visit.date) &&
+          !unavailable(seat.workerId, visit.date) &&
+          !absences.some(
+            (absence) =>
+              absence.workerId === seat.workerId && absence.startDate <= visit.date && absence.endDate >= visit.date,
+          ),
+      )
+      .filter((seat, position, all) => all.findIndex((other) => other.workerId === seat.workerId) === position)
+      .slice(0, visit.workersNeeded);
+    const forRules: VisitForSeat = {
+      id: visitId,
+      number: "",
+      fileId: file.id,
+      fileSlotId: visit.slotId,
+      siteId: where.siteId,
+      origin: where.origin,
+      status: "AWAITING_CONFIRMATION",
+      visitDate: localDate(visit.date),
+      plannedStartTime: localTime(visit.startTime),
+      plannedDurationMin: visit.durationMin,
+      workersNeeded: visit.workersNeeded,
+      zoneId: where.zoneId,
+    };
+    const assigned: StandingSeat[] = [];
+    const resting: StandingSeat[] = [];
+    for (const seat of candidates) {
+      if (restDateOf(seat.workerId, visit.date) === visit.date) {
+        resting.push(seat);
+        restDays.push({ date: visit.date, workerId: seat.workerId, number: numberOf(seat.workerId) });
+        continue;
+      }
+      const person = people.find((each) => each.id === seat.workerId);
+      if (!person) continue;
+      const broken = findingsWithVisit(person, seatsNear(seat.workerId, visit.date), false, forRules, settings)
+        .filter((finding) => finding.level === "REFUSED" || finding.level === "NEEDS_MANAGER")
+        .map((finding) => finding.code);
+      if (broken.length > 0) {
+        seatsHeld.push({
+          date: visit.date,
+          startTime: visit.startTime,
+          workerId: seat.workerId,
+          number: person.number,
+          codes: [...new Set(broken)],
+        });
+        continue;
+      }
+      assigned.push(seat);
+      const given: Seat = {
+        visitId,
+        siteId: where.siteId,
+        date: visit.date,
+        startTime: visit.startTime,
+        durationMin: visit.durationMin,
+      };
+      held.set(seat.workerId, [...(held.get(seat.workerId) ?? []), given]);
+    }
+    visits.push({ visitId, assigned, resting });
+  }
+  return { visits, seatsHeld, restDays, restRotation: rotation };
 }
 
 /** Writes nothing: what generating the file's visits would give, and what is wrong with it. */
@@ -517,10 +683,23 @@ export async function previewVisitGeneration(
     .select("formChangedAt")
     .where("fileId", "=", file.id)
     .executeTakeFirst();
+  const ordered = [...missing].sort((a, b) =>
+    a.date === b.date ? a.startTime.localeCompare(b.startTime) : a.date < b.date ? -1 : 1,
+  );
+  // Who would sit, rest or be left out by a rule (audit LAB-2, LAB-4): nothing is written.
+  const origin = file.serviceType === "CONTRACT" ? "CONTRACT" : "ON_DEMAND";
+  const seats = await planSeats(
+    ex,
+    ctx,
+    { file, siteId: file.siteId, zoneId: site?.zoneId ?? null, origin },
+    planned,
+    ordered,
+  );
   const summary = summarise(
     planned,
     { created: 0, missing: missing.length, canGenerate: stage?.stage === "CONTRACTED" && !stage.closedAt },
     [...programme.warnings, ...siteWarnings(planned, site)],
+    seats,
   );
   return { ...summary, formChanged: Boolean(programmeRow?.formChangedAt) };
 }

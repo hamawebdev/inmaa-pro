@@ -106,12 +106,11 @@ export function BlockBody({ visit, height }: { visit: WeekVisit; height: number 
         ) : null}
       </span>
       {height > 36 && (
-        <span className="truncate text-xs leading-tight text-foreground/80">
+        // The hours stand whole on their own line, however narrow the lane (S-20); the number is in the tooltip.
+        <span className="overflow-hidden text-xs leading-tight whitespace-nowrap text-foreground/80">
           <Ltr>
             {visit.startTime}–{endTimeOf(visit)}
           </Ltr>
-          <span className="text-foreground/60"> · </span>
-          <Ltr>{visit.number}</Ltr>
         </span>
       )}
       {height > 60 && (

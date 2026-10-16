@@ -11,6 +11,7 @@ import {
   isIsoDate,
   minutesFromTo,
   minutesNear,
+  placedStart,
   minutesOf,
   monthOf,
   weekStartOf,
@@ -116,5 +117,14 @@ describe("stored weekday codes", () => {
     expect(weekdaysOfCodes("not json")).toEqual([]);
     expect(weekdaysOfCodes(null)).toEqual([]);
     expect(weekdaysOfCodes('{"a":1}')).toEqual([]);
+  });
+});
+
+describe("placedStart", () => {
+  it("puts a typed start on the day nearest the planned start (LAB-11)", () => {
+    expect(placedStart("2026-11-02", "23:00", "00:15")).toEqual({ date: "2026-11-03", startTime: "00:15" });
+    expect(placedStart("2026-11-02", "00:30", "23:50")).toEqual({ date: "2026-11-01", startTime: "23:50" });
+    expect(placedStart("2026-11-02", "08:00", "08:20")).toEqual({ date: "2026-11-02", startTime: "08:20" });
+    expect(placedStart("2026-11-02", "08:00", null)).toEqual({ date: "2026-11-02", startTime: "08:00" });
   });
 });

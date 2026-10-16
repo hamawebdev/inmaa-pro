@@ -119,7 +119,7 @@ describe("printing a day's sheets", () => {
       .orderBy("chainSeq")
       .execute();
 
-  it("names the supervisor, each client and each worker of his day sheet", async () => {
+  it("names the supervisor, each client and each worker of his day sheet (LOG-12)", async () => {
     const { supervisor, file, worker } = await arrange();
     await test.transact((ex, ctx) =>
       recordDaySheetPrinted(ex, ctx, {
@@ -135,7 +135,7 @@ describe("printing a day's sheets", () => {
     ]);
   });
 
-  it("names each client the call list calls", async () => {
+  it("names each client the call list calls (LOG-12)", async () => {
     const { file } = await arrange();
     await test.transact((ex, ctx) =>
       recordDaySheetPrinted(ex, ctx, { sheet: "CALL_LIST", date: localDate("2026-10-13") }),

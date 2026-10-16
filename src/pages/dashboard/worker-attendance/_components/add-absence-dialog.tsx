@@ -20,7 +20,7 @@ import { Field, FieldDescription, FieldError, FieldLabel } from "@/components/ui
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { daysBetween, isIsoDate } from "@/features/operations/rules/calendar";
+import { datesBetween, isIsoDate, weekdayOf, weekdaysOfCodes } from "@/features/operations/rules/calendar";
 import {
   ABSENCE_CATEGORIES,
   ABSENCE_TYPES,
@@ -134,10 +134,13 @@ function AbsenceForm({
 
   const isLeave = category === "LEAVE";
   const datesOk = isIsoDate(startDate) && isIsoDate(endDate);
-  // A leave counts its days; left blank, the days of the range (half of each for half days).
+  // A leave counts its days; left blank, the working days of the range, the weekly rest day left out as People's
+  // pay leaves it out (audit LAB-8), half of each for half days.
+  const restWeekday = weekdaysOfCodes([day.data?.restDay ?? "FRI"])[0];
   const suggestedDays =
     datesOk && endDate >= startDate && type !== "HOURS"
-      ? (daysBetween(startDate, endDate) + 1) * (type === "HALF_DAY" ? 0.5 : 1)
+      ? datesBetween(startDate, endDate).filter((date) => weekdayOf(date) !== restWeekday).length *
+        (type === "HALF_DAY" ? 0.5 : 1)
       : 0;
   const days = leaveDays.trim() === "" ? suggestedDays : Number(leaveDays);
 
@@ -356,7 +359,7 @@ function AbsenceForm({
                     <SelectValue placeholder={t("Choose")} />
                   </SelectTrigger>
                   <SelectContent>
-                    {LEAVE_TYPES.map((code) => (
+                    {LEAVE_TYPES.filter((code) => code !== "SICK").map((code) => (
                       <SelectItem key={code} value={code}>
                         {leaveLabel(code)}
                       </SelectItem>

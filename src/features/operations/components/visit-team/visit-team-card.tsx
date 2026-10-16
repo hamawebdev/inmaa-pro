@@ -94,7 +94,7 @@ export function VisitTeamCard({ data, mayWrite = true }: { data: VisitEntryData;
         )}
       </CardHeader>
       <CardContent>
-        {data.workers.length === 0 ? (
+        {data.workers.length === 0 && (data.resting ?? []).length === 0 ? (
           <p className="text-muted-foreground">{t("NoWorker")}</p>
         ) : (
           <ul className="divide-y divide-border">
@@ -134,6 +134,27 @@ export function VisitTeamCard({ data, mayWrite = true }: { data: VisitEntryData;
                 </li>
               );
             })}
+            {(data.resting ?? []).map((entry) => (
+              <li key={entry.seat.id} className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2 py-3">
+                <div className="min-w-0 space-y-0.5">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="font-bold">
+                      <bdi>{workerName(entry.worker)}</bdi>
+                    </span>
+                    <StatusChip tone="info" label={t(entry.replaced ? "RestingReplaced" : "Resting")} />
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    <Ltr>{entry.worker.number}</Ltr>
+                  </p>
+                </div>
+                {open && !entry.replaced && (
+                  <Button type="button" variant="outline" size="sm" onClick={() => setReplacing(entry)}>
+                    <Repeat />
+                    {t("ReplaceWorker")}
+                  </Button>
+                )}
+              </li>
+            ))}
           </ul>
         )}
       </CardContent>
@@ -145,6 +166,7 @@ export function VisitTeamCard({ data, mayWrite = true }: { data: VisitEntryData;
         seatId={replacing?.seat.id ?? null}
         workerName={replacing ? workerName(replacing.worker) : ""}
         absent={replacing?.seat.seatStatus === "ABSENT"}
+        resting={replacing?.seat.seatStatus === "RESTING"}
         open={replacing !== null}
         onOpenChange={(next) => !next && setReplacing(null)}
       />

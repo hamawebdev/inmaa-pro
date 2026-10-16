@@ -124,7 +124,8 @@
       "Signoff": "Sign-off and rating",
       "SignoffHint": "The slip as the client filled it in.",
       "Correction": "Correcting typed times",
-      "CorrectionHint": "A time typed before was changed. Say why: the log keeps the old time and your reason."
+      "CorrectionHint": "A time typed before was changed. Say why: the log keeps the old time and your reason.",
+      "CorrectionHintAll": "A typed time changed, a worker ticked absent or present again, or a problem taken off: the log keeps why."
     },
     "OrderNumber": "Order number",
     "VisitDate": "Date",
@@ -224,7 +225,8 @@
     "SavedComplete": "The returned order is saved and the visit is signed off.",
     "SavedPartial": "Saved. The entry is not complete yet.",
     "CorrectionReason": "Reason for the correction",
-    "NoWorkers": "No worker is assigned to this visit yet."
+    "NoWorkers": "No worker is assigned to this visit yet.",
+    "TimesLocked": "Times already typed are corrected by a supervisor, operations or the manager."
   },
   "ProblemKinds": {
     "MATERIAL_SHORTAGE": "Shortage of products",
@@ -397,7 +399,9 @@
     "ViolationAlreadyRecorded": "A violation is already recorded for this worker on this record.",
     "OrderNotHeld": "This client is not suspended or penalised: the order prints without a release.",
     "OrderHeldForClient": "This client is suspended or penalised: the order prints only after the manager releases it.",
-    "SickNotLeave": "Record a sickness under the category Sick, not as a type of leave."
+    "SickNotLeave": "Record a sickness under the category Sick, not as a type of leave.",
+    "NoShowUndoWhy": "Say why a worker marked absent on this order came after all.",
+    "ProblemTickOffWhy": "Say why a problem ticked on this order is taken off."
   },
   "FileVisits": {
     "ProgrammeTitle": "Programme",
@@ -422,7 +426,9 @@
     "Open": "Open",
     "Order": "Order",
     "Loading": "Reading the file's visits…",
-    "NoVisits": "This file has no visit yet."
+    "NoVisits": "This file has no visit yet.",
+    "RestRotation": "The members rest in turn, one day a week each: {count} rest days in the visits to make.",
+    "SeatsHeld": "{count} seats of the standing team stay open: a working-time rule would break. Fill them on the visit."
   },
   "VisitTeam": {
     "Title": "Team",
@@ -469,7 +475,9 @@
       "Reason": "The manager's reason",
       "Derogation": "Reference of the labour inspector's derogation"
     },
-    "WeekHours": "Week's hours"
+    "WeekHours": "Week's hours",
+    "Resting": "Rest day in turn",
+    "RestingReplaced": "Rest day, replaced"
   },
   "ReplacementReasons": {
     "ABSENCE": "Absence",
@@ -523,7 +531,8 @@
       "Capacity": "Weekly capacity",
       "HoursOf": "Hours of {name} this week",
       "ShowHerVisits": "Show only this worker's visits on the calendar"
-    }
+    },
+    "DayListTitle": "Visits of {day}"
   },
   "FileTasks": {
     "AddTask": "Add a task",
@@ -617,7 +626,9 @@
       "ROOM": "Room",
       "SPACE": "Space",
       "OTHER": "Other places"
-    }
+    },
+    "CatalogSearch": "Search the task list",
+    "CatalogNoMatch": "No task matches the search."
   },
   "WorkerAttendance": {
     "Views": {
@@ -695,7 +706,7 @@
       "Columns": {
         "State": "The day",
         "Visits": "Visits of the day",
-        "Last": "Last arrival and departure"
+        "Last": "Last in and out"
       },
       "Absence": "Absence",
       "NoWorkers": "No worker can be given visits yet.",
@@ -869,7 +880,8 @@
     "Confirm": "Update",
     "Cancel": "Cancel",
     "Done": "{moved} visits changed, {added} added, {cancelled} cancelled.",
-    "SaveFailed": "The visits could not be updated."
+    "SaveFailed": "The visits could not be updated.",
+    "SeatsDropped": "{count} workers cannot follow their visit to the new hours under the working-time rules: they are taken off it."
   },
   "OperationsHome": {
     "TodayVisits": "Today's visits",
@@ -1439,8 +1451,9 @@
       "file": "File",
       "worker": "Worker",
       "visit": "Visit",
-      "Visits": "Visits rated",
-      "Recommend": "Would recommend"
+      "Visits": "Visits",
+      "Recommend": "Would recommend",
+      "RecommendShort": "Recommend"
     },
     "Criteria": {
       "quality": "Quality of cleaning",
@@ -1469,6 +1482,13 @@
       "OutOfFive": "out of 5",
       "Recommend": "Would recommend us",
       "Answers": "{yes} of {count} answers"
+    },
+    "CriteriaShort": {
+      "quality": "Cleaning",
+      "punctuality": "On time",
+      "behaviour": "Conduct",
+      "materials": "Products",
+      "overall": "Overall"
     }
   },
   "SupervisorZones": {

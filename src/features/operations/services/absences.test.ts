@@ -459,7 +459,7 @@ describe("HR's acts on a leave (audit ACC-2, LAB-12)", () => {
     ...over,
   });
 
-  it("leaves deciding, cancelling and paying a leave to staff.write, and recording an absence to the office", async () => {
+  it("leaves deciding, cancelling and paying a leave to staff.write, and recording an absence to the office (ACC-2)", async () => {
     const { a } = await confirmedMonday();
     const supervisor = await test.sessionFor("SUPERVISOR");
     const hr = await test.sessionFor("HR_OFFICER");
@@ -501,7 +501,7 @@ describe("HR's acts on a leave (audit ACC-2, LAB-12)", () => {
     expect((await absences(a.id)).map((row) => row.status)).toEqual(["CANCELLED", "CANCELLED"]);
   });
 
-  it("refuses a leave of type sickness: a sickness is category SICK", async () => {
+  it("refuses a leave of type sickness: a sickness is category SICK (LAB-12)", async () => {
     const a = await worker();
     const sentence = "Record a sickness under the category Sick, not as a type of leave.";
     await expect(record(leave(a.id, { leaveType: "SICK" }))).rejects.toThrow(sentence);
@@ -515,7 +515,7 @@ describe("HR's acts on a leave (audit ACC-2, LAB-12)", () => {
 });
 
 describe("cancelling an absence under the working-time rules (audit LAB-10)", () => {
-  it("leaves a seat open when taking it back would put her on two visits at once", async () => {
+  it("leaves a seat open when taking it back would put her on two visits at once (LAB-10)", async () => {
     const { monday, a, seatA } = await confirmedMonday();
     const { absenceIds } = await record({ workerId: a.id });
     // While she was absent, she was put on another visit at the same hour.

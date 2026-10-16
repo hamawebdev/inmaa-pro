@@ -43,6 +43,8 @@ export interface VisitEntryData {
   zone: Pick<ZoneRow, "name"> | null;
   supervisor: Pick<StaffMemberRow, "firstName" | "lastName"> | null;
   workers: readonly VisitEntryWorker[];
+  /** Members resting that day in turn (audit LAB-4): not on the order; the team card offers their replacement. */
+  resting?: ReadonlyArray<VisitEntryWorker & { replaced: boolean }>;
   checklist: readonly VisitEntryChecklistItem[];
   /** What was typed before, or null for an order not typed yet. */
   report: VisitEntryReport | null;

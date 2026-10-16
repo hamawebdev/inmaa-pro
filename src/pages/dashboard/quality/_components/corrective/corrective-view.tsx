@@ -169,13 +169,13 @@ export function CorrectiveView() {
           return line.inspection ? (
             <Link
               to={inspectionHref(line.inspection.id)}
-              className="block max-w-[13rem] truncate hover:underline xl:max-w-[22rem]"
+              className="block max-w-[13rem] truncate hover:underline xl:max-w-[18rem]"
               title={title}
             >
               {text}
             </Link>
           ) : (
-            <span className="block max-w-[13rem] truncate xl:max-w-[22rem]" title={title}>
+            <span className="block max-w-[13rem] truncate xl:max-w-[18rem]" title={title}>
               {text}
             </span>
           );
