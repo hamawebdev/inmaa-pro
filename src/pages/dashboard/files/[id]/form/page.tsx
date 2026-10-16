@@ -79,7 +79,7 @@ export default function FileFormPage() {
       description={kindLabel(data.kind)}
       back={back}
       actions={
-        <Button asChild variant="outline">
+        <Button asChild variant="info">
           <Link to={`${filePartHref(id, "form")}/print`}>
             <Printer />
             {tHub("PrintForm")}

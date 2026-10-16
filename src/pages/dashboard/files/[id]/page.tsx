@@ -29,6 +29,7 @@ import { FORM_DEFINITIONS } from "@/features/clients/forms/definitions";
 import { labelKeyOf } from "@/features/clients/forms/screen-labels";
 import { fileQueryPath, getFileHubQuery, type FileHub } from "@/features/clients/services/file-reads";
 import { FORM_KIND_OF } from "@/features/clients/validators/option-lists";
+import { FileProfitabilityCard } from "@/features/money/components/file-profitability-card";
 import { formatMoney } from "@/features/money/rules/centimes";
 import { useCodeLabel } from "@/i18n/use-code-label";
 import { pathKey } from "@/lib/compat/revalidate";
@@ -324,7 +325,7 @@ export default function FileHubPage() {
       back={{ href: filesHref(hub.division, hub.serviceType), label: tNav("Files") }}
       actions={
         <>
-          <Button asChild variant="outline">
+          <Button asChild variant="info">
             <Link to={`${filePartHref(hub.id, "form")}/print`}>
               <Printer />
               {t("PrintForm")}
@@ -356,6 +357,8 @@ export default function FileHubPage() {
         )}
         <StageStrip hub={hub} />
         <Summary hub={hub} />
+        {/* Feature 30, Money's card: it draws nothing for a reader without cost.read. */}
+        {(hub.stage === "CONTRACTED" || hub.stage === "CONTRACT_ENDED") && <FileProfitabilityCard fileId={hub.id} />}
         <Parts hub={hub} />
         <History hub={hub} />
       </div>
