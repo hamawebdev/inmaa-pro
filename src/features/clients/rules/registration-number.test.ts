@@ -5,7 +5,7 @@ import { SETTING_DEFAULTS } from "@/lib/settings/catalogue";
 import { FORM_DEFINITIONS } from "../forms/definitions";
 import { FORM_KINDS } from "../validators/option-lists";
 
-import { formatRegistrationNumber, registrationPlaces } from "./registration-number";
+import { formatRegistrationNumber, registrationPlaces, suffixPlaceOf } from "./registration-number";
 
 describe("«رقم التسجيل»", () => {
   it("is written sequence, slash, suffix, by Foundation's numbering", () => {
@@ -48,4 +48,14 @@ describe("the two places of his line", () => {
       suffix: "BLC",
     });
   });
+});
+
+it("B-002: the complexes copy prints its number alone; the building joins «/BLC»; the others keep a slash and a blank", () => {
+  const building = FORM_DEFINITIONS.BUILDING_CONTRACT;
+  const home = FORM_DEFINITIONS.HOUSING_REQUEST;
+  const complex = FORM_DEFINITIONS.COMPLEX_CONTRACT;
+  expect(suffixPlaceOf(complex, registrationPlaces(complex, "1"))).toBe("NONE");
+  expect(suffixPlaceOf(complex, registrationPlaces(complex, undefined))).toBe("NONE");
+  expect(suffixPlaceOf(building, registrationPlaces(building, "1/BLC"))).toBe("SUFFIX");
+  expect(suffixPlaceOf(home, registrationPlaces(home, "7"))).toBe("BLANK");
 });

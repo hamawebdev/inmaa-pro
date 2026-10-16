@@ -809,7 +809,6 @@
     "Columns": {
       "Number": "N° de dossier",
       "Name": "Client",
-      "Divisions": "Divisions",
       "Files": "Dossiers",
       "State": "État"
     },

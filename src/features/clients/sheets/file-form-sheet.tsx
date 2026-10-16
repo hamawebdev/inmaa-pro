@@ -23,7 +23,7 @@ import {
 import { rowOf } from "../forms/definitions";
 import type { FormDefinition, FormRow, SheetBlock, SheetCellDef, SheetPart } from "../forms/types";
 import type { FormValues, ResidentLine } from "../forms/values";
-import { registrationPlaces } from "../rules/registration-number";
+import { registrationPlaces, suffixPlaceOf } from "../rules/registration-number";
 
 /**
  * One of his five client forms, or the complexes copy, on paper.
@@ -491,7 +491,7 @@ function Header({ definition, values }: Drawing) {
       <div style={{ ...lineStyle, height: `${HEADER_LINES_MM[0]}mm` }}>
         <span style={labelStyle}>{number?.raw}</span>
         <FillingBlank>{places.sequence && <Ltr>{places.sequence}</Ltr>}</FillingBlank>
-        {places.suffix === null ? (
+        {suffixPlaceOf(definition, places) === "NONE" ? null : places.suffix === null ? (
           <>
             <span style={type(16)}>/</span>
             <ShortBlank widthMm={9} />

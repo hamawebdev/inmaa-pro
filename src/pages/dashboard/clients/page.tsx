@@ -68,21 +68,14 @@ export default function ClientsPage() {
         id: "name",
         header: t("Columns.Name"),
         cell: ({ row }) => (
-          <div className="max-w-64 min-w-36">
-            <p className="truncate font-bold">{row.original.name}</p>
-            <p className="truncate text-sm text-muted-foreground">
+          <div className="max-w-72 min-w-36">
+            <p className="truncate leading-tight font-bold">{row.original.name}</p>
+            <p className="truncate text-sm leading-tight text-muted-foreground">
+              {row.original.divisions.map((code) => divisionLabel(code)).join("، ")}
+              {row.original.divisions.length > 0 ? " · " : ""}
               <Ltr>{phoneText(row.original.phone)}</Ltr>
             </p>
           </div>
-        ),
-      },
-      {
-        id: "divisions",
-        header: t("Columns.Divisions"),
-        cell: ({ row }) => (
-          <span className="block max-w-48 truncate">
-            {row.original.divisions.map((code) => divisionLabel(code)).join("، ")}
-          </span>
         ),
       },
       {
@@ -98,7 +91,7 @@ export default function ClientsPage() {
         id: "state",
         header: t("Columns.State"),
         cell: ({ row }) => (
-          <div className="flex flex-wrap gap-1.5">
+          <div className="flex gap-1.5 whitespace-nowrap">
             {row.original.sanction && <SanctionChip kind="CLIENT" state={row.original.sanction} />}
             {row.original.missingIdentifiers.length > 0 && <StatusChip tone="warning" label={t("MissingForInvoice")} />}
             {!row.original.sanction && row.original.missingIdentifiers.length === 0 && (

@@ -809,7 +809,6 @@
     "Columns": {
       "Number": "File no.",
       "Name": "Client",
-      "Divisions": "Divisions",
       "Files": "Files",
       "State": "State"
     },

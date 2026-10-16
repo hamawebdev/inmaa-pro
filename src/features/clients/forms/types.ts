@@ -155,6 +155,11 @@ export interface FormDefinition {
   family: DescriptionFamily;
   /** The suffix his file prints after the registration number («BLC»), or null where it is a blank. */
   registrationSuffix: string | null;
+  /**
+   * Whether the number is followed by a place for a suffix (a slash and a blank, or «/BLC»). The
+   * complexes copy has none: its number prints alone (the coordinator's ruling on B-002).
+   */
+  registrationSuffixPlace?: boolean;
   /** The title box, measured from the left edge of the text area and the top of its paragraph. */
   titleBox: { leftMm: number; topMm: number; widthMm: number; heightMm: number };
   rows: FormRow[];

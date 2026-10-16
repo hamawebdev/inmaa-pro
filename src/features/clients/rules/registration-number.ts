@@ -40,6 +40,16 @@ export interface RegistrationPlaces {
  * building contract, a blank on the others. A numbered file prints its own
  * number, which is the same unless the suffix was changed in the settings.
  */
+/**
+ * What follows the number on paper: nothing (the complexes copy, which has no
+ * suffix: the coordinator's ruling on B-002), a slash and a blank (a suffix he
+ * has not named), or the suffix joined to its slash («/BLC»).
+ */
+export function suffixPlaceOf(definition: FormDefinition, places: RegistrationPlaces): "NONE" | "BLANK" | "SUFFIX" {
+  if (places.suffix !== null) return "SUFFIX";
+  return definition.registrationSuffixPlace === false ? "NONE" : "BLANK";
+}
+
 export function registrationPlaces(definition: FormDefinition, number: string | undefined): RegistrationPlaces {
   if (number === undefined || number.trim() === "") {
     return { sequence: "", suffix: definition.registrationSuffix };
