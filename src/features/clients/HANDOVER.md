@@ -92,6 +92,15 @@ Demo: `housingRequest` (first visit done, study, quote issued and waiting), `hou
 
 Rep visits (list, new, detail, call-backs due, a file opened from a visit with its details); the list of quotes waiting for an answer (the home tile's); contact people on the client card; numbers from paper on the new-file form (only with `file.setNumber`); `getFileBillingTerms` and `getClientForInvoice`; a site's coordinates in its office block (micro-degrees, typed in degrees, checked in range; the QR is Operations'). Dates on every screen of this folder are the program's («12 أكتوبر 2026», `components/screen-date.tsx`); sheets keep his «12/10/2026». The quote sheet prints its frozen tax terms: under VAT the total before tax, the tax and the total after it; under the IFU the mention.
 
+## Audit findings fixed (scratchpad/audit/for-clients.md)
+
+- ACC-3: `closeFile` checks REQUESTS WRITE for every reason (Operations' sign-off holds it), and JOB_DONE is refused on a contract ("Only a job on demand ends when its last visit is done.").
+- LOG-6: `getFileQuotes` no longer returns cost and margin; `openQuoteCosts` (an action) checks `cost.read` and logs a CONSULT once a day per reader and quote.
+- LOG-15: `getReturningFill` is an action that logs a CONSULT on the previous file once a day per reader (`logConsultOnce`).
+- INV-4 ruling: `rules/client-identifiers.ts` (`missingIdentifiersOf`, `MISSING_FOR_INVOICE`): an organisation needs its NIF and NIS, its RC when «السجل التجاري» is نعم, and an answer to «السجل التجاري» (given on the card). The card, the hub and the list say what is missing; `getClientForInvoice().missing` returns the same codes, with Money's sentences in `MISSING_FOR_INVOICE`.
+
+Phones on screen and paper go through `phoneText`; the radio workaround is gone since Foundation's fix of the shared checkbox and radio.
+
 ## My own wording, to check against his documents
 
 The plan names these codes without his words; the Arabic is mine:
