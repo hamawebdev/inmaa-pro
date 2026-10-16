@@ -21,6 +21,11 @@ It reads the Markdown table as it is on disk; it does not rebuild it. Checks:
   T9  per form: the number of numbered options in choice rows equals the
       number of ☐ in the file, plus the known options that have no ☐
   D1  docs/checker/data/*.json equals a fresh extraction (when present)
+  L1  the legal rules section has its nine columns and every row nine cells
+  L2  its ids run L-01, L-02, … in order without gaps
+  L3  status, owner and "Enforced in" are filled with allowed words; a mismatch
+      names an open audit finding; a checked row names a test, and every test
+      it names exists
 
 Exit status 0 when every check passes, 1 otherwise.
 """
@@ -76,11 +81,24 @@ def keep(ws):
     return [w for w in ws if any(unicodedata.category(c)[0] in "LN" for c in w)]
 
 
-def read_table(path):
+LEGAL_HEADING = "## Legal rules"
+LEGAL_COLUMNS = ["ID", "Rule", "Part", "Enforced in", "Proved by", "Status", "Owner", "Findings", "Notes"]
+LEGAL_STATUS = {"checked", "mismatch", "not built", "n/a"}
+FINDING = re.compile(r"\b(?:INV|LOG|ACC|LAB|OFF)-[A-Z]?\d+\b")
+
+
+def read_table(path, legal=False):
+    """The rows of the main table, or with `legal` those of the legal rules section."""
     rows, header = [], None
+    inside = not legal
     with open(path, encoding="utf8") as fh:
         for no, line in enumerate(fh, 1):
-            if not line.startswith("|"):
+            if line.startswith(LEGAL_HEADING):
+                if not legal:
+                    break
+                inside = True
+                continue
+            if not inside or not line.startswith("|"):
                 continue
             cells = [c.strip().replace("\\|", "|") for c in re.split(r"(?<!\\)\|", line.rstrip("\n"))[1:-1]]
             if header is None:
@@ -125,6 +143,56 @@ def expand_locs(src):
         return expand(a)[0], expand(b), expand(a)
     locs = expand(src)
     return locs[0], [], locs
+
+
+
+def check_legal(rep, table):
+    """L1 columns, L2 ids L-01.. without gaps, L3 status, owner, findings and proving tests."""
+    header, rows = read_table(table, legal=True)
+    if header is None:
+        rep.fail("L1", "no %r section with its table" % LEGAL_HEADING)
+        return
+    bad = [no for no, cells in rows if len(cells) != len(LEGAL_COLUMNS)]
+    if header != LEGAL_COLUMNS:
+        rep.fail("L1", "legal header is %r" % header)
+        return
+    if bad:
+        rep.fail("L1", "legal rows with a wrong number of cells at lines %s" % bad[:10])
+        return
+    rep.ok("L1", "%d legal rows, %d columns each" % (len(rows), len(LEGAL_COLUMNS)))
+    recs = [dict(zip(["id", "rule", "part", "where", "proof", "status", "owner", "findings", "notes"], cells), line=no)
+            for no, cells in rows]
+    ids = [r["id"] for r in recs]
+    if ids != ["L-%02d" % n for n in range(1, len(ids) + 1)]:
+        rep.fail("L2", "legal ids are not L-01 to L-%02d in order: %s" % (len(ids), ids[:5]))
+    else:
+        rep.ok("L2", "legal ids L-01 to L-%02d in order" % len(ids))
+    problems = []
+    for r in recs:
+        if r["status"] not in LEGAL_STATUS:
+            problems.append("%s status %r" % (r["id"], r["status"]))
+        owners = [o.strip() for o in r["owner"].split(",")]
+        if any(o not in OWNERS for o in owners):
+            problems.append("%s owner %r" % (r["id"], r["owner"]))
+        if r["where"] in ("", "—") and r["status"] != "n/a":
+            problems.append("%s says nowhere where it is enforced" % r["id"])
+        open_findings = FINDING.findall(r["findings"].split("(")[0])
+        if r["status"] == "mismatch" and not open_findings:
+            problems.append("%s is a mismatch with no open finding named" % r["id"])
+        if r["status"] == "checked" and open_findings and "fixed" not in r["findings"]:
+            problems.append("%s is checked while naming open findings %s" % (r["id"], open_findings))
+        tests = re.findall(r"[\w./-]+\.test\.ts", r["proof"])
+        if r["status"] == "checked" and not tests:
+            problems.append("%s is checked with no test named" % r["id"])
+        for t in tests:
+            if not os.path.exists(os.path.join(fx.ROOT, t)):
+                problems.append("%s names a test that does not exist: %s" % (r["id"], t))
+    if problems:
+        for p in problems[:20]:
+            rep.fail("L3", p)
+    else:
+        rep.ok("L3", "legal statuses, owners, findings and proving tests are consistent (%s)" % ", ".join(
+            "%s %d" % (st, sum(1 for r in recs if r["status"] == st)) for st in sorted(LEGAL_STATUS)))
 
 
 def main(argv):
@@ -338,6 +406,7 @@ def main(argv):
     print("Rows by block: features %d · " % len(per_block.get("F", [])) + " · ".join("%s %d" % (c, len(per_block.get(c, [])) + (1 if c == "B" and any(r.get("special") for r in recs) else 0)) for c in fx.FORMS)
           + " · handwritten %d · total %d" % (notes, len(recs)))
     print("☐ in the six files: %d. Handwritten rows are the Checker's readings and cannot be checked by a script." % total_boxes)
+    check_legal(rep, table)
     print("%d checks passed, %d failed" % (rep.passed, rep.failed))
     return 1 if rep.failed else 0
 

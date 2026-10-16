@@ -76,6 +76,8 @@ Kind: **defect** (differs from the academy or from a ruling, to fix), **question
 | S-25 | Hiring, «المترشحون» `/dashboard/hiring` | The table is wider than its box at 1024×640 in Arabic and French and at 1440×900 in French (scroll arrows), and its rows are 102 px high at 1440×900 where the academy's are 81. | defect | People | 2026-10-14 14:36 to 14:39 |
 | S-26 | Hiring, «المخالفات» `?view=violations` | Rows are 97 px high at 1440×900 and 77 px at 1024×640, where the academy's are 81 and 71. The table fits. | defect, minor | People | 2026-10-14 14:42 |
 | S-27 | «برمجة يوم تدريب», «تسجيل مخالفة», «تقييم دوري» dialogs | All three commit with `default`; by the ruling on S-21 committing a dialog is `success`. All three fit the window at both sizes and scroll inside. | defect (R1) | People | 2026-10-14 14:41 to 14:47 |
+| S-28 | Reports `/dashboard/reports` | In French at 1024×640 a table of the page is wider than its box (its scroll arrows show), with this month or a year chosen. The known fault is fixed: the result cards show the whole amount and a loss keeps its minus sign («-231.370,00 دج», Arabic and French, 1024×640). | defect, minor | Money and stock | 2026-10-16 22:57 |
+| S-29 | Clients `/dashboard/clients` | Rows are 87 px high at 1440×900 and 71 at 1024×640, where the academy's students list it names is 82 and 65; in French at 1024×640 the table is wider than its box, where the academy's fits. | defect, minor | Clients and contracts | 2026-10-16 23:04 to 23:06 |
 
 `docs/checker-table.md` carries one more: W-010 on the registration screen (the residence is one list of the 29 communes of أم البواقي, where his form has two blanks, commune and wilaya).
 
@@ -105,6 +107,25 @@ Shot on the demo data as the manager, in Arabic light, Arabic dark and French li
 | A person's ledger | `/dashboard/hours-pay/people/:id` | an employee's debt ledger | Fits in four modes; the French 1024×640 shot did not come back from Chrome (not checked) |
 | Employee attendance, three views | `/dashboard/employee-attendance`, `?view=absences`, `?view=leave` | the academy's employee attendance family | Second strip «الحضور · الغيابات · العطل», the newer table at the academy's heights, every table fits |
 | An employee's month | `/dashboard/employee-attendance/:id` | check history and absence detail | S-24 |
+
+## Money and stock, rounds 1 and 2; Clients, rounds 1 and 2 (seventh pass, 2026-10-16 18:06 to 23:10)
+
+Shot on the demo data as the manager in four modes (Arabic light and dark at 1440×900, Arabic and French light at 1024×640), the dialogs at 1024×640. Shots taken between 18:13 and 18:18 were spoilt by the data disk turning read-only and were taken again from 22:54. The academy's expenses, finance and students lists were shot for their row heights (23:08 and 23:12).
+
+| Screen | Route | Academy screen it names | Result |
+|---|---|---|---|
+| Expenses, with «تسجيل مصروف» | `/dashboard/expenses`, `?new=1` | finance analytics; expenses | Matches: rows 81 and 64 to 72 px, as the academy's expenses (64 at 1024×640); the dialog fits and commits with `success` |
+| Income | `/dashboard/income` | finance analytics | Matches |
+| Invoices; issuing one | `/dashboard/invoices`, `/dashboard/invoices/new` | finance analytics; a student's payment | Matches; nothing wider than its box |
+| Payments, debts, reconciliation; «تسجيل دفعة» | `/dashboard/payments`, `?view=dues`, `?view=reconciliation` | finance analytics; outstanding debts | Matches; the dialog fits and commits with `success` |
+| Reports | `/dashboard/reports` | finance analytics | S-28. The cards' fault is fixed |
+| Inventory, «إضافة صنف إلى المخزون» | `/dashboard/inventory`, `?kind=MATERIAL`, `?new=1` | employees list | Matches; the dialog commits with `success` |
+| Hand-outs, a new one, the return dialog | `/dashboard/handouts`, `/dashboard/handouts/new` | expenses list; new employee | Matches; Save is `success` in `PageActions`; the return dialog commits with `success` |
+| Purchases, maintenance | `/dashboard/purchases`, `/dashboard/maintenance` | expenses list; employees list | Match |
+| A file's payments and hand-outs | `/dashboard/files/:id/payments`, `/dashboard/files/:id/handouts` | a student's payments | Match |
+| A file's form, first visit, financial study, quote, contract, residents | `/dashboard/files/:id/form` … `/residents` | employee edit; student pages; student payments; group's students | Match. The quote screen now writes its dates in words («12 أكتوبر 2026»): the ISO dates are gone |
+| Clients and a client's card | `/dashboard/clients`, `/dashboard/clients/:id` | students list; student overview | S-29 for the list; the card matches (the notice that an organisation needs its RC, NIF and NIS before its first invoice) |
+| A new file, with «قديم» | `/dashboard/files/new` | new employee | Matches; «قديم» opens «عميل قديم», which fits at both sizes |
 
 ## People's round 3 (sixth pass, 2026-10-14 14:36 to 14:49)
 

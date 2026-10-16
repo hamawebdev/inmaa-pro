@@ -10,7 +10,7 @@ Kept by the Checker, for the coordinator to run at the end. It proves the develo
 
 ## The scenario tests
 
-`src/testing/scenarios/acceptance/` (the Checker's) walks this script through the owners' exported services, each step as the role that does it, with the clock moved as a month would. Run it with `npx vitest run src/testing/scenarios/acceptance`. Measured on 2026-10-14 at 14:33: 4 files, 20 tests passed, no `todo`, none failing. Every long test has a 180 s timeout, for a machine six teammates load.
+`src/testing/scenarios/acceptance/` (the Checker's) walks this script through the owners' exported services, each step as the role that does it, with the clock moved as a month would. Run it with `npx vitest run src/testing/scenarios/acceptance`. Measured on 2026-10-16 at 22:55: 5 files, 23 tests passed, no `todo`, none failing. Every long test has a 180 s timeout, for a machine six teammates load.
 
 | File | Walks | Result |
 |---|---|---|
@@ -18,6 +18,7 @@ Kept by the Checker, for the coordinator to run at the end. It proves the develo
 | `on-demand-path.test.ts` | A1 to A11 on the request form of المنازل (cash) and of المؤسسات (bank transfer): first visit, cost study, quote approved, issued and accepted, the job's visits, the job closed by its last sign-off (`JOB_DONE`), invoice, payment, income, `verifyChains` | 2 passed |
 | `workers-stock-alerts-sanctions.test.ts` | B1, B2, C1, C2, D1 to D3, E1 to E5 | 7 passed |
 | `payslip.test.ts` | feature 38: the payslip's arithmetic against the settings' rates, and its print logged as a disclosure | 3 passed |
+| `money-paper.test.ts` | A9 and A10 on paper: the stamp-duty scale of the build notes on eleven amounts, the demo's cash invoice and receipt, an organisation's month invoiced in VAT mode (19%, prices including VAT) and paid in cash | 3 passed |
 
 A **tested** in the State column below means a test of that folder goes through the step's service and passed at that time. The screens and the sheets are not what these tests look at: they are the print audits' and the screen audits'.
 
