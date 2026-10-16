@@ -43,7 +43,7 @@ import { useErrorMessage } from "@/i18n/errors";
 import { useCodeLabel } from "@/i18n/use-code-label";
 
 import { useDates } from "../../../worker-attendance/_components/attendance-helpers";
-import { isolate, qualityKey, workerName } from "../complaints/complaint-bits";
+import { isolate, qualityKey, workerName } from "../complaints/complaint-format";
 
 const NONE = "NONE";
 
@@ -606,7 +606,12 @@ function ToComplaintForm({ report, onClose }: { report: ProblemLine; onClose: ()
         <div className="grid gap-4 sm:grid-cols-2">
           <Field>
             <FieldLabel htmlFor="to-complaint-name">{tComplaints("Fields.Complainant")}</FieldLabel>
-            <Input id="to-complaint-name" value={name} maxLength={120} onChange={(event) => setName(event.target.value)} />
+            <Input
+              id="to-complaint-name"
+              value={name}
+              maxLength={120}
+              onChange={(event) => setName(event.target.value)}
+            />
           </Field>
           <Field>
             <FieldLabel htmlFor="to-complaint-phone">{tComplaints("Fields.ComplainantPhone")}</FieldLabel>

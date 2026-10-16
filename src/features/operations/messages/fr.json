@@ -375,7 +375,10 @@
     "ReportInHand": "Ce signalement est déjà pris en charge.",
     "ReportAlreadyHandedOver": "Ce signalement est déjà transmis.",
     "ReportClosed": "Ce signalement est clos.",
-    "ReportNotHandedOver": "Ce signalement n'a pas été transmis."
+    "ReportNotHandedOver": "Ce signalement n'a pas été transmis.",
+    "PeriodInvalid": "Saisissez une période valide.",
+    "NotAtFaultOnRecord": "Cet enregistrement ne met pas cet agent en faute.",
+    "ViolationAlreadyRecorded": "Une infraction est déjà enregistrée pour cet agent sur cet enregistrement."
   },
   "FileVisits": {
     "ProgrammeTitle": "Programme",
@@ -1078,7 +1081,12 @@
       "CancelReason": "Motif de l'annulation",
       "CancelConfirm": "Annuler la tâche",
       "Keep": "Revenir",
-      "Cancelled": "Tâche annulée."
+      "Cancelled": "Tâche annulée.",
+      "List": {
+        "Columns": {
+          "Due": "Échéance"
+        }
+      }
     }
   },
   "Alerts": {
@@ -1132,5 +1140,382 @@
       "not-returned": "Tous les ordres passés sont saisis.",
       "awaiting": "Aucune visite n'attend de confirmation."
     }
+  },
+  "Complaints": {
+    "Actions": {
+      "Answer": "Enregistrer la réponse",
+      "Settle": "Régler",
+      "Reject": "Rejeter",
+      "Told": "Client informé"
+    },
+    "Answer": {
+      "Title": "Première réponse du bureau",
+      "Description": "Réclamation {number} : ce que le bureau a répondu au client. La réponse est datée de maintenant.",
+      "Note": "Ce que le bureau a répondu",
+      "Save": "Enregistrer la réponse",
+      "Saved": "La réponse est enregistrée.",
+      "Failed": "La réponse n'a pas été enregistrée."
+    },
+    "Columns": {
+      "Number": "Numéro",
+      "Client": "Client",
+      "Kind": "Type de problème",
+      "Counter": "Délai de réponse",
+      "Status": "Statut"
+    },
+    "Search": "Rechercher par client, site ou description",
+    "StatesLabel": "Réclamations affichées",
+    "States": {
+      "open": "Non closes",
+      "late": "Hors délai",
+      "settled": "Closes",
+      "all": "Toutes"
+    },
+    "Empty": {
+      "open": "Aucune réclamation ouverte.",
+      "late": "Aucune réclamation hors délai.",
+      "settled": "Aucune réclamation close.",
+      "all": "Aucune réclamation enregistrée."
+    },
+    "Loading": "Chargement…",
+    "NoMatch": "Rien ne correspond à la recherche.",
+    "Open": "Ouvrir",
+    "Minutes": "{minutes} min",
+    "HoursMinutes": "{hours} h {minutes} min",
+    "Counter": {
+      "Left": "Reste {duration}",
+      "Late": "En retard de {duration}",
+      "Early": "Réponse {duration} avant le délai",
+      "AnsweredLate": "Réponse {duration} après le délai"
+    },
+    "Fields": {
+      "Channel": "Reçue",
+      "Client": "Client",
+      "File": "Dossier",
+      "Visit": "Visite",
+      "Worker": "Agent concerné",
+      "Complainant": "Plaignant",
+      "ComplainantPhone": "Téléphone du plaignant",
+      "Kind": "Type de problème",
+      "Description": "Ce qui s'est passé",
+      "Received": "Reçue le",
+      "Target": "Délai de réponse visé",
+      "Due": "Réponse attendue avant",
+      "Counter": "Délai de réponse",
+      "FirstResponse": "Première réponse",
+      "ResponseNote": "Ce que le bureau a répondu",
+      "Fault": "Le problème est-il dû au centre ?",
+      "Settlement": "Compensation",
+      "RedoVisit": "Visite de reprise",
+      "Resolution": "Ce qui a été convenu",
+      "RejectReason": "Motif du rejet",
+      "Closed": "Close le",
+      "ClientTold": "Client informé",
+      "Violations": "Infractions"
+    },
+    "New": {
+      "Button": "Nouvelle réclamation",
+      "Title": "Enregistrer une réclamation",
+      "Description": "Le client appelle le bureau, jamais l'agent. Notez ce qu'il dit : le délai de réponse court dès maintenant.",
+      "Choose": "Choisir",
+      "ChooseClient": "Choisir le client",
+      "ComplainantHint": "Si ce n'est pas le client lui-même",
+      "NoFile": "Aucun dossier",
+      "NoVisit": "Aucune visite",
+      "NoWorker": "Aucun agent nommé",
+      "Required": "Obligatoire.",
+      "Save": "Enregistrer la réclamation",
+      "Saved": "Réclamation {number} enregistrée.",
+      "SaveFailed": "La réclamation n'a pas été enregistrée."
+    },
+    "Page": {
+      "Title": "Réclamation {number}",
+      "TitleLoading": "Réclamation",
+      "Complaint": "La réclamation",
+      "Answer": "La réponse",
+      "Settlement": "Règlement",
+      "TheClient": "le client lui-même",
+      "TargetText": "sous {duration} d'heures de bureau",
+      "NotAnswered": "pas encore de réponse",
+      "NotTold": "pas encore informé",
+      "NotSettled": "Pas encore réglée.",
+      "FromReport": "Issue du signalement"
+    },
+    "Reject": {
+      "Title": "Rejeter la réclamation",
+      "Description": "La réclamation {number} sera close comme rejetée. Indiquez pourquoi : c'est ce que l'on dira au client.",
+      "Reason": "Motif",
+      "Confirm": "Rejeter",
+      "Keep": "La garder ouverte",
+      "Done": "La réclamation est rejetée.",
+      "Failed": "La réclamation n'a pas été rejetée."
+    },
+    "Settle": {
+      "Title": "Régler la réclamation",
+      "Description": "Réclamation {number} : le centre était-il en faute, et quelle compensation a été convenue avec le client.",
+      "Amount": "Remise convenue (DA)",
+      "AmountHint": "Proposée sur la prochaine facture du dossier.",
+      "Note": "Note",
+      "NoteRequired": "Ce qui a été convenu (obligatoire)",
+      "RedoSource": "Visite à reprendre",
+      "RedoDate": "Jour de la reprise",
+      "RedoTime": "Heure de début",
+      "RedoHint": "La visite de reprise est planifiée maintenant ; son équipe est désignée sur la visite.",
+      "RedoPlanned": "Visite de reprise {number} planifiée.",
+      "ReferWorker": "Enregistrer une infraction pour {name}",
+      "ReferHint": "Les RH ou le directeur décident de la suite.",
+      "Save": "Régler",
+      "Saved": "La réclamation est réglée.",
+      "Failed": "La réclamation n'a pas été réglée.",
+      "ViolationSent": "Infraction {number} enregistrée pour les RH."
+    },
+    "Told": {
+      "Title": "Client informé",
+      "Description": "Noter que le client a été informé de l'issue de la réclamation {number}. Daté de maintenant.",
+      "Confirm": "Il a été informé",
+      "Done": "Enregistré.",
+      "Failed": "Non enregistré."
+    },
+    "Channels": {
+      "PHONE": "Par téléphone",
+      "AT_OFFICE": "Au bureau",
+      "ON_ORDER": "Sur l'ordre de mission",
+      "SUPERVISOR": "Par le superviseur",
+      "VIA_WORKER": "Par un agent"
+    },
+    "Kinds": {
+      "QUALITY": "Qualité",
+      "DELAY": "Retard",
+      "BEHAVIOUR": "Comportement",
+      "EQUIPMENT_SHORTAGE": "Manque de matériel",
+      "DAMAGE": "Dégât",
+      "ABSENCE": "Absence",
+      "OTHER": "Autre"
+    },
+    "Faults": {
+      "YES": "Oui",
+      "NO": "Non",
+      "UNDECIDED": "Non tranché"
+    },
+    "Settlements": {
+      "REDO_SERVICE": "Reprise du service",
+      "DISCOUNT": "Remise convenue",
+      "NONE": "Aucune compensation",
+      "OTHER": "Autre"
+    },
+    "Statuses": {
+      "NEW": "Nouvelle",
+      "IN_PROGRESS": "En cours",
+      "SETTLED": "Réglée",
+      "REJECTED": "Rejetée"
+    },
+    "Hours": "{hours} h"
+  },
+  "Problems": {
+    "Actions": {
+      "TakeInHand": "Prendre en charge",
+      "HandOver": "Transmettre",
+      "Close": "Clore",
+      "ToComplaint": "En faire une réclamation"
+    },
+    "BecameComplaint": "Réclamation",
+    "Columns": {
+      "Date": "Date",
+      "Kind": "Problème",
+      "Site": "Site",
+      "Status": "Statut"
+    },
+    "Empty": "Aucun problème signalé.",
+    "Search": "Rechercher par site, client, problème ou numéro",
+    "Filters": {
+      "NotClosed": "Non clos",
+      "All": "Tous",
+      "AllKinds": "Tous les problèmes"
+    },
+    "HandedToNote": "Transmis à {to}",
+    "Fields": {
+      "Client": "Client",
+      "File": "Dossier",
+      "Visit": "Visite",
+      "Kind": "Problème",
+      "Via": "Signalé",
+      "Reporter": "Signalé par",
+      "Date": "Date",
+      "Time": "Heure",
+      "Details": "Détails",
+      "ActionTaken": "Mesure prise",
+      "HandedTo": "Transmettre à"
+    },
+    "Log": {
+      "Button": "Signaler un problème",
+      "Title": "Signaler un problème",
+      "Description": "Un problème signalé par téléphone par un agent ou constaté par un superviseur. Celui écrit sur un ordre est saisi avec l'ordre.",
+      "ChooseClient": "Choisir le client",
+      "ChooseFile": "Choisir le dossier",
+      "ChooseKind": "Choisir le problème",
+      "NoVisit": "Aucune visite",
+      "NoWorker": "Pas un agent",
+      "Required": "Choisissez le client et le dossier.",
+      "DateHint": "Saisissez une date qui ne dépasse pas aujourd'hui.",
+      "Save": "Enregistrer le signalement",
+      "Saved": "Le problème est signalé.",
+      "Failed": "Le signalement n'a pas été enregistré."
+    },
+    "TakeInHand": {
+      "Title": "Prendre en charge le signalement",
+      "Description": "{kind} : le signalement apparaît en cours de traitement.",
+      "Confirm": "Prendre en charge",
+      "Done": "Le signalement est en cours de traitement.",
+      "Failed": "Non enregistré."
+    },
+    "HandOver": {
+      "Title": "Transmettre le signalement",
+      "Description": "{kind} : le service choisi le suit et le clôt.",
+      "Hint": {
+        "STOCK": "Il apparaît dans la liste du stock, et il est clos une fois le manque comblé.",
+        "CLIENTS": "Il apparaît dans les demandes de service, pour proposer un service supplémentaire au client.",
+        "PEOPLE": "Il apparaît aux ressources humaines : une blessure relève d'elles."
+      },
+      "Save": "Transmettre",
+      "Saved": "Transmis à {to}.",
+      "Failed": "Le signalement n'a pas été transmis."
+    },
+    "Close": {
+      "Title": "Clore le signalement",
+      "Description": "{kind} : indiquez ce qui a été fait.",
+      "Save": "Clore le signalement",
+      "Saved": "Le signalement est clos.",
+      "Failed": "Le signalement n'a pas été clos."
+    },
+    "ToComplaint": {
+      "Title": "Faire du signalement une réclamation",
+      "Description": "La plainte d'un résident devient une réclamation, avec son numéro et son délai de réponse.",
+      "Save": "Enregistrer la réclamation",
+      "Failed": "La réclamation n'a pas été enregistrée."
+    },
+    "Statuses": {
+      "OPEN": "Ouvert",
+      "IN_PROGRESS": "En cours",
+      "CLOSED": "Clos"
+    },
+    "Vias": {
+      "ORDER": "Sur l'ordre",
+      "PHONE": "Par téléphone",
+      "SUPERVISOR": "Par le superviseur"
+    },
+    "HandedTo": {
+      "STOCK": "Stock",
+      "CLIENTS": "Demandes de service",
+      "PEOPLE": "Ressources humaines"
+    }
+  },
+  "Ratings": {
+    "ByLabel": "Regrouper les évaluations",
+    "By": {
+      "file": "Par dossier",
+      "worker": "Par agent",
+      "visit": "Par visite"
+    },
+    "Columns": {
+      "file": "Dossier",
+      "worker": "Agent",
+      "visit": "Visite",
+      "Visits": "Visites évaluées",
+      "Recommend": "Nous recommanderait"
+    },
+    "Criteria": {
+      "quality": "Qualité du nettoyage",
+      "punctuality": "Ponctualité",
+      "behaviour": "Comportement de l'agent",
+      "materials": "Qualité des produits",
+      "overall": "Évaluation générale"
+    },
+    "Search": {
+      "file": "Rechercher par dossier ou client",
+      "worker": "Rechercher un agent",
+      "visit": "Rechercher par visite ou site"
+    },
+    "Empty": "Aucune visite évaluée ce mois-ci.",
+    "Month": {
+      "Previous": "Mois précédent",
+      "Next": "Mois suivant",
+      "Current": "Ce mois-ci"
+    },
+    "Yes": "Oui",
+    "No": "Non",
+    "Stats": {
+      "Visits": "Visites réceptionnées",
+      "Rated": "{count} évaluées",
+      "Overall": "Évaluation générale",
+      "OutOfFive": "sur 5",
+      "Recommend": "Nous recommanderaient",
+      "Answers": "{yes} sur {count} réponses"
+    }
+  },
+  "SupervisorZones": {
+    "ViewsLabel": "Listes des superviseurs",
+    "Views": {
+      "zones": "Zones et superviseurs",
+      "workers": "Agents par zone"
+    },
+    "Columns": {
+      "Zone": "Zone",
+      "Supervisor": "Superviseur",
+      "Workers": "Agents",
+      "VisitsToday": "Visites du jour",
+      "Number": "Numéro",
+      "Worker": "Agent"
+    },
+    "NoSupervisor": "Sans superviseur",
+    "NoCommune": "Aucune commune",
+    "NoZone": "Sans zone",
+    "AllZones": "Toutes les zones",
+    "Search": "Rechercher par nom ou numéro",
+    "Assign": "Désigner un superviseur",
+    "DaySheet": "Feuille du jour",
+    "Move": "Changer de zone",
+    "Back": "Retour",
+    "Loading": "Chargement…",
+    "NoMatch": "Rien ne correspond à la recherche.",
+    "Empty": {
+      "zones": "Aucune zone : une zone est créée quand la commune d'un site en a besoin.",
+      "workers": "Aucun agent en service."
+    },
+    "AssignDialog": {
+      "Title": "Désigner le superviseur de la zone",
+      "Description": "{zone} : le nouveau superviseur prend la zone à partir du jour choisi, avec ses visites à venir. Les ordres déjà imprimés sont marqués modifiés.",
+      "Supervisor": "Superviseur",
+      "Choose": "Choisir un employé",
+      "Post": "superviseur",
+      "FromDate": "À partir du",
+      "Save": "Désigner",
+      "Saved": "Le superviseur est désigné.",
+      "SavedHint": "Visites à venir qui le suivent : {visits}. Ordres imprimés marqués modifiés : {orders}.",
+      "Failed": "Le superviseur n'a pas été désigné."
+    },
+    "MoveDialog": {
+      "Title": "Changer de zone",
+      "Description": "{name} : proposé en priorité pour les visites de la nouvelle zone, sous son superviseur. Les visites déjà planifiées restent telles quelles.",
+      "Save": "Enregistrer",
+      "Saved": "La zone est modifiée.",
+      "Failed": "La zone n'a pas été modifiée."
+    }
+  },
+  "WorkerViolation": {
+    "Button": "Enregistrer une infraction",
+    "Title": "Enregistrer une infraction",
+    "Description": {
+      "COMPLAINT": "La réclamation a été réglée, le centre étant en faute. L'infraction est transmise aux RH, qui décident de la suite avec le directeur.",
+      "INSPECTION": "Le superviseur a noté cet agent ou l'a trouvé absent. L'infraction est transmise aux RH, qui décident de la suite avec le directeur.",
+      "PROBLEM_REPORT": "Dégât pendant le travail lors de cette visite. L'infraction est transmise aux RH, qui décident de la suite avec le directeur."
+    },
+    "Worker": "Agent",
+    "What": "Ce qui s'est passé",
+    "Serious": "Infraction grave",
+    "SeriousHint": "Non cochée, elle arrive comme mineure ; les RH peuvent la changer en décidant.",
+    "Back": "Retour",
+    "Save": "Enregistrer",
+    "Saved": "Infraction {number} enregistrée pour les RH.",
+    "Failed": "L'infraction n'a pas été enregistrée."
   }
 }

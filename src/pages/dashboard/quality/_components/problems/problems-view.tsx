@@ -44,10 +44,11 @@ import { useSectionLevel } from "@/hooks/use-session";
 import { useErrorMessage } from "@/i18n/errors";
 import { useCodeLabel } from "@/i18n/use-code-label";
 import { useSearchParams } from "@/lib/compat/navigation";
+import { RecordViolationButton } from "@/features/operations/components/worker-violation/record-violation-button";
 import { normaliseName } from "@/lib/text/normalise";
 
 import { useDates } from "../../../worker-attendance/_components/attendance-helpers";
-import { qualityKey, workerName } from "../complaints/complaint-bits";
+import { qualityKey, workerName } from "../complaints/complaint-format";
 import { qualityHref } from "../quality-views";
 import { CloseProblemDialog, HandOverDialog, LogProblemDialog, ToComplaintDialog } from "./problem-dialogs";
 
@@ -176,11 +177,15 @@ export function ProblemsView() {
         header: t("Columns.Date"),
         cell: ({ row }) => (
           <div className="min-w-0">
-            <Ltr className="block font-bold whitespace-nowrap">
-              {dates.short(row.original.occurredDate)}
-              {row.original.occurredTime && ` ${row.original.occurredTime}`}
-            </Ltr>
-            <span className="block truncate text-sm text-muted-foreground">{viaLabel(row.original.reportedVia)}</span>
+            <span className="block font-bold whitespace-nowrap">
+              <Ltr>
+                {dates.short(row.original.occurredDate)}
+                {row.original.occurredTime && ` ${row.original.occurredTime}`}
+              </Ltr>
+            </span>
+            <span className="block truncate text-xs leading-4 text-muted-foreground">
+              {viaLabel(row.original.reportedVia)}
+            </span>
           </div>
         ),
       },
@@ -196,7 +201,7 @@ export function ProblemsView() {
               <bdi className="block truncate font-bold" title={name}>
                 {name}
               </bdi>
-              <bdi className="block truncate text-sm text-muted-foreground" title={second}>
+              <bdi className="block truncate text-xs leading-4 text-muted-foreground" title={second}>
                 {second}
               </bdi>
             </div>
@@ -210,11 +215,11 @@ export function ProblemsView() {
           <div className="max-w-64 min-w-0">
             <span className="block truncate font-bold">{kindLabel(row.original.kind)}</span>
             {row.original.details ? (
-              <bdi className="block truncate text-sm text-muted-foreground" title={row.original.details}>
+              <bdi className="block truncate text-xs leading-4 text-muted-foreground" title={row.original.details}>
                 {row.original.details}
               </bdi>
             ) : (
-              <span className="block text-sm text-muted-foreground">—</span>
+              <span className="block text-xs leading-4 text-muted-foreground">—</span>
             )}
           </div>
         ),
@@ -240,7 +245,7 @@ export function ProblemsView() {
               <ProblemStatusChip status={line.status} />
               {note && (
                 <bdi
-                  className="mt-1 block truncate text-sm text-muted-foreground"
+                  className="mt-1 block truncate text-xs leading-4 text-muted-foreground"
                   title={typeof note === "string" ? note : undefined}
                 >
                   {note}
@@ -255,10 +260,23 @@ export function ProblemsView() {
         header: "",
         cell: ({ row }) => {
           const line = row.original;
-          if (!mayWrite || line.status === "CLOSED") return null;
+          if (!mayWrite) return null;
           const buttons: Array<{ key: string; label: string; icon: LucideIcon; onClick: () => void }> = [];
+          const damage = line.kind === "DAMAGE_DURING_WORK";
+          if (line.status === "CLOSED") {
+            return damage ? (
+              <div className="flex items-center justify-end gap-2">
+                <RecordViolationButton kind="PROBLEM_REPORT" sourceId={line.id} size="sm" iconOnly />
+              </div>
+            ) : null;
+          }
           if (line.status === "OPEN") {
-            buttons.push({ key: "take", label: t("Actions.TakeInHand"), icon: Hand, onClick: () => void takeInHand(line) });
+            buttons.push({
+              key: "take",
+              label: t("Actions.TakeInHand"),
+              icon: Hand,
+              onClick: () => void takeInHand(line),
+            });
           }
           if (!line.handedTo) {
             buttons.push({ key: "hand", label: t("Actions.HandOver"), icon: Forward, onClick: () => setHanding(line) });
@@ -271,9 +289,15 @@ export function ProblemsView() {
               onClick: () => setConverting(line),
             });
           }
-          buttons.push({ key: "close", label: t("Actions.Close"), icon: CircleCheckBig, onClick: () => setClosing(line) });
+          buttons.push({
+            key: "close",
+            label: t("Actions.Close"),
+            icon: CircleCheckBig,
+            onClick: () => setClosing(line),
+          });
           return (
             <div className="flex items-center justify-end gap-2">
+              {damage && <RecordViolationButton kind="PROBLEM_REPORT" sourceId={line.id} size="sm" iconOnly />}
               {buttons.map(({ key, label, icon: Icon, onClick }) => (
                 <Button key={key} variant="outline" size="sm" onClick={onClick} title={label}>
                   <Icon />

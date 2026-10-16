@@ -15,6 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCentreClock } from "@/features/operations/components/use-centre-clock";
 import { Fact } from "@/features/operations/components/visit-entry/visit-entry-fields";
+import { RecordViolationButton } from "@/features/operations/components/worker-violation/record-violation-button";
 import {
   getComplaintQuery,
   recordClientToldAction,
@@ -34,11 +35,8 @@ import {
   CounterNote,
   DayText,
   Moment,
-  isolate,
-  qualityKey,
-  useDuration,
-  workerName,
 } from "../../_components/complaints/complaint-bits";
+import { isolate, qualityKey, useDuration, workerName } from "../../_components/complaints/complaint-format";
 import { FirstResponseDialog, SettleDialog } from "../../_components/complaints/complaint-dialogs";
 import { qualityHref } from "../../_components/quality-views";
 
@@ -121,6 +119,7 @@ export default function ComplaintPage() {
             {t("Actions.Reject")}
           </Button>
         )}
+        {data.status === "SETTLED" && <RecordViolationButton kind="COMPLAINT" sourceId={data.id} />}
         {!open && !data.clientTold && (
           <Button variant="info" onClick={() => void told()}>
             <PhoneCall />
@@ -195,9 +194,9 @@ function ComplaintFacts({ complaint }: { complaint: ComplaintDetail }) {
             <Fact label={t("Fields.Client")}>
               <bdi className="block">{complaint.client.name}</bdi>
               {complaint.clientPhones.length > 0 && (
-                <Ltr className="block text-sm font-normal text-muted-foreground">
-                  {complaint.clientPhones.join(" · ")}
-                </Ltr>
+                <span className="block text-sm font-normal text-muted-foreground">
+                  <Ltr>{complaint.clientPhones.join(" · ")}</Ltr>
+                </span>
               )}
             </Fact>
             <Fact label={t("Fields.File")}>
@@ -239,7 +238,9 @@ function ComplaintFacts({ complaint }: { complaint: ComplaintDetail }) {
               {complaint.worker ? (
                 <>
                   <bdi className="block">{workerName(complaint.worker)}</bdi>
-                  <Ltr className="block text-sm font-normal text-muted-foreground">{complaint.worker.number}</Ltr>
+                  <span className="block text-sm font-normal text-muted-foreground">
+                    <Ltr>{complaint.worker.number}</Ltr>
+                  </span>
                 </>
               ) : (
                 none
@@ -250,7 +251,9 @@ function ComplaintFacts({ complaint }: { complaint: ComplaintDetail }) {
                 <>
                   {complaint.complainantName && <bdi className="block">{complaint.complainantName}</bdi>}
                   {complaint.complainantPhone && (
-                    <Ltr className="block text-sm font-normal text-muted-foreground">{complaint.complainantPhone}</Ltr>
+                    <span className="block text-sm font-normal text-muted-foreground">
+                      <Ltr>{complaint.complainantPhone}</Ltr>
+                    </span>
                   )}
                 </>
               ) : (
@@ -329,22 +332,20 @@ function ComplaintFacts({ complaint }: { complaint: ComplaintDetail }) {
                   <Fact label={t("Fields.Settlement")}>
                     {complaint.settlement ? settlementLabel(complaint.settlement) : none}
                     {complaint.settlementAmount !== null && (
-                      <Ltr className="block">{money(complaint.settlementAmount)}</Ltr>
+                      <span className="block">
+                        <Ltr>{money(complaint.settlementAmount)}</Ltr>
+                      </span>
                     )}
                   </Fact>
                 </>
               )}
               {complaint.redoVisit && (
                 <Fact label={t("Fields.RedoVisit")}>
-                  <Link
-                    to={`${VISITS_PATH}/${complaint.redoVisit.id}`}
-                    className="underline-offset-4 hover:underline"
-                  >
+                  <Link to={`${VISITS_PATH}/${complaint.redoVisit.id}`} className="underline-offset-4 hover:underline">
                     <Ltr>{complaint.redoVisit.number}</Ltr>
                   </Link>
                   <span className="block text-sm font-normal text-muted-foreground">
-                    <DayText date={complaint.redoVisit.visitDate} /> ·{" "}
-                    {visitStatusLabel(complaint.redoVisit.status)}
+                    <DayText date={complaint.redoVisit.visitDate} /> · {visitStatusLabel(complaint.redoVisit.status)}
                   </span>
                 </Fact>
               )}

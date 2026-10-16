@@ -1,5 +1,13 @@
 import type { CodeLabelCase } from "@/i18n/code-labels";
 
+import {
+  COMPLAINT_CHANNELS,
+  COMPLAINT_FAULTS,
+  COMPLAINT_KINDS,
+  COMPLAINT_SETTLEMENTS,
+  COMPLAINT_STATUSES,
+} from "./services/complaints";
+import { HANDED_TO, PROBLEM_STATUSES, PROBLEM_VIAS } from "./services/problem-reports";
 import { VISIT_STATUS_REASONS } from "./services/visit-status";
 
 import { CORRECTIVE_SOURCES, INSPECTION_STATUSES, TASK_STATUSES } from "./validators/inspection";
@@ -61,4 +69,12 @@ export const codeLabelCases: readonly CodeLabelCase[] = [
   ["Inspections.Levels", QUALITY_LEVELS],
   ["CorrectiveTasks.Statuses", TASK_STATUSES],
   ["CorrectiveTasks.Sources", CORRECTIVE_SOURCES],
+  ["Complaints.Channels", COMPLAINT_CHANNELS],
+  ["Complaints.Kinds", COMPLAINT_KINDS],
+  ["Complaints.Faults", COMPLAINT_FAULTS],
+  ["Complaints.Settlements", COMPLAINT_SETTLEMENTS],
+  ["Complaints.Statuses", COMPLAINT_STATUSES],
+  ["Problems.Statuses", PROBLEM_STATUSES],
+  ["Problems.Vias", PROBLEM_VIAS],
+  ["Problems.HandedTo", HANDED_TO],
 ];

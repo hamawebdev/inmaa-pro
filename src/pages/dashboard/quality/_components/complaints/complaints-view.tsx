@@ -30,7 +30,8 @@ import { useSearchParams } from "@/lib/compat/navigation";
 import { normaliseName } from "@/lib/text/normalise";
 
 import { qualityHref } from "../quality-views";
-import { ComplaintStatusChip, CounterChip, CounterNote, Moment, qualityKey } from "./complaint-bits";
+import { ComplaintStatusChip, CounterChip, CounterNote, Moment } from "./complaint-bits";
+import { qualityKey } from "./complaint-format";
 import { NewComplaintDialog } from "./new-complaint-dialog";
 
 /** The list in the address: `?view=complaints&state=late`, as the alert tile opens it. Open by default. */
@@ -100,8 +101,10 @@ export function ComplaintsView() {
         header: t("Columns.Number"),
         cell: ({ row }) => (
           <div className="min-w-0">
-            <Ltr className="block font-bold">{row.original.number}</Ltr>
-            <Moment at={row.original.received} className="block text-sm text-muted-foreground" />
+            <span className="block font-bold">
+              <Ltr>{row.original.number}</Ltr>
+            </span>
+            <Moment at={row.original.received} className="block text-xs leading-4 text-muted-foreground" />
           </div>
         ),
       },
@@ -116,7 +119,7 @@ export function ComplaintsView() {
               <bdi className="block truncate font-bold" title={client.name}>
                 {client.name}
               </bdi>
-              <bdi className="block truncate text-sm text-muted-foreground" title={second}>
+              <bdi className="block truncate text-xs leading-4 text-muted-foreground" title={second}>
                 {second}
               </bdi>
             </div>
@@ -129,7 +132,9 @@ export function ComplaintsView() {
         cell: ({ row }) => (
           <div className="max-w-48 min-w-0">
             <span className="block truncate font-bold">{kindLabel(row.original.kind)}</span>
-            <span className="block truncate text-sm text-muted-foreground">{channelLabel(row.original.channel)}</span>
+            <span className="block truncate text-xs leading-4 text-muted-foreground">
+              {channelLabel(row.original.channel)}
+            </span>
           </div>
         ),
       },

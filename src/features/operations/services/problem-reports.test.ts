@@ -299,6 +299,7 @@ describe("problemToComplaint", () => {
 
 describe("demoComplaints", () => {
   it("leaves an open complaint inside its target, a settled one and a report handed over, once", async () => {
+    // The folder's demo data (demo.ts) calls demoComplaints once; a second call adds nothing.
     const demo = await createTestDatabase({ demo: ["core", "people", "clients", "operations"] });
     try {
       const tools = {
@@ -306,8 +307,13 @@ describe("demoComplaints", () => {
         sessionOf: async () => demo.manager,
         names: demo.demo,
       };
-      const names = await demo.transact((ex, ctx) => demoComplaints(ex, ctx, tools));
-      expect(Object.keys(names).sort()).toEqual(["complaintOpen", "complaintSettled", "problemHandedOver"]);
+      const named = demo.demo.operations ?? {};
+      const names = {
+        complaintOpen: named.complaintOpen ?? "",
+        complaintSettled: named.complaintSettled ?? "",
+        problemHandedOver: named.problemHandedOver ?? "",
+      };
+      expect(Object.values(names).every((id) => id.length > 0)).toBe(true);
       const complaints = await demo.db
         .selectFrom("Complaint")
         .select(["id", "status", "settlement", "clientToldAt", "firstResponseAt"])

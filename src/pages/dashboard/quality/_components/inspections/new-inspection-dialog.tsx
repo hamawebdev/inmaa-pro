@@ -63,11 +63,11 @@ function NewInspectionForm({ onClose }: { onClose: () => void }) {
   const { today } = useCentreClock();
   const files = useQuery({
     queryKey: [...pathKey(INSPECTIONS_PATH), "inspections", "files"],
-    queryFn: () => listInspectableFilesQuery(),
+    queryFn: () => listInspectableFilesQuery(undefined),
   });
   const employees = useQuery({
     queryKey: [...pathKey(INSPECTIONS_PATH), "employees"],
-    queryFn: () => listEmployeeChoicesQuery(),
+    queryFn: () => listEmployeeChoicesQuery(undefined),
   });
 
   const [fileId, setFileId] = React.useState("");

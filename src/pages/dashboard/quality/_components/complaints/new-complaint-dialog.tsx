@@ -33,7 +33,7 @@ import { useErrorMessage } from "@/i18n/errors";
 import { useCodeLabel } from "@/i18n/use-code-label";
 
 import { useDates } from "../../../worker-attendance/_components/attendance-helpers";
-import { isolate, qualityKey, workerName } from "./complaint-bits";
+import { isolate, qualityKey, workerName } from "./complaint-format";
 
 /** A Select item cannot carry an empty value: this one stands for "none". */
 const NONE = "NONE";

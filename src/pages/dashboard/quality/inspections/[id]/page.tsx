@@ -15,6 +15,7 @@ import {
   INSPECTIONS_PATH,
   markInspectionMissedAction,
 } from "@/features/operations/services/inspections";
+import { RecordViolationButton } from "@/features/operations/components/worker-violation/record-violation-button";
 import { useSectionLevel } from "@/hooks/use-session";
 import { useErrorMessage } from "@/i18n/errors";
 import { pathKey } from "@/lib/compat/revalidate";
@@ -98,6 +99,7 @@ export default function InspectionPage() {
                 {t("Cancel")}
               </Button>
             )}
+            {status === "DONE" && <RecordViolationButton kind="INSPECTION" sourceId={id} />}
             {status !== "CANCELLED" && (
               <Button asChild variant="info">
                 <Link to={inspectionSheetHref(id)}>

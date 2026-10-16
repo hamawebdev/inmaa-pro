@@ -2,6 +2,7 @@ import type { RouteObject } from "react-router-dom";
 
 import FileTasksPage from "@/pages/dashboard/files/[id]/tasks/page";
 import FileVisitsPage from "@/pages/dashboard/files/[id]/visits/page";
+import ComplaintPage from "@/pages/dashboard/quality/complaints/[id]/page";
 import InspectionPage from "@/pages/dashboard/quality/inspections/[id]/page";
 import InspectionSheetPrintPage from "@/pages/dashboard/quality/inspections/[id]/print/page";
 import QualityPage from "@/pages/dashboard/quality/page";
@@ -33,6 +34,8 @@ export const operationsRoutes: RouteObject[] = [
   { path: "visits/:id", element: <VisitPage /> },
   // One inspection: its returned sheet typed in.
   { path: "quality/inspections/:id", element: <InspectionPage /> },
+  // One complaint: its counter, first answer, settlement or rejection.
+  { path: "quality/complaints/:id", element: <ComplaintPage /> },
 
   // Printed sheets. Each is shown by a page whose path ends in /print.
   { path: "visits/:id/print", element: <VisitOrderPrintPage /> },

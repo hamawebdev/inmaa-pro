@@ -375,7 +375,10 @@
     "ReportInHand": "This report is already being dealt with.",
     "ReportAlreadyHandedOver": "This report is already handed over.",
     "ReportClosed": "This report is closed.",
-    "ReportNotHandedOver": "This report was not handed over."
+    "ReportNotHandedOver": "This report was not handed over.",
+    "PeriodInvalid": "Enter a valid period.",
+    "NotAtFaultOnRecord": "This record does not find this worker at fault.",
+    "ViolationAlreadyRecorded": "A violation is already recorded for this worker on this record."
   },
   "FileVisits": {
     "ProgrammeTitle": "Programme",
@@ -1078,7 +1081,12 @@
       "CancelReason": "Reason for cancelling",
       "CancelConfirm": "Cancel the task",
       "Keep": "Go back",
-      "Cancelled": "Task cancelled."
+      "Cancelled": "Task cancelled.",
+      "List": {
+        "Columns": {
+          "Due": "Due"
+        }
+      }
     }
   },
   "Alerts": {
@@ -1132,5 +1140,382 @@
       "not-returned": "Every past order is typed in.",
       "awaiting": "No visit waits for confirmation."
     }
+  },
+  "Complaints": {
+    "Actions": {
+      "Answer": "Record the answer",
+      "Settle": "Settle",
+      "Reject": "Reject",
+      "Told": "Client told"
+    },
+    "Answer": {
+      "Title": "The office's first answer",
+      "Description": "Complaint {number}: what the office told the client. The answer is dated now.",
+      "Note": "What the office said",
+      "Save": "Save the answer",
+      "Saved": "The answer is recorded.",
+      "Failed": "The answer was not saved."
+    },
+    "Columns": {
+      "Number": "Number",
+      "Client": "Client",
+      "Kind": "Kind of problem",
+      "Counter": "Response time",
+      "Status": "Status"
+    },
+    "Search": "Search by client, site or description",
+    "StatesLabel": "Which complaints",
+    "States": {
+      "open": "Not closed",
+      "late": "Past their target",
+      "settled": "Closed",
+      "all": "All"
+    },
+    "Empty": {
+      "open": "No complaint is open.",
+      "late": "No complaint is past its target.",
+      "settled": "No complaint is closed yet.",
+      "all": "No complaint recorded."
+    },
+    "Loading": "Loading…",
+    "NoMatch": "Nothing matches the search.",
+    "Open": "Open",
+    "Minutes": "{minutes} min",
+    "HoursMinutes": "{hours} h {minutes} min",
+    "Counter": {
+      "Left": "{duration} left",
+      "Late": "{duration} late",
+      "Early": "Answered {duration} before the target",
+      "AnsweredLate": "Answered {duration} after the target"
+    },
+    "Fields": {
+      "Channel": "Received",
+      "Client": "Client",
+      "File": "File",
+      "Visit": "Visit",
+      "Worker": "Worker concerned",
+      "Complainant": "Complainant",
+      "ComplainantPhone": "Complainant's phone",
+      "Kind": "Kind of problem",
+      "Description": "What happened",
+      "Received": "Received",
+      "Target": "Target response time",
+      "Due": "Answer due by",
+      "Counter": "Response time",
+      "FirstResponse": "First answer",
+      "ResponseNote": "What the office said",
+      "Fault": "Is the problem the centre's fault?",
+      "Settlement": "Compensation",
+      "RedoVisit": "Service redone",
+      "Resolution": "What was agreed",
+      "RejectReason": "Why it was rejected",
+      "Closed": "Closed on",
+      "ClientTold": "Client told",
+      "Violations": "Violations"
+    },
+    "New": {
+      "Button": "New complaint",
+      "Title": "Record a complaint",
+      "Description": "The client calls the office, never the worker. Write what he says: the response time counts from now.",
+      "Choose": "Choose",
+      "ChooseClient": "Choose the client",
+      "ComplainantHint": "When it is not the client himself",
+      "NoFile": "No file",
+      "NoVisit": "No visit",
+      "NoWorker": "No worker named",
+      "Required": "Required.",
+      "Save": "Record the complaint",
+      "Saved": "Complaint {number} recorded.",
+      "SaveFailed": "The complaint was not recorded."
+    },
+    "Page": {
+      "Title": "Complaint {number}",
+      "TitleLoading": "Complaint",
+      "Complaint": "The complaint",
+      "Answer": "The answer",
+      "Settlement": "Settlement",
+      "TheClient": "the client himself",
+      "TargetText": "within {duration} of office time",
+      "NotAnswered": "not answered yet",
+      "NotTold": "not told yet",
+      "NotSettled": "Not settled yet.",
+      "FromReport": "From the problem report"
+    },
+    "Reject": {
+      "Title": "Reject the complaint",
+      "Description": "Complaint {number} will be closed as rejected. Write why: it is what the client is told.",
+      "Reason": "Why",
+      "Confirm": "Reject",
+      "Keep": "Keep it open",
+      "Done": "The complaint is rejected.",
+      "Failed": "The complaint was not rejected."
+    },
+    "Settle": {
+      "Title": "Settle the complaint",
+      "Description": "Complaint {number}: whether the centre was at fault, and the compensation agreed with the client.",
+      "Amount": "Discount agreed (DA)",
+      "AmountHint": "Proposed on the file's next invoice.",
+      "Note": "Note",
+      "NoteRequired": "What was agreed (required)",
+      "RedoSource": "Visit to redo",
+      "RedoDate": "Day of the redo",
+      "RedoTime": "Start time",
+      "RedoHint": "The redo visit is planned now; its team is named on the visit.",
+      "RedoPlanned": "Redo visit {number} planned.",
+      "ReferWorker": "Record a violation for {name}",
+      "ReferHint": "HR or the manager decides what follows.",
+      "Save": "Settle",
+      "Saved": "The complaint is settled.",
+      "Failed": "The complaint was not settled.",
+      "ViolationSent": "Violation {number} recorded for HR."
+    },
+    "Told": {
+      "Title": "The client was told",
+      "Description": "Record that the client was told how complaint {number} ended. It is dated now.",
+      "Confirm": "He was told",
+      "Done": "Recorded.",
+      "Failed": "Not recorded."
+    },
+    "Channels": {
+      "PHONE": "By phone",
+      "AT_OFFICE": "At the office",
+      "ON_ORDER": "On the returned order",
+      "SUPERVISOR": "Through the supervisor",
+      "VIA_WORKER": "Through a worker"
+    },
+    "Kinds": {
+      "QUALITY": "Quality",
+      "DELAY": "Delay",
+      "BEHAVIOUR": "Behaviour",
+      "EQUIPMENT_SHORTAGE": "Equipment shortage",
+      "DAMAGE": "Damage",
+      "ABSENCE": "Absence",
+      "OTHER": "Other"
+    },
+    "Faults": {
+      "YES": "Yes",
+      "NO": "No",
+      "UNDECIDED": "Not decided"
+    },
+    "Settlements": {
+      "REDO_SERVICE": "Redo the service",
+      "DISCOUNT": "Agreed discount",
+      "NONE": "No compensation",
+      "OTHER": "Another way"
+    },
+    "Statuses": {
+      "NEW": "New",
+      "IN_PROGRESS": "Being handled",
+      "SETTLED": "Settled",
+      "REJECTED": "Rejected"
+    },
+    "Hours": "{hours} h"
+  },
+  "Problems": {
+    "Actions": {
+      "TakeInHand": "Take in hand",
+      "HandOver": "Hand over",
+      "Close": "Close",
+      "ToComplaint": "Make it a complaint"
+    },
+    "BecameComplaint": "Complaint",
+    "Columns": {
+      "Date": "Date",
+      "Kind": "Problem",
+      "Site": "Site",
+      "Status": "Status"
+    },
+    "Empty": "No problem reported.",
+    "Search": "Search by site, client, problem or number",
+    "Filters": {
+      "NotClosed": "Not closed",
+      "All": "All",
+      "AllKinds": "Every problem"
+    },
+    "HandedToNote": "Handed to {to}",
+    "Fields": {
+      "Client": "Client",
+      "File": "File",
+      "Visit": "Visit",
+      "Kind": "Problem",
+      "Via": "Reported",
+      "Reporter": "Reported by",
+      "Date": "Date",
+      "Time": "Time",
+      "Details": "Details",
+      "ActionTaken": "What was done",
+      "HandedTo": "Hand to"
+    },
+    "Log": {
+      "Button": "Report a problem",
+      "Title": "Report a problem",
+      "Description": "A problem a worker phoned in or a supervisor found. One written on an order is typed in with the order.",
+      "ChooseClient": "Choose the client",
+      "ChooseFile": "Choose the file",
+      "ChooseKind": "Choose the problem",
+      "NoVisit": "No visit",
+      "NoWorker": "Not a worker",
+      "Required": "Choose the client and the file.",
+      "DateHint": "Enter a date no later than today.",
+      "Save": "Save the report",
+      "Saved": "The problem is reported.",
+      "Failed": "The report was not saved."
+    },
+    "TakeInHand": {
+      "Title": "Take the report in hand",
+      "Description": "{kind}: the report shows as being handled.",
+      "Confirm": "Take in hand",
+      "Done": "The report is being handled.",
+      "Failed": "Not saved."
+    },
+    "HandOver": {
+      "Title": "Hand the report over",
+      "Description": "{kind}: the department you choose follows it up and closes it.",
+      "Hint": {
+        "STOCK": "It shows in the stock's list, and is closed once the shortage is covered.",
+        "CLIENTS": "It shows in the service requests, for an extra service to offer the client.",
+        "PEOPLE": "It shows in human resources: an injury is theirs to follow."
+      },
+      "Save": "Hand over",
+      "Saved": "Handed to {to}.",
+      "Failed": "The report was not handed over."
+    },
+    "Close": {
+      "Title": "Close the report",
+      "Description": "{kind}: write what was done.",
+      "Save": "Close the report",
+      "Saved": "The report is closed.",
+      "Failed": "The report was not closed."
+    },
+    "ToComplaint": {
+      "Title": "Make the report a complaint",
+      "Description": "A resident's complaint becomes a complaint of the client's, with its own number and response time.",
+      "Save": "Record the complaint",
+      "Failed": "The complaint was not recorded."
+    },
+    "Statuses": {
+      "OPEN": "Open",
+      "IN_PROGRESS": "Being handled",
+      "CLOSED": "Closed"
+    },
+    "Vias": {
+      "ORDER": "On the order",
+      "PHONE": "By phone",
+      "SUPERVISOR": "By the supervisor"
+    },
+    "HandedTo": {
+      "STOCK": "Stock",
+      "CLIENTS": "Service requests",
+      "PEOPLE": "Human resources"
+    }
+  },
+  "Ratings": {
+    "ByLabel": "Group the ratings",
+    "By": {
+      "file": "By file",
+      "worker": "By worker",
+      "visit": "By visit"
+    },
+    "Columns": {
+      "file": "File",
+      "worker": "Worker",
+      "visit": "Visit",
+      "Visits": "Visits rated",
+      "Recommend": "Would recommend"
+    },
+    "Criteria": {
+      "quality": "Quality of cleaning",
+      "punctuality": "Punctuality",
+      "behaviour": "Worker's conduct",
+      "materials": "Quality of products",
+      "overall": "Overall"
+    },
+    "Search": {
+      "file": "Search by file or client",
+      "worker": "Search by worker",
+      "visit": "Search by visit or site"
+    },
+    "Empty": "No visit was rated this month.",
+    "Month": {
+      "Previous": "Previous month",
+      "Next": "Next month",
+      "Current": "This month"
+    },
+    "Yes": "Yes",
+    "No": "No",
+    "Stats": {
+      "Visits": "Visits signed off",
+      "Rated": "{count} rated",
+      "Overall": "Overall rating",
+      "OutOfFive": "out of 5",
+      "Recommend": "Would recommend us",
+      "Answers": "{yes} of {count} answers"
+    }
+  },
+  "SupervisorZones": {
+    "ViewsLabel": "Supervisor lists",
+    "Views": {
+      "zones": "Zones and supervisors",
+      "workers": "Workers by zone"
+    },
+    "Columns": {
+      "Zone": "Zone",
+      "Supervisor": "Supervisor",
+      "Workers": "Workers",
+      "VisitsToday": "Today's visits",
+      "Number": "Number",
+      "Worker": "Worker"
+    },
+    "NoSupervisor": "No supervisor",
+    "NoCommune": "No commune yet",
+    "NoZone": "No zone",
+    "AllZones": "Every zone",
+    "Search": "Search by name or number",
+    "Assign": "Name a supervisor",
+    "DaySheet": "Day sheet",
+    "Move": "Change zone",
+    "Back": "Back",
+    "Loading": "Loading…",
+    "NoMatch": "Nothing matches the search.",
+    "Empty": {
+      "zones": "No zone yet: a zone is made when a site's commune first needs one.",
+      "workers": "No worker in service."
+    },
+    "AssignDialog": {
+      "Title": "Name the zone's supervisor",
+      "Description": "{zone}: the new supervisor takes over from the day chosen, with the zone's visits to come. Orders already printed are marked changed.",
+      "Supervisor": "Supervisor",
+      "Choose": "Choose an employee",
+      "Post": "supervisor",
+      "FromDate": "From",
+      "Save": "Name",
+      "Saved": "The supervisor is named.",
+      "SavedHint": "Visits to come that follow him: {visits}. Printed orders marked changed: {orders}.",
+      "Failed": "The supervisor was not named."
+    },
+    "MoveDialog": {
+      "Title": "Move to another zone",
+      "Description": "{name}: offered first for the new zone's visits, under its supervisor. Visits already planned stay as they are.",
+      "Save": "Save",
+      "Saved": "The zone is changed.",
+      "Failed": "The zone was not changed."
+    }
+  },
+  "WorkerViolation": {
+    "Button": "Record a violation",
+    "Title": "Record a violation",
+    "Description": {
+      "COMPLAINT": "The complaint was settled with the centre at fault. The violation goes to HR, who decide what follows with the manager.",
+      "INSPECTION": "The supervisor noted this worker or found her absent. The violation goes to HR, who decide what follows with the manager.",
+      "PROBLEM_REPORT": "Damage during work on this visit. The violation goes to HR, who decide what follows with the manager."
+    },
+    "Worker": "Worker",
+    "What": "What happened",
+    "Serious": "Serious violation",
+    "SeriousHint": "Left unticked, it arrives as minor; HR can change it when deciding.",
+    "Back": "Back",
+    "Save": "Record",
+    "Saved": "Violation {number} recorded for HR.",
+    "Failed": "The violation was not recorded."
   }
 }

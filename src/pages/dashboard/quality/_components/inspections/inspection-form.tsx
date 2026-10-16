@@ -186,7 +186,7 @@ function DetailsCard({
   const errorMessage = useErrorMessage();
   const employees = useQuery({
     queryKey: [...pathKey(INSPECTIONS_PATH), "employees"],
-    queryFn: () => listEmployeeChoicesQuery(),
+    queryFn: () => listEmployeeChoicesQuery(undefined),
   });
   const { inspection, site, file } = detail;
   const where = [site.address, site.commune].filter(Boolean).join("، ");

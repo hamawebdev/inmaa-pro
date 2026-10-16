@@ -35,7 +35,7 @@ import { cn } from "@/lib/utils";
 import { PeriodSwitch } from "../../../worker-attendance/_components/attendance-bits";
 import { useDates } from "../../../worker-attendance/_components/attendance-helpers";
 import { monthOfDate, monthRange, shiftMonth } from "../../../worker-attendance/_components/attendance-params";
-import { qualityKey, workerName } from "../complaints/complaint-bits";
+import { qualityKey, workerName } from "../complaints/complaint-format";
 import { qualityHref } from "../quality-views";
 
 /** The view's main button(s), drawn in the heading row. The ratings are typed on the visit's page: none here. */
@@ -196,13 +196,15 @@ export function RatingsView() {
         cell: ({ row }) => (
           <div className="max-w-56 min-w-0">
             {row.original.titleLtr ? (
-              <Ltr className="block font-bold whitespace-nowrap">{row.original.title}</Ltr>
+              <span className="block font-bold whitespace-nowrap">
+                <Ltr>{row.original.title}</Ltr>
+              </span>
             ) : (
               <bdi className="block truncate font-bold" title={row.original.title}>
                 {row.original.title}
               </bdi>
             )}
-            <bdi className="block truncate text-sm text-muted-foreground" title={row.original.subtitle}>
+            <bdi className="block truncate text-xs leading-4 text-muted-foreground" title={row.original.subtitle}>
               {row.original.subtitle}
             </bdi>
           </div>
@@ -232,11 +234,15 @@ export function RatingsView() {
           }
           return (
             <div className="min-w-0">
-              <Ltr className="block font-bold tabular-nums">{formats.share(recommend.share)}</Ltr>
+              <span className="block font-bold tabular-nums">
+                <Ltr>{formats.share(recommend.share)}</Ltr>
+              </span>
               {recommend.answered > 0 && (
-                <Ltr className="block text-sm text-muted-foreground tabular-nums">
-                  {recommend.yes}/{recommend.answered}
-                </Ltr>
+                <span className="block text-xs leading-4 text-muted-foreground tabular-nums">
+                  <Ltr>
+                    {recommend.yes}/{recommend.answered}
+                  </Ltr>
+                </span>
               )}
             </div>
           );

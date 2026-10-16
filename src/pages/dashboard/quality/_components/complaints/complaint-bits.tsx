@@ -18,22 +18,13 @@ import type { ComplaintStatus } from "@/features/operations/services/complaints"
 import type { ComplaintCounter } from "@/features/operations/rules/complaint-counter";
 import type { ComplaintCounterState } from "@/features/operations/validators/option-codes";
 import { useCodeLabel } from "@/i18n/use-code-label";
-import { pathKey } from "@/lib/compat/revalidate";
-import { staffName } from "@/lib/text/names";
 import { cn } from "@/lib/utils";
 
 import { useDates } from "../../../worker-attendance/_components/attendance-helpers";
-import { QUALITY_PATH } from "../quality-views";
+
+import { useDuration } from "./complaint-format";
 
 /** What the complaint screens draw alike: the two chips, a moment, a duration, a worker's name. */
-
-/** Under the tab's key: the actions revalidate `/dashboard/quality`, which refreshes every list and page below it. */
-export const qualityKey = (...parts: string[]) => [...pathKey(QUALITY_PATH), ...parts];
-
-/** A date or a number kept whole inside a sentence that is not a component (a toast, a title). */
-export const isolate = (text: string) => `⁦${text}⁩`;
-
-export const workerName = (worker: { firstName: string; lastName: string }) => staffName(worker);
 
 // ── The counter ─────────────────────────────────────────────────────────────
 
@@ -52,17 +43,6 @@ export function CounterChip({ counter, className }: { counter: ComplaintCounter;
   return <StatusChip tone={look.tone} icon={look.icon} label={label(counter.state)} className={className} />;
 }
 
-/** Office minutes, as hours and minutes. */
-export function useDuration() {
-  const t = useTranslations("Complaints");
-  return (minutes: number) => {
-    const whole = Math.abs(Math.round(minutes));
-    const hours = Math.floor(whole / 60);
-    const rest = whole % 60;
-    return hours === 0 ? t("Minutes", { minutes: rest }) : t("HoursMinutes", { hours, minutes: rest });
-  };
-}
-
 const NOTE_KEY: Record<ComplaintCounterState, string> = {
   RUNNING: "Counter.Left",
   CLOSE_TO_TARGET: "Counter.Left",
@@ -77,7 +57,7 @@ export function CounterNote({ counter, className }: { counter: ComplaintCounter;
   const duration = useDuration();
   const text = t(NOTE_KEY[counter.state], { duration: duration(counter.marginMin) });
   return (
-    <span className={cn("block truncate text-sm text-muted-foreground", className)} title={text}>
+    <span className={cn("block truncate text-xs leading-4 text-muted-foreground", className)} title={text}>
       {text}
     </span>
   );

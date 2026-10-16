@@ -86,7 +86,7 @@ function ResponsibleField({
   const t = useTranslations("CorrectiveTasks.Dialog");
   const employees = useQuery({
     queryKey: [...pathKey(CORRECTIVE_TASKS_PATH), "employees"],
-    queryFn: () => listEmployeeChoicesQuery(),
+    queryFn: () => listEmployeeChoicesQuery(undefined),
   });
   return (
     <Field data-invalid={invalid || undefined}>

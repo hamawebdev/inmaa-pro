@@ -35,7 +35,7 @@ import { useCodeLabel } from "@/i18n/use-code-label";
 import { dinarsToMoney } from "@/lib/units";
 
 import { useDates } from "../../../worker-attendance/_components/attendance-helpers";
-import { isolate, workerName } from "./complaint-bits";
+import { isolate, workerName } from "./complaint-format";
 
 // ── The first answer ────────────────────────────────────────────────────────
 
