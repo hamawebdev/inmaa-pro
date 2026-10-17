@@ -1,3 +1,4 @@
+import { CHARGE_STATES } from "@/features/stock/services/incidents";
 import {
   ARTICLE_14_ITEMS,
   CHECK_TYPES,
@@ -91,4 +92,6 @@ export const codeLabelCases: readonly CodeLabelCase[] = [
   ["EmployeeAttendance.LeaveStatuses", LEAVE_STATUSES],
   // The ten criteria of the confidential evaluation are labelled as rows of the form.
   ["WorkerForm.Labels", HIRING_CRITERIA],
+  // Stock's charge states, as the worker's file shows them.
+  ["WorkerEquipment.States", CHARGE_STATES],
 ];

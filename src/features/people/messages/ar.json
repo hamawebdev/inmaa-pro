@@ -1241,7 +1241,8 @@
     "PayRunChangedComputeAgain": "تغيرت الساعات أو الأجور منذ حساب هذا الكشف: أعد حسابه وراجعه.",
     "PayTermsBeforeStart": "لا يمكن أن يسري الأجر الجديد قبل التحاق المعني بالعمل.",
     "PayTermsInClosedMonth": "لا يمكن أن يسري الأجر الجديد في شهر أُغلقت أجوره.",
-    "PersonNotInPostNoCard": "المعني ليس في منصبه: لا تُطبع له بطاقة."
+    "PersonNotInPostNoCard": "المعني ليس في منصبه: لا تُطبع له بطاقة.",
+    "PayTermsBeforeLastChange": "لا يمكن أن يسري الأجر الجديد قبل آخر تغيير للأجر."
   },
   "Cards": {
     "Title": "بطاقة التعريف",
@@ -1254,5 +1255,26 @@
     "PrintSelected": "طباعة {count} بطاقات تعريف",
     "Select": "اختيار",
     "SelectAll": "اختيار كل الصفحة"
+  },
+  "WorkerEquipment": {
+    "IncidentsTitle": "العتاد الضائع أو التالف",
+    "None": "لا عتاد ضائع ولا تالف.",
+    "Date": "تاريخ الإرجاع",
+    "Item": "العتاد",
+    "What": "ما حدث",
+    "HandOut": "وصل التسليم",
+    "State": "القرار",
+    "Charged": "ما تحمّله",
+    "Lost": "ضائع: {qty}",
+    "Damaged": "تالف: {qty}",
+    "Holds": "{sex, select, FEMALE {ما زال بحوزتها:} other {ما زال بحوزته:}}",
+    "HoldsNothing": "{sex, select, FEMALE {لا عتاد بحوزتها ولا دفتر وصولات.} other {لا عتاد بحوزته ولا دفتر وصولات.}}",
+    "ReceiptBlock": "دفتر وصولات من رقم {from} إلى {to} لسنة {year}",
+    "States": {
+      "PENDING": "للتسوية",
+      "CHARGED": "على عاتق العامل",
+      "WAIVED": "أُعفي منها",
+      "NO_COST": "بلا كلفة"
+    }
   }
 }

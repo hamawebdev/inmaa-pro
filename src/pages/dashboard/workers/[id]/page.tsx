@@ -18,11 +18,14 @@ import { SanctionCard } from "@/features/people/components/sanction-card";
 import { SanctionChip } from "@/features/people/components/sanction-chip";
 import { STATUS_TONE } from "@/features/people/components/status-tones";
 import { useSanctionGate } from "@/features/people/components/sanction-gate";
+import { listWorkerHoldingsQuery } from "@/features/people/services/worker-equipment";
 import { openWorkerFileAction } from "@/features/people/services/worker-reads";
 import { readmitWorkerAction, recordWorkerLeavingAction, workerIdentity } from "@/features/people/services/workers";
+import type { WorkerHoldings } from "@/features/stock/services/recovery";
 import { useErrorMessage } from "@/i18n/errors";
 import { pathKey } from "@/lib/compat/revalidate";
 
+import { WorkerEquipmentIncidents, WorkerHoldingsDetails } from "../_components/worker-equipment";
 import { WorkerAttachmentsCard, WorkerDocumentsCard, WorkerHistoryCard } from "../_components/worker-file-cards";
 import { EvaluationsView, ViolationsView } from "../../hiring/_components/hiring-views";
 import { WorkerForm } from "../_components/worker-form";
@@ -88,9 +91,14 @@ export default function WorkerPage() {
   const decision = file.decisions[0];
 
   const leave = async () => {
+    // What she still holds (equipment, blocks of receipts) is shown where her leaving is decided (MON-13).
+    const holdings: WorkerHoldings | null = await listWorkerHoldingsQuery({ workerId: id }).catch(() => null);
     const answer = await askReason({
       title: t("File.LeaveTitle", { name }),
       description: t("File.LeaveDescription"),
+      details: holdings ? (
+        <WorkerHoldingsDetails holdings={holdings} female={file.values.sex === "FEMALE"} />
+      ) : undefined,
       fields: [
         {
           kind: "date",
@@ -223,6 +231,7 @@ export default function WorkerPage() {
           </CardHeader>
           <CardContent className="space-y-6">
             <ViolationsView entries={conduct} staffId={id} />
+            <WorkerEquipmentIncidents workerId={id} />
             <EvaluationsView entries={conduct} staffId={id} />
           </CardContent>
         </Card>

@@ -1241,7 +1241,8 @@
     "PayRunChangedComputeAgain": "Les heures ou la paie ont changé depuis le calcul de cette paie : recalculez-la et vérifiez-la.",
     "PayTermsBeforeStart": "La nouvelle rémunération ne peut pas prendre effet avant l'entrée de la personne.",
     "PayTermsInClosedMonth": "La nouvelle rémunération ne peut pas prendre effet dans un mois dont la paie est clôturée.",
-    "PersonNotInPostNoCard": "Cette personne n'est pas en poste : aucune carte n'est imprimée."
+    "PersonNotInPostNoCard": "Cette personne n'est pas en poste : aucune carte n'est imprimée.",
+    "PayTermsBeforeLastChange": "La nouvelle rémunération ne peut pas prendre effet avant le dernier changement de rémunération."
   },
   "Cards": {
     "Title": "Carte professionnelle",
@@ -1254,5 +1255,26 @@
     "PrintSelected": "Imprimer {count} cartes",
     "Select": "Choisir",
     "SelectAll": "Tout choisir sur la page"
+  },
+  "WorkerEquipment": {
+    "IncidentsTitle": "Matériel perdu ou endommagé",
+    "None": "Rien de perdu ni d’endommagé.",
+    "Date": "Rendu le",
+    "Item": "Matériel",
+    "What": "Ce qui s’est passé",
+    "HandOut": "Remise",
+    "State": "Décision",
+    "Charged": "À sa charge",
+    "Lost": "perdu : {qty}",
+    "Damaged": "endommagé : {qty}",
+    "Holds": "{sex, select, FEMALE {Elle détient encore :} other {Il détient encore :}}",
+    "HoldsNothing": "{sex, select, FEMALE {Elle ne détient ni matériel ni carnet de reçus.} other {Il ne détient ni matériel ni carnet de reçus.}}",
+    "ReceiptBlock": "Carnet de reçus nº {from} à {to} de {year}",
+    "States": {
+      "PENDING": "À régler",
+      "CHARGED": "À la charge de l’agent",
+      "WAIVED": "Dispensé",
+      "NO_COST": "Sans coût"
+    }
   }
 }

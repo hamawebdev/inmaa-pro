@@ -1241,7 +1241,8 @@
     "PayRunChangedComputeAgain": "The hours or the pay changed since this run was computed: compute it again and check it.",
     "PayTermsBeforeStart": "New pay terms cannot take effect before the person started.",
     "PayTermsInClosedMonth": "New pay terms cannot take effect in a month whose pay is closed.",
-    "PersonNotInPostNoCard": "This person is not in post: no card is printed."
+    "PersonNotInPostNoCard": "This person is not in post: no card is printed.",
+    "PayTermsBeforeLastChange": "New pay terms cannot take effect before the last change of pay terms."
   },
   "Cards": {
     "Title": "ID card",
@@ -1254,5 +1255,26 @@
     "PrintSelected": "Print {count} ID cards",
     "Select": "Choose",
     "SelectAll": "Choose all on this page"
+  },
+  "WorkerEquipment": {
+    "IncidentsTitle": "Equipment lost or damaged",
+    "None": "Nothing lost or damaged.",
+    "Date": "Returned on",
+    "Item": "Equipment",
+    "What": "What happened",
+    "HandOut": "Hand-out",
+    "State": "Decision",
+    "Charged": "Charged",
+    "Lost": "lost: {qty}",
+    "Damaged": "damaged: {qty}",
+    "Holds": "{sex, select, FEMALE {She still holds:} other {He still holds:}}",
+    "HoldsNothing": "{sex, select, FEMALE {She holds no equipment and no block of receipts.} other {He holds no equipment and no block of receipts.}}",
+    "ReceiptBlock": "Block of receipts no. {from} to {to} of {year}",
+    "States": {
+      "PENDING": "To settle",
+      "CHARGED": "Charged to the worker",
+      "WAIVED": "Waived",
+      "NO_COST": "No cost"
+    }
   }
 }

@@ -20,6 +20,8 @@ The thirteen findings of `scratchpad/final-review/for-people.md`, each proved by
 - PEO-12: an ID card prints only for someone on trial or accepted; the list and the file offer it only then.
 - PEO-13: what a payslip takes back is printed line by line of the ledger, oldest first: «تسديد التسبيقات», «اقتطاع: مخالفة رقم …», «تعويض ضرر», «تعويض ضياع», «تسديد ديون أخرى» (`outstandingDebts`, `payouts.ts`).
 
+- Money's MON-10 and MON-13 shown where the office decides (`services/worker-equipment.ts`, `workers/_components/worker-equipment.tsx`): the worker's violations block lists the equipment she lost or damaged on its return and the charge's state, its amount to pay readers only (`getEquipmentIncidents`); the leaving dialog lists the equipment and the blocks of receipts she still holds (`getWorkerHoldings`).
+
 ## Round 4, done
 
 - **ID cards (scope R9):** `services/cards.ts` (`staffCardsForPrint`, `recordCardPrint`, one DISCLOSE line per card), `sheets/id-cards.tsx` (ISO ID-1, 85.6 × 54 mm, eight to an A4 page with cutting marks; photo or the empty frame, name surname first, number, role in his words, the centre), `components/staff-cards-screen.tsx`. Pages: `workers/:id/print-card`, `employees/:id/print-card`, and `workers/print-cards?ids=` for the workers chosen in the list. A person who left gets no card.
