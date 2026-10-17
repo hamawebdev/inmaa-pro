@@ -237,7 +237,8 @@
       "DocumentRemoveFile": "Retirer la copie",
       "DocumentFileSaved": "La copie est classée.",
       "DocumentFileRemoved": "La copie est retirée.",
-      "DocumentHasFile": "Copie classée"
+      "DocumentHasFile": "Copie classée",
+      "ScanCopyReason": "Pourquoi une copie de sa fiche signée ?"
     },
     "Resume": {
       "PENDING": "Le directeur n'a pas encore répondu au sujet de {name}.",

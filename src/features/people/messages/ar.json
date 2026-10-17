@@ -237,7 +237,8 @@
       "DocumentRemoveFile": "حذف النسخة",
       "DocumentFileSaved": "تم حفظ النسخة.",
       "DocumentFileRemoved": "تم حذف النسخة.",
-      "DocumentHasFile": "نسخة محفوظة"
+      "DocumentHasFile": "نسخة محفوظة",
+      "ScanCopyReason": "لماذا تُحفظ نسخة من استمارتها الموقعة؟"
     },
     "Resume": {
       "PENDING": "لم يجب المدير بعد بخصوص {name}.",

@@ -91,3 +91,15 @@ it("refuses to link an ordinary file as the signed form (LOG-16)", async () => {
     "people: this file was not saved restricted for this place",
   );
 });
+
+it("lets only a reader of the health answers file the signed form's scan (LOG-1)", async () => {
+  const id = await aCandidate();
+  const hr = await test.sessionFor("HR_OFFICER");
+  const scoreOnly = {
+    ...hr,
+    capabilities: new Set([...hr.capabilities].filter((key) => key !== "staff.health.read")),
+  };
+  await expect(test.transact((ex, ctx) => setWorkerSignedScan(ex, ctx, { id, url: null }), scoreOnly)).rejects.toThrow(
+    "You do not have permission to do this.",
+  );
+});

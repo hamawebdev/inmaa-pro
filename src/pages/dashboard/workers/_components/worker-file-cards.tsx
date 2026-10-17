@@ -12,6 +12,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Field, FieldDescription, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { useMay } from "@/features/people/components/may";
+import { useReasonDialog } from "@/features/people/components/reason-dialog";
 import { STATUS_TONE } from "@/features/people/components/status-tones";
 import type { DocumentState } from "@/features/people/rules/documents";
 import { DOCUMENT_FILE_CAPABILITY, setStaffDocumentFileAction } from "@/features/people/services/documents";
@@ -50,9 +51,11 @@ export function WorkerAttachmentsCard({ file }: { file: WorkerFile }) {
   const [busy, setBusy] = React.useState(false);
   const scanInput = React.useRef<HTMLInputElement>(null);
   const canWrite = useMay("staff.write");
-  const readsHealth = useMay("staff.health.read");
-  const readsScore = useMay("staff.hiringScore.read");
-  const canScan = readsHealth || readsScore;
+  // The scan shows her health answers (LOG-1): only a reader of them files it; a copy needs the filled form's
+  // printing right and a typed reason, as its printing does (LOG-5).
+  const canScan = useMay("staff.health.read");
+  const copiesScan = useMay("staff.printFilledForm");
+  const [askReason, reasonDialog] = useReasonDialog();
   const subject = { kind: "WORKER" as const, id: file.id, label: staffName(file.values) };
 
   const report = (result: { success: boolean; error?: string }, done: string) => {
@@ -109,13 +112,24 @@ export function WorkerAttachmentsCard({ file }: { file: WorkerFile }) {
 
   const copyScan = async () => {
     if (!file.signedScan) return;
-    const result = await saveUploadCopy(file.signedScan.url, t("ScanCopyTitle"), { owner: "PEOPLE", subject });
+    const answer = await askReason({
+      title: t("ScanCopyTitle"),
+      reasonLabel: t("ScanCopyReason"),
+      confirmLabel: t("ScanCopy"),
+    });
+    if (!answer) return;
+    const result = await saveUploadCopy(file.signedScan.url, t("ScanCopyTitle"), {
+      owner: "PEOPLE",
+      subject,
+      reason: answer.reason,
+    });
     if (result.success) toast.success(t("ScanCopied", { path: result.path }));
     else if (!result.cancelled) toast.error(errorMessage(result.error, t("FileFailed")));
   };
 
   return (
     <Card id="worker-card-attachments">
+      {reasonDialog}
       <CardHeader>
         <CardTitle className="text-base">{t("AttachmentsTitle")}</CardTitle>
       </CardHeader>
@@ -158,9 +172,11 @@ export function WorkerAttachmentsCard({ file }: { file: WorkerFile }) {
               </p>
               {canScan && (
                 <div className="flex gap-2">
-                  <Button type="button" variant="outline" size="sm" onClick={copyScan}>
-                    {t("ScanCopy")}
-                  </Button>
+                  {copiesScan && (
+                    <Button type="button" variant="outline" size="sm" onClick={copyScan}>
+                      {t("ScanCopy")}
+                    </Button>
+                  )}
                   <Button
                     type="button"
                     variant="outline"

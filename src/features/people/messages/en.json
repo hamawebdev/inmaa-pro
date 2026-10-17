@@ -237,7 +237,8 @@
       "DocumentRemoveFile": "Remove the scan",
       "DocumentFileSaved": "The scan is filed.",
       "DocumentFileRemoved": "The scan is removed.",
-      "DocumentHasFile": "Scan filed"
+      "DocumentHasFile": "Scan filed",
+      "ScanCopyReason": "Why is a copy of her signed form needed?"
     },
     "Resume": {
       "PENDING": "The manager has not answered yet about {name}.",

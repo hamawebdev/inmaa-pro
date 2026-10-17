@@ -64,7 +64,7 @@ export async function setWorkerPhoto(
 /**
  * Puts the scan of her signed pages 1 and 2 on her record (feature 25), or takes
  * it off. It shows her health answers and her score, so it is stored restricted
- * whatever the screen says, and only a holder of either capability files it.
+ * whatever the screen says, and only a reader of the health answers files it (LOG-1).
  */
 export async function setWorkerSignedScan(
   ex: Executor,
@@ -72,9 +72,8 @@ export async function setWorkerSignedScan(
   input: { id: string; url: string | null },
 ): Promise<void> {
   requireSection(ctx, "WORKERS", "WRITE");
-  if (!can(ctx, "staff.health.read") && !can(ctx, "staff.hiringScore.read")) {
-    throw new ServiceError("You do not have permission to do this.");
-  }
+  // It shows her health answers (LOG-1): filed by a reader of them only.
+  if (!can(ctx, "staff.health.read")) throw new ServiceError("You do not have permission to do this.");
   const worker = await workerOf(ex, input.id);
   // Which scan is on the record, from the files' own register: the restricted table is not read for that.
   const [current] = await listUploads(ex, {

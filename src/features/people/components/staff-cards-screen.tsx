@@ -8,6 +8,7 @@ import { DetailScreen } from "@/components/detail-screen";
 import { PrintButton } from "@/components/print";
 import { recordCardPrintAction, staffCardsForPrintQuery } from "@/features/people/services/cards";
 import { IdCardsSheet } from "@/features/people/sheets/id-cards";
+import { useCentreLogo } from "@/hooks/use-centre-logo";
 import { useErrorMessage } from "@/i18n/errors";
 import { pathKey } from "@/lib/compat/revalidate";
 import { isInlineImageSrc, resolveUploadSrc } from "@/server/uploads";
@@ -58,6 +59,8 @@ export function StaffCardsScreen({
     queryFn: () => staffCardsForPrintQuery({ ids }),
     enabled: ids.length > 0,
   });
+  // The centre's stored logo, else its emblem from the letterhead (S-32).
+  const logo = useCentreLogo().src;
   const photos = useUploadSrcs(Object.fromEntries((data?.cards ?? []).map((card) => [card.id, card.photoUrl])));
 
   return (
@@ -84,7 +87,7 @@ export function StaffCardsScreen({
       ) : (
         <div className="space-y-4">
           <p className="text-base text-muted-foreground">{t("Hint")}</p>
-          <IdCardsSheet data={data} photos={photos} />
+          <IdCardsSheet data={data} photos={photos} logo={logo} />
         </div>
       )}
     </DetailScreen>

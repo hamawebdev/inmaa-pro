@@ -55,11 +55,13 @@ function Card({
   centre,
   issuedDate,
   photo,
+  logo,
 }: {
   card: StaffCard;
   centre: StaffCards["centre"];
   issuedDate: string;
   photo: string | null;
+  logo: string | null;
 }) {
   return (
     <div style={{ position: "relative", width: mm(CARD.width), height: mm(CARD.height) }}>
@@ -88,7 +90,11 @@ function Card({
             gap: mm(2),
           }}
         >
-          <span style={text(10, true)}>{centre.nameAr}</span>
+          <span style={{ display: "flex", alignItems: "center", gap: mm(1.5) }}>
+            {/* The centre's emblem, as the academy's card carries its logo (S-32). */}
+            {logo && <img src={logo} alt="" style={{ width: mm(8), height: mm(8), objectFit: "contain" }} />}
+            <span style={text(10, true)}>{centre.nameAr}</span>
+          </span>
           <span style={{ ...text(6.5), direction: "ltr" }}>{centre.nameLatin}</span>
         </div>
         <div style={{ flex: 1, display: "flex", gap: mm(3), padding: `${mm(2.5)} ${mm(3)} 0` }}>
@@ -137,7 +143,16 @@ function Card({
   );
 }
 
-export function IdCardsSheet({ data, photos }: { data: StaffCards; photos: Readonly<Record<string, string | null>> }) {
+export function IdCardsSheet({
+  data,
+  photos,
+  logo = null,
+}: {
+  data: StaffCards;
+  photos: Readonly<Record<string, string | null>>;
+  /** The centre's logo or emblem, resolved by the page. */
+  logo?: string | null;
+}) {
   const pages: StaffCard[][] = [];
   for (let index = 0; index < data.cards.length; index += PER_PAGE)
     pages.push(data.cards.slice(index, index + PER_PAGE));
@@ -163,6 +178,7 @@ export function IdCardsSheet({ data, photos }: { data: StaffCards; photos: Reado
               centre={data.centre}
               issuedDate={data.issuedDate}
               photo={photos[card.id] ?? null}
+              logo={logo}
             />
           ))}
         </div>,
