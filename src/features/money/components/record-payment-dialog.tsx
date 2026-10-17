@@ -121,12 +121,14 @@ function startingValues(
   file: PayableFile | undefined,
   receipt?: BlankReceipt,
 ): Partial<PaymentFormValues> {
-  const dueIds = file?.dues.map((due) => due.id) ?? [];
+  // What is due today or late is ticked and proposed; a due still to come is offered, never assumed (MON-03).
+  const dueIds = file?.dues.filter((due) => due.dueDate <= today).map((due) => due.id) ?? [];
+  const owed = remainingOf(file, dueIds);
   return {
     fileId: file?.fileId ?? "",
     receivedDate: receipt?.date ?? today,
     method: receipt ? "CASH" : (file?.methods[0] ?? "CASH"),
-    amount: file ? moneyToDinars(remainingOf(file, dueIds) as Money) : undefined,
+    amount: owed > 0 ? moneyToDinars(owed as Money) : undefined,
     dueIds,
     payerName: "",
     reference: "",

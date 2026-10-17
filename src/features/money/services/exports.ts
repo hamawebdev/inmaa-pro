@@ -98,6 +98,9 @@ const EXPENSE_CATEGORY_AR: Readonly<Record<string, string>> = {
   MAINTENANCE: "الصيانة",
   COMPENSATION: "التعويضات",
   TAXES: "الضرائب",
+  // His list ends with these two (MON-15): never the raw code in the accountant's file.
+  LOSSES: "الخسائر/الإلغاءات",
+  OTHER: "أخرى",
 };
 const SOURCE_AR: Readonly<Record<string, string>> = {
   MANUAL: "يدوي",
@@ -129,7 +132,7 @@ export function csvText(header: readonly string[], rows: readonly (readonly (str
   return `\uFEFF${[header, ...rows].map((row) => row.map(csvCell).join(";")).join("\r\n")}\r\n`;
 }
 
-async function invoiceRows(ex: Executor, from: string, to: string) {
+async function invoiceRows(ex: Executor, ctx: ServiceContext, from: string, to: string) {
   const invoices = await ex
     .selectFrom("Invoice")
     .innerJoin("File", "File.id", "Invoice.fileId")
@@ -182,7 +185,8 @@ async function invoiceRows(ex: Executor, from: string, to: string) {
       csvAmount(invoice.stampDuty),
       csvAmount(invoice.netToPay),
       voided ? "ملغاة" : "صادرة",
-      voided ? formatDate(voided.createdAt.slice(0, 10)) : "",
+      // The day of the void at the centre, not in UTC (MON-15): a void at 00:30 in Algeria is that day's.
+      voided ? formatDate(ctx.toLocal(voided.createdAt).date) : "",
       voided?.reason ?? "",
     ];
   });
@@ -357,7 +361,7 @@ export async function buildAccountantExport(
 
   const rows =
     input.kind === "INVOICES"
-      ? await invoiceRows(ex, input.from, input.to)
+      ? await invoiceRows(ex, ctx, input.from, input.to)
       : input.kind === "RECEIPTS"
         ? await receiptRows(ex, input.from, input.to)
         : input.kind === "PAYMENTS"

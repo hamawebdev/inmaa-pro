@@ -45,4 +45,5 @@ export type ExpenseView = Pick<
   | "source"
   | "receiptUrl"
   | "note"
+  | "fileId"
 >;

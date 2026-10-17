@@ -101,3 +101,54 @@ describe("People's payout events", () => {
     expect(await expensesOf(paid.id)).toEqual([["WAGES", "COMMON", da(5_000), false]]);
   });
 });
+
+describe("a payslip's contributions in the expenses (MON-06)", () => {
+  it("are posted once per payslip, however its part payments are voided and paid again (MON-06)", async () => {
+    const payslip = await test.rows.insert("Payslip", {
+      netAmount: da(30_000),
+      cnasAmount: da(3_000),
+      employerCnasAmount: da(8_000),
+      irgAmount: da(1_000),
+      divisionMin: JSON.stringify({ BUILDING: 600 }),
+    } as never);
+    await test.db.updateTable("PayRun").set({ status: "CLOSED" }).where("id", "=", payslip.payRunId).execute();
+    const pay = (amount: number) =>
+      test.transact((ex, ctx) =>
+        recordPayout(ex, ctx, {
+          staffId: payslip.staffId,
+          payslipId: payslip.id,
+          kind: "WAGE",
+          amount,
+          date: "2026-10-12",
+          wageMethod: "CASH",
+        }),
+      );
+    const live = async () =>
+      (
+        await test.db
+          .selectFrom("Expense")
+          .select(["category", "amount"])
+          .where("source", "=", "PAYROLL")
+          .where("deletedAt", "is", null)
+          .execute()
+      ).reduce<Record<string, number>>(
+        (sum, row) => ({ ...sum, [row.category]: (sum[row.category] ?? 0) + row.amount }),
+        {},
+      );
+
+    const first = await pay(da(10_000));
+    const completing = await pay(da(20_000));
+    expect(await live()).toEqual({ WAGES: da(30_000), CONTRIBUTIONS: da(11_000), TAXES: da(1_000) });
+
+    // The first part was mistyped: voided, and paid again. The payslip is completed a second time.
+    await test.transact((ex, ctx) => voidPayout(ex, ctx, { payoutId: first.id, reason: "خطأ في المبلغ" }));
+    await pay(da(10_000));
+    expect(await live()).toEqual({ WAGES: da(30_000), CONTRIBUTIONS: da(11_000), TAXES: da(1_000) });
+
+    // The payout that posted them is voided: they go with it, and the next completion posts them again.
+    await test.transact((ex, ctx) => voidPayout(ex, ctx, { payoutId: completing.id, reason: "خطأ في المبلغ" }));
+    expect(await live()).toEqual({ WAGES: da(10_000) });
+    await pay(da(20_000));
+    expect(await live()).toEqual({ WAGES: da(30_000), CONTRIBUTIONS: da(11_000), TAXES: da(1_000) });
+  });
+});

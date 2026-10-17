@@ -36,6 +36,8 @@ export function FileMoneyView({ money: file }: { money: FileMoney }) {
       return t("Period", { from: dates.short(due.periodStart), to: dates.long(due.periodEnd) });
     }
     if (due.kind === "VISIT" && due.periodStart) return t("Visit", { date: dates.long(due.periodStart) });
+    if (due.kind === "EXTRA" && due.periodStart) return t("Extra", { date: dates.long(due.periodStart) });
+    if (due.kind === "INITIAL_JOB") return t("InitialJob");
     return t("Job");
   };
 

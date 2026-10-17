@@ -47,6 +47,8 @@ export function isWholeCentimes(dinars: number): boolean {
 export function expenseFormSchema(today: IsoDate) {
   return z.object({
     division: choice(EXPENSE_DIVISIONS),
+    /** The contract this expense is a cost of, when it is one (MON-11): its profitability counts it. */
+    fileId: optionalText(64),
     category: choice(EXPENSE_CATEGORIES),
     date: z
       .string({ required_error: "This field is required.", invalid_type_error: "This field is required." })

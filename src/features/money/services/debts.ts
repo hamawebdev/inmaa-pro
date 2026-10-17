@@ -189,9 +189,9 @@ function reminderDescription(due: DueLine): string {
     case "SINGLE":
       return "خدمة تنظيف عند الطلب";
     case "INITIAL_JOB":
-      return "التنظيف الأولي";
+      return "عمل أولي (مرة واحدة)";
     case "EXTRA":
-      return "خدمة إضافية";
+      return `زيارة إضافية يوم ${formatDate(due.periodStart ?? due.dueDate)}`;
     case "DEPOSIT":
       return "تسبيق";
     default:
@@ -200,9 +200,11 @@ function reminderDescription(due: DueLine): string {
 }
 
 /**
- * The reminder letter of a file, written from what it owes today: each open
- * due with its date and what remains, addressed to «مسدد أتعاب». A file that
- * owes nothing has no reminder.
+ * The reminder letter of a file, written from what it owes today: each due
+ * whose date has come and that is not paid in whole, with its date and what
+ * remains, addressed to «مسدد أتعاب». A due still to come is never asked for
+ * (MON-03): the letter says these amounts were not paid by its date. A file
+ * that owes nothing today has no reminder.
  */
 export async function getPaymentReminder(
   ex: Executor,
@@ -213,8 +215,10 @@ export async function getPaymentReminder(
   const file = await readFileBilling(ex, ctx, input.fileId);
   if (!file) throw new ServiceError("This file does not exist.");
   const client = await ex.selectFrom("Client").select("name").where("id", "=", file.clientId).executeTakeFirstOrThrow();
-  const dues = (await listFileDues(ex, ctx, { fileId: file.id })).filter((due) => !due.cancelled && due.remaining > 0);
-  if (dues.length === 0) throw new ServiceError("This file owes nothing: there is no reminder to print.");
+  const open = (await listFileDues(ex, ctx, { fileId: file.id })).filter((due) => !due.cancelled && due.remaining > 0);
+  if (open.length === 0) throw new ServiceError("This file owes nothing: there is no reminder to print.");
+  const dues = open.filter((due) => due.dueDate <= ctx.today);
+  if (dues.length === 0) throw new ServiceError("Nothing of this file is due yet: there is no reminder to print.");
 
   const items: ReminderItem[] = dues.map((due) => ({
     invoiceNumber: due.invoiceNumber,

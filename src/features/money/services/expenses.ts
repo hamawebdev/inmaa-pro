@@ -39,6 +39,7 @@ const VIEW_COLUMNS = [
   "source",
   "receiptUrl",
   "note",
+  "fileId",
 ] as const;
 
 /** The expenses paid between two days, both included, the latest first. Removed ones are left out. */
@@ -63,9 +64,22 @@ export async function listExpenses(
   );
 }
 
-function parse(ctx: ServiceContext, values: unknown): ExpenseFormValues {
+async function parse(ex: Executor, ctx: ServiceContext, values: unknown): Promise<ExpenseFormValues> {
   const parsed = expenseFormSchema(ctx.today).safeParse(values);
   if (!parsed.success) throw new ServiceError(parsed.error.issues[0]?.message ?? "Invalid form submission.");
+  if (parsed.data.fileId) {
+    // A cost of one contract is a cost of its division (MON-11).
+    const file = await ex
+      .selectFrom("File")
+      .select(["division"])
+      .where("id", "=", parsed.data.fileId)
+      .where("deletedAt", "is", null)
+      .executeTakeFirst();
+    if (!file) throw new ServiceError("This file does not exist.");
+    if (file.division !== parsed.data.division) {
+      throw new ServiceError("This file is of another division: choose its division, or no file.");
+    }
+  }
   return parsed.data;
 }
 
@@ -81,6 +95,7 @@ function columnsOf(values: ExpenseFormValues) {
     spentByName: values.spentByName ?? null,
     recurrence: values.recurrence,
     note: values.note ?? null,
+    fileId: values.fileId ?? null,
   };
 }
 
@@ -100,7 +115,7 @@ export async function createExpense(
   input: SaveExpenseInput,
 ): Promise<{ id: string }> {
   requireSection(ctx, "MONEY", "WRITE");
-  const values = parse(ctx, input.values);
+  const values = await parse(ex, ctx, input.values);
   const id = newId();
   const receiptUrl = input.receiptUrl ?? null;
   await ex
@@ -145,7 +160,7 @@ export async function updateExpense(
 ): Promise<{ id: string }> {
   requireSection(ctx, "MONEY", "WRITE");
   const before = await manualExpense(ex, input.id);
-  const values = parse(ctx, input.values);
+  const values = await parse(ex, ctx, input.values);
   const { set, changes } = changedColumns(before, {
     ...columnsOf(values),
     ...(input.receiptUrl === undefined ? {} : { receiptUrl: input.receiptUrl }),
@@ -199,11 +214,32 @@ export async function deleteExpense(
   return { id: expense.id };
 }
 
+export interface ExpenseFileChoice {
+  id: string;
+  number: string;
+  clientName: string;
+  division: string;
+}
+
+/** The contracts an expense can be tagged to (MON-11): those signed, running or ended, the latest first. */
+export async function listExpenseFiles(ex: Executor, ctx: ServiceContext): Promise<ExpenseFileChoice[]> {
+  requireSection(ctx, "MONEY", "READ");
+  return ex
+    .selectFrom("File")
+    .innerJoin("Client", "Client.id", "File.clientId")
+    .select(["File.id", "File.number", "Client.name as clientName", "File.division"])
+    .where("File.deletedAt", "is", null)
+    .where("File.stage", "in", ["CONTRACTED", "CONTRACT_ENDED"])
+    .orderBy("File.createdAt", "desc")
+    .execute();
+}
+
 // ── What the screens call ────────────────────────────────────────────────────
 
 const REFRESH = [EXPENSES_PATH, REPORTS_PATH] as const;
 
 export const listExpensesQuery = query(listExpenses);
+export const listExpenseFilesQuery = query((ex: Executor, ctx: ServiceContext) => listExpenseFiles(ex, ctx));
 export const createExpenseAction = action(createExpense, { revalidate: [...REFRESH] });
 export const updateExpenseAction = action(updateExpense, { revalidate: [...REFRESH] });
 export const deleteExpenseAction = action(deleteExpense, { revalidate: [...REFRESH] });

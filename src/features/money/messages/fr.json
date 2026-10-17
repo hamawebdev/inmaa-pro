@@ -175,7 +175,10 @@
     "Record": "Enregistrer la dépense",
     "SaveFailed": "La dépense n'a pas pu être enregistrée.",
     "Updated": "Dépense modifiée.",
-    "Recorded": "Dépense enregistrée."
+    "Recorded": "Dépense enregistrée.",
+    "File": "Contrat (facultatif)",
+    "NoFile": "Aucun contrat",
+    "FileHint": "Un coût d'un seul contrat : sa rentabilité le compte."
   },
   "Errors": {
     "ExpenseAfterToday": "Une dépense ne peut pas être datée après aujourd'hui.",
@@ -215,7 +218,12 @@
     "CashDifferenceNote": "Dites pourquoi les espèces diffèrent ou un reçu manque.",
     "DayNotCome": "Une journée ne peut être clôturée avant d'être venue.",
     "AmountNotNegative": "Un montant ne peut pas être négatif.",
-    "PeriodStartAfterEndMoney": "Le début de la période ne peut pas être après sa fin."
+    "PeriodStartAfterEndMoney": "Le début de la période ne peut pas être après sa fin.",
+    "NoReminderDueYet": "Rien n'est encore échu sur ce dossier : il n'y a pas de rappel à imprimer.",
+    "VisitOnInvoice": "Cette visite figure sur une facture : annulez la facture avant de changer sa facturation.",
+    "ExtraVisitPrice": "Saisissez le prix de cette visite supplémentaire.",
+    "CollectorNotAuthorised": "Cette agente n'est pas autorisée à encaisser : sa fiche doit le préciser (article 12).",
+    "ExpenseFileDivision": "Ce dossier est d'une autre division : choisissez sa division, ou aucun dossier."
   },
   "Alerts": {
     "ContractEnding": {
@@ -285,6 +293,8 @@
     "Period": "Du {from} au {to}",
     "Visit": "Visite du {date}",
     "Job": "Prestation ponctuelle",
+    "InitialJob": "Nettoyage initial (une fois)",
+    "Extra": "Visite supplémentaire du {date}",
     "Table": {
       "Choose": "Choisir",
       "ChooseDue": "Facturer ceci pour {client}",
@@ -317,6 +327,15 @@
       "TTC": "Montant dû",
       "Stamp": "Droit de timbre",
       "Net": "Net à payer"
+    },
+    "StatementTable": {
+      "Date": "Date",
+      "Completion": "Travail fait",
+      "Billed": "Facturation",
+      "Decision": "Décision",
+      "DecideFor": "Décision de facturation pour la visite du {date}",
+      "Yes": "Facturée",
+      "No": "Non facturée"
     }
   },
   "PaymentForm": {
@@ -385,6 +404,8 @@
     "Period": "Du {from} au {to}",
     "Visit": "Visite du {date}",
     "Job": "Prestation ponctuelle",
+    "InitialJob": "Nettoyage initial (une fois)",
+    "Extra": "Visite supplémentaire du {date}",
     "Table": {
       "Client": "Client",
       "Payer": "Payeur",
@@ -498,6 +519,8 @@
     "Period": "Du {from} au {to}",
     "Visit": "Visite du {date}",
     "Job": "Prestation ponctuelle",
+    "InitialJob": "Nettoyage initial (une fois)",
+    "Extra": "Visite supplémentaire du {date}",
     "Invoice": "Facture",
     "NoDues": "Rien n'est encore dû sur ce dossier.",
     "NoInvoices": "Aucune facture pour l'instant.",
@@ -640,5 +663,18 @@
       "Net": "Net",
       "Running": "Solde"
     }
+  },
+  "VisitBilling": {
+    "Title": "Décision de facturation",
+    "Description": "La visite du {date}. La décision du bureau l'emporte sur l'ordre de mission rendu.",
+    "Billable": "Facturée",
+    "NotBillable": "Non facturée",
+    "Price": "Prix de cette visite supplémentaire (DA)",
+    "Reason": "Motif",
+    "Save": "Enregistrer",
+    "Clear": "Revenir à l'ordre de mission",
+    "Saved": "Décision enregistrée.",
+    "Cleared": "Décision retirée.",
+    "SaveFailed": "La décision n'a pas pu être enregistrée."
   }
 }

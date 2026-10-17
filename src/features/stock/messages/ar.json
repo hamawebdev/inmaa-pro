@@ -121,7 +121,18 @@
     "MaintenanceInterval": "دورية الصيانة عدد من الأيام، من 1 إلى 3650.",
     "MaintenanceAfterToday": "لا يمكن تأريخ صيانة بعد اليوم.",
     "ConditionAfterMaintenance": "حدد حالة المعدة بعد الصيانة.",
-    "MaintenanceWhat": "اكتب ما أُنجز."
+    "MaintenanceWhat": "اكتب ما أُنجز.",
+    "PurchaseNotFound": "هذا الشراء غير موجود.",
+    "PurchaseAlreadyCancelled": "هذا الشراء ملغى من قبل.",
+    "PurchaseLeftStore": "خرج جزء من هذا الشراء من المخزن: لا يمكن إلغاؤه.",
+    "MaintenanceNotFound": "سجل الصيانة هذا غير موجود.",
+    "MaintenanceAlreadyCancelled": "سجل الصيانة هذا ملغى من قبل.",
+    "MaintenanceCostNothing": "لم تكلّف هذه الصيانة شيئًا: صحّح موعد الصيانة القادم في برنامج القطعة.",
+    "PieceInStore": "هذه القطعة في المخزن.",
+    "PieceExpected": "لا يزال تسليمٌ ينتظر عودة هذه القطعة: سجّل إرجاعها في التسليم.",
+    "NoLossOnReturn": "لم يُفقد أو يتلف شيء في هذا الإرجاع.",
+    "ChargeSettled": "سُوّيت هذه التبعة من قبل.",
+    "ChargeRange": "يُحمَّل العامل من لا شيء إلى ثمن المعدات كاملًا."
   },
   "Alerts": {
     "StockLow": {
@@ -250,9 +261,16 @@
       "Supplier": "المورد",
       "Division": "القسم",
       "Lines": "الأصناف",
-      "Total": "المبلغ"
+      "Total": "المبلغ",
+      "Actions": "إجراءات"
     },
-    "New": "شراء جديد"
+    "New": "شراء جديد",
+    "CancelFor": "إلغاء الشراء {number}",
+    "CancelTitle": "إلغاء الشراء {number}",
+    "CancelDescription": "يخرج ما أدخله من المخزن، وتُسحب قطعه، ويُعكس مصروفه. ثم يُكتب من جديد كما كان يجب.",
+    "Cancel": "إلغاء الشراء",
+    "CancelDone": "أُلغي الشراء {number}.",
+    "CancelFailed": "تعذّر إلغاء الشراء."
   },
   "Maintenance": {
     "UnitCount": "{count, plural, =0 {لا توجد معدات متابعة قطعة بقطعة} one {معدة واحدة} two {معدتان} few {# معدات} many {# معدة} other {# معدة}}",
@@ -272,7 +290,8 @@
       "Next": "الصيانة القادمة",
       "State": "البرنامج",
       "Actions": "إجراءات"
-    }
+    },
+    "History": "السجل"
   },
   "MaintenanceForm": {
     "SaveFailed": "تعذر الحفظ.",
@@ -293,7 +312,23 @@
     "CostHint": "فارغ إذا أنجزها المركز بنفسه.",
     "Provider": "المنجِز",
     "ConditionAfter": "الحالة بعد الصيانة",
-    "Record": "تسجيل الصيانة"
+    "Record": "تسجيل الصيانة",
+    "HistoryTitle": "{piece} {number}: سجلّها",
+    "HistoryDescription": "ما أُنجز على هذه القطعة. يُلغى السجل المكتوب خطأ ويُعكس مبلغه.",
+    "NoHistory": "لم يُسجَّل شيء بعد.",
+    "Cancelled": "ملغى",
+    "CancelRecord": "إلغاء هذا السجل",
+    "CancelRecordTitle": "إلغاء سجل الصيانة هذا",
+    "CancelRecordDescription": "يُعكس مبلغه في المصاريف، وتعود القطعة إلى سجلّها السابق.",
+    "Retire": "خارج الخدمة نهائيًا",
+    "RetireTitle": "إخراج هذه القطعة من الخدمة",
+    "RetireDescription": "ضائعة أو لا تُصلح أو بيعت: لا تُتابَع بعد الآن، وتخرج من المخزن إن كانت فيه.",
+    "BringToStore": "إعادة إلى المخزن",
+    "StoreTitle": "إعادة هذه القطعة إلى المخزن",
+    "StoreDescription": "لقطعة لم يعد أي تسليم ينتظر عودتها: تدخل المخزن من جديد.",
+    "RecordCancelled": "أُلغي السجل وعُكس مبلغه.",
+    "Retired": "أُخرجت القطعة من الخدمة.",
+    "BackInStore": "عادت القطعة إلى المخزن."
   },
   "PurchaseForm": {
     "Title": "شراء جديد",
@@ -354,5 +389,32 @@
     "CloseCount": "إغلاق الجرد",
     "CloseFailed": "تعذر إغلاق الجرد.",
     "Closed": "{count, plural, =0 {أُغلق الجرد: لا فارق.} one {أُغلق الجرد: سُوِّي صنف واحد.} two {أُغلق الجرد: سُوِّي صنفان.} few {أُغلق الجرد: سُوِّيت # أصناف.} many {أُغلق الجرد: سُوِّي # صنفًا.} other {أُغلق الجرد: سُوِّي # صنف.}}"
+  },
+  "HandoutAttention": {
+    "ChargesTitle": "{count, plural, one {تبعة واحدة للتسوية} other {# تبعات للتسوية}}",
+    "ChargesHint": "معدات ضاعت أو تلفت عند إرجاعها. قرّر ما يتحمّله العامل: الكلفة كاملة، أو جزء منها، أو لا شيء.",
+    "ChargesHintReader": "معدات ضاعت أو تلفت عند إرجاعها. المدير يقرّر ما يتحمّله العامل.",
+    "Settle": "تسوية",
+    "SettleTitle": "تسوية تبعة {worker}",
+    "SettleDescription": "كلّفت هذه المعدات المخزن {cost}. لا يُسجَّل في ذمّة العامل إلا ما تحمّله إياه، ويُسقَط الباقي.",
+    "Charged": "ما يتحمّله العامل (دج)",
+    "ChargedHint": "من 0 (إعفاء) إلى الكلفة كاملة.",
+    "Reason": "السبب",
+    "Settled": "سُوّيت التبعة.",
+    "SettleFailed": "تعذّرت تسوية التبعة.",
+    "Lost": "ضائع: {qty}",
+    "Damaged": "تالف: {qty}",
+    "RecoverTitle": "{count, plural, one {قطعة واحدة للاسترجاع} other {# قطع للاسترجاع}}",
+    "AtSite": "بموقع العميل",
+    "WhyContractEnded": "انتهى العقد دون تجديد",
+    "WhyWorkerLeft": "العامل لم يعد في منصبه",
+    "Table": {
+      "Return": "التسليم",
+      "Worker": "العامل",
+      "Equipment": "المعدات",
+      "Cost": "الكلفة",
+      "Holder": "لدى",
+      "Why": "السبب"
+    }
   }
 }

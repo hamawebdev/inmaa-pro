@@ -314,7 +314,13 @@ describe("voiding a payment", () => {
 describe("blank receipts for a collector", () => {
   it("are numbered when printed, and one is filled in when its payment is typed", async () => {
     const { file } = await invoicedNovember();
-    const collector = await test.rows.insert("StaffMember", { lastName: "حداد", firstName: "سميرة" });
+    // Her card authorises her to collect (article 12, MON-09).
+    const collector = await test.rows.insert("StaffMember", {
+      lastName: "حداد",
+      firstName: "سميرة",
+      engagementStatus: "ACCEPTED",
+      canCollectCash: 1,
+    } as never);
     await expect(
       test.transact((ex, ctx) =>
         issueReceiptBatch(ex, ctx, { count: 0, collectorKind: "WORKER", collectorStaffId: collector.id }),

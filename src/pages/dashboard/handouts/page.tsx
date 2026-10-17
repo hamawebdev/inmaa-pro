@@ -11,6 +11,7 @@ import { HANDOUTS_PATH } from "@/features/stock/services/paths";
 import { useSectionLevel } from "@/hooks/use-session";
 import { pathKey } from "@/lib/compat/revalidate";
 
+import { PendingCharges, ToRecoverList } from "./_components/handout-attention";
 import { HandoutFilters } from "./_components/handout-filters";
 import { HandoutsTable } from "./_components/handouts-table";
 import { useHandoutFilter } from "./_components/use-handout-filter";
@@ -22,7 +23,9 @@ import { useHandoutFilter } from "./_components/use-handout-filter";
  * Closest academy screen: the expenses list (`/dashboard/expenses`): an "add"
  * button in the header, a search above a table, a row action. The list is the
  * newer generation's table. The filters above it are his page's: the side,
- * «نوع الخدمة», the division (./_components/handout-filters.tsx).
+ * «نوع الخدمة», the division (./_components/handout-filters.tsx). Above them,
+ * only while there is any, the charges still to settle (MON-10) and the
+ * equipment to bring back (INT-8, MON-13).
  */
 export default function HandoutsPage() {
   const tNav = useTranslations("Nav");
@@ -50,6 +53,8 @@ export default function HandoutsPage() {
       }
     >
       <div className="space-y-6 tall:space-y-8">
+        <PendingCharges />
+        <ToRecoverList />
         <HandoutFilters />
         {handouts ? <HandoutsTable handouts={handouts} /> : <ScreenSkeleton />}
       </div>

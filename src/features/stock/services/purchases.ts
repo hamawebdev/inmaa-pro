@@ -299,6 +299,180 @@ export async function recordPurchase(
   return { id, number: number.display, total };
 }
 
+/**
+ * Cancels a purchase typed wrong (MON-08), with the reason typed: what it brought in leaves the store again by
+ * `REVERSAL` movements (refused when part of it has already left), the pieces it made are retired, the average
+ * cost is brought back to what it was without it, and its expense is reversed by an opposite entry on the
+ * purchase's own day, so the month it was typed in comes out right. Nothing is deleted. The purchase is then
+ * typed again as it should have been.
+ */
+export async function cancelPurchase(
+  ex: Executor,
+  ctx: ServiceContext,
+  input: { purchaseId: string; reason: string },
+): Promise<{ id: string }> {
+  requireSection(ctx, "STOCK", "WRITE");
+  requireCapability(ctx, "stock.manage");
+  const reason = input.reason.trim();
+  if (!reason) throw new ServiceError("A reason is required.");
+  const purchase = await ex.selectFrom("Purchase").selectAll().where("id", "=", input.purchaseId).executeTakeFirst();
+  if (!purchase) throw new ServiceError("This purchase does not exist.");
+  if (purchase.cancelledAt !== null) throw new ServiceError("This purchase is already cancelled.");
+
+  const lines = await ex
+    .selectFrom("PurchaseLine")
+    .innerJoin("StockItem", "StockItem.id", "PurchaseLine.itemId")
+    .select([
+      "PurchaseLine.id",
+      "PurchaseLine.itemId",
+      "PurchaseLine.qty",
+      "PurchaseLine.unitPrice",
+      "StockItem.tracking",
+      "StockItem.onHandQty",
+      "StockItem.avgCost",
+    ])
+    .where("PurchaseLine.purchaseId", "=", purchase.id)
+    .orderBy("PurchaseLine.seq")
+    .execute();
+
+  // What each item holds and costs as the lines are taken back one by one.
+  const held = new Map<string, { qty: number; cost: number }>(
+    lines.map((line) => [line.itemId, { qty: line.onHandQty, cost: line.avgCost }]),
+  );
+  for (const line of lines) {
+    const item = held.get(line.itemId) ?? { qty: 0, cost: 0 };
+    if (item.qty < line.qty) {
+      throw new ServiceError("Part of this purchase has already left the store: it cannot be cancelled.");
+    }
+    if (line.tracking === "UNIT") {
+      // The pieces this line made: bought with it, at the same instant, from the same supplier.
+      const units = await ex
+        .selectFrom("EquipmentUnit")
+        .select(["id", "locationKind", "retiredAt"])
+        .where("itemId", "=", line.itemId)
+        .where("supplierId", "=", purchase.supplierId)
+        .where("purchaseDate", "=", purchase.date)
+        .where("createdAt", "=", purchase.createdAt)
+        .orderBy("numberSeq")
+        .execute();
+      const pieces = units.slice(0, line.qty / 1000);
+      if (pieces.length * 1000 !== line.qty || pieces.some((unit) => unit.locationKind !== "STORE" || unit.retiredAt)) {
+        throw new ServiceError("Part of this purchase has already left the store: it cannot be cancelled.");
+      }
+      for (const unit of pieces) {
+        const entered = await ex
+          .selectFrom("StockMovement")
+          .select("id")
+          .where("unitId", "=", unit.id)
+          .where("type", "=", "PURCHASE_IN")
+          .executeTakeFirstOrThrow();
+        await addMovement(ex, ctx, {
+          itemId: line.itemId,
+          unitId: unit.id,
+          type: "REVERSAL",
+          qty: -1000,
+          unitCost: line.unitPrice,
+          date: localDate(ctx.today),
+          reversesMovementId: entered.id,
+          reason,
+        });
+        await ex
+          .updateTable("EquipmentUnit")
+          .set({
+            retiredAt: ctx.now,
+            retireReason: "PURCHASE_CANCELLED",
+            updatedAt: ctx.now,
+            updatedByUserId: ctx.userId,
+          })
+          .where("id", "=", unit.id)
+          .execute();
+      }
+    } else {
+      const entered = await ex
+        .selectFrom("StockMovement")
+        .select("id")
+        .where("purchaseLineId", "=", line.id)
+        .where("type", "=", "PURCHASE_IN")
+        .executeTakeFirstOrThrow();
+      await addMovement(ex, ctx, {
+        itemId: line.itemId,
+        type: "REVERSAL",
+        qty: -line.qty,
+        unitCost: line.unitPrice,
+        date: localDate(ctx.today),
+        reversesMovementId: entered.id,
+        reason,
+      });
+    }
+    // The average without this line: what is left, at what it cost without the line's price in it.
+    const left = item.qty - line.qty;
+    const cost =
+      left > 0 ? Math.max(0, mulDivRound(item.qty * item.cost - line.qty * line.unitPrice, 1, left)) : item.cost;
+    held.set(line.itemId, { qty: left, cost });
+  }
+  for (const [itemId, { cost }] of held) {
+    await ex
+      .updateTable("StockItem")
+      .set({ avgCost: money(cost), updatedAt: ctx.now, updatedByUserId: ctx.userId })
+      .where("id", "=", itemId)
+      .execute();
+  }
+
+  const expenses = await ex
+    .selectFrom("Expense")
+    .selectAll()
+    .where("purchaseId", "=", purchase.id)
+    .where("deletedAt", "is", null)
+    .where("amount", ">", money(0))
+    .execute();
+  for (const expense of expenses) {
+    await ex
+      .insertInto("Expense")
+      .values({
+        id: newId(),
+        date: expense.date,
+        division: expense.division,
+        category: expense.category,
+        amount: money(-expense.amount),
+        method: expense.method,
+        paidTo: expense.paidTo,
+        supplierId: expense.supplierId,
+        recurrence: "NONE",
+        source: "PURCHASE",
+        purchaseId: purchase.id,
+        note: `إلغاء الشراء رقم ${purchase.number}: ${reason}`,
+        branchId: expense.branchId,
+        createdAt: ctx.now,
+        updatedAt: ctx.now,
+        createdByUserId: ctx.userId,
+        updatedByUserId: ctx.userId,
+      })
+      .execute();
+  }
+
+  await ex
+    .updateTable("Purchase")
+    .set({
+      cancelledAt: ctx.now,
+      cancelledByUserId: ctx.userId,
+      cancelReason: reason,
+      updatedAt: ctx.now,
+      updatedByUserId: ctx.userId,
+    })
+    .where("id", "=", purchase.id)
+    .execute();
+  await logChange(ex, ctx, {
+    owner: "MONEY",
+    action: "CANCEL",
+    reason,
+    entity: "Purchase",
+    entityId: purchase.id,
+    entityLabel: purchase.number,
+    context: { lines: lines.length, expensesReversed: expenses.length },
+  });
+  return { id: purchase.id };
+}
+
 export interface PurchaseListRow {
   id: string;
   number: string;
@@ -358,4 +532,7 @@ export const listPurchasesQuery = query((ex: Executor, ctx: ServiceContext) => l
 export const createSupplierAction = action(createSupplier, { revalidate: [PURCHASES_PATH] });
 export const recordPurchaseAction = action(recordPurchase, {
   revalidate: [PURCHASES_PATH, INVENTORY_PATH, "/dashboard/expenses"],
+});
+export const cancelPurchaseAction = action(cancelPurchase, {
+  revalidate: [PURCHASES_PATH, INVENTORY_PATH, "/dashboard/expenses", "/dashboard/maintenance"],
 });

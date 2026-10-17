@@ -175,7 +175,10 @@
     "Record": "Record the expense",
     "SaveFailed": "The expense could not be saved.",
     "Updated": "Expense updated.",
-    "Recorded": "Expense recorded."
+    "Recorded": "Expense recorded.",
+    "File": "Contract (optional)",
+    "NoFile": "No contract",
+    "FileHint": "A cost of one contract: its profitability counts it."
   },
   "Errors": {
     "ExpenseAfterToday": "An expense cannot be dated after today.",
@@ -215,7 +218,12 @@
     "CashDifferenceNote": "Say why the cash differs or a receipt is missing.",
     "DayNotCome": "A day cannot be closed before it has come.",
     "AmountNotNegative": "An amount cannot be negative.",
-    "PeriodStartAfterEndMoney": "The start of the period cannot be after its end."
+    "PeriodStartAfterEndMoney": "The start of the period cannot be after its end.",
+    "NoReminderDueYet": "Nothing of this file is due yet: there is no reminder to print.",
+    "VisitOnInvoice": "This visit is on an invoice: void the invoice before changing how it is billed.",
+    "ExtraVisitPrice": "Enter the price of this extra visit.",
+    "CollectorNotAuthorised": "This worker is not authorised to collect money: her card must say so (article 12).",
+    "ExpenseFileDivision": "This file is of another division: choose its division, or no file."
   },
   "Alerts": {
     "ContractEnding": {
@@ -285,6 +293,8 @@
     "Period": "{from} to {to}",
     "Visit": "Visit of {date}",
     "Job": "One-off job",
+    "InitialJob": "First deep clean (once)",
+    "Extra": "Extra visit of {date}",
     "Table": {
       "Choose": "Choose",
       "ChooseDue": "Invoice this for {client}",
@@ -317,6 +327,15 @@
       "TTC": "Amount due",
       "Stamp": "Stamp duty",
       "Net": "Net to pay"
+    },
+    "StatementTable": {
+      "Date": "Date",
+      "Completion": "What was done",
+      "Billed": "Billed",
+      "Decision": "Decide",
+      "DecideFor": "Billing decision for the visit of {date}",
+      "Yes": "Billed",
+      "No": "Not billed"
     }
   },
   "PaymentForm": {
@@ -385,6 +404,8 @@
     "Period": "{from} to {to}",
     "Visit": "Visit of {date}",
     "Job": "One-off job",
+    "InitialJob": "First deep clean (once)",
+    "Extra": "Extra visit of {date}",
     "Table": {
       "Client": "Client",
       "Payer": "Payer",
@@ -498,6 +519,8 @@
     "Period": "{from} to {to}",
     "Visit": "Visit of {date}",
     "Job": "One-off job",
+    "InitialJob": "First deep clean (once)",
+    "Extra": "Extra visit of {date}",
     "Invoice": "Invoice",
     "NoDues": "Nothing is due on this file yet.",
     "NoInvoices": "No invoice yet.",
@@ -640,5 +663,18 @@
       "Net": "Net",
       "Running": "Balance"
     }
+  },
+  "VisitBilling": {
+    "Title": "Billing decision",
+    "Description": "The visit of {date}. The office's decision wins over the returned order.",
+    "Billable": "Billed",
+    "NotBillable": "Not billed",
+    "Price": "Price of this extra visit (DA)",
+    "Reason": "Reason",
+    "Save": "Save",
+    "Clear": "Back to the returned order",
+    "Saved": "Decision saved.",
+    "Cleared": "Decision removed.",
+    "SaveFailed": "The decision could not be saved."
   }
 }

@@ -12,6 +12,7 @@ import { useSectionLevel } from "@/hooks/use-session";
 import { useErrorMessage } from "@/i18n/errors";
 import { pathKey } from "@/lib/compat/revalidate";
 import { fileHubHref } from "@/navigation/file-parts";
+import { ToRecoverList } from "@/pages/dashboard/handouts/_components/handout-attention";
 import { HandoutsTable } from "@/pages/dashboard/handouts/_components/handouts-table";
 
 /**
@@ -53,7 +54,11 @@ export default function FileHandoutsPage() {
       }
     >
       {data ? (
-        <HandoutsTable handouts={data} showJob={false} />
+        <div className="space-y-6 tall:space-y-8">
+          {/* An ended contract's equipment to bring back (INT-8). */}
+          <ToRecoverList fileId={id} />
+          <HandoutsTable handouts={data} showJob={false} />
+        </div>
       ) : error ? (
         <p className="text-lg text-muted-foreground">{errorMessage(error.message, t("CouldNotLoad"))}</p>
       ) : (

@@ -1,7 +1,7 @@
 import * as React from "react";
 
 import { useQuery } from "@tanstack/react-query";
-import { CircleAlert, FileCheck2 } from "lucide-react";
+import { CircleAlert, FileCheck2, Scale } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useTranslations } from "use-intl";
@@ -9,6 +9,7 @@ import { useTranslations } from "use-intl";
 import { useConfirm } from "@/components/confirm-dialog";
 import { Ltr } from "@/components/ltr";
 import { PageActions, SectionHeading } from "@/components/screen";
+import { StatusChip } from "@/components/status-chip";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -29,12 +30,15 @@ import {
   prepareInvoiceQuery,
   type InvoiceCandidate,
   type InvoiceProposal,
+  type ProposedVisit,
 } from "@/features/money/services/invoices";
 import { INVOICES_PATH } from "@/features/money/services/paths";
 import { PAYMENT_METHODS, type PaymentMethod } from "@/features/money/validators/option-codes";
 import { useCan, useSectionLevel, useSession } from "@/hooks/use-session";
 import { useErrorMessage } from "@/i18n/errors";
 import { pathKey } from "@/lib/compat/revalidate";
+
+import { VisitBillingDialog } from "./visit-billing-dialog";
 
 interface Selection {
   fileId: string;
@@ -129,7 +133,12 @@ export function IssueInvoice() {
       {selection && proposal && (
         <section className="space-y-4">
           <SectionHeading>{t("TheInvoice")}</SectionHeading>
-          <ProposalCard proposal={proposal} method={method ?? proposal.paymentMethod} onMethod={setMethod} />
+          <ProposalCard
+            proposal={proposal}
+            method={method ?? proposal.paymentMethod}
+            onMethod={setMethod}
+            mayDecide={mayIssue}
+          />
           {mayIssue ? (
             <PageActions>
               <Button asChild variant="outline">
@@ -174,6 +183,9 @@ function CandidatesTable({
     }
     if (candidate.kind === "VISIT" && candidate.periodStart)
       return t("Visit", { date: dates.long(candidate.periodStart) });
+    if (candidate.kind === "EXTRA" && candidate.periodStart)
+      return t("Extra", { date: dates.long(candidate.periodStart) });
+    if (candidate.kind === "INITIAL_JOB") return t("InitialJob");
     return t("Job");
   };
 
@@ -244,12 +256,16 @@ function ProposalCard({
   proposal,
   method,
   onMethod,
+  mayDecide,
 }: {
   proposal: InvoiceProposal;
   method: PaymentMethod;
   onMethod: (method: PaymentMethod) => void;
+  /** Whether the reader may take the office's billing decision on a visit (MON-05). */
+  mayDecide: boolean;
 }) {
   const t = useTranslations("IssueInvoice");
+  const [deciding, setDeciding] = React.useState<ProposedVisit | null>(null);
   const errorMessage = useErrorMessage();
   const money = useMoneyText();
   const dates = useDateText();
@@ -377,6 +393,65 @@ function ProposalCard({
             )}
           </dl>
         )}
+
+        {proposal.visits.length > 0 && (
+          <div className="space-y-3">
+            <h3 className="font-bold">{t("Statement")}</h3>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>{t("StatementTable.Date")}</TableHead>
+                  <TableHead>{t("StatementTable.Completion")}</TableHead>
+                  <TableHead>{t("StatementTable.Billed")}</TableHead>
+                  {mayDecide && (
+                    <TableHead className="w-12">
+                      <span className="sr-only">{t("StatementTable.Decision")}</span>
+                    </TableHead>
+                  )}
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {proposal.visits.map((visit) => (
+                  <TableRow key={visit.visitId}>
+                    <TableCell className="whitespace-nowrap">{dates.long(visit.visitDate)}</TableCell>
+                    <TableCell>
+                      {/* The statement's words, as they will print. */}
+                      <span lang="ar" dir="rtl" className="block">
+                        {visit.completion}
+                      </span>
+                      {visit.remark && (
+                        <span lang="ar" dir="rtl" className="block text-sm text-muted-foreground">
+                          {visit.remark}
+                        </span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <StatusChip
+                        tone={visit.billable ? "success" : "neutral"}
+                        label={t(visit.billable ? "StatementTable.Yes" : "StatementTable.No")}
+                      />
+                    </TableCell>
+                    {mayDecide && (
+                      <TableCell>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setDeciding(visit)}
+                          aria-label={t("StatementTable.DecideFor", { date: dates.long(visit.visitDate) })}
+                        >
+                          <Scale />
+                          {t("StatementTable.Decision")}
+                        </Button>
+                      </TableCell>
+                    )}
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+        <VisitBillingDialog visit={deciding} onClose={() => setDeciding(null)} />
       </CardContent>
     </Card>
   );

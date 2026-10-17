@@ -33,7 +33,7 @@ const CONDITION_TONE: Record<ItemCondition, StatusTone> = {
  *
  * Closest academy screen: the employees list (`/dashboard/employees`), with a
  * dialog per row as on the academy's expenses. Planning and recording are the
- * storekeeper's (`stock.manage`).
+ * storekeeper's (`stock.manage`); a piece's name opens its history.
  */
 export default function MaintenancePage() {
   const tNav = useTranslations("Nav");
@@ -88,7 +88,15 @@ export default function MaintenancePage() {
                   <TableRow key={unit.id}>
                     <TableCell>
                       <div className="max-w-36 min-w-0 xl:max-w-64">
-                        <p className="truncate leading-tight font-bold">{nameOf(unit)}</p>
+                        {/* The piece's name opens its history (MON-08, MON-14). */}
+                        <button
+                          type="button"
+                          className="block max-w-full cursor-pointer truncate text-start leading-tight font-bold hover:underline"
+                          title={t("History")}
+                          onClick={() => setOpen({ unit, mode: "history" })}
+                        >
+                          {nameOf(unit)}
+                        </button>
                         <p className="truncate text-sm leading-tight text-muted-foreground">
                           <Ltr>{unit.number}</Ltr> · {locationLabel(unit.location)}
                         </p>
@@ -115,7 +123,7 @@ export default function MaintenancePage() {
                             onClick={() => setOpen({ unit, mode: "record" })}
                           >
                             <Wrench />
-                            <span className="hidden xl:inline">{t("Record")}</span>
+                            <span className="hidden 2xl:inline">{t("Record")}</span>
                           </Button>
                           <Button
                             variant="outline"

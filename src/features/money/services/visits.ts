@@ -50,6 +50,10 @@ export const isOpenVisit = (visit: Pick<BillingVisit, "status">) => OPEN_STATUSE
 export const isProgrammeVisit = (visit: Pick<BillingVisit, "origin">) =>
   visit.origin === "CONTRACT" || visit.origin === "ON_DEMAND";
 
+/** An extra visit the office priced on its own (`VisitBilling.amount`): it has a due of its own (MON-05). */
+export const isPricedExtra = (visit: Pick<BillingVisit, "origin" | "decision">) =>
+  visit.origin === "EXTRA" && visit.decision !== null && visit.decision.billable && (visit.decision.amount ?? 0) > 0;
+
 /**
  * Whether a visit is billed.
  *

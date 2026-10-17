@@ -2,7 +2,6 @@ import { sql } from "kysely";
 import type { z } from "zod";
 
 import { addDays, isIsoDate } from "@/features/money/rules/dates";
-import { addDebtEntry } from "@/features/people/services/payouts";
 import { requireCapability, requireSection } from "@/lib/access/session";
 import { newId } from "@/lib/db/rows";
 import { emit } from "@/lib/events";
@@ -359,6 +358,8 @@ export async function recordHandOutReturn(
           ? { locationKind: "STORE", locationWorkerId: null, locationFileId: null, locationSiteId: null }
           : {}),
         ...(condition ? { condition } : damaged > 0 ? { condition: "NEEDS_MAINTENANCE" } : {}),
+        // A piece declared lost no longer exists for the store (MON-14): out of service, off the maintenance tile.
+        ...(lost > 0 ? { retiredAt: ctx.now, retireReason: "LOST" } : {}),
         updatedAt: ctx.now,
         updatedByUserId: ctx.userId,
       })
@@ -374,26 +375,8 @@ export async function recordHandOutReturn(
     subject: { kind: "WORKER", id: line.workerId },
     context: { returned, lost, damaged },
   });
-  // Equipment lost or damaged goes on the worker's ledger at what it cost the store (People's debts).
-  // A line handed out at no recorded cost has no amount to charge: the violation below still says what happened.
-  if (equipment) {
-    for (const [qtyShort, reason] of [
-      [lost, "LOSS"],
-      [damaged, "DAMAGE"],
-    ] as const) {
-      const amount = Math.round(((line.unitCost ?? 0) * qtyShort) / 1000);
-      if (amount <= 0) continue;
-      await addDebtEntry(ex, ctx, {
-        staffId: line.workerId,
-        date,
-        direction: "INCREASE",
-        reason,
-        amount,
-        note: `${note ?? ""} (التسليم رقم ${line.number})`.trim(),
-        handOutReturnId: id,
-      });
-    }
-  }
+  // Equipment lost or damaged opens a charge «للتسوية» (MON-10): nothing goes on the worker's ledger until the
+  // manager settles it (`settleEquipmentCharge`), at the cost, at part of it, or not at all.
   if (lost + damaged > 0) await emit(ex, ctx, "handout.returnedShort", { handOutReturnId: id });
   return { id, outstanding: await outstandingOf(ex, line) };
 }

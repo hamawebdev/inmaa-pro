@@ -6,6 +6,7 @@ import { emit } from "@/lib/events";
 import { logChange, logDisclose } from "@/lib/log";
 import { peekLegalNumber } from "@/lib/numbering";
 import { MISSING_FOR_INVOICE } from "@/features/clients/rules/client-identifiers";
+import { listComplaintCredits } from "@/features/operations/services/complaints";
 import { WEEKDAY_AR, weekdayOf } from "@/lib/options";
 import { action, query } from "@/lib/service/action";
 import type { Executor, ServiceContext } from "@/lib/service/context";
@@ -57,7 +58,15 @@ import { readFileParty, readSeller, type FileParty } from "./parties";
 import { rebalanceFile } from "./credit";
 import { MONEY_PATHS } from "./paths";
 import { readFileBilling, type FileBilling } from "./terms";
-import { awaitsSignOff, isBilled, isOpenVisit, isProgrammeVisit, readBillingVisits, type BillingVisit } from "./visits";
+import {
+  awaitsSignOff,
+  isBilled,
+  isOpenVisit,
+  isPricedExtra,
+  isProgrammeVisit,
+  readBillingVisits,
+  type BillingVisit,
+} from "./visits";
 
 /**
  * «الفواتير» (#19, #31): an invoice is issued from dues that are ready, with
@@ -85,8 +94,11 @@ import { awaitsSignOff, isBilled, isOpenVisit, isProgrammeVisit, readBillingVisi
 export const DUE_READINESS = ["READY", "PERIOD_OPEN", "VISITS_OPEN", "AWAITING_SIGNOFF", "NOTHING_DONE"] as const;
 export type DueReadiness = (typeof DUE_READINESS)[number];
 
-/** The kinds of due this service knows how to invoice. */
-const INVOICED_KINDS = ["SCHEDULE", "VISIT", "SINGLE"] as const;
+/**
+ * The kinds of due this service knows how to invoice: a period, a visit, a job, the first deep clean of a
+ * contract (`INITIAL_JOB`, once its visit is done) and a priced extra visit (`EXTRA`).
+ */
+const INVOICED_KINDS = ["SCHEDULE", "VISIT", "SINGLE", "INITIAL_JOB", "EXTRA"] as const;
 type InvoicedKind = (typeof INVOICED_KINDS)[number];
 
 interface DueToInvoice {
@@ -101,17 +113,34 @@ interface DueToInvoice {
   expectedAmount: number;
 }
 
-/** The visits a due is the price of: its period's, its own, or the whole job's. */
+/** A visit priced or billed apart from the period and the job: the first deep clean, an extra visit priced alone. */
+const billedApart = (visit: BillingVisit) => visit.origin === "INITIAL" || isPricedExtra(visit);
+
+/** The first deep clean was done: the office's decision wins, else its visit is done (and signed off when asked). */
+function cleanDelivered(visit: BillingVisit, requireSignOff: boolean): boolean {
+  if (visit.decision) return visit.decision.billable;
+  return visit.status === "DONE" && (!requireSignOff || visit.signedOff);
+}
+
+/**
+ * The visits a due is the price of: its period's, its own, the whole job's, or the first deep clean.
+ *
+ * A make-up belongs to the period of the visit it stands in for, wherever its own date falls (MON-02): the
+ * period waits for it, counts it as delivered and states it, and the period it is dated in leaves it out.
+ */
 function visitsOfDue(due: DueToInvoice, visits: readonly BillingVisit[]): BillingVisit[] {
-  if (due.kind === "VISIT") return visits.filter((visit) => visit.id === due.visitId);
-  if (due.kind === "SINGLE") return [...visits];
-  return visits.filter(
-    (visit) =>
-      due.periodStart !== null &&
-      due.periodEnd !== null &&
-      visit.visitDate >= due.periodStart &&
-      visit.visitDate <= due.periodEnd,
-  );
+  if (due.kind === "VISIT" || due.kind === "EXTRA") return visits.filter((visit) => visit.id === due.visitId);
+  if (due.kind === "INITIAL_JOB") return visits.filter((visit) => visit.origin === "INITIAL");
+  if (due.kind === "SINGLE") return visits.filter((visit) => !billedApart(visit));
+  const { periodStart, periodEnd } = due;
+  if (periodStart === null || periodEnd === null) return [];
+  const byId = new Map(visits.map((visit) => [visit.id, visit]));
+  const inPeriod = (date: string) => date >= periodStart && date <= periodEnd;
+  return visits.filter((visit) => {
+    if (billedApart(visit)) return false;
+    const source = visit.origin === "MAKEUP" && visit.sourceVisitId ? byId.get(visit.sourceVisitId) : undefined;
+    return source ? inPeriod(source.visitDate) : inPeriod(visit.visitDate);
+  });
 }
 
 function readinessOf(
@@ -124,6 +153,9 @@ function readinessOf(
   if (due.kind === "SCHEDULE" && due.periodEnd !== null && due.periodEnd > today) return "PERIOD_OPEN";
   if (own.some(isOpenVisit)) return "VISITS_OPEN";
   if (own.some((visit) => awaitsSignOff(visit, requireSignOff))) return "AWAITING_SIGNOFF";
+  if (due.kind === "INITIAL_JOB") {
+    return own.some((visit) => cleanDelivered(visit, requireSignOff)) ? "READY" : "NOTHING_DONE";
+  }
   // A period is invoiced even when nothing was done in it: the missed visits come off it. A visit or a job is not.
   if (due.kind !== "SCHEDULE" && !own.some((visit) => isBilled(visit, requireSignOff))) return "NOTHING_DONE";
   return "READY";
@@ -261,10 +293,12 @@ export interface ProposedLine {
   quantity: number;
   unitLabel: string;
   unitPrice: number;
-  /** Negative for missed visits. */
+  /** Negative for missed visits and a complaint's discount. */
   amount: number;
   dueId: string | null;
   visitId: string | null;
+  /** The settled complaint whose agreed discount this line carries (INT-3, MON-04). */
+  complaintId?: string | null;
 }
 
 export interface ProposedVisit {
@@ -281,6 +315,9 @@ export interface ProposedVisit {
   signedBy: string | null;
   billable: boolean;
   remark: string | null;
+  /** For the screen only, never frozen: where the visit comes from, and the office's decision on it (MON-05). */
+  origin: string;
+  decision: BillingVisit["decision"];
 }
 
 export interface InvoiceProposal {
@@ -456,6 +493,35 @@ async function prepare(ex: Executor, ctx: ServiceContext, input: InvoiceInput): 
       });
       continue;
     }
+    if (due.kind === "EXTRA") {
+      const visit = own[0];
+      lines.push({
+        kind: "EXTRA",
+        description: `زيارة إضافية يوم ${formatDate(visit?.visitDate ?? due.periodStart ?? ctx.today)}`,
+        quantity: 1000,
+        unitLabel: VISIT_UNIT_LABEL,
+        unitPrice: due.expectedAmount,
+        amount: due.expectedAmount,
+        dueId: due.id,
+        visitId: due.visitId,
+      });
+      continue;
+    }
+    if (due.kind === "INITIAL_JOB") {
+      // His quote's word for the line kind: «عمل أولي (مرة واحدة)», the day it was done beside it.
+      const done = own.find((visit) => cleanDelivered(visit, settings.requireSignOff));
+      lines.push({
+        kind: "SERVICE",
+        description: `عمل أولي (مرة واحدة)${done ? ` يوم ${formatDate(done.visitDate)}` : ""}`,
+        quantity: 1000,
+        unitLabel: JOB_UNIT_LABEL,
+        unitPrice: due.expectedAmount,
+        amount: due.expectedAmount,
+        dueId: due.id,
+        visitId: done?.id ?? null,
+      });
+      continue;
+    }
     if (due.kind === "SINGLE") {
       lines.push({
         kind: "SERVICE",
@@ -518,6 +584,8 @@ async function prepare(ex: Executor, ctx: ServiceContext, input: InvoiceInput): 
     }
   }
 
+  if (dues.length > 0) lines.push(...(await complaintDiscounts(ex, ctx, file.id, lines)));
+
   const pricesIncludeVat = file.amountIncludesVat ?? tax.pricesIncludeVat;
   let totals: InvoiceTotals | null = null;
   if (tax.mode !== null && lines.length > 0) {
@@ -561,7 +629,17 @@ async function prepare(ex: Executor, ctx: ServiceContext, input: InvoiceInput): 
     lines: shown.map((line, index) => ({ seq: index + 1, ...line })),
     visits: statement.map((visit, index) => ({
       seq: index + 1,
-      ...statementRow(visit, file.division, isBilled(visit, settings.requireSignOff), settings.requireSignOff),
+      ...statementRow(
+        visit,
+        file.division,
+        // The first deep clean is billed by its own due, when that due is on this invoice.
+        visit.origin === "INITIAL"
+          ? dues.some((due) => due.kind === "INITIAL_JOB") && cleanDelivered(visit, settings.requireSignOff)
+          : isBilled(visit, settings.requireSignOff),
+        settings.requireSignOff,
+      ),
+      origin: visit.origin,
+      decision: visit.decision,
     })),
     totals,
     dues,
@@ -572,6 +650,66 @@ async function prepare(ex: Executor, ctx: ServiceContext, input: InvoiceInput): 
     pricesIncludeVat,
     ifuMention: tax.mode === "IFU" ? tax.ifuMention : null,
   };
+}
+
+/**
+ * The discounts agreed to settle the file's complaints (INT-3, MON-04), as lines of the next invoice: each
+ * complaint Operations settled with «خصم متفق عليه», less what live invoices already took of it, never
+ * more than the invoice comes to (what is left goes on the next one). Each line is tied to the due that
+ * weighs most, so the totals, the tax and the dues' shares all carry it.
+ */
+async function complaintDiscounts(
+  ex: Executor,
+  ctx: ServiceContext,
+  fileId: string,
+  lines: readonly Omit<ProposedLine, "seq">[],
+): Promise<Omit<ProposedLine, "seq">[]> {
+  const credits = await listComplaintCredits(ex, ctx, { fileId });
+  if (credits.length === 0) return [];
+  const taken = await ex
+    .selectFrom("InvoiceLine")
+    .select(["InvoiceLine.complaintId", "InvoiceLine.amount"])
+    .where(
+      "InvoiceLine.complaintId",
+      "in",
+      credits.map((credit) => credit.complaintId),
+    )
+    .where(({ not, exists, selectFrom }) =>
+      not(
+        exists(
+          selectFrom("LegalEvent")
+            .select("LegalEvent.id")
+            .whereRef("LegalEvent.invoiceId", "=", "InvoiceLine.invoiceId")
+            .where("LegalEvent.type", "=", "VOIDED"),
+        ),
+      ),
+    )
+    .execute();
+  const weightOf = new Map<string, number>();
+  for (const line of lines) {
+    if (line.dueId) weightOf.set(line.dueId, (weightOf.get(line.dueId) ?? 0) + line.amount);
+  }
+  const heaviest = [...weightOf.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
+  let room = lines.reduce((sum, line) => sum + line.amount, 0);
+  const discounts: Omit<ProposedLine, "seq">[] = [];
+  for (const credit of credits) {
+    const used = -taken.filter((line) => line.complaintId === credit.complaintId).reduce((sum, l) => sum + l.amount, 0);
+    const amount = Math.min(credit.amount - used, room);
+    if (amount <= 0) continue;
+    discounts.push({
+      kind: "DISCOUNT",
+      description: `خصم متفق عليه (الشكوى رقم ${credit.number})`,
+      quantity: 1000,
+      unitLabel: LUMP_SUM_UNIT_LABEL,
+      unitPrice: -amount,
+      amount: -amount,
+      dueId: heaviest,
+      visitId: null,
+      complaintId: credit.complaintId,
+    });
+    room -= amount;
+  }
+  return discounts;
 }
 
 /** What an invoice of these dues would say, and why it cannot be issued yet when it cannot. Writes nothing. */
@@ -666,7 +804,7 @@ export async function issueInvoice(
     amount: line.amount,
     dueId: line.dueId,
     visitId: line.visitId,
-    complaintId: null,
+    complaintId: line.complaintId ?? null,
     createdAt: ctx.now,
   }));
   const visits = prepared.visits.map((row) => ({

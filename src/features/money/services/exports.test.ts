@@ -5,6 +5,7 @@ import { createTestDatabase, type TestDatabase } from "@/testing/database";
 import { centreReady, contractedFile, da, NOVEMBER_TUESDAYS, openDay, visitOn } from "../testing/fixtures";
 
 import { syncDues } from "./dues";
+import { createExpense } from "./expenses";
 import { buildAccountantExport, csvAmount, csvCell } from "./exports";
 import { issueInvoice, voidInvoice } from "./invoices";
 import { recordPayment } from "./payments";
@@ -103,4 +104,43 @@ it("is the accountant's: reception may not export", async () => {
   await expect(
     test.transact((ex, ctx) => buildAccountantExport(ex, ctx, { kind: "PAYMENTS", ...december }), reception),
   ).rejects.toThrow("You do not have permission to do this.");
+});
+
+it("words every expense category and dates a void by the centre's day, not UTC's (MON-15)", async () => {
+  const file = await contractedFile(test);
+  for (const date of NOVEMBER_TUESDAYS) await visitOn(test, file.id, date);
+  await test.transact((ex, ctx) => syncDues(ex, ctx, { fileId: file.id }));
+  await openDay(test, "2026-12-31T08:00:00.000Z");
+  const [november] = await test.db
+    .selectFrom("PaymentDue")
+    .select("id")
+    .where("fileId", "=", file.id)
+    .orderBy("seq")
+    .execute();
+  const issued = await test.transact((ex, ctx) => issueInvoice(ex, ctx, { fileId: file.id, dueIds: [november.id] }));
+  await test.transact((ex, ctx) =>
+    createExpense(ex, ctx, {
+      values: {
+        division: "COMMON",
+        category: "LOSSES",
+        date: "2026-12-31",
+        amount: 300,
+        method: "CASH",
+        recurrence: "NONE",
+      } as never,
+    }),
+  );
+  // Voided at half past midnight in Algeria on 1 January: 23:30 on 31 December in UTC.
+  test.clock.set("2026-12-31T23:30:00.000Z");
+  await test.transact((ex, ctx) => voidInvoice(ex, ctx, { invoiceId: issued.id, reason: "خطأ" }));
+
+  const sales = await test.transact((ex, ctx) =>
+    buildAccountantExport(ex, ctx, { kind: "INVOICES", from: "2026-12-01", to: "2026-12-31" }),
+  );
+  expect(sales.text.split("\r\n")[1].split(";")).toEqual(expect.arrayContaining(["ملغاة", "01/01/2027"]));
+  const spent = await test.transact((ex, ctx) =>
+    buildAccountantExport(ex, ctx, { kind: "EXPENSES", from: "2026-12-01", to: "2026-12-31" }),
+  );
+  expect(spent.text).toContain("الخسائر/الإلغاءات");
+  expect(spent.text).not.toContain("LOSSES");
 });

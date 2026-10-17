@@ -72,6 +72,8 @@ export function DuesView({ onRecord }: { onRecord?: (fileId: string) => void }) 
         return t("Period", { from: dates.short(row.periodStart), to: dates.long(row.periodEnd) });
       }
       if (row.kind === "VISIT" && row.periodStart) return t("Visit", { date: dates.long(row.periodStart) });
+      if (row.kind === "EXTRA" && row.periodStart) return t("Extra", { date: dates.long(row.periodStart) });
+      if (row.kind === "INITIAL_JOB") return t("InitialJob");
       return t("Job");
     },
     [dates, t],

@@ -1,8 +1,11 @@
 import * as React from "react";
 
+import { useQuery } from "@tanstack/react-query";
+import { Ban } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslations } from "use-intl";
 
+import { StatusChip } from "@/components/status-chip";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -15,29 +18,42 @@ import {
 import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { centreToday } from "@/features/money/components/centre-today";
+import { ReasonDialog } from "@/features/money/components/reason-dialog";
+import { useDateText, useMoneyText } from "@/features/money/components/use-money-text";
 import {
+  bringUnitToStoreAction,
+  cancelMaintenanceRecordAction,
+  listMaintenanceQuery,
   recordMaintenanceAction,
+  retireUnitAction,
   setMaintenancePlanAction,
   type EquipmentUnitRow,
+  type MaintenanceLine,
 } from "@/features/stock/services/maintenance";
+import { MAINTENANCE_PATH } from "@/features/stock/services/paths";
 import {
   ITEM_CONDITIONS,
   MAINTENANCE_KINDS,
   type ItemCondition,
   type MaintenanceKind,
 } from "@/features/stock/validators/option-codes";
+import { useCan, useSectionLevel } from "@/hooks/use-session";
 import { useErrorMessage } from "@/i18n/errors";
 import { useCodeLabel } from "@/i18n/use-code-label";
+import { pathKey } from "@/lib/compat/revalidate";
 import { dinarsToMoney } from "@/lib/units";
 
-export type MaintenanceMode = "record" | "plan";
+export type MaintenanceMode = "record" | "plan" | "history";
 
 /**
- * The two things done to a machine from its row: recording a service or a
- * repair (what was done, by whom, for how much, in what condition it is
- * left), and setting how often it is serviced. The academy's expense dialog.
+ * What is done to a machine from its row: recording a service or a repair
+ * (what was done, by whom, for how much, in what condition it is left),
+ * setting how often it is serviced, and its history, where a record typed
+ * wrong is cancelled (MON-08) and the piece is retired or brought back to the
+ * store (MON-14). The academy's expense dialog.
  */
 export function MaintenanceDialog({
   unit,
@@ -52,7 +68,13 @@ export function MaintenanceDialog({
     <Dialog open={unit !== null} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-xl">
         {unit &&
-          (mode === "plan" ? <PlanForm unit={unit} onClose={onClose} /> : <RecordForm unit={unit} onClose={onClose} />)}
+          (mode === "plan" ? (
+            <PlanForm unit={unit} onClose={onClose} />
+          ) : mode === "history" ? (
+            <History unit={unit} onClose={onClose} />
+          ) : (
+            <RecordForm unit={unit} onClose={onClose} />
+          ))}
       </DialogContent>
     </Dialog>
   );
@@ -238,6 +260,130 @@ function RecordForm({ unit, onClose }: { unit: EquipmentUnitRow; onClose: () => 
           {t("Record")}
         </Button>
       </DialogFooter>
+    </>
+  );
+}
+
+type HistoryAct = { kind: "cancel"; line: MaintenanceLine } | { kind: "retire" } | { kind: "store" };
+
+function History({ unit, onClose }: { unit: EquipmentUnitRow; onClose: () => void }) {
+  const t = useTranslations("MaintenanceForm");
+  const tCommon = useTranslations("Common");
+  const errorMessage = useErrorMessage();
+  const dates = useDateText();
+  const money = useMoneyText();
+  const kindLabel = useCodeLabel("StockCodes.MaintenanceKinds");
+  // Anyone who reads the store sees the history; cancelling, retiring and bringing back are the storekeeper's.
+  const level = useSectionLevel("STOCK");
+  const holdsManage = useCan("stock.manage");
+  const manages = level === "WRITE" && holdsManage;
+  const [act, setAct] = React.useState<HistoryAct | null>(null);
+  const [busy, setBusy] = React.useState(false);
+  const { data: lines } = useQuery({
+    queryKey: [...pathKey(MAINTENANCE_PATH), "history", unit.id],
+    queryFn: () => listMaintenanceQuery({ unitId: unit.id }),
+  });
+
+  async function confirm(reason: string) {
+    if (!act) return;
+    setBusy(true);
+    const result =
+      act.kind === "cancel"
+        ? await cancelMaintenanceRecordAction({ recordId: act.line.id, reason })
+        : act.kind === "retire"
+          ? await retireUnitAction({ unitId: unit.id, reason })
+          : await bringUnitToStoreAction({ unitId: unit.id, reason });
+    setBusy(false);
+    if (!result.success) {
+      toast.error(errorMessage(result.error, t("SaveFailed")));
+      return;
+    }
+    toast.success(t(act.kind === "cancel" ? "RecordCancelled" : act.kind === "retire" ? "Retired" : "BackInStore"));
+    setAct(null);
+    if (act.kind === "retire") onClose();
+  }
+
+  return (
+    <>
+      <DialogHeader>
+        <DialogTitle>{t("HistoryTitle", { piece: unit.itemName, number: unit.number })}</DialogTitle>
+        <DialogDescription>{t("HistoryDescription")}</DialogDescription>
+      </DialogHeader>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>{t("Date")}</TableHead>
+            <TableHead>{t("What")}</TableHead>
+            <TableHead>{t("Cost")}</TableHead>
+            <TableHead className="w-12">
+              <span className="sr-only">{t("CancelRecord")}</span>
+            </TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {!lines || lines.length === 0 ? (
+            <TableEmpty colSpan={4}>{t("NoHistory")}</TableEmpty>
+          ) : (
+            lines.map((line) => (
+              <TableRow key={line.id}>
+                <TableCell className="whitespace-nowrap">{dates.long(line.date)}</TableCell>
+                <TableCell>
+                  <p className="max-w-56 truncate font-bold">{kindLabel(line.kind)}</p>
+                  <p className="max-w-56 truncate text-sm text-muted-foreground">{line.description}</p>
+                </TableCell>
+                <TableCell className="whitespace-nowrap tabular-nums">
+                  {line.cancelled ? <StatusChip tone="neutral" label={t("Cancelled")} /> : money(line.cost)}
+                </TableCell>
+                <TableCell>
+                  {manages && !line.cancelled && line.cost > 0 && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon-sm"
+                      title={t("CancelRecord")}
+                      aria-label={t("CancelRecord")}
+                      onClick={() => setAct({ kind: "cancel", line })}
+                    >
+                      <Ban />
+                    </Button>
+                  )}
+                </TableCell>
+              </TableRow>
+            ))
+          )}
+        </TableBody>
+      </Table>
+      <DialogFooter>
+        {manages && unit.location !== "STORE" && (
+          <Button type="button" variant="outline" onClick={() => setAct({ kind: "store" })}>
+            {t("BringToStore")}
+          </Button>
+        )}
+        {manages && (
+          <Button type="button" variant="destructive" onClick={() => setAct({ kind: "retire" })}>
+            {t("Retire")}
+          </Button>
+        )}
+        <Button type="button" variant="outline" onClick={onClose}>
+          {tCommon("Close")}
+        </Button>
+      </DialogFooter>
+      <ReasonDialog
+        open={act !== null}
+        title={t(act?.kind === "cancel" ? "CancelRecordTitle" : act?.kind === "retire" ? "RetireTitle" : "StoreTitle")}
+        description={t(
+          act?.kind === "cancel"
+            ? "CancelRecordDescription"
+            : act?.kind === "retire"
+              ? "RetireDescription"
+              : "StoreDescription",
+        )}
+        confirmLabel={t(act?.kind === "cancel" ? "CancelRecord" : act?.kind === "retire" ? "Retire" : "BringToStore")}
+        destructive={act?.kind !== "store"}
+        busy={busy}
+        onConfirm={(reason) => void confirm(reason)}
+        onCancel={() => setAct(null)}
+      />
     </>
   );
 }

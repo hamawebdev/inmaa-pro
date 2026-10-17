@@ -18,9 +18,11 @@ import { INVENTORY_PATH } from "./paths";
  * «الجرد»: counting the store against the record, one kind at a time (he
  * splits «جرد المعدات» and «جرد المواد»).
  *
- * Opening a count freezes what the record says of each item. The office types
- * what is on the shelf. Closing writes one `COUNT_ADJUST` movement per
- * difference, with the reason typed beside it, and the count is then final.
+ * Opening a count lists each item with what the record says of it, for the
+ * sheet the shelves are counted on. The office types what is on the shelf;
+ * each line is then compared with the record of that moment (MON-07). Closing
+ * writes one `COUNT_ADJUST` movement per difference, with the reason typed
+ * beside it, and the count is then final.
  */
 
 export async function openCount(
@@ -82,7 +84,7 @@ export async function openCount(
         id: newId(),
         countId: id,
         itemId: item.id,
-        // Frozen now: what moves while the shelves are counted does not move the comparison.
+        // The record now, for the counting sheet; typing the line compares it with the record of that moment.
         systemQty: item.onHandQty,
         createdAt: ctx.now,
         updatedAt: ctx.now,
@@ -92,7 +94,14 @@ export async function openCount(
   return { id, number: number.display, lines: items.length };
 }
 
-/** What was found on the shelf for one line, in the item's unit. Typed again, it replaces what was typed. */
+/**
+ * What was found on the shelf for one line, in the item's unit. Typed again, it replaces what was typed.
+ *
+ * It is compared with the record as it stands when it is typed (MON-07), not as it stood when the count was
+ * opened: a hand-out, a return or a purchase made while a count stays open over several sessions is already
+ * in the record, and the shelf counted afterwards shows it too. Closing then adds only what the shelf and the
+ * record disagree on, never those movements a second time.
+ */
 export async function saveCountLine(
   ex: Executor,
   ctx: ServiceContext,
@@ -106,16 +115,23 @@ export async function saveCountLine(
   const line = await ex
     .selectFrom("InventoryCountLine")
     .innerJoin("InventoryCount", "InventoryCount.id", "InventoryCountLine.countId")
-    .select(["InventoryCountLine.id", "InventoryCountLine.systemQty", "InventoryCount.status"])
+    .innerJoin("StockItem", "StockItem.id", "InventoryCountLine.itemId")
+    .select(["InventoryCountLine.id", "InventoryCount.status", "StockItem.onHandQty"])
     .where("InventoryCountLine.id", "=", input.lineId)
     .executeTakeFirst();
   if (!line) throw new ServiceError("This count line does not exist.");
   if (line.status !== "OPEN") throw new ServiceError("This count is closed and can no longer be changed.");
   const counted = toQty(input.countedQty);
-  const difference = counted - line.systemQty;
+  const difference = counted - line.onHandQty;
   await ex
     .updateTable("InventoryCountLine")
-    .set({ countedQty: counted, difference: qty(difference), note: input.note?.trim() || null, updatedAt: ctx.now })
+    .set({
+      systemQty: qty(line.onHandQty),
+      countedQty: counted,
+      difference: qty(difference),
+      note: input.note?.trim() || null,
+      updatedAt: ctx.now,
+    })
     .where("id", "=", line.id)
     .execute();
   return { id: line.id, difference };

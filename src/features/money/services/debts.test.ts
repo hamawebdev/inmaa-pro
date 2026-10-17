@@ -94,7 +94,7 @@ describe("a file's part «التسديد»", () => {
 });
 
 describe("the reminder letter", () => {
-  it("is written from what the file owes today, addressed to its payer", async () => {
+  it("is written from what the file owes today, addressed to its payer, the months to come left out (MON-03)", async () => {
     const { file, invoice } = await partlyPaidNovember();
     const reminder = await test.transact((ex, ctx) => getPaymentReminder(ex, ctx, { fileId: file.id }));
     expect(reminder).toMatchObject({
@@ -103,8 +103,9 @@ describe("the reminder letter", () => {
       division: "BUILDING",
       paymentMethods: ["CASH"],
       paymentPlace: "مقر المركز",
-      totalRemaining: da(115_000),
+      totalRemaining: da(25_000),
     });
+    expect(reminder.items).toHaveLength(1);
     expect(reminder.items[0]).toMatchObject({
       invoiceNumber: invoice.number,
       description: "خدمة التنظيف من 01/11/2026 إلى 30/11/2026",
@@ -113,7 +114,7 @@ describe("the reminder letter", () => {
       remaining: da(25_000),
       daysLate: 3,
     });
-    expect(reminder.totalRemainingWordsAr).toContain("مائة");
+    expect(reminder.totalRemainingWordsAr).toContain("خمسة وعشرون ألف");
   });
 
   it("is refused for a file that owes nothing", async () => {

@@ -54,7 +54,20 @@ export async function postPayoutExpenses(
     lines.push({ division, category: "WAGES", amount, note: wageNote });
   }
   const contributions = payout.payslip?.contributions;
-  if (contributions) {
+  // Once per payslip (MON-06): a payslip completed again, after an earlier part payment was voided and paid
+  // anew, keeps the contributions its first completion posted. They go only with the payout that posted them.
+  const posted =
+    contributions && payout.payslip
+      ? await ex
+          .selectFrom("Expense")
+          .innerJoin("StaffPayout", "StaffPayout.id", "Expense.staffPayoutId")
+          .select("Expense.id")
+          .where("StaffPayout.payslipId", "=", payout.payslip.id)
+          .where("Expense.category", "in", ["CONTRIBUTIONS", "TAXES"])
+          .where("Expense.deletedAt", "is", null)
+          .executeTakeFirst()
+      : undefined;
+  if (contributions && !posted) {
     const social = contributions.employee + contributions.employer;
     for (const [division, amount] of splitByMinutes(social, minutes)) {
       lines.push({ division, category: "CONTRIBUTIONS", amount, note: "اشتراكات الضمان الاجتماعي" });

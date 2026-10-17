@@ -89,19 +89,35 @@ export async function computeFileProfitability(
   // ── Revenue ──
   const dues = await ex
     .selectFrom("PaymentDue")
-    .select(["amount", "expectedAmount", "invoiceId", "periodStart", "dueDate"])
-    .where("fileId", "=", file.id)
-    .where("cancelledAt", "is", null)
+    .leftJoin("Invoice", "Invoice.id", "PaymentDue.invoiceId")
+    .select([
+      "PaymentDue.amount",
+      "PaymentDue.expectedAmount",
+      "PaymentDue.invoiceId",
+      "PaymentDue.periodStart",
+      "PaymentDue.dueDate",
+      "Invoice.totalHT",
+      "Invoice.totalTTC",
+    ])
+    .where("PaymentDue.fileId", "=", file.id)
+    .where("PaymentDue.cancelledAt", "is", null)
     .execute();
   const inPeriod = dues.filter((due) => {
     const day = due.periodStart ?? due.dueDate;
     return day >= from && day <= to;
   });
-  const withTax = inPeriod.reduce((sum, due) => sum + (due.invoiceId ? due.amount : due.expectedAmount), 0);
-  const revenue =
-    tax.mode === "VAT" && (file.amountIncludesVat ?? tax.pricesIncludeVat)
-      ? mulDivRound(withTax, 10_000, 10_000 + tax.vatRate)
-      : withTax;
+  // Revenue is before tax, invoiced or not (MON-12): an invoiced due is its share of the invoice's total with
+  // tax, so its share of the total before tax is taken; one not invoiced yet is what the terms expect, brought
+  // back before tax only when the file's price includes it.
+  const priceIncludesVat = tax.mode === "VAT" && (file.amountIncludesVat ?? tax.pricesIncludeVat);
+  const revenue = inPeriod.reduce((sum, due) => {
+    if (due.invoiceId !== null && due.totalTTC !== null && due.totalHT !== null && due.totalTTC > 0) {
+      return sum + mulDivRound(due.amount, due.totalHT, due.totalTTC);
+    }
+    return (
+      sum + (priceIncludesVat ? mulDivRound(due.expectedAmount, 10_000, 10_000 + tax.vatRate) : due.expectedAmount)
+    );
+  }, 0);
 
   // ── Time ──
   const visits = await ex

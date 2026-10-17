@@ -19,6 +19,7 @@ import {
   type MaintenanceKind,
 } from "../validators/option-codes";
 
+import { addMovement } from "./movements";
 import { MAINTENANCE_PATH } from "./paths";
 
 /**
@@ -254,6 +255,240 @@ export async function recordMaintenance(
   return { id, nextDueDate };
 }
 
+/**
+ * Takes a piece out of service for good (MON-14), with the reason typed: lost, broken beyond repair, sold.
+ * A piece still on the shelf leaves the store by a `WRITE_OFF`; one already out of it (with a worker, at a
+ * site) only stops being followed.
+ */
+export async function retireUnit(
+  ex: Executor,
+  ctx: ServiceContext,
+  input: { unitId: string; reason: string },
+): Promise<{ id: string }> {
+  requireSection(ctx, "STOCK", "WRITE");
+  requireCapability(ctx, "stock.manage");
+  const reason = input.reason.trim();
+  if (!reason) throw new ServiceError("A reason is required.");
+  const unit = await unitOf(ex, input.unitId);
+  if (unit.locationKind === "STORE" || unit.locationKind === "IN_MAINTENANCE") {
+    const item = await ex
+      .selectFrom("StockItem")
+      .select("avgCost")
+      .where("id", "=", unit.itemId)
+      .executeTakeFirstOrThrow();
+    await addMovement(ex, ctx, {
+      itemId: unit.itemId,
+      unitId: unit.id,
+      type: "WRITE_OFF",
+      qty: -1000,
+      unitCost: item.avgCost,
+      date: localDate(ctx.today),
+      reason,
+    });
+  }
+  await ex
+    .updateTable("EquipmentUnit")
+    .set({ retiredAt: ctx.now, retireReason: reason, updatedAt: ctx.now, updatedByUserId: ctx.userId })
+    .where("id", "=", unit.id)
+    .execute();
+  await logChange(ex, ctx, {
+    owner: "MONEY",
+    action: "STATUS_CHANGE",
+    reason,
+    entity: "EquipmentUnit",
+    entityId: unit.id,
+    entityLabel: unit.number,
+    changes: { retiredAt: [null, ctx.now] },
+  });
+  return { id: unit.id };
+}
+
+/**
+ * Brings back to the store a piece no hand-out expects any more (MON-14): one that came back damaged and stayed
+ * with the worker, or was found again at a site. It enters the store again by a `RETURN_IN`, with the reason.
+ */
+export async function bringUnitToStore(
+  ex: Executor,
+  ctx: ServiceContext,
+  input: { unitId: string; reason: string },
+): Promise<{ id: string }> {
+  requireSection(ctx, "STOCK", "WRITE");
+  requireCapability(ctx, "stock.manage");
+  const reason = input.reason.trim();
+  if (!reason) throw new ServiceError("A reason is required.");
+  const unit = await unitOf(ex, input.unitId);
+  if (unit.locationKind === "STORE") throw new ServiceError("This piece is already in the store.");
+  const lines = await ex
+    .selectFrom("HandOutLine")
+    .innerJoin("HandOut", "HandOut.id", "HandOutLine.handOutId")
+    .select(["HandOutLine.id", "HandOutLine.qty"])
+    .where("HandOutLine.unitId", "=", unit.id)
+    .where("HandOut.cancelledAt", "is", null)
+    .execute();
+  for (const line of lines) {
+    const back = await ex
+      .selectFrom("HandOutReturn")
+      .select(["qtyReturned", "qtyLost", "qtyDamaged"])
+      .where("handOutLineId", "=", line.id)
+      .execute();
+    const settled = back.reduce((sum, row) => sum + row.qtyReturned + row.qtyLost + row.qtyDamaged, 0);
+    if (settled < line.qty) {
+      throw new ServiceError("A hand-out still expects this piece back: record its return on the hand-out.");
+    }
+  }
+  const item = await ex
+    .selectFrom("StockItem")
+    .select("avgCost")
+    .where("id", "=", unit.itemId)
+    .executeTakeFirstOrThrow();
+  await addMovement(ex, ctx, {
+    itemId: unit.itemId,
+    unitId: unit.id,
+    type: "RETURN_IN",
+    qty: 1000,
+    unitCost: item.avgCost,
+    date: localDate(ctx.today),
+    reason,
+  });
+  const { set, changes } = changedColumns(unit, {
+    locationKind: "STORE",
+    locationWorkerId: null,
+    locationFileId: null,
+    locationSiteId: null,
+  });
+  await ex
+    .updateTable("EquipmentUnit")
+    .set({ ...set, updatedAt: ctx.now, updatedByUserId: ctx.userId })
+    .where("id", "=", unit.id)
+    .execute();
+  await logChange(ex, ctx, {
+    owner: "MONEY",
+    action: "UPDATE",
+    entity: "EquipmentUnit",
+    entityId: unit.id,
+    entityLabel: unit.number,
+    changes: changes ?? undefined,
+    reason,
+  });
+  return { id: unit.id };
+}
+
+/** The records whose cost was reversed: cancelled (MON-08). */
+async function cancelledRecords(ex: Executor, recordIds: readonly string[]): Promise<Set<string>> {
+  if (recordIds.length === 0) return new Set();
+  const rows = await ex
+    .selectFrom("Expense")
+    .select("maintenanceRecordId")
+    .where("maintenanceRecordId", "in", [...recordIds])
+    .where("amount", "<", money(0))
+    .execute();
+  return new Set(rows.flatMap((row) => (row.maintenanceRecordId ? [row.maintenanceRecordId] : [])));
+}
+
+/**
+ * Cancels a maintenance record typed wrong (MON-08), with the reason typed: its cost is reversed by an opposite
+ * entry on its own day, never deleted, and when it was the piece's latest the piece goes back to the record
+ * before it. A record that cost nothing has no money to correct: its piece's dates are corrected in its plan.
+ */
+export async function cancelMaintenanceRecord(
+  ex: Executor,
+  ctx: ServiceContext,
+  input: { recordId: string; reason: string },
+): Promise<{ id: string }> {
+  requireSection(ctx, "STOCK", "WRITE");
+  requireCapability(ctx, "stock.manage");
+  const reason = input.reason.trim();
+  if (!reason) throw new ServiceError("A reason is required.");
+  const record = await ex
+    .selectFrom("MaintenanceRecord")
+    .selectAll()
+    .where("id", "=", input.recordId)
+    .executeTakeFirst();
+  if (!record) throw new ServiceError("This maintenance record does not exist.");
+  if ((await cancelledRecords(ex, [record.id])).has(record.id)) {
+    throw new ServiceError("This maintenance record is already cancelled.");
+  }
+  if (record.cost <= 0) {
+    throw new ServiceError("This maintenance cost nothing: correct the piece's next date in its plan.");
+  }
+  const unit = await ex
+    .selectFrom("EquipmentUnit")
+    .selectAll()
+    .where("id", "=", record.unitId)
+    .executeTakeFirstOrThrow();
+
+  const expense = await ex
+    .selectFrom("Expense")
+    .selectAll()
+    .where("maintenanceRecordId", "=", record.id)
+    .where("deletedAt", "is", null)
+    .executeTakeFirst();
+  await ex
+    .insertInto("Expense")
+    .values({
+      id: newId(),
+      date: localDate(record.date),
+      division: expense?.division ?? "COMMON",
+      category: "MAINTENANCE",
+      amount: money(-record.cost),
+      method: null,
+      paidTo: record.provider,
+      recurrence: "NONE",
+      source: "MAINTENANCE",
+      maintenanceRecordId: record.id,
+      note: `إلغاء صيانة (${unit.number}): ${reason}`,
+      branchId: expense?.branchId ?? unit.branchId,
+      createdAt: ctx.now,
+      updatedAt: ctx.now,
+      createdByUserId: ctx.userId,
+      updatedByUserId: ctx.userId,
+    })
+    .execute();
+
+  // The piece follows its latest record still standing.
+  const others = await ex
+    .selectFrom("MaintenanceRecord")
+    .selectAll()
+    .where("unitId", "=", unit.id)
+    .where("id", "!=", record.id)
+    .orderBy("date", "desc")
+    .orderBy("createdAt", "desc")
+    .execute();
+  const cancelled = await cancelledRecords(
+    ex,
+    others.map((other) => other.id),
+  );
+  const latest = others.find((other) => !cancelled.has(other.id)) ?? null;
+  if (unit.lastMaintenanceDate === record.date && (latest === null || latest.date <= record.date)) {
+    const fallbackNext =
+      unit.maintenanceIntervalDays === null
+        ? null
+        : localDate(addDays(unit.purchaseDate ?? ctx.today, unit.maintenanceIntervalDays));
+    const { set, changes } = changedColumns(unit, {
+      lastMaintenanceDate: latest ? localDate(latest.date) : null,
+      nextMaintenanceDate: latest ? (latest.nextDueDate === null ? null : localDate(latest.nextDueDate)) : fallbackNext,
+      condition: latest ? latest.conditionAfter : unit.condition,
+    });
+    if (changes) {
+      await ex
+        .updateTable("EquipmentUnit")
+        .set({ ...set, updatedAt: ctx.now, updatedByUserId: ctx.userId })
+        .where("id", "=", unit.id)
+        .execute();
+    }
+  }
+  await logChange(ex, ctx, {
+    owner: "MONEY",
+    action: "CANCEL",
+    reason,
+    entity: "MaintenanceRecord",
+    entityId: record.id,
+    entityLabel: unit.number,
+    context: { cost: "reversed" },
+  });
+  return { id: record.id };
+}
+
 export interface MaintenanceLine {
   id: string;
   date: LocalDate;
@@ -262,6 +497,8 @@ export interface MaintenanceLine {
   cost: number;
   provider: string | null;
   conditionAfter: ItemCondition;
+  /** Cancelled with its cost reversed (MON-08). */
+  cancelled: boolean;
 }
 
 /** What was done to a piece, the latest first. */
@@ -278,6 +515,10 @@ export async function listMaintenance(
     .orderBy("date", "desc")
     .orderBy("createdAt", "desc")
     .execute();
+  const cancelled = await cancelledRecords(
+    ex,
+    rows.map((row) => row.id),
+  );
   return rows.map((row) => ({
     id: row.id,
     date: row.date as LocalDate,
@@ -286,6 +527,7 @@ export async function listMaintenance(
     cost: row.cost,
     provider: row.provider,
     conditionAfter: oneOf<ItemCondition>(ITEM_CONDITIONS, row.conditionAfter, "GOOD"),
+    cancelled: cancelled.has(row.id),
   }));
 }
 
@@ -297,3 +539,8 @@ export const listEquipmentUnitsQuery = query((ex: Executor, ctx: ServiceContext)
 export const listMaintenanceQuery = query(listMaintenance);
 export const setMaintenancePlanAction = action(setMaintenancePlan, { revalidate: [MAINTENANCE_PATH] });
 export const recordMaintenanceAction = action(recordMaintenance, { revalidate: [...REFRESH] });
+export const cancelMaintenanceRecordAction = action(cancelMaintenanceRecord, { revalidate: [...REFRESH] });
+export const retireUnitAction = action(retireUnit, { revalidate: [MAINTENANCE_PATH, "/dashboard/inventory"] });
+export const bringUnitToStoreAction = action(bringUnitToStore, {
+  revalidate: [MAINTENANCE_PATH, "/dashboard/inventory"],
+});

@@ -121,7 +121,18 @@
     "MaintenanceInterval": "A maintenance interval is a number of days, from 1 to 3650.",
     "MaintenanceAfterToday": "A maintenance cannot be dated after today.",
     "ConditionAfterMaintenance": "Say in what condition the equipment is after the maintenance.",
-    "MaintenanceWhat": "Write what was done."
+    "MaintenanceWhat": "Write what was done.",
+    "PurchaseNotFound": "This purchase does not exist.",
+    "PurchaseAlreadyCancelled": "This purchase is already cancelled.",
+    "PurchaseLeftStore": "Part of this purchase has already left the store: it cannot be cancelled.",
+    "MaintenanceNotFound": "This maintenance record does not exist.",
+    "MaintenanceAlreadyCancelled": "This maintenance record is already cancelled.",
+    "MaintenanceCostNothing": "This maintenance cost nothing: correct the piece's next date in its plan.",
+    "PieceInStore": "This piece is already in the store.",
+    "PieceExpected": "A hand-out still expects this piece back: record its return on the hand-out.",
+    "NoLossOnReturn": "This return lost or damaged nothing.",
+    "ChargeSettled": "This charge is already settled.",
+    "ChargeRange": "The worker is charged from nothing up to what the equipment cost."
   },
   "Alerts": {
     "StockLow": {
@@ -250,9 +261,16 @@
       "Supplier": "Supplier",
       "Division": "Division",
       "Lines": "Items",
-      "Total": "Total"
+      "Total": "Total",
+      "Actions": "Actions"
     },
-    "New": "New purchase"
+    "New": "New purchase",
+    "CancelFor": "Cancel purchase {number}",
+    "CancelTitle": "Cancel purchase {number}",
+    "CancelDescription": "What it brought in leaves the store, its pieces are retired and its expense is reversed. Type it again afterwards as it should have been.",
+    "Cancel": "Cancel the purchase",
+    "CancelDone": "Purchase {number} cancelled.",
+    "CancelFailed": "The purchase could not be cancelled."
   },
   "Maintenance": {
     "UnitCount": "{count, plural, =0 {No equipment followed piece by piece} one {# piece of equipment} other {# pieces of equipment}}",
@@ -272,7 +290,8 @@
       "Next": "Next maintenance",
       "State": "Schedule",
       "Actions": "Actions"
-    }
+    },
+    "History": "History"
   },
   "MaintenanceForm": {
     "SaveFailed": "It could not be saved.",
@@ -293,7 +312,23 @@
     "CostHint": "Empty when the centre did it itself.",
     "Provider": "Done by",
     "ConditionAfter": "Condition afterwards",
-    "Record": "Record the maintenance"
+    "Record": "Record the maintenance",
+    "HistoryTitle": "{piece} {number}: its history",
+    "HistoryDescription": "What was done to this piece. A record typed wrong is cancelled, its cost reversed.",
+    "NoHistory": "Nothing recorded yet.",
+    "Cancelled": "Cancelled",
+    "CancelRecord": "Cancel this record",
+    "CancelRecordTitle": "Cancel this maintenance record",
+    "CancelRecordDescription": "Its cost is reversed in the expenses, and the piece goes back to its record before.",
+    "Retire": "Out of service for good",
+    "RetireTitle": "Take this piece out of service",
+    "RetireDescription": "Lost, beyond repair, sold: the piece is no longer followed, and leaves the store if it is in it.",
+    "BringToStore": "Back in the store",
+    "StoreTitle": "Bring this piece back to the store",
+    "StoreDescription": "For a piece no hand-out expects any more: it enters the store again.",
+    "RecordCancelled": "Record cancelled, its cost reversed.",
+    "Retired": "Piece taken out of service.",
+    "BackInStore": "Piece back in the store."
   },
   "PurchaseForm": {
     "Title": "New purchase",
@@ -354,5 +389,32 @@
     "CloseCount": "Close the count",
     "CloseFailed": "The count could not be closed.",
     "Closed": "{count, plural, =0 {Count closed: no difference.} one {Count closed: # item adjusted.} other {Count closed: # items adjusted.}}"
+  },
+  "HandoutAttention": {
+    "ChargesTitle": "{count, plural, one {# charge to settle} other {# charges to settle}}",
+    "ChargesHint": "Equipment lost or damaged on its return. Decide what the worker owes: the cost, part of it, or nothing.",
+    "ChargesHintReader": "Equipment lost or damaged on its return. The manager decides what the worker owes.",
+    "Settle": "Settle",
+    "SettleTitle": "Settle the charge of {worker}",
+    "SettleDescription": "The equipment cost the store {cost}. Only what you charge goes on her ledger; the rest is written off.",
+    "Charged": "Charged to the worker (DA)",
+    "ChargedHint": "From 0 (waived) up to the cost.",
+    "Reason": "Reason",
+    "Settled": "Charge settled.",
+    "SettleFailed": "The charge could not be settled.",
+    "Lost": "Lost: {qty}",
+    "Damaged": "Damaged: {qty}",
+    "RecoverTitle": "{count, plural, one {# piece to bring back} other {# pieces to bring back}}",
+    "AtSite": "At the client's site",
+    "WhyContractEnded": "Contract ended, not renewed",
+    "WhyWorkerLeft": "Worker no longer in post",
+    "Table": {
+      "Return": "Hand-out",
+      "Worker": "Worker",
+      "Equipment": "Equipment",
+      "Cost": "Cost",
+      "Holder": "Held by",
+      "Why": "Why"
+    }
   }
 }

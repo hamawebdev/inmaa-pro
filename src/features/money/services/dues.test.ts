@@ -243,7 +243,7 @@ describe("the due of a job on demand, and the end of a contract", () => {
     ]);
   });
 
-  it("cancels what lay after the day a contract ended, and keeps the due of a finished job", async () => {
+  it("cancels what lay after the day a contract ended, cuts the month that holds it (INT-2), and keeps the due of a finished job", async () => {
     const contract = await monthlyContract();
     await sync(contract.id);
     await test.db
@@ -251,17 +251,18 @@ describe("the due of a job on demand, and the end of a contract", () => {
       .set({ stage: "CONTRACT_ENDED", endedDate: "2026-12-10", endKind: "ENDED_BY_CLIENT" } as never)
       .where("id", "=", contract.id)
       .execute();
-    expect(await sync(contract.id)).toEqual({ created: 0, updated: 0, cancelled: 1 });
+    expect(await sync(contract.id)).toEqual({ created: 0, updated: 1, cancelled: 1 });
     const dues = await test.db
       .selectFrom("PaymentDue")
-      .select(["periodStart", "cancelReason"])
+      .select(["periodStart", "periodEnd", "amount", "cancelReason"])
       .where("fileId", "=", contract.id)
       .orderBy("seq")
       .execute();
+    // No visit planned: the month weighs its days, ten of thirty-one.
     expect(dues).toEqual([
-      { periodStart: "2026-11-01", cancelReason: null },
-      { periodStart: "2026-12-01", cancelReason: null },
-      { periodStart: "2027-01-01", cancelReason: "CONTRACT_ENDED" },
+      { periodStart: "2026-11-01", periodEnd: "2026-11-30", amount: da(45_000), cancelReason: null },
+      { periodStart: "2026-12-01", periodEnd: "2026-12-10", amount: 1_451_613, cancelReason: null },
+      { periodStart: "2027-01-01", periodEnd: "2027-01-31", amount: da(45_000), cancelReason: "CONTRACT_ENDED" },
     ]);
 
     const job = await monthlyContract({ serviceType: "ON_DEMAND", paymentFrequency: null });

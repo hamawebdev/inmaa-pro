@@ -1,3 +1,4 @@
+import { canCollectCash } from "@/features/people/services/staff-exports";
 import { can, requireCapability, requireSection } from "@/lib/access/session";
 import { linkUpload } from "@/lib/attachments";
 import { appendChained } from "@/lib/chain";
@@ -130,6 +131,8 @@ export async function recordPayment(
   if (!cash && !reference) throw new ServiceError("A transfer needs its reference number.");
   const collectorStaffId = collectorKind === "OFFICE" ? null : text(input.collectorStaffId);
   if (collectorKind !== "OFFICE" && !collectorStaffId) throw new ServiceError("Choose who collected the money.");
+  // A receipt from a block was checked when the block was handed out; a worker named here is checked now (MON-09).
+  if (!input.receiptId) await assertMayCollect(ex, ctx, collectorKind, collectorStaffId, input.receivedDate);
 
   const file = await readFileBilling(ex, ctx, input.fileId);
   if (!file) throw new ServiceError("This file does not exist.");
@@ -569,6 +572,7 @@ export async function issueReceiptBatch(
   }
   const collectorStaffId = input.collectorKind === "OFFICE" ? null : text(input.collectorStaffId);
   if (input.collectorKind !== "OFFICE" && !collectorStaffId) throw new ServiceError("Choose who collected the money.");
+  await assertMayCollect(ex, ctx, input.collectorKind, collectorStaffId, ctx.today);
   await assertClockSane(ex, ctx, { confirmedJump: input.confirmedClockJump });
 
   const batchId = newId();
@@ -748,14 +752,32 @@ export interface Collector {
 }
 
 /**
- * Who may be handed a block of blank receipts: the centre's employees and its
- * workers on file who have not left (People's rows, read only). His
- * regulations, article 12, allow a worker to take money only when authorised:
- * the block is that authorisation, on paper.
+ * His regulations, article 12 (MON-09): a worker takes a client's money only when the office authorised her
+ * in writing, on her card («مرخص له بالتحصيل», from its date), as People's `canCollectCash` reads it. A worker
+ * who is not, on that day, is neither handed a block of receipts nor named as the collector of a payment.
+ */
+async function assertMayCollect(
+  ex: Executor,
+  ctx: ServiceContext,
+  kind: string,
+  staffId: string | null,
+  date: string,
+): Promise<void> {
+  if (kind !== "WORKER" || staffId === null) return;
+  const { authorised } = await canCollectCash(ex, ctx, { staffId, date });
+  if (!authorised) {
+    throw new ServiceError("This worker is not authorised to collect money: her card must say so (article 12).");
+  }
+}
+
+/**
+ * Who may be handed a block of blank receipts: the centre's employees, and
+ * the workers on file whose card authorises them to collect today (article
+ * 12, MON-09). People's rows, read only.
  */
 export async function listCollectors(ex: Executor, ctx: ServiceContext): Promise<Collector[]> {
   requireCapability(ctx, "payment.record");
-  const rows = await ex
+  const candidates = await ex
     .selectFrom("StaffMember")
     .select(["id", "kind", "number", "firstName", "lastName"])
     .where("deletedAt", "is", null)
@@ -764,6 +786,13 @@ export async function listCollectors(ex: Executor, ctx: ServiceContext): Promise
     .orderBy("kind")
     .orderBy("numberSeq")
     .execute();
+  const rows = [];
+  for (const row of candidates) {
+    if (row.kind === "WORKER" && !(await canCollectCash(ex, ctx, { staffId: row.id, date: ctx.today })).authorised) {
+      continue;
+    }
+    rows.push(row);
+  }
   return rows.map((row) => ({
     id: row.id,
     kind: row.kind === "WORKER" ? "WORKER" : "EMPLOYEE",

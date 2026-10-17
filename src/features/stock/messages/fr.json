@@ -121,7 +121,18 @@
     "MaintenanceInterval": "Un intervalle d'entretien est un nombre de jours, de 1 à 3650.",
     "MaintenanceAfterToday": "Un entretien ne peut pas être daté après aujourd'hui.",
     "ConditionAfterMaintenance": "Indiquez l'état de l'équipement après l'entretien.",
-    "MaintenanceWhat": "Écrivez ce qui a été fait."
+    "MaintenanceWhat": "Écrivez ce qui a été fait.",
+    "PurchaseNotFound": "Cet achat n'existe pas.",
+    "PurchaseAlreadyCancelled": "Cet achat est déjà annulé.",
+    "PurchaseLeftStore": "Une partie de cet achat a déjà quitté le magasin : il ne peut pas être annulé.",
+    "MaintenanceNotFound": "Cette fiche de maintenance n'existe pas.",
+    "MaintenanceAlreadyCancelled": "Cette fiche de maintenance est déjà annulée.",
+    "MaintenanceCostNothing": "Cette maintenance n'a rien coûté : corrigez la prochaine date dans le plan de la pièce.",
+    "PieceInStore": "Cette pièce est déjà au magasin.",
+    "PieceExpected": "Une remise attend encore cette pièce : enregistrez son retour sur la remise.",
+    "NoLossOnReturn": "Ce retour ne compte ni perte ni dommage.",
+    "ChargeSettled": "Cette imputation est déjà réglée.",
+    "ChargeRange": "L'agent est imputé de rien jusqu'au coût de l'équipement."
   },
   "Alerts": {
     "StockLow": {
@@ -250,9 +261,16 @@
       "Supplier": "Fournisseur",
       "Division": "Division",
       "Lines": "Articles",
-      "Total": "Montant"
+      "Total": "Montant",
+      "Actions": "Actions"
     },
-    "New": "Nouvel achat"
+    "New": "Nouvel achat",
+    "CancelFor": "Annuler l'achat {number}",
+    "CancelTitle": "Annuler l'achat {number}",
+    "CancelDescription": "Ce qu'il a fait entrer sort du magasin, ses pièces sont retirées et sa dépense est contrepassée. Saisissez-le ensuite à nouveau tel qu'il aurait dû être.",
+    "Cancel": "Annuler l'achat",
+    "CancelDone": "Achat {number} annulé.",
+    "CancelFailed": "L'achat n'a pas pu être annulé."
   },
   "Maintenance": {
     "UnitCount": "{count, plural, =0 {Aucun équipement suivi pièce par pièce} one {# équipement} other {# équipements}}",
@@ -272,7 +290,8 @@
       "Next": "Prochain entretien",
       "State": "Calendrier",
       "Actions": "Actions"
-    }
+    },
+    "History": "Historique"
   },
   "MaintenanceForm": {
     "SaveFailed": "L'enregistrement a échoué.",
@@ -293,7 +312,23 @@
     "CostHint": "Vide si le centre l'a fait lui-même.",
     "Provider": "Réalisé par",
     "ConditionAfter": "État après entretien",
-    "Record": "Enregistrer l'entretien"
+    "Record": "Enregistrer l'entretien",
+    "HistoryTitle": "{piece} {number} : son historique",
+    "HistoryDescription": "Ce qui a été fait sur cette pièce. Une fiche saisie par erreur est annulée, son coût contrepassé.",
+    "NoHistory": "Rien d'enregistré pour l'instant.",
+    "Cancelled": "Annulée",
+    "CancelRecord": "Annuler cette fiche",
+    "CancelRecordTitle": "Annuler cette fiche de maintenance",
+    "CancelRecordDescription": "Son coût est contrepassé dans les dépenses, et la pièce revient à sa fiche précédente.",
+    "Retire": "Hors service définitif",
+    "RetireTitle": "Mettre cette pièce hors service",
+    "RetireDescription": "Perdue, irréparable, vendue : la pièce n'est plus suivie, et sort du magasin si elle y est.",
+    "BringToStore": "Retour au magasin",
+    "StoreTitle": "Ramener cette pièce au magasin",
+    "StoreDescription": "Pour une pièce qu'aucune remise n'attend plus : elle rentre au magasin.",
+    "RecordCancelled": "Fiche annulée, son coût contrepassé.",
+    "Retired": "Pièce mise hors service.",
+    "BackInStore": "Pièce de retour au magasin."
   },
   "PurchaseForm": {
     "Title": "Nouvel achat",
@@ -354,5 +389,32 @@
     "CloseCount": "Clôturer l'inventaire",
     "CloseFailed": "L'inventaire n'a pas pu être clôturé.",
     "Closed": "{count, plural, =0 {Inventaire clôturé : aucun écart.} one {Inventaire clôturé : # article ajusté.} other {Inventaire clôturé : # articles ajustés.}}"
+  },
+  "HandoutAttention": {
+    "ChargesTitle": "{count, plural, one {# imputation à régler} other {# imputations à régler}}",
+    "ChargesHint": "Équipement perdu ou abîmé au retour. Décidez ce que l'agent doit : le coût, une partie, ou rien.",
+    "ChargesHintReader": "Équipement perdu ou abîmé au retour. Le directeur décide ce que l'agent doit.",
+    "Settle": "Régler",
+    "SettleTitle": "Régler l'imputation de {worker}",
+    "SettleDescription": "L'équipement a coûté {cost} au magasin. Seul ce que vous imputez va sur sa dette ; le reste est abandonné.",
+    "Charged": "Imputé à l'agent (DA)",
+    "ChargedHint": "De 0 (remise) jusqu'au coût.",
+    "Reason": "Motif",
+    "Settled": "Imputation réglée.",
+    "SettleFailed": "L'imputation n'a pas pu être réglée.",
+    "Lost": "Perdu : {qty}",
+    "Damaged": "Abîmé : {qty}",
+    "RecoverTitle": "{count, plural, one {# pièce à récupérer} other {# pièces à récupérer}}",
+    "AtSite": "Chez le client",
+    "WhyContractEnded": "Contrat terminé sans renouvellement",
+    "WhyWorkerLeft": "Agent plus en poste",
+    "Table": {
+      "Return": "Remise",
+      "Worker": "Agent",
+      "Equipment": "Équipement",
+      "Cost": "Coût",
+      "Holder": "Chez",
+      "Why": "Motif"
+    }
   }
 }

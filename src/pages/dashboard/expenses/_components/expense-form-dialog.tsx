@@ -1,7 +1,8 @@
 import * as React from "react";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Controller, useForm } from "react-hook-form";
+import { useQuery } from "@tanstack/react-query";
+import { Controller, useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 import { useTranslations } from "use-intl";
 
@@ -33,21 +34,36 @@ import {
   type ExpenseDivision,
   type PaymentMethod,
 } from "@/features/money/validators/option-codes";
-import { createExpenseAction, updateExpenseAction } from "@/features/money/services/expenses";
+import { createExpenseAction, listExpenseFilesQuery, updateExpenseAction } from "@/features/money/services/expenses";
+import { EXPENSES_PATH } from "@/features/money/services/paths";
 import type { ExpenseView } from "@/features/money/views";
 import { useErrorMessage } from "@/i18n/errors";
 import { useCodeLabel } from "@/i18n/use-code-label";
+import { pathKey } from "@/lib/compat/revalidate";
 import { moneyToDinars } from "@/lib/units";
 import { RECEIPT_UPLOAD_RULE } from "@/lib/uploads";
 import { saveManagedUpload } from "@/server/uploads";
 
+/** The «no file» choice of the file field: a select item cannot hold an empty value. */
+const NO_FILE = "NONE";
+
 /** What the dialog opens with: the expense being edited, or a blank one dated today. */
 function startingValues(today: IsoDate, expense?: ExpenseView, division?: ExpenseDivision): Partial<ExpenseFormValues> {
   if (!expense) {
-    return { division, date: today, method: "CASH", recurrence: "NONE", paidTo: "", spentByName: "", note: "" };
+    return {
+      division,
+      fileId: "",
+      date: today,
+      method: "CASH",
+      recurrence: "NONE",
+      paidTo: "",
+      spentByName: "",
+      note: "",
+    };
   }
   return {
     division: isExpenseDivision(expense.division) ? expense.division : undefined,
+    fileId: expense.fileId ?? "",
     category: (EXPENSE_CATEGORIES as readonly string[]).includes(expense.category)
       ? (expense.category as ExpenseCategory)
       : undefined,
@@ -129,7 +145,14 @@ function ExpenseForm({ today, expense, defaultDivision, onSaved, onDone }: Dialo
     resolver: zodResolver(schema),
     defaultValues: startingValues(today, expense, defaultDivision),
   });
-  const { control } = form;
+  const { control, setValue } = form;
+  const division = useWatch({ control, name: "division" });
+  // The contract this expense is a cost of, if any (MON-11): only a file of the division chosen.
+  const { data: files } = useQuery({
+    queryKey: [...pathKey(EXPENSES_PATH), "files"],
+    queryFn: () => listExpenseFilesQuery(undefined),
+  });
+  const filesOfDivision = (files ?? []).filter((file) => file.division === division);
 
   const [saving, setSaving] = React.useState(false);
   const submit = form.handleSubmit(async (values) => {
@@ -179,7 +202,13 @@ function ExpenseForm({ today, expense, defaultDivision, onSaved, onDone }: Dialo
           render={({ field, fieldState }) => (
             <Field data-invalid={fieldState.invalid}>
               <FieldLabel htmlFor="expense-division">{t("Division")}</FieldLabel>
-              <Select value={field.value ?? ""} onValueChange={field.onChange}>
+              <Select
+                value={field.value ?? ""}
+                onValueChange={(value) => {
+                  field.onChange(value);
+                  setValue("fileId", "");
+                }}
+              >
                 <SelectTrigger id="expense-division" aria-invalid={fieldState.invalid}>
                   <SelectValue placeholder={t("ChooseDivision")} />
                 </SelectTrigger>
@@ -191,6 +220,35 @@ function ExpenseForm({ today, expense, defaultDivision, onSaved, onDone }: Dialo
                   ))}
                 </SelectContent>
               </Select>
+              <FieldError>{errorMessage(fieldState.error?.message)}</FieldError>
+            </Field>
+          )}
+        />
+
+        <Controller
+          control={control}
+          name="fileId"
+          render={({ field, fieldState }) => (
+            <Field data-invalid={fieldState.invalid}>
+              <FieldLabel htmlFor="expense-file">{t("File")}</FieldLabel>
+              <Select
+                value={field.value || NO_FILE}
+                onValueChange={(value) => field.onChange(value === NO_FILE ? "" : value)}
+                disabled={!division || division === "COMMON"}
+              >
+                <SelectTrigger id="expense-file" aria-invalid={fieldState.invalid}>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NO_FILE}>{t("NoFile")}</SelectItem>
+                  {filesOfDivision.map((file) => (
+                    <SelectItem key={file.id} value={file.id}>
+                      {file.clientName} ({file.number})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FieldDescription>{t("FileHint")}</FieldDescription>
               <FieldError>{errorMessage(fieldState.error?.message)}</FieldError>
             </Field>
           )}

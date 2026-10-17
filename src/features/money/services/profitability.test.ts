@@ -3,9 +3,11 @@ import { afterEach, beforeEach, expect, it } from "vitest";
 import { setSetting } from "@/lib/settings";
 import { createTestDatabase, type TestDatabase } from "@/testing/database";
 
-import { centreReady, contractedFile, da, NOVEMBER_TUESDAYS, visitOn } from "../testing/fixtures";
+import { centreReady, contractedFile, da, NOVEMBER_TUESDAYS, openDay, visitOn } from "../testing/fixtures";
 
 import { syncDues } from "./dues";
+import { createExpense } from "./expenses";
+import { issueInvoice } from "./invoices";
 import { getFileProfitability } from "./profitability";
 
 let test: TestDatabase;
@@ -70,4 +72,76 @@ it("says the margin cannot be known while no hourly cost is set", async () => {
   );
   expect(report.result.actual.margin).toBeNull();
   expect(report.result.flags.hourlyCostMissing).toBe(true);
+});
+
+it("counts an expense the office tags to the contract, and refuses a tag of another division (MON-11)", async () => {
+  const file = await novemberDone();
+  await test.transact((ex, ctx) =>
+    createExpense(ex, ctx, {
+      values: {
+        division: "BUILDING",
+        fileId: file.id,
+        category: "TRANSPORT",
+        date: "2026-10-12",
+        amount: 8_000,
+        method: "CASH",
+        recurrence: "NONE",
+      } as never,
+    }),
+  );
+  const report = await test.transact((ex, ctx) =>
+    getFileProfitability(ex, ctx, { fileId: file.id, from: "2026-10-01", to: "2026-11-30" }),
+  );
+  expect(report.result.actual.transport).toBe(da(8_000));
+  await expect(
+    test.transact((ex, ctx) =>
+      createExpense(ex, ctx, {
+        values: {
+          division: "HOUSING",
+          fileId: file.id,
+          category: "TRANSPORT",
+          date: "2026-10-12",
+          amount: 1_000,
+          method: "CASH",
+          recurrence: "NONE",
+        } as never,
+      }),
+    ),
+  ).rejects.toThrow("This file is of another division: choose its division, or no file.");
+});
+
+it("counts a month's revenue before tax, invoiced or not, under VAT with prices before tax (MON-12)", async () => {
+  await test.transact(async (ex, ctx) => {
+    await setSetting(ex, ctx, "tax.mode", "VAT");
+    await setSetting(ex, ctx, "tax.pricesIncludeVat", false);
+  });
+  const file = await novemberDone();
+  await test.db
+    .updateTable("File")
+    .set({ amountIncludesVat: 0 } as never)
+    .where("id", "=", file.id)
+    .execute();
+  const revenue = async () =>
+    (
+      await test.transact((ex, ctx) =>
+        getFileProfitability(ex, ctx, { fileId: file.id, from: "2026-11-01", to: "2026-11-30" }),
+      )
+    ).result.revenue;
+  expect(await revenue()).toBe(da(45_000));
+
+  await openDay(test, "2026-12-01T09:00:00.000Z");
+  const [november] = await test.db
+    .selectFrom("PaymentDue")
+    .select("id")
+    .where("fileId", "=", file.id)
+    .orderBy("seq")
+    .execute();
+  await test.transact((ex, ctx) => issueInvoice(ex, ctx, { fileId: file.id, dueIds: [november.id] }));
+  const due = await test.db
+    .selectFrom("PaymentDue")
+    .select("amount")
+    .where("id", "=", november.id)
+    .executeTakeFirstOrThrow();
+  expect(due.amount).toBe(da(53_550));
+  expect(await revenue()).toBe(da(45_000));
 });

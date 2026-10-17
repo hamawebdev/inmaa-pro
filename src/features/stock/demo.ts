@@ -2,7 +2,7 @@ import type { Executor, ServiceContext } from "@/lib/service/context";
 import { dinarsToMoney } from "@/lib/units";
 import type { DemoNames, DemoTools } from "@/testing/demo";
 
-import { createHandOut } from "./services/handouts";
+import { createHandOut, recordHandOutReturn } from "./services/handouts";
 import { seededItemId } from "./seeds";
 import { closeCount, openCount, saveCountLine } from "./services/counts";
 import { updateStockItem } from "./services/items";
@@ -21,7 +21,9 @@ import type { StockCategory, StockKind, StockTracking, Unit } from "./validators
  *    each vacuum cleaner, and writes its expense; the first one is due for its
  *    service on Thursday;
  *  - one hand-out this morning: cleaner, bags, gloves and a bucket for the
- *    team of today's first visit (Operations' demo), to the first worker on it.
+ *    team of today's first visit (Operations' demo), to the first worker on it;
+ *  - a mop of a worker's kit, handed out and back broken this morning: a
+ *    charge the manager still has to settle (MON-10).
  *
  * Quantities are invented, except his table's.
  */
@@ -179,6 +181,27 @@ export async function seedDemo(ex: Executor, ctx: ServiceContext, tools: DemoToo
       });
       names.handOut = handOut.id;
     }
+  }
+  // ── Later this morning: a mop of a worker's kit came back broken; the manager has not settled it yet (MON-10) ──
+  // (after the job's hand-out, so that one keeps its number.)
+  const kitWorker = tools.names.people?.workerSenior;
+  if (kitWorker) {
+    const storekeeper = tools.at(ctx.now, await tools.sessionOf("OPERATIONS"));
+    const kit = await createHandOut(ex, storekeeper, {
+      date: ctx.today,
+      purpose: "WORKER_KIT",
+      workerId: kitWorker,
+      lines: [{ itemId: item("MOP"), qty: 1, condition: "GOOD" }],
+    });
+    const [line] = await ex.selectFrom("HandOutLine").select("id").where("handOutId", "=", kit.id).execute();
+    const back = await recordHandOutReturn(ex, storekeeper, {
+      handOutLineId: line.id,
+      date: ctx.today,
+      qtyReturned: 0,
+      qtyDamaged: 1,
+      note: "انكسر المقبض أثناء العمل",
+    });
+    names.chargePending = back.id;
   }
   return names;
 }

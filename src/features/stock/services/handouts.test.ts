@@ -16,6 +16,7 @@ import {
   recordHandOutReturn,
   type CreateHandOutInput,
 } from "./handouts";
+import { getEquipmentIncidents, listPendingCharges, settleEquipmentCharge } from "./incidents";
 import { createSupplier, recordPurchase } from "./purchases";
 
 let test: TestDatabase;
@@ -359,7 +360,7 @@ describe("what comes back", () => {
 });
 
 describe("equipment lost or damaged", () => {
-  it("goes on the worker's ledger at what it cost the store", async () => {
+  it("opens a charge the manager settles: the ledger is written only then, at what he decides (MON-10)", async () => {
     const worker = await workerOnFile(test);
     const buckets = await stockItem(test, {
       nameAr: "دلاء",
@@ -398,13 +399,31 @@ describe("equipment lost or damaged", () => {
         note: "سقط دلو من السطح وانكسر آخر",
       }),
     );
-    const debts = await test.db
-      .selectFrom("StaffDebtEntry")
-      .select(["staffId", "direction", "reason", "amount", "balanceAfter", "handOutReturnId"])
-      .where("handOutReturnId", "=", back.id)
-      .orderBy("seq")
-      .execute();
-    expect(debts).toEqual([
+    const debtsOf = () =>
+      test.db
+        .selectFrom("StaffDebtEntry")
+        .select(["staffId", "direction", "reason", "amount", "balanceAfter", "handOutReturnId"])
+        .where("handOutReturnId", "=", back.id)
+        .orderBy("seq")
+        .execute();
+    // The return records what happened; nobody's wage is touched yet.
+    expect(await debtsOf()).toEqual([]);
+    const [pending] = await test.transact((ex, ctx) => listPendingCharges(ex, ctx));
+    expect(pending).toMatchObject({ handOutReturnId: back.id, cost: 90_000, state: "PENDING", charged: 0 });
+
+    // A storekeeper cannot settle it.
+    const operations = await test.sessionFor("OPERATIONS");
+    await expect(
+      test.transact(
+        (ex, ctx) => settleEquipmentCharge(ex, ctx, { handOutReturnId: back.id, amount: 90_000, reason: "إهمال" }),
+        operations,
+      ),
+    ).rejects.toThrow();
+    // The manager charges the repair of one bucket and the loss of the other: 60 000 of 90 000.
+    await test.transact((ex, ctx) =>
+      settleEquipmentCharge(ex, ctx, { handOutReturnId: back.id, amount: 60_000, reason: "إهمال جزئي" }),
+    );
+    expect(await debtsOf()).toEqual([
       {
         staffId: worker.id,
         direction: "INCREASE",
@@ -421,7 +440,23 @@ describe("equipment lost or damaged", () => {
         balanceAfter: 90_000,
         handOutReturnId: back.id,
       },
+      {
+        staffId: worker.id,
+        direction: "DECREASE",
+        reason: "WRITTEN_OFF",
+        amount: 30_000,
+        balanceAfter: 60_000,
+        handOutReturnId: back.id,
+      },
     ]);
+    expect(await test.transact((ex, ctx) => listPendingCharges(ex, ctx))).toEqual([]);
+    const [settled] = await test.transact((ex, ctx) => getEquipmentIncidents(ex, ctx, { workerId: worker.id }));
+    expect(settled).toMatchObject({ state: "CHARGED", charged: 60_000 });
+    await expect(
+      test.transact((ex, ctx) =>
+        settleEquipmentCharge(ex, ctx, { handOutReturnId: back.id, amount: 0, reason: "عفو" }),
+      ),
+    ).rejects.toThrow("This charge is already settled.");
   });
 });
 

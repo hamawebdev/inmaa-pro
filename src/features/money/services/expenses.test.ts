@@ -64,6 +64,7 @@ describe("an expense typed by hand", () => {
         source: "MANUAL",
         receiptUrl: null,
         note: null,
+        fileId: null,
       },
     ]);
     expect(

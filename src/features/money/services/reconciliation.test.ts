@@ -27,7 +27,12 @@ async function blockForAWorker() {
   const file = await contractedFile(test);
   for (const date of NOVEMBER_TUESDAYS) await visitOn(test, file.id, date);
   await test.transact((ex, ctx) => syncDues(ex, ctx, { fileId: file.id }));
-  const worker = await test.rows.insert("StaffMember", { kind: "WORKER", engagementStatus: "ACCEPTED" } as never);
+  // Her card authorises her to collect (article 12, MON-09).
+  const worker = await test.rows.insert("StaffMember", {
+    kind: "WORKER",
+    engagementStatus: "ACCEPTED",
+    canCollectCash: 1,
+  } as never);
   await openDay(test, "2026-12-03T08:00:00.000Z");
   const block = await test.transact((ex, ctx) =>
     issueReceiptBatch(ex, ctx, { count: 3, collectorKind: "WORKER", collectorStaffId: worker.id }),
