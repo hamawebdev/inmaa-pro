@@ -1,5 +1,6 @@
 import { listZones } from "@/features/core/services/places";
 import { requireSection } from "@/lib/access/session";
+import { emit } from "@/lib/events";
 import { logChange } from "@/lib/log";
 import { action, query } from "@/lib/service/action";
 import { changedColumns } from "@/lib/service/changes";
@@ -630,6 +631,8 @@ export async function moveVisit(ex: Executor, ctx: ServiceContext, input: MoveVi
       ruleOverrideIds: overrideIds,
     },
   });
+  // Money's dues that take their day from a visit (one per visit, the first deep clean's) follow it (OPS-08).
+  await emit(ex, ctx, "visit.statusChanged", { visitId: visit.id });
 
   return {
     visitId: visit.id,

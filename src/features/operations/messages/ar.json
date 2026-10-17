@@ -425,7 +425,8 @@
     "SeatAlreadyReplaced": "هذا المقعد عُوِّض من قبل: عوّض العامل الذي أخذه بدلاً من ذلك.",
     "FewerWorkersNow": "الزيارة تحتاج الآن عددًا أقل من العمال.",
     "NoInitialJobInQuote": "العرض المقبول لهذا العقد لا يتضمن تنظيفًا أوليًا عميقًا.",
-    "InitialVisitAlreadyPlanned": "التنظيف الأولي العميق مبرمج من قبل."
+    "InitialVisitAlreadyPlanned": "التنظيف الأولي العميق مبرمج من قبل.",
+    "InitialVisitNotPast": "يُبرمج التنظيف الأولي العميق لليوم أو لما بعده."
   },
   "FileVisits": {
     "ProgrammeTitle": "برنامج الزيارات",

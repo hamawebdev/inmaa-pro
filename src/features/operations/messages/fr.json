@@ -425,7 +425,8 @@
     "SeatAlreadyReplaced": "Cette place est déjà remplacée : remplacez plutôt l'agent qui l'a prise.",
     "FewerWorkersNow": "La visite demande moins d'agents désormais.",
     "NoInitialJobInQuote": "Le devis accepté de ce contrat ne comprend aucun nettoyage initial.",
-    "InitialVisitAlreadyPlanned": "Le nettoyage initial est déjà planifié."
+    "InitialVisitAlreadyPlanned": "Le nettoyage initial est déjà planifié.",
+    "InitialVisitNotPast": "Le nettoyage initial se planifie pour aujourd'hui ou plus tard."
   },
   "FileVisits": {
     "ProgrammeTitle": "Programme",

@@ -425,7 +425,8 @@
     "SeatAlreadyReplaced": "This seat is already replaced: replace the worker who took it instead.",
     "FewerWorkersNow": "The visit needs fewer workers now.",
     "NoInitialJobInQuote": "This contract's accepted quote holds no first deep clean.",
-    "InitialVisitAlreadyPlanned": "The first deep clean is already planned."
+    "InitialVisitAlreadyPlanned": "The first deep clean is already planned.",
+    "InitialVisitNotPast": "The first deep clean is planned for today or later."
   },
   "FileVisits": {
     "ProgrammeTitle": "Programme",

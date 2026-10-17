@@ -1,6 +1,7 @@
 import { getAcceptedQuote } from "@/features/clients/services/exports";
 import { requireSection } from "@/lib/access/session";
 import { newId } from "@/lib/db/rows";
+import { emit } from "@/lib/events";
 import { logChange } from "@/lib/log";
 import { nextNumber } from "@/lib/numbering";
 import { action, query } from "@/lib/service/action";
@@ -78,7 +79,7 @@ export async function planInitialVisit(
   if (!offer.offered) throw new ServiceError("This contract's accepted quote holds no first deep clean.");
   if (offer.visit) throw new ServiceError("The first deep clean is already planned.");
   if (!isIsoDate(input.date)) throw new ServiceError("Enter a valid date.");
-  if (input.date < ctx.today) throw new ServiceError("An extra visit is planned for today or later.");
+  if (input.date < ctx.today) throw new ServiceError("The first deep clean is planned for today or later.");
   const startTime = input.startTime?.trim() || file.arrivalTime || "08:00";
   if (!isClockTime(startTime)) throw new ServiceError("Enter a time as HH:MM.");
   const durationMin = input.durationMin ?? 240;
@@ -136,6 +137,8 @@ export async function planInitialVisit(
   });
   await seatStandingMembers(ex, ctx, id);
   await settleVisitTeam(ex, ctx, id);
+  // Money's INITIAL_JOB due takes its day from this visit; moved or cancelled, the visit says so the same way.
+  await emit(ex, ctx, "visit.statusChanged", { visitId: id });
   return { visitId: id, number: number.display };
 }
 
