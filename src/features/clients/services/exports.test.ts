@@ -269,7 +269,7 @@ describe("for Money", () => {
       const fileId = demo.demo.clients.orgJob;
       const quote = await demo.transact((ex, ctx) => getAcceptedQuote(ex, ctx, { fileId }));
       expect(quote).toMatchObject({
-        number: "0002/2026",
+        number: "0003/2026",
         total: 3400000,
         discount: 150000,
         totals: { INITIAL_JOB: 3200000, PERIODIC: 0, EXTRA: 350000 },

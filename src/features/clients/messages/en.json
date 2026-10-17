@@ -83,7 +83,9 @@
     "Parts": "Parts of the file",
     "OpenPart": "Open",
     "OpenClientCard": "Open the client's card",
-    "IdentifiersMissing": "This organisation's card lacks what its first invoice needs: {list}."
+    "IdentifiersMissing": "This organisation's card lacks what its first invoice needs: {list}.",
+    "HandOutsAtSite": "{count, plural, one {# piece of equipment at the site} other {# pieces of equipment at the site}}",
+    "HandOutsCount": "{count, plural, one {# hand-out} other {# hand-outs}}"
   },
   "FileForm": {
     "NewTitle": "New file",

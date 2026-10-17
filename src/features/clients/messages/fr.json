@@ -83,7 +83,9 @@
     "Parts": "Parties du dossier",
     "OpenPart": "Ouvrir",
     "OpenClientCard": "Ouvrir la fiche du client",
-    "IdentifiersMissing": "Il manque à la fiche de cette entreprise ce que sa première facture exige : {list}."
+    "IdentifiersMissing": "Il manque à la fiche de cette entreprise ce que sa première facture exige : {list}.",
+    "HandOutsAtSite": "{count, plural, one {# équipement sur le site} other {# équipements sur le site}}",
+    "HandOutsCount": "{count, plural, one {# remise} other {# remises}}"
   },
   "FileForm": {
     "NewTitle": "Nouveau dossier",

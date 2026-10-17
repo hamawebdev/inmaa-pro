@@ -83,7 +83,9 @@
     "Parts": "أجزاء الملف",
     "OpenPart": "فتح",
     "OpenClientCard": "فتح بطاقة العميل",
-    "IdentifiersMissing": "تنقص بطاقة هذه المؤسسة ما تحتاجه أول فاتورة: {list}."
+    "IdentifiersMissing": "تنقص بطاقة هذه المؤسسة ما تحتاجه أول فاتورة: {list}.",
+    "HandOutsAtSite": "{count, plural, one {قطعة معدات واحدة في الموقع} two {قطعتا معدات في الموقع} few {# قطع معدات في الموقع} many {# قطعة معدات في الموقع} other {# قطعة معدات في الموقع}}",
+    "HandOutsCount": "{count, plural, one {تسليم واحد} two {تسليمان} few {# تسليمات} many {# تسليما} other {# تسليم}}"
   },
   "FileForm": {
     "NewTitle": "ملف جديد",

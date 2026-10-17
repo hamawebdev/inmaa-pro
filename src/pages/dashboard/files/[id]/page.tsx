@@ -28,6 +28,7 @@ import { ScreenDate } from "@/features/clients/components/screen-date";
 import { FORM_DEFINITIONS } from "@/features/clients/forms/definitions";
 import { labelKeyOf } from "@/features/clients/forms/screen-labels";
 import { fileQueryPath, getFileHubQuery, type FileHub } from "@/features/clients/services/file-reads";
+import { getFileHandOutSummaryQuery } from "@/features/clients/services/hub-summaries";
 import { FORM_KIND_OF } from "@/features/clients/validators/option-lists";
 import { FileProfitabilityCard } from "@/features/money/components/file-profitability-card";
 import { formatMoney } from "@/features/money/rules/centimes";
@@ -220,6 +221,21 @@ function Summary({ hub }: { hub: FileHub }) {
   );
 }
 
+/** Under «التسليم»: what is still at the site, from Money's summary. */
+function HandOutsLine({ fileId }: { fileId: string }) {
+  const t = useTranslations("FileHub");
+  const { data } = useQuery({
+    queryKey: [...pathKey(fileQueryPath(fileId)), "hand-out-summary"],
+    queryFn: () => getFileHandOutSummaryQuery({ fileId }),
+  });
+  if (!data || data.handOuts === 0) return null;
+  return (
+    <span className="block text-sm text-muted-foreground">
+      {data.atSite > 0 ? t("HandOutsAtSite", { count: data.atSite }) : t("HandOutsCount", { count: data.handOuts })}
+    </span>
+  );
+}
+
 function Parts({ hub }: { hub: FileHub }) {
   const t = useTranslations("FileHub");
   const tNav = useTranslations("Nav");
@@ -249,7 +265,10 @@ function Parts({ hub }: { hub: FileHub }) {
               >
                 <Icon className="size-5" />
               </span>
-              <span className="min-w-0 text-base font-bold">{tNav(part.labelKey)}</span>
+              <span className="min-w-0">
+                <span className="block text-base font-bold">{tNav(part.labelKey)}</span>
+                {part.id === "handouts" && <HandOutsLine fileId={hub.id} />}
+              </span>
             </Link>
           );
         })}
