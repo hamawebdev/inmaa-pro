@@ -186,7 +186,8 @@
       "Count": "{shown} من {total} عاملاً",
       "Empty": "لا يوجد أي عامل.",
       "AllDocuments": "كل الوثائق",
-      "DocumentsToRenewOnly": "وثائق للتجديد"
+      "DocumentsToRenewOnly": "وثائق للتجديد",
+      "Actions": "الإجراءات"
     },
     "File": {
       "Title": "ملف العامل",

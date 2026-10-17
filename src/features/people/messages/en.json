@@ -186,7 +186,8 @@
       "Count": "{shown} of {total} workers",
       "Empty": "No worker found.",
       "AllDocuments": "All documents",
-      "DocumentsToRenewOnly": "Documents to renew"
+      "DocumentsToRenewOnly": "Documents to renew",
+      "Actions": "Actions"
     },
     "File": {
       "Title": "Worker's file",

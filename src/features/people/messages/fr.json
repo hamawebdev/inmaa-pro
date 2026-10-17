@@ -175,9 +175,9 @@
       "Name": "Nom et prénom",
       "Role": "Fonction",
       "Zone": "Zone",
-      "Phone": "Téléphone",
+      "Phone": "Tél.",
       "Status": "État",
-      "DocumentsToRenew": "À renouveler : {count}",
+      "DocumentsToRenew": "Pièces : {count}",
       "OpenFile": "Dossier",
       "SearchPlaceholder": "Rechercher par nom, numéro ou téléphone",
       "AllStatuses": "Tous les états",
@@ -186,7 +186,8 @@
       "Count": "{shown} sur {total} agents",
       "Empty": "Aucun agent trouvé.",
       "AllDocuments": "Tous les documents",
-      "DocumentsToRenewOnly": "Documents à renouveler"
+      "DocumentsToRenewOnly": "Documents à renouveler",
+      "Actions": "Actions"
     },
     "File": {
       "Title": "Dossier de l'agent",

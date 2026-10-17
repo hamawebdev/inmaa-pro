@@ -9,7 +9,7 @@ import {
   useReactTable,
 } from "@tanstack/react-table";
 import { FileText, IdCard } from "lucide-react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslations } from "use-intl";
 
 import { DataTable, TablePager, TableSearch } from "@/components/data-table-shell";
@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { formatPhone } from "@/features/people/components/format";
+import { RowMenu } from "@/features/people/components/row-menu";
 import { SanctionChip } from "@/features/people/components/sanction-chip";
 import { STATUS_TONE } from "@/features/people/components/status-tones";
 import type { WorkerListRow } from "@/features/people/services/worker-reads";
@@ -55,6 +56,7 @@ export function WorkersTable({
   // The workers chosen for a batch of ID cards (scope R9).
   const [chosen, setChosen] = React.useState<ReadonlySet<string>>(new Set());
   const tCards = useTranslations("Cards");
+  const navigate = useNavigate();
   const toggle = React.useCallback(
     (id: string, on: boolean) =>
       setChosen((current) => {
@@ -93,9 +95,15 @@ export function WorkersTable({
         id: "name",
         header: t("Table.Name"),
         cell: ({ row }) => (
-          <Link to={`/dashboard/workers/${row.original.id}`} className="font-bold whitespace-nowrap hover:underline">
-            {staffName(row.original)}
-          </Link>
+          // Her phone on the second line: one column less, so a French row fits at 1024 px (S-07).
+          <div className="leading-5">
+            <Link to={`/dashboard/workers/${row.original.id}`} className="font-bold whitespace-nowrap hover:underline">
+              {staffName(row.original)}
+            </Link>
+            <Ltr className="block text-sm leading-4 whitespace-nowrap text-muted-foreground tabular-nums">
+              {formatPhone(row.original.phone)}
+            </Ltr>
+          </div>
         ),
       },
       {
@@ -115,15 +123,10 @@ export function WorkersTable({
         cell: ({ row }) => <span className="whitespace-nowrap">{row.original.zoneName ?? "—"}</span>,
       },
       {
-        id: "phone",
-        header: t("Table.Phone"),
-        cell: ({ row }) => <Ltr className="whitespace-nowrap tabular-nums">{formatPhone(row.original.phone)}</Ltr>,
-      },
-      {
         id: "status",
         header: t("Table.Status"),
         cell: ({ row }) => (
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-2 whitespace-nowrap">
             <StatusChip tone={STATUS_TONE[row.original.status]} label={t(`Statuses.${row.original.status}`)} />
             <SanctionChip kind="WORKER" state={row.original.sanction?.state} />
             {/* Documents to renew stand with her state: a column of their own made a French row wrap. */}
@@ -140,18 +143,32 @@ export function WorkersTable({
         id: "actions",
         header: "",
         cell: ({ row }) => (
+          // The file is the name's link; the row's actions are in its menu, so a French row stays one line (S-07).
           <div className="flex items-center justify-end">
-            <Button variant="outline" size="sm" asChild>
-              <Link to={`/dashboard/workers/${row.original.id}`}>
-                <FileText />
-                {t("Table.OpenFile")}
-              </Link>
-            </Button>
+            <RowMenu
+              label={t("Table.Actions")}
+              items={[
+                {
+                  label: t("Table.OpenFile"),
+                  icon: <FileText />,
+                  onSelect: () => navigate(`/dashboard/workers/${row.original.id}`),
+                },
+                ...(row.original.status === "LEFT"
+                  ? []
+                  : [
+                      {
+                        label: tCards("Print"),
+                        icon: <IdCard />,
+                        onSelect: () => navigate(`/dashboard/workers/${row.original.id}/print-card`),
+                      },
+                    ]),
+              ]}
+            />
           </div>
         ),
       },
     ],
-    [t, tOptions, tCards, chosen, toggle],
+    [t, tOptions, tCards, chosen, toggle, navigate],
   );
 
   const filtered = React.useMemo(() => {
