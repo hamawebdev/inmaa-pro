@@ -30,6 +30,8 @@ export interface DayBoardVisit {
   /** «اسم المتداول»: the name the site is known by. */
   site: Pick<SiteRow, "commonName" | "address">;
   zone: Pick<ZoneRow, "name"> | null;
+  /** The visit's supervisor (#36), for the home board's filter. */
+  supervisor?: { id: string; name: string } | null;
   team: readonly Pick<StaffMemberRow, "firstName" | "lastName">[];
   /** An arrival is typed for at least one worker of the visit. */
   arrivalTyped: boolean;

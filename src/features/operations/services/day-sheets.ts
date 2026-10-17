@@ -258,7 +258,7 @@ export async function getCallList(
  * file whose reminder mode is not NONE; with FIRST_AND_CHANGED, a contract's
  * visit only on its first day or when its plan changed.
  */
-async function callListVisits(ex: Executor, visitsDate: LocalDate) {
+export async function callListVisits(ex: Executor, visitsDate: LocalDate) {
   const settings = await getSettings(ex, ["reminder.mode"]);
   const visits = await dayVisits(ex, visitsDate).execute();
   const programmes = await ex

@@ -287,7 +287,11 @@
       "PHONE_CLIENT": "The client"
     },
     "ArrivalLogged": "The team's arrival is logged.",
-    "SaveFailed": "The arrival could not be logged."
+    "SaveFailed": "The arrival could not be logged.",
+    "CallList": "Call list",
+    "Supervisor": "Supervisor",
+    "AllSupervisors": "Every supervisor",
+    "MyVisits": "My visits"
   },
   "Errors": {
     "InvalidTime": "Enter a time as HH:MM.",
@@ -403,7 +407,19 @@
     "OrderHeldForClient": "This client is suspended or penalised: the order prints only after the manager releases it.",
     "SickNotLeave": "Record a sickness under the category Sick, not as a type of leave.",
     "NoShowUndoWhy": "Say why a worker marked absent on this order came after all.",
-    "ProblemTickOffWhy": "Say why a problem ticked on this order is taken off."
+    "ProblemTickOffWhy": "Say why a problem ticked on this order is taken off.",
+    "VisitNoSupervisorForPhotos": "This visit has no supervisor to take its photos.",
+    "VisitPhotoBySupervisor": "A photo of a visit is taken by its supervisor.",
+    "ScanNeedsTypedOrder": "Type the returned order in before attaching its scan.",
+    "VehicleNameAndPlate": "Give the vehicle a name and its plate number.",
+    "VehicleSeats": "The number of seats must be one or more.",
+    "VehiclePlateTaken": "Another vehicle has this plate number.",
+    "VehicleNotFound": "This vehicle does not exist.",
+    "TeamName": "Give the team a name.",
+    "TeamNeedsWorker": "A team has at least one worker.",
+    "TeamLeaderMember": "The team leader is one of its workers.",
+    "TeamNotFound": "This team does not exist.",
+    "VisitNotThatDay": "This visit is not on that day."
   },
   "FileVisits": {
     "ProgrammeTitle": "Programme",
@@ -1558,5 +1574,133 @@
     "Save": "Record",
     "Saved": "Violation {number} recorded for HR.",
     "Failed": "The violation was not recorded."
+  },
+  "Calls": {
+    "Title": "Calls about {day}",
+    "BackToBoard": "Back to the board",
+    "PreviousDay": "Previous day",
+    "NextDay": "Next day",
+    "Print": "Print the list",
+    "Columns": {
+      "Time": "Time",
+      "Client": "Client",
+      "Phones": "Phones",
+      "Purpose": "Why",
+      "Result": "Result"
+    },
+    "NotCalled": "Not called yet",
+    "CallsMade": "{count} calls",
+    "Record": "Record the call",
+    "OpenVisit": "Open the visit",
+    "Empty": "Nobody to call about that day.",
+    "Loading": "Loading…",
+    "DialogTitle": "What came of the call",
+    "ChangeOnVisit": "Postpone or cancel the visit itself from its page («تأجيل / إلغاء»).",
+    "Note": "Note",
+    "Back": "Back",
+    "Save": "Record",
+    "Saved": "The call is recorded.",
+    "Failed": "The call was not recorded.",
+    "Purposes": {
+      "REMINDER": "Confirm the visit",
+      "REPLACEMENT_NOTICE": "Replacement notice",
+      "ARRIVAL_CHECK": "Arrival check",
+      "FOLLOW_UP": "Follow-up"
+    },
+    "Results": {
+      "INFORMED": "Client informed",
+      "NO_ANSWER": "No answer",
+      "POSTPONE_REQUESTED": "Asks to postpone",
+      "CANCEL_REQUESTED": "Asks to cancel"
+    }
+  },
+  "VisitFiles": {
+    "Title": "Photos and scans",
+    "Hint": "The supervisor's photos at the site, and the scans of the returned papers.",
+    "Photos": "Photos of the visit",
+    "NoConsent": "The client has not agreed to photos at this site.",
+    "NoSupervisor": "This visit has no supervisor: its photos are his.",
+    "PhotosBy": "Taken by the supervisor, {name}.",
+    "AddPhoto": "Add a photo",
+    "PhotoAdded": "The photo is added.",
+    "PhotoFailed": "The photo was not added.",
+    "Scans": "Scans of the returned papers",
+    "ScansAfterTyping": "Type the returned order in first; its scans are attached to it.",
+    "Scan": {
+      "orderScanUrl": "The returned mission order",
+      "signoffScanUrl": "The sign-off slip, scanned apart"
+    },
+    "NoScan": "No scan attached.",
+    "PdfAttached": "A PDF is attached: save a copy to read it.",
+    "SaveCopy": "Save a copy",
+    "AttachScan": "Attach a scan",
+    "ReplaceScan": "Replace",
+    "RemoveScan": "Remove",
+    "ScanAttached": "The scan is attached.",
+    "ScanRemoved": "The scan is removed.",
+    "ScanFailed": "The scan was not saved."
+  },
+  "TeamDay": {
+    "ViewsLabel": "Work programme views",
+    "Views": {
+      "week": "The week",
+      "day": "Teams' day",
+      "teams": "Teams and vehicles"
+    },
+    "PreviousDay": "Previous day",
+    "NextDay": "Next day",
+    "AllZones": "Every zone",
+    "NoTeams": "No team yet: make one under Teams and vehicles.",
+    "Vehicle": "Vehicle",
+    "NoVehicle": "No vehicle",
+    "NoVisitYet": "No visit for this team that day.",
+    "Earlier": "Earlier",
+    "Later": "Later",
+    "TakeOff": "Take off the team's day",
+    "WithoutTeam": "Visits without a team",
+    "WithoutTeamHint": "Give each to a team: it goes last in the team's day.",
+    "GiveTo": "Give to a team",
+    "Failed": "The team's day was not saved."
+  },
+  "Teams": {
+    "TeamsTitle": "Teams",
+    "VehiclesTitle": "The centre's vehicles",
+    "NewTeam": "New team",
+    "NewVehicle": "New vehicle",
+    "EditTeam": "Edit the team",
+    "EditVehicle": "Edit the vehicle",
+    "Edit": "Edit",
+    "Columns": {
+      "Team": "Team",
+      "Members": "Workers",
+      "Vehicle": "Vehicle",
+      "Zone": "Zone",
+      "Status": "Status",
+      "Insurance": "Insurance until"
+    },
+    "Inspection": "Technical inspection until",
+    "NoZone": "No zone",
+    "NoVehicle": "No vehicle",
+    "LeaderIs": "Leader: {name}",
+    "Leader": "Leader",
+    "Name": "Name",
+    "DefaultVehicle": "Its vehicle",
+    "TeamHint": "Workers added are in the team from today; one taken off leaves it today.",
+    "VehicleHint": "The vehicles the teams go out in, with their papers' dates.",
+    "VehicleName": "Name",
+    "Plate": "Plate number",
+    "Seats": "Seats",
+    "NoTeams": "No team yet.",
+    "NoVehicles": "No vehicle yet.",
+    "Loading": "Loading…",
+    "Back": "Back",
+    "Save": "Save",
+    "Saved": "Saved.",
+    "Failed": "Not saved.",
+    "VehicleStatuses": {
+      "ACTIVE": "In service",
+      "MAINTENANCE": "In maintenance",
+      "RETIRED": "Out of service"
+    }
   }
 }

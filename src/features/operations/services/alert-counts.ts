@@ -3,7 +3,8 @@ import { getSettings } from "@/lib/settings";
 import { localDate, type LocalDate } from "@/lib/units";
 
 import { minutesOf } from "../rules/calendar";
-import { getCallList, nextWorkingDay } from "./day-sheets";
+import { countCallsToMake } from "./calls";
+import { nextWorkingDay } from "./day-sheets";
 
 /**
  * The counts behind Operations' home-screen tiles (DESIGN.md section 13). Each
@@ -123,6 +124,7 @@ export async function countCallsTomorrow(
   ctx: ServiceContext,
 ): Promise<{ count: number; route: string; date: LocalDate }> {
   const date = await nextWorkingDay(ex, localDate(ctx.today));
-  const list = await getCallList(ex, ctx, { visitsDate: date });
-  return { count: list.rows.length, route: `/dashboard/visits/calls/${date}/print`, date };
+  // The visits of tomorrow's list whose client no call has reached yet (#16): the tile empties as the calls are made.
+  const count = await countCallsToMake(ex, date);
+  return { count, route: `/dashboard/visits?list=calls&date=${date}`, date };
 }

@@ -107,6 +107,20 @@ Import rule: `VISITS_PATH` now lives in `services/paths.ts` (programme.ts re-exp
 - Demo: «مقر شركة النخيل», six visits a week 15:00–17:00, rotation on (`{operations.sixVisitFile}`); its client is
   suspended from today: `{operations.orderReleased}` released, `{operations.orderHeld}` held.
 
+## Screen audit (17 October)
+
+- F-13b, F-15: `services/visit-files.ts` and `components/visit-files/visit-files-card.tsx` on the visit page: the
+  supervisor's photos (Upload `Visit.photos`, taken by the visit's supervisor, refused without `photoConsent`) and the
+  scans `VisitReport.orderScanUrl` / `signoffScanUrl` (`visit.enterOrder`, after the order is typed).
+- F-16b: `services/calls.ts` (`listCallsForDay`, `recordVisitCall`: a `VisitCall` row, `Visit.clientInformedAt` once,
+  one log entry naming the client); the visits tab's «قائمة الاتصال» (`?list=calls&date=`) with a print button; the
+  calls.tomorrow tile counts the clients not reached yet.
+- F-36b: `listDayBoard({ supervisorId })`, `getOwnSupervision`; the home board has a supervisor filter and opens on
+  the signed-in supervisor's visits (demo: the «supervisor» account is linked to the zone supervisor).
+- F-46: `services/teams.ts` (vehicles, teams with members and default vehicle, `setTeamDay` writing `teamId`,
+  `dayOrder`, `vehicleId`); «برنامج العمل» has three views: the week, «ترتيب يوم الفرق», «الفرق والمركبات».
+  Assigning a team's day seats nobody.
+
 ## Open items
 
 - `listVisitsForBilling` is not exported yet; Money reads `Visit`, `VisitReport`, `VisitWorker` itself.

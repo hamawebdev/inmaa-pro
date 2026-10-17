@@ -16,6 +16,7 @@ import { toast } from "sonner";
 import { useTranslations } from "use-intl";
 
 import { StatCard } from "@/components/stat-card";
+import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 import { useCentreClock } from "@/hooks/use-centre-clock";
 import { useSectionLevel } from "@/hooks/use-session";
 import { useErrorMessage } from "@/i18n/errors";
@@ -25,7 +26,7 @@ import { localDate } from "@/lib/units";
 
 import { DayBoard } from "../day-board/day-board";
 import { boardCounts, boardRows, type ArrivalVia } from "../day-board/day-board-data";
-import { listDayBoardQuery } from "../../services/board";
+import { getOwnSupervisionQuery, listDayBoardQuery } from "../../services/board";
 import { VISITS_PATH } from "../../services/programme";
 import { reportArrivalAction } from "../../services/visit-entry";
 
@@ -98,6 +99,20 @@ export function HomeDayBoard() {
   const mayWrite = useSectionLevel("REQUESTS") === "WRITE";
   const [date, setDate] = useState(clock.today);
   const board = useDay(date);
+  // Each supervisor's view on the one PC (#36, F-36b): an account linked to a zone supervisor opens on his visits.
+  const own = useQuery({
+    queryKey: [...pathKey(VISITS_PATH), "own-supervision", clock.today],
+    queryFn: () => getOwnSupervisionQuery({ date: localDate(clock.today) }),
+  });
+  const [picked, setPicked] = useState<string | null | undefined>(undefined);
+  const supervisorId = picked === undefined ? (own.data?.supervisorId ?? null) : picked;
+  const all = board.data ?? [];
+  const supervisors = [
+    ...new Map(
+      all.flatMap((row) => (row.supervisor ? [[row.supervisor.id, row.supervisor.name] as const] : [])),
+    ).entries(),
+  ].sort((a, b) => a[1].localeCompare(b[1], "ar"));
+  const shown = supervisorId ? all.filter((row) => row.supervisor?.id === supervisorId) : all;
   const reportArrival = async (visitId: string, via: ArrivalVia) => {
     const result = await reportArrivalAction({ visitId, via });
     if (result.success) toast.success(t("ArrivalLogged"));
@@ -107,10 +122,28 @@ export function HomeDayBoard() {
     <DayBoard
       date={date}
       onDateChange={setDate}
-      visits={board.data ?? []}
+      visits={shown}
       loading={board.isPending}
       clock={clock}
       onReportArrival={mayWrite ? reportArrival : undefined}
+      controls={
+        <NativeSelect
+          aria-label={t("Supervisor")}
+          className="w-56"
+          value={supervisorId ?? ""}
+          onChange={(event) => setPicked(event.target.value || null)}
+        >
+          <NativeSelectOption value="">{t("AllSupervisors")}</NativeSelectOption>
+          {supervisorId && !supervisors.some(([id]) => id === supervisorId) && (
+            <NativeSelectOption value={supervisorId}>{t("MyVisits")}</NativeSelectOption>
+          )}
+          {supervisors.map(([id, name]) => (
+            <NativeSelectOption key={id} value={id}>
+              {name}
+            </NativeSelectOption>
+          ))}
+        </NativeSelect>
+      }
     />
   );
 }

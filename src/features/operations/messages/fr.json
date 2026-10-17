@@ -40,7 +40,7 @@
   },
   "VisitStatuses": {
     "CONFIRMED": "Confirmée",
-    "AWAITING_CONFIRMATION": "En attente de confirmation",
+    "AWAITING_CONFIRMATION": "À confirmer",
     "IN_PROGRESS": "En cours",
     "DONE": "Effectuée",
     "POSTPONED": "Reportée",
@@ -287,7 +287,11 @@
       "PHONE_CLIENT": "Le client"
     },
     "ArrivalLogged": "L'arrivée de l'équipe est enregistrée.",
-    "SaveFailed": "L'arrivée n'a pas pu être enregistrée."
+    "SaveFailed": "L'arrivée n'a pas pu être enregistrée.",
+    "CallList": "Liste d'appels",
+    "Supervisor": "Superviseur",
+    "AllSupervisors": "Tous les superviseurs",
+    "MyVisits": "Mes visites"
   },
   "Errors": {
     "InvalidTime": "Saisissez une heure au format HH:MM.",
@@ -403,7 +407,19 @@
     "OrderHeldForClient": "Ce client est suspendu ou sanctionné : l'ordre ne s'imprime qu'après l'autorisation du directeur.",
     "SickNotLeave": "Enregistrez une maladie dans la catégorie Maladie, pas comme un type de congé.",
     "NoShowUndoWhy": "Dites pourquoi un agent noté absent sur cet ordre est finalement venu.",
-    "ProblemTickOffWhy": "Dites pourquoi un problème coché sur cet ordre est retiré."
+    "ProblemTickOffWhy": "Dites pourquoi un problème coché sur cet ordre est retiré.",
+    "VisitNoSupervisorForPhotos": "Cette visite n'a pas de superviseur pour prendre ses photos.",
+    "VisitPhotoBySupervisor": "Une photo de visite est prise par son superviseur.",
+    "ScanNeedsTypedOrder": "Saisissez l'ordre rendu avant de joindre son scan.",
+    "VehicleNameAndPlate": "Donnez au véhicule un nom et son immatriculation.",
+    "VehicleSeats": "Le nombre de places doit être d'au moins un.",
+    "VehiclePlateTaken": "Un autre véhicule a cette immatriculation.",
+    "VehicleNotFound": "Ce véhicule n'existe pas.",
+    "TeamName": "Donnez un nom à l'équipe.",
+    "TeamNeedsWorker": "Une équipe a au moins un agent.",
+    "TeamLeaderMember": "Le chef d'équipe est l'un de ses agents.",
+    "TeamNotFound": "Cette équipe n'existe pas.",
+    "VisitNotThatDay": "Cette visite n'est pas ce jour-là."
   },
   "FileVisits": {
     "ProgrammeTitle": "Programme",
@@ -1558,5 +1574,133 @@
     "Save": "Enregistrer",
     "Saved": "Infraction {number} enregistrée pour les RH.",
     "Failed": "L'infraction n'a pas été enregistrée."
+  },
+  "Calls": {
+    "Title": "Appels pour le {day}",
+    "BackToBoard": "Retour au tableau",
+    "PreviousDay": "Jour précédent",
+    "NextDay": "Jour suivant",
+    "Print": "Imprimer la liste",
+    "Columns": {
+      "Time": "Heure",
+      "Client": "Client",
+      "Phones": "Téléphones",
+      "Purpose": "Motif",
+      "Result": "Résultat"
+    },
+    "NotCalled": "Pas encore appelé",
+    "CallsMade": "{count} appels",
+    "Record": "Noter l'appel",
+    "OpenVisit": "Ouvrir la visite",
+    "Empty": "Personne à appeler pour ce jour.",
+    "Loading": "Chargement…",
+    "DialogTitle": "Résultat de l'appel",
+    "ChangeOnVisit": "Reportez ou annulez la visite depuis sa page («تأجيل / إلغاء»).",
+    "Note": "Note",
+    "Back": "Retour",
+    "Save": "Enregistrer",
+    "Saved": "L'appel est enregistré.",
+    "Failed": "L'appel n'a pas été enregistré.",
+    "Purposes": {
+      "REMINDER": "Confirmer le rendez-vous",
+      "REPLACEMENT_NOTICE": "Avis de remplacement",
+      "ARRIVAL_CHECK": "Vérifier l'arrivée",
+      "FOLLOW_UP": "Suivi"
+    },
+    "Results": {
+      "INFORMED": "Client informé",
+      "NO_ANSWER": "Pas de réponse",
+      "POSTPONE_REQUESTED": "Demande un report",
+      "CANCEL_REQUESTED": "Demande une annulation"
+    }
+  },
+  "VisitFiles": {
+    "Title": "Photos et scans",
+    "Hint": "Les photos du superviseur sur le site, et les scans des papiers rendus.",
+    "Photos": "Photos de la visite",
+    "NoConsent": "Le client n'a pas accepté les photos sur ce site.",
+    "NoSupervisor": "Cette visite n'a pas de superviseur : les photos sont les siennes.",
+    "PhotosBy": "Prises par le superviseur, {name}.",
+    "AddPhoto": "Ajouter une photo",
+    "PhotoAdded": "La photo est ajoutée.",
+    "PhotoFailed": "La photo n'a pas été ajoutée.",
+    "Scans": "Scans des papiers rendus",
+    "ScansAfterTyping": "Saisissez d'abord l'ordre rendu ; ses scans y sont joints.",
+    "Scan": {
+      "orderScanUrl": "L'ordre de mission rendu",
+      "signoffScanUrl": "Le bon de réception, scanné à part"
+    },
+    "NoScan": "Aucun scan joint.",
+    "PdfAttached": "Un PDF est joint : enregistrez une copie pour le lire.",
+    "SaveCopy": "Enregistrer une copie",
+    "AttachScan": "Joindre un scan",
+    "ReplaceScan": "Remplacer",
+    "RemoveScan": "Retirer",
+    "ScanAttached": "Le scan est joint.",
+    "ScanRemoved": "Le scan est retiré.",
+    "ScanFailed": "Le scan n'a pas été enregistré."
+  },
+  "TeamDay": {
+    "ViewsLabel": "Vues du programme",
+    "Views": {
+      "week": "La semaine",
+      "day": "Journée des équipes",
+      "teams": "Équipes et véhicules"
+    },
+    "PreviousDay": "Jour précédent",
+    "NextDay": "Jour suivant",
+    "AllZones": "Toutes les zones",
+    "NoTeams": "Aucune équipe : créez-en une sous Équipes et véhicules.",
+    "Vehicle": "Véhicule",
+    "NoVehicle": "Sans véhicule",
+    "NoVisitYet": "Aucune visite pour cette équipe ce jour-là.",
+    "Earlier": "Plus tôt",
+    "Later": "Plus tard",
+    "TakeOff": "Retirer de la journée",
+    "WithoutTeam": "Visites sans équipe",
+    "WithoutTeamHint": "Confiez chacune à une équipe : elle passe en dernier dans sa journée.",
+    "GiveTo": "Confier à une équipe",
+    "Failed": "La journée de l'équipe n'a pas été enregistrée."
+  },
+  "Teams": {
+    "TeamsTitle": "Équipes",
+    "VehiclesTitle": "Véhicules du centre",
+    "NewTeam": "Nouvelle équipe",
+    "NewVehicle": "Nouveau véhicule",
+    "EditTeam": "Modifier l'équipe",
+    "EditVehicle": "Modifier le véhicule",
+    "Edit": "Modifier",
+    "Columns": {
+      "Team": "Équipe",
+      "Members": "Agents",
+      "Vehicle": "Véhicule",
+      "Zone": "Zone",
+      "Status": "Statut",
+      "Insurance": "Assurance jusqu'au"
+    },
+    "Inspection": "Contrôle technique jusqu'au",
+    "NoZone": "Sans zone",
+    "NoVehicle": "Sans véhicule",
+    "LeaderIs": "Chef : {name}",
+    "Leader": "Chef",
+    "Name": "Nom",
+    "DefaultVehicle": "Son véhicule",
+    "TeamHint": "Les agents ajoutés sont dans l'équipe dès aujourd'hui ; un agent retiré la quitte aujourd'hui.",
+    "VehicleHint": "Les véhicules des équipes, avec les dates de leurs papiers.",
+    "VehicleName": "Nom",
+    "Plate": "Immatriculation",
+    "Seats": "Places",
+    "NoTeams": "Aucune équipe.",
+    "NoVehicles": "Aucun véhicule.",
+    "Loading": "Chargement…",
+    "Back": "Retour",
+    "Save": "Enregistrer",
+    "Saved": "Enregistré.",
+    "Failed": "Non enregistré.",
+    "VehicleStatuses": {
+      "ACTIVE": "En service",
+      "MAINTENANCE": "En maintenance",
+      "RETIRED": "Hors service"
+    }
   }
 }

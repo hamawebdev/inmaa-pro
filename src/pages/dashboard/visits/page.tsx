@@ -1,10 +1,14 @@
 import { useState } from "react";
 
+import { PhoneCall } from "lucide-react";
+import { Link } from "react-router-dom";
+
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useTranslations } from "use-intl";
 
 import { ErrorState } from "@/components/error-state";
+import { Button } from "@/components/ui/button";
 import { SectionScreen } from "@/components/section-screen";
 import { DayBoard, DayBoardCounts } from "@/features/operations/components/day-board/day-board";
 import type { ArrivalVia } from "@/features/operations/components/day-board/day-board-data";
@@ -16,7 +20,10 @@ import { useSectionLevel } from "@/hooks/use-session";
 import { useErrorMessage } from "@/i18n/errors";
 import { pathKey } from "@/lib/compat/revalidate";
 import { useSearchParams } from "@/lib/compat/navigation";
+import { addDays } from "@/features/operations/rules/calendar";
 import { localDate } from "@/lib/units";
+
+import { CallsView } from "./_components/calls-view";
 
 import { VisitsToAct, type VisitList } from "./_components/visits-to-act";
 
@@ -35,8 +42,11 @@ export default function VisitsPage() {
   const clock = useCentreClock();
   const mayWrite = useSectionLevel("REQUESTS") === "WRITE";
   const [date, setDate] = useState(clock.today);
-  const listParam = useSearchParams().get("list");
+  const params = useSearchParams();
+  const listParam = params.get("list");
   const list: VisitList | null = listParam === "not-returned" || listParam === "awaiting" ? listParam : null;
+  const calls = listParam === "calls";
+  const callsDate = params.get("date") ?? addDays(clock.today, 1);
   const board = useQuery({
     queryKey: [...pathKey(VISITS_PATH), "board", date],
     queryFn: () => listDayBoardQuery({ date: localDate(date) }),
@@ -52,9 +62,11 @@ export default function VisitsPage() {
     <SectionScreen
       section="requests"
       title={tNav("Visits")}
-      actions={!list && board.data ? <DayBoardCounts visits={board.data} clock={clock} /> : undefined}
+      actions={!list && !calls && board.data ? <DayBoardCounts visits={board.data} clock={clock} /> : undefined}
     >
-      {list ? (
+      {calls ? (
+        <CallsView date={callsDate} />
+      ) : list ? (
         <VisitsToAct kind={list} />
       ) : board.isError ? (
         <ErrorState onRetry={() => void board.refetch()} />
@@ -67,6 +79,15 @@ export default function VisitsPage() {
           clock={clock}
           onReportArrival={mayWrite ? reportArrival : undefined}
           showCounts={false}
+          controls={
+            // Tomorrow's calls to the clients (#16), with their results; the list prints from there.
+            <Button variant="outline" size="sm" asChild className="ms-auto">
+              <Link to={`${VISITS_PATH}?list=calls&date=${addDays(clock.today, 1)}`}>
+                <PhoneCall />
+                {t("CallList")}
+              </Link>
+            </Button>
+          }
         />
       )}
     </SectionScreen>

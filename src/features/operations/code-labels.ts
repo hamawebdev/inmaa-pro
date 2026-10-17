@@ -16,6 +16,8 @@ import { ABSENCE_CATEGORIES, ABSENCE_STATUSES, ABSENCE_VIAS, REPLACEMENT_REASONS
 
 import {
   AREA_KINDS,
+  CALL_PURPOSES,
+  CALL_RESULTS,
   COMPLAINT_COUNTER_STATES,
   COMPLETIONS,
   PRESENCE_PROOFS,
@@ -27,6 +29,7 @@ import {
   SEAT_STATUSES,
   SIGNOFF_STATUSES,
   TASK_FREQUENCIES,
+  VEHICLE_STATUSES,
   VISIT_STATUSES,
   WORK_RULE_CODES,
   WORK_RULE_LEVELS,
@@ -77,4 +80,7 @@ export const codeLabelCases: readonly CodeLabelCase[] = [
   ["Problems.Statuses", PROBLEM_STATUSES],
   ["Problems.Vias", PROBLEM_VIAS],
   ["Problems.HandedTo", HANDED_TO],
+  ["Calls.Purposes", CALL_PURPOSES],
+  ["Calls.Results", CALL_RESULTS],
+  ["Teams.VehicleStatuses", VEHICLE_STATUSES],
 ];

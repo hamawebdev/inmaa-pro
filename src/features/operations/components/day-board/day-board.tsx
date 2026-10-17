@@ -60,6 +60,7 @@ export function DayBoard({
   loading = false,
   onReportArrival,
   showCounts = true,
+  controls,
 }: {
   /** The day shown, "YYYY-MM-DD". */
   date: string;
@@ -75,6 +76,8 @@ export function DayBoard({
   onReportArrival?: (visitId: string, via: ArrivalVia) => void;
   /** False when the page shows `DayBoardCounts` in its heading row instead (the visits tab, to keep four visits in view). */
   showCounts?: boolean;
+  /** More controls at the end of the board's row: the call list's way in, the home's supervisor filter. */
+  controls?: React.ReactNode;
 }) {
   const t = useTranslations("DayBoard");
   const tNotes = useTranslations("VisitEntry.Notes");
@@ -289,6 +292,7 @@ export function DayBoard({
             setPagination((current) => ({ ...current, pageIndex: 0 }));
           }}
         />
+        {controls}
       </div>
 
       {showCounts && <Counts counts={counts} />}

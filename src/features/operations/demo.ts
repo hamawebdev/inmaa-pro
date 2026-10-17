@@ -1,5 +1,6 @@
 import { DEMO_FILES } from "@/features/clients/demo";
 import { moveFileStage, registerFile } from "@/features/clients/services/files";
+import { linkAccountToStaff } from "@/features/core/services/users";
 import { setSanction } from "@/features/people/services/sanctions";
 import { newId } from "@/lib/db/rows";
 import type { Executor, ServiceContext } from "@/lib/service/context";
@@ -10,7 +11,10 @@ import { entryValuesOf } from "./components/visit-entry/visit-entry-data";
 import { addDays, clockOf, minutesOf } from "./rules/calendar";
 import { assignVisitWorker, listSeatCandidates } from "./services/assignment";
 import { demoInspections } from "./services/inspections";
+import { recordVisitCall } from "./services/calls";
+import { callListVisits } from "./services/day-sheets";
 import { recordOrderPrinted, releaseSanctionedOrder } from "./services/mission-order";
+import { getTeamDay, saveTeam, saveVehicle, setTeamDay } from "./services/teams";
 import { demoComplaints } from "./services/problem-reports";
 import { assignZoneSupervisor } from "./services/supervisors";
 import { generateFileVisits, OPEN_STATUSES } from "./services/programme";
@@ -57,6 +61,14 @@ export async function seedDemo(ex: Executor, ctx: ServiceContext, tools: DemoToo
       });
     }
     names.supervisor = supervisorId;
+    // The demo «supervisor» account is his: the home's day board opens on his zones (F-36b).
+    const account = tools.names.core?.supervisor;
+    if (account) {
+      const linked = await ex.selectFrom("User").select("staffMemberId").where("id", "=", account).executeTakeFirst();
+      if (linked && !linked.staffMemberId) {
+        await linkAccountToStaff(ex, ctx, { userId: account, staffMemberId: supervisorId });
+      }
+    }
   }
 
   const visits = await ex
@@ -129,6 +141,61 @@ export async function seedDemo(ex: Executor, ctx: ServiceContext, tools: DemoToo
     if (makeupVisitId) names.visitMakeup = makeupVisitId;
   }
   Object.assign(names, await demoSixVisitContract(ex, ctx, tools));
+  Object.assign(names, await demoTeamsAndCalls(ex, ctx, tools));
+  return names;
+}
+
+/**
+ * Two vehicles, one team of عين البيضاء with its van, and today's visits of that zone in the team's order (#46);
+ * tomorrow's first call made and the client informed (#16). Run twice, it adds nothing.
+ */
+async function demoTeamsAndCalls(ex: Executor, ctx: ServiceContext, tools: DemoTools): Promise<DemoNames> {
+  const names: DemoNames = {};
+  const zoneId = tools.names.core?.zoneAinBeida;
+  const members = [tools.names.people?.workerSamira, tools.names.people?.workerSenior].filter((id): id is string =>
+    Boolean(id),
+  );
+  if (!zoneId || members.length < 2) return names;
+  if (await ex.selectFrom("Vehicle").select("id").executeTakeFirst()) return names;
+  const van = await saveVehicle(ex, ctx, {
+    label: "رونو ماستر",
+    plateNumber: "04512-118-04",
+    kind: "شاحنة صغيرة",
+    seats: 3,
+    zoneId,
+    status: "ACTIVE",
+    insuranceExpiry: "2027-03-31",
+    inspectionExpiry: "2027-01-15",
+  });
+  await saveVehicle(ex, ctx, {
+    label: "سيتروان بيرلينغو",
+    plateNumber: "07730-121-04",
+    seats: 2,
+    status: "MAINTENANCE",
+  });
+  const team = await saveTeam(ex, ctx, {
+    name: "فريق عين البيضاء",
+    zoneId,
+    defaultVehicleId: van.id,
+    leaderWorkerId: members[0],
+    memberIds: members,
+  });
+  names.team = team.id;
+  names.vehicle = van.id;
+  const today = await getTeamDay(ex, ctx, { date: ctx.today, zoneId });
+  const open = today.filter((visit) => visit.status !== "DONE").map((visit) => visit.id);
+  if (open.length > 0) await setTeamDay(ex, ctx, { date: ctx.today, teamId: team.id, visitIds: open });
+
+  const tomorrow = await callListVisits(ex, localDate(addDays(ctx.today, 1)));
+  if (tomorrow[0]) {
+    await recordVisitCall(ex, ctx, {
+      visitId: tomorrow[0].id,
+      purpose: tomorrow[0].changed ? "REPLACEMENT_NOTICE" : "REMINDER",
+      result: "INFORMED",
+      note: "سيكون الحارس في الانتظار",
+    });
+    names.visitCalled = tomorrow[0].id;
+  }
   return names;
 }
 

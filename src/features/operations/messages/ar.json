@@ -287,7 +287,11 @@
       "PHONE_CLIENT": "العميل"
     },
     "ArrivalLogged": "تم تسجيل وصول الفريق.",
-    "SaveFailed": "تعذّر تسجيل الوصول."
+    "SaveFailed": "تعذّر تسجيل الوصول.",
+    "CallList": "قائمة الاتصال",
+    "Supervisor": "المشرف",
+    "AllSupervisors": "كل المشرفين",
+    "MyVisits": "زياراتي"
   },
   "Errors": {
     "InvalidTime": "اكتب الوقت بالشكل HH:MM.",
@@ -403,7 +407,19 @@
     "OrderHeldForClient": "هذا العميل موقوف أو معاقب: لا يُطبع الأمر إلا بعد إذن المدير.",
     "SickNotLeave": "يُسجَّل المرض تحت فئة مرض، لا كنوع من أنواع الإجازة.",
     "NoShowUndoWhy": "اذكر لماذا حضر العامل(ة) المؤشَّر على غيابه في هذا الأمر.",
-    "ProblemTickOffWhy": "اذكر لماذا أُزيلت مشكلة مؤشَّر عليها في هذا الأمر."
+    "ProblemTickOffWhy": "اذكر لماذا أُزيلت مشكلة مؤشَّر عليها في هذا الأمر.",
+    "VisitNoSupervisorForPhotos": "هذه الزيارة بلا مشرف يلتقط صورها.",
+    "VisitPhotoBySupervisor": "صور الزيارة يلتقطها مشرفها.",
+    "ScanNeedsTypedOrder": "أدخل أمر المهمة المعاد قبل إرفاق نسخته.",
+    "VehicleNameAndPlate": "أدخل اسم المركبة ورقم تسجيلها.",
+    "VehicleSeats": "يجب أن يكون عدد المقاعد واحداً أو أكثر.",
+    "VehiclePlateTaken": "مركبة أخرى تحمل رقم التسجيل هذا.",
+    "VehicleNotFound": "هذه المركبة غير موجودة.",
+    "TeamName": "أدخل اسم الفريق.",
+    "TeamNeedsWorker": "يضم الفريق عاملاً واحداً على الأقل.",
+    "TeamLeaderMember": "رئيس الفريق أحد عماله.",
+    "TeamNotFound": "هذا الفريق غير موجود.",
+    "VisitNotThatDay": "هذه الزيارة ليست في ذلك اليوم."
   },
   "FileVisits": {
     "ProgrammeTitle": "برنامج الزيارات",
@@ -1558,5 +1574,133 @@
     "Save": "تسجيل",
     "Saved": "سُجّلت المخالفة {number} لدى الموارد البشرية.",
     "Failed": "لم تُسجَّل المخالفة."
+  },
+  "Calls": {
+    "Title": "اتصالات زيارات {day}",
+    "BackToBoard": "العودة إلى اللوحة",
+    "PreviousDay": "اليوم السابق",
+    "NextDay": "اليوم التالي",
+    "Print": "طباعة القائمة",
+    "Columns": {
+      "Time": "الساعة",
+      "Client": "العميل",
+      "Phones": "الهاتف",
+      "Purpose": "سبب الاتصال",
+      "Result": "النتيجة"
+    },
+    "NotCalled": "لم يُتصل بعد",
+    "CallsMade": "{count} اتصال",
+    "Record": "تسجيل الاتصال",
+    "OpenVisit": "فتح الزيارة",
+    "Empty": "لا يوجد من يُتصل به عن ذلك اليوم.",
+    "Loading": "جارٍ التحميل…",
+    "DialogTitle": "نتيجة الاتصال",
+    "ChangeOnVisit": "يُؤجَّل الموعد أو يُلغى من صفحة الزيارة (تأجيل / إلغاء).",
+    "Note": "ملاحظة",
+    "Back": "رجوع",
+    "Save": "تسجيل",
+    "Saved": "سُجّل الاتصال.",
+    "Failed": "لم يُسجَّل الاتصال.",
+    "Purposes": {
+      "REMINDER": "تأكيد الموعد",
+      "REPLACEMENT_NOTICE": "تعويض عاملة",
+      "ARRIVAL_CHECK": "التأكد من الوصول",
+      "FOLLOW_UP": "متابعة"
+    },
+    "Results": {
+      "INFORMED": "تم إبلاغ العميل",
+      "NO_ANSWER": "لم يرد",
+      "POSTPONE_REQUESTED": "طلب تأجيل",
+      "CANCEL_REQUESTED": "طلب إلغاء"
+    }
+  },
+  "VisitFiles": {
+    "Title": "الصور والنسخ الممسوحة",
+    "Hint": "صور المشرف في الموقع، ونسخ الأوراق المعادة.",
+    "Photos": "صور الزيارة",
+    "NoConsent": "لم يوافق العميل على التصوير في هذا الموقع.",
+    "NoSupervisor": "هذه الزيارة بلا مشرف، والصور صوره.",
+    "PhotosBy": "التقطها المشرف {name}.",
+    "AddPhoto": "إضافة صورة",
+    "PhotoAdded": "أُضيفت الصورة.",
+    "PhotoFailed": "لم تُضف الصورة.",
+    "Scans": "نسخ الأوراق المعادة",
+    "ScansAfterTyping": "أدخل أمر المهمة المعاد أولاً، وتُرفق نسخه به.",
+    "Scan": {
+      "orderScanUrl": "أمر المهمة المعاد",
+      "signoffScanUrl": "وصل الاستلام، إن مُسح وحده"
+    },
+    "NoScan": "لا توجد نسخة مرفقة.",
+    "PdfAttached": "نسخة PDF مرفقة: احفظ نسخة لقراءتها.",
+    "SaveCopy": "حفظ نسخة",
+    "AttachScan": "إرفاق نسخة",
+    "ReplaceScan": "استبدال",
+    "RemoveScan": "إزالة",
+    "ScanAttached": "أُرفقت النسخة.",
+    "ScanRemoved": "أُزيلت النسخة.",
+    "ScanFailed": "لم تُحفظ النسخة."
+  },
+  "TeamDay": {
+    "ViewsLabel": "طرق عرض برنامج العمل",
+    "Views": {
+      "week": "الأسبوع",
+      "day": "ترتيب يوم الفرق",
+      "teams": "الفرق والمركبات"
+    },
+    "PreviousDay": "اليوم السابق",
+    "NextDay": "اليوم التالي",
+    "AllZones": "كل المناطق",
+    "NoTeams": "لا يوجد فريق بعد: أنشئه في الفرق والمركبات.",
+    "Vehicle": "المركبة",
+    "NoVehicle": "بدون مركبة",
+    "NoVisitYet": "لا زيارة لهذا الفريق في ذلك اليوم.",
+    "Earlier": "قبلها",
+    "Later": "بعدها",
+    "TakeOff": "إزالتها من يوم الفريق",
+    "WithoutTeam": "زيارات بلا فريق",
+    "WithoutTeamHint": "أسند كل زيارة إلى فريق، فتأتي آخر يومه.",
+    "GiveTo": "إسناد إلى فريق",
+    "Failed": "لم يُحفظ ترتيب يوم الفريق."
+  },
+  "Teams": {
+    "TeamsTitle": "الفرق",
+    "VehiclesTitle": "مركبات المركز",
+    "NewTeam": "فريق جديد",
+    "NewVehicle": "مركبة جديدة",
+    "EditTeam": "تعديل الفريق",
+    "EditVehicle": "تعديل المركبة",
+    "Edit": "تعديل",
+    "Columns": {
+      "Team": "الفريق",
+      "Members": "العمال",
+      "Vehicle": "المركبة",
+      "Zone": "المنطقة",
+      "Status": "الحالة",
+      "Insurance": "التأمين إلى"
+    },
+    "Inspection": "المراقبة التقنية إلى",
+    "NoZone": "بدون منطقة",
+    "NoVehicle": "بدون مركبة",
+    "LeaderIs": "رئيس الفريق: {name}",
+    "Leader": "رئيس الفريق",
+    "Name": "الاسم",
+    "DefaultVehicle": "مركبته المعتادة",
+    "TeamHint": "العمال المضافون في الفريق من اليوم، ومن يُرفع يغادره اليوم.",
+    "VehicleHint": "المركبات التي تخرج بها الفرق، مع تواريخ وثائقها.",
+    "VehicleName": "الاسم",
+    "Plate": "رقم التسجيل",
+    "Seats": "عدد المقاعد",
+    "NoTeams": "لا يوجد فريق بعد.",
+    "NoVehicles": "لا توجد مركبة بعد.",
+    "Loading": "جارٍ التحميل…",
+    "Back": "رجوع",
+    "Save": "حفظ",
+    "Saved": "حُفظ.",
+    "Failed": "لم يُحفظ.",
+    "VehicleStatuses": {
+      "ACTIVE": "في الخدمة",
+      "MAINTENANCE": "في الصيانة",
+      "RETIRED": "خارج الخدمة"
+    }
   }
 }

@@ -1,4 +1,5 @@
 import { requireSection } from "@/lib/access/session";
+import { staffName } from "@/lib/text/names";
 import type { VisitRow } from "@/lib/db/models";
 import { hydrate } from "@/lib/db/rows";
 import { query } from "@/lib/service/action";
@@ -16,14 +17,15 @@ import { readFileServices } from "./upstream";
 export async function listDayBoard(
   ex: Executor,
   ctx: ServiceContext,
-  input: { date: LocalDate },
+  input: { date: LocalDate; supervisorId?: string | null },
 ): Promise<DayBoardVisit[]> {
   requireSection(ctx, "REQUESTS", "READ");
-  const rows = await ex
+  let query = ex
     .selectFrom("Visit")
     .innerJoin("File", "File.id", "Visit.fileId")
     .innerJoin("Site", "Site.id", "File.siteId")
     .leftJoin("Zone", "Zone.id", "Visit.zoneId")
+    .leftJoin("StaffMember as Supervisor", "Supervisor.id", "Visit.supervisorEmployeeId")
     .select([
       "Visit.id",
       "Visit.number",
@@ -39,12 +41,15 @@ export async function listDayBoard(
       "Site.commonName",
       "Site.address",
       "Zone.name as zoneName",
+      "Supervisor.id as supervisorId",
+      "Supervisor.firstName as supervisorFirstName",
+      "Supervisor.lastName as supervisorLastName",
     ])
     .where("Visit.visitDate", "=", input.date)
-    .where((eb) => eb.or([eb("Visit.statusReason", "is", null), eb("Visit.statusReason", "!=", "PROGRAMME_CHANGED")]))
-    .orderBy("Visit.plannedStartTime")
-    .orderBy("Visit.number")
-    .execute();
+    .where((eb) => eb.or([eb("Visit.statusReason", "is", null), eb("Visit.statusReason", "!=", "PROGRAMME_CHANGED")]));
+  // One supervisor's day, as he sees it on the home screen (F-36b).
+  if (input.supervisorId) query = query.where("Visit.supervisorEmployeeId", "=", input.supervisorId);
+  const rows = await query.orderBy("Visit.plannedStartTime").orderBy("Visit.number").execute();
   if (rows.length === 0) return [];
 
   const seats = await ex
@@ -89,6 +94,12 @@ export async function listDayBoard(
       file: { division: row.division, serviceType: row.serviceType },
       site: { commonName: row.commonName, address: row.address },
       zone: row.zoneName ? { name: row.zoneName } : null,
+      supervisor: row.supervisorId
+        ? {
+            id: row.supervisorId,
+            name: staffName({ firstName: row.supervisorFirstName ?? "", lastName: row.supervisorLastName ?? "" }),
+          }
+        : null,
       team: own
         .filter((seat) => seat.seatStatus === "ASSIGNED")
         .map((seat) => ({ firstName: seat.firstName, lastName: seat.lastName })),
@@ -247,3 +258,27 @@ export async function listVisitsToAct(
 export const listDayBoardQuery = query(listDayBoard);
 export const listVisitsToActQuery = query(listVisitsToAct);
 export const listFileVisitsQuery = query(listFileVisits);
+
+/**
+ * The supervisor the home's day board opens on (F-36b): the signed-in account's own employee, when he supervises
+ * a zone that day; null otherwise (the board shows every supervisor's visits).
+ */
+export async function getOwnSupervision(
+  ex: Executor,
+  ctx: ServiceContext,
+  input: { date: LocalDate },
+): Promise<{ supervisorId: string | null }> {
+  requireSection(ctx, "REQUESTS", "READ");
+  if (!ctx.staffMemberId) return { supervisorId: null };
+  const row = await ex
+    .selectFrom("SupervisorAssignment")
+    .select("id")
+    .where("supervisorEmployeeId", "=", ctx.staffMemberId)
+    .where("zoneId", "is not", null)
+    .where("fromDate", "<=", input.date)
+    .where((eb) => eb.or([eb("toDate", "is", null), eb("toDate", ">=", input.date)]))
+    .executeTakeFirst();
+  return { supervisorId: row ? ctx.staffMemberId : null };
+}
+
+export const getOwnSupervisionQuery = query(getOwnSupervision);

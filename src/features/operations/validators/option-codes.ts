@@ -198,3 +198,7 @@ export const COMPLAINT_COUNTER_STATES = [
   "ANSWERED_LATE",
 ] as const;
 export type ComplaintCounterState = (typeof COMPLAINT_COUNTER_STATES)[number];
+
+/** VEHICLE_STATUS: the centre's vehicles (#46). */
+export const VEHICLE_STATUSES = ["ACTIVE", "MAINTENANCE", "RETIRED"] as const;
+export type VehicleStatus = (typeof VEHICLE_STATUSES)[number];

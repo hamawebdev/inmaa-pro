@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCentreClock } from "@/features/operations/components/use-centre-clock";
 import { VisitEntryForm } from "@/features/operations/components/visit-entry/visit-entry-form";
+import { VisitFilesCard } from "@/features/operations/components/visit-files/visit-files-card";
 import { VisitStatusMenu } from "@/features/operations/components/visit-status/visit-status-menu";
 import { VisitTeamCard } from "@/features/operations/components/visit-team/visit-team-card";
 import { VISITS_PATH } from "@/features/operations/services/programme";
@@ -62,6 +63,7 @@ export default function VisitPage() {
       ) : entry.data ? (
         <div className="space-y-6">
           <VisitTeamCard data={entry.data} mayWrite={mayWrite} />
+          <VisitFilesCard visitId={entry.data.visit.id} />
           {/* A new visit, or a changed team, is a new form: its defaults are read once, when it mounts. */}
           <VisitEntryForm
             key={`${entry.data.visit.id}:${entry.data.workers.map((worker) => `${worker.seat.id}-${worker.seat.seatStatus}`).join(",")}`}

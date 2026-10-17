@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
@@ -46,7 +46,7 @@ const isolate = (text: string) => `⁨${text}⁩`;
  * week and the zone live in the address, so the way back from a visit lands on
  * the same week.
  */
-export function WeekProgrammeView() {
+export function WeekProgrammeView({ tabs }: { tabs?: ReactNode } = {}) {
   const t = useTranslations("WeekProgramme");
   const locale = useLocale();
   const navigate = useNavigate();
@@ -148,6 +148,7 @@ export function WeekProgrammeView() {
   return (
     <div className="space-y-5">
       <div className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-3">
+        {tabs}
         <Select
           value={zoneId || ALL_ZONES}
           onValueChange={(value) => {
