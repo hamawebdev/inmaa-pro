@@ -303,7 +303,7 @@ import type { RegisterAlert } from "@/lib/alerts";
 
 export function registerAlerts(register: RegisterAlert) {
   register({
-    key: "stock.low", // one of the 21 keys of DESIGN.md section 13
+    key: "stock.low", // one of the 22 keys of DESIGN.md section 13
     section: "stock", // the bar section its list is in: the tile wears its hue, and a role that cannot open it does not see the tile
     severity: "warning", // "danger" | "warning" | "info": the order of the tiles
     name: "StockLow", // messages `Alerts.StockLow.Title` and `.Hint`, in your three files
@@ -404,7 +404,7 @@ Rule 1 is checked by tools, not left to care:
 
 ### The database
 
-- The sources are `prisma/schema.prisma` and `prisma/triggers.sql`. `npm run db:types` writes the two migrations (`0001_init.sql`: 107 tables, 206 indexes, 120 triggers; `0002_seed.sql`: the seven roles and their default grants, the main branch, the 29 communes of أم البواقي, checked on 2026-10-12, each id carrying its official code: `commune-0401` … `commune-0429`) and the types. `npm run db:verify` fails when anything generated, or the database the migrations make, differs from the sources; it also runs the model's proof (157 attempts to break its rules) and the document check.
+- The sources are `prisma/schema.prisma` and `prisma/triggers.sql`. `npm run db:types` writes the two migrations (`0001_init.sql`: 107 tables, 207 indexes, 120 triggers; `0002_seed.sql`: the seven roles and their default grants, the main branch, the 29 communes of أم البواقي, checked on 2026-10-12, each id carrying its official code: `commune-0401` … `commune-0429`) and the types. `npm run db:verify` fails when anything generated, or the database the migrations make, differs from the sources; it also runs the model's proof (157 attempts to break its rules) and the document check.
 - First run (`src/features/core/services/first-run.ts`) writes what only the machine knows: the database's id, the start of the eight chains, the first log entries, the manager account. Settings have their defaults in code; a counter row appears at 0 the first time a number is taken.
 - One SQLite connection that is never recycled, with `foreign_keys` and `recursive_triggers` on (`src-tauri/src/db.rs`). The window may send one statement at a time, starting with select, with, insert, update, delete, begin, commit or rollback; the schema changes through migrations only. Tests and the harness open their database the same way.
 - **Until the first installer leaves the developer's machine, migrations may be rewritten and every development database is disposable.** sqlx remembers a checksum of each migration it applied, so after a migration is edited an old development database stops the program at start; delete the file (`~/.local/share/com.hamawebdev.inmaa-pro/inmaa.db` on Linux) and start again. After the first installer is delivered, migrations are forward-only: a new numbered file, never an edit, and a new column on a chained table adds a hash version.

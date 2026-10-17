@@ -1163,6 +1163,7 @@ model StaffDebtEntry {
   reverses      StaffDebtEntry? @relation("DebtReversal", fields: [reversesEntryId], references: [id], onDelete: Restrict)
 
   @@unique([staffId, seq])
+  @@index([handOutReturnId])
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -3165,7 +3166,7 @@ model InventoryCountLine {
   countId    String
   itemId     String
   unitId     String?
-  systemQty  Int      // @qty @snap; frozen when the count opens
+  systemQty  Int      // @qty @snap; the record when the line was typed
   countedQty Int?     // @qty; empty until typed
   difference Int?     // @qty sys
   condition  String?  // @code ITEM_CONDITION (equipment)
@@ -3381,6 +3382,9 @@ model MaintenanceRecord {
   provider        String?
   conditionAfter  String   // @code ITEM_CONDITION
   nextDueDate     String?  // @date
+  cancelledAt       DateTime? // a record typed in error is cancelled, never deleted, with or without a cost (Money's final review)
+  cancelledByUserId String?
+  cancelReason      String?   // typed; required once cancelled
   createdAt       DateTime
   updatedAt       DateTime
   createdByUserId String?

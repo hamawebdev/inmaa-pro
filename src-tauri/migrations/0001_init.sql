@@ -946,6 +946,7 @@ CREATE TABLE "StaffDebtEntry" (
   UNIQUE ("staffId", "seq"),
   CHECK ("amount" > 0)
 ) STRICT;
+CREATE INDEX "StaffDebtEntry_handOutReturnId_idx" ON "StaffDebtEntry" ("handOutReturnId");
 CREATE UNIQUE INDEX "StaffDebtEntry_one_reversal" ON "StaffDebtEntry" ("reversesEntryId") WHERE "reversesEntryId" IS NOT NULL;
 
 CREATE TABLE "Client" (
@@ -2966,11 +2967,15 @@ CREATE TABLE "MaintenanceRecord" (
   "provider" TEXT,
   "conditionAfter" TEXT NOT NULL,
   "nextDueDate" TEXT CHECK ("nextDueDate" IS NULL OR "nextDueDate" GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]'),
+  "cancelledAt" TEXT,
+  "cancelledByUserId" TEXT,
+  "cancelReason" TEXT,
   "createdAt" TEXT NOT NULL,
   "updatedAt" TEXT NOT NULL,
   "createdByUserId" TEXT,
   "updatedByUserId" TEXT,
   FOREIGN KEY ("unitId") REFERENCES "EquipmentUnit" ("id") ON DELETE RESTRICT,
+  FOREIGN KEY ("cancelledByUserId") REFERENCES "User" ("id") ON DELETE RESTRICT,
   FOREIGN KEY ("createdByUserId") REFERENCES "User" ("id") ON DELETE RESTRICT,
   FOREIGN KEY ("updatedByUserId") REFERENCES "User" ("id") ON DELETE RESTRICT
 ) STRICT;

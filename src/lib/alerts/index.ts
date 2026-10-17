@@ -36,6 +36,7 @@ export const ALERT_KEYS = [
   "payment.dueSoon",
   "payment.overdue",
   "stock.low",
+  "stock.chargesToSettle",
   "maintenance.due",
   "receipts.unreconciled",
   "quote.followUp",

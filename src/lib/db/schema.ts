@@ -2281,6 +2281,9 @@ export interface MaintenanceRecordTable {
   provider: string | null;
   conditionAfter: string;
   nextDueDate: LocalDate | null;
+  cancelledAt: string | null;
+  cancelledByUserId: string | null;
+  cancelReason: string | null;
   createdAt: string;
   updatedAt: string;
   createdByUserId: string | null;

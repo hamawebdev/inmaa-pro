@@ -480,6 +480,7 @@ The registry is Foundation's (`src/lib/alerts`); each rule lives in its owner's 
 | `payment.dueSoon` | M | dues not cancelled, `paidAmount < amount`, due within the lead time. Whether the file is closed does not matter: a finished job's due stays until paid | partial `PaymentDue_open (dueDate)` |
 | `payment.overdue` | M | the same with `dueDate` before today | same |
 | `stock.low` | M | active items with `onHandQty <= minLevel` | partial `StockItem_low` |
+| `stock.chargesToSettle` | M | hand-out returns with equipment lost or damaged at a cost above 0 and no `StaffDebtEntry` carrying the return yet: charges «للتسوية» waiting for the manager's decision (section `stock`, warning; added after Money's final review) | `HandOutReturn (handOutLineId)`, `StaffDebtEntry (handOutReturnId)` |
 | `maintenance.due` | M | units in service with `nextMaintenanceDate` within the lead time or passed, or condition NEEDS_MAINTENANCE | `EquipmentUnit (nextMaintenanceDate)`, `(condition)` |
 | `receipts.unreconciled` | M | receipts with no payment pointing at them and no VOIDED or MISSING event, whose batch date is before today | `Receipt (batchId)`, `Payment_receipt`, `LegalEvent (receiptId)`, `ReceiptBatch (date)` |
 | `quote.followUp` | C | quotes ISSUED with result PENDING or NO_ANSWER, or POSTPONED with `postponedUntil` passed; where today is at least `alerts.quoteFollowUpDays` after the later of `issuedDate` and the last follow-up's `date`; and no follow-up has a `nextFollowUpDate` in the future. SUPERSEDED and CANCELLED versions never appear | `Quote (status, result)`, `QuoteFollowUp (quoteId, date)` |
@@ -686,6 +687,7 @@ The model was built as designed. Where building it showed a fault, this is what 
 | Writing the anchor (section 8) | after any chained commit, before a backup, at close, whatever the start-up found | only while the database agrees with it; `writeAnchor` refuses a database in question unless first run or the manager's answer (`accept`) | final review FND-01: one sign-in made an older copy pass as normal and its lost numbers were given again |
 | The clock's lookups (section 8) | the manager's latest word and the present sign-in by their date | by their place in the log (`chainSeq`) | final review FND-02, FND-03: an entry written at a wrong future date won |
 | The restore (section 8) | any file copied over the open database | checked to be this program's database, staged, swapped by renaming after the connection is closed, undone on failure | final review FND-04 |
+| After Money's final review | — | `MaintenanceRecord.cancelledAt`, `cancelledByUserId`, `cancelReason` (a record with no cost is cancelled too); alert `stock.chargesToSettle`; `InventoryCountLine.systemQty` is the record when the line was typed; index `StaffDebtEntry (handOutReturnId)` | Money's final-review fixes |
 
 No option code was renamed or removed. Two were added after the model was handed out: `RECEIPTS` in EXPORT_KIND (F4, Money's receipts journal) and `CANCELLED` in END_KIND (a signed contract the client cancels before its start; Clients' fix CLI-3).
 

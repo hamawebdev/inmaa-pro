@@ -113,7 +113,7 @@ export const DATE_COLUMNS = {
   PurchaseRequestLine: ["createdAt", "updatedAt"],
   Purchase: ["cancelledAt", "createdAt", "updatedAt"],
   PurchaseLine: ["createdAt"],
-  MaintenanceRecord: ["createdAt", "updatedAt"],
+  MaintenanceRecord: ["cancelledAt", "createdAt", "updatedAt"],
 } as const satisfies Record<TableName, readonly string[]>;
 
 /** Stored as 0/1, handed to the screens as booleans. An empty one stays null: "neither box ticked". */
