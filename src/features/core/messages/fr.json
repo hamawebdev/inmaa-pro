@@ -203,7 +203,10 @@
     "BranchHasAccounts": "Déplacez d'abord les comptes de cette agence vers une autre agence.",
     "BranchOff": "Cette agence n'existe pas ou est désactivée.",
     "RestoreNotOurs": "Ce fichier n'est pas une sauvegarde des données de ce programme. Rien n'a été remplacé.",
-    "RestoreNotHere": "Cette copie a été faite par une autre version du programme, ou elle est endommagée. Elle ne peut pas être restaurée ici. Rien n'a été remplacé."
+    "RestoreNotHere": "Cette copie a été faite par une autre version du programme, ou elle est endommagée. Elle ne peut pas être restaurée ici. Rien n'a été remplacé.",
+    "PaperNumberRange": "Saisissez le dernier numéro émis sur papier, de 1 à 999999.",
+    "PaperNumberDate": "La date du dernier document papier doit être de cette année, et pas après aujourd'hui.",
+    "PaperNumbersTooLate": "Des numéros de ce type existent déjà cette année : les numéros papier se déclarent avant le premier, une fois."
   },
   "Table": {
     "ScrollLeft": "Défiler à gauche",
@@ -1449,5 +1452,27 @@
     "Address": "Adresse",
     "Phone": "Téléphone",
     "City": "Ville de ses documents (« Fait à »), si ce n'est pas celle du centre"
+  },
+  "PaperNumbers": {
+    "Title": "Numéros émis sur papier cette année",
+    "Description": "Si le centre a émis cette année des factures ou des reçus à la main avant le programme, déclarez le dernier numéro de chacun, une fois : le programme continue après lui et ne redonne jamais ces numéros. Réservé au directeur, avant le premier numéro de ce type.",
+    "INVOICE": {
+      "Label": "Dernière facture émise sur papier cette année",
+      "Confirm": "Déclarer les factures 1 à {number} comme émises sur papier ?"
+    },
+    "RECEIPT": {
+      "Label": "Dernier reçu émis sur papier cette année",
+      "Confirm": "Déclarer les reçus 1 à {number} comme émis sur papier ?"
+    },
+    "ConfirmHint": "Cela se fait une fois pour l'année et ne se modifie pas : le prochain numéro donné est celui qui suit.",
+    "LastNumber": "Son numéro",
+    "LastDate": "Sa date",
+    "Reason": "Votre motif",
+    "Declare": "Déclarer",
+    "Declared": "Déclaré : le programme continue après lui.",
+    "Failed": "Impossible de déclarer les numéros papier.",
+    "DeclaredLine": "Déclaré par {by} le {date} :",
+    "AlreadyNumbered": "{count, plural, one {Le programme a déjà numéroté # cette année :} other {Le programme a déjà numéroté jusqu'à # cette année :}} rien n'est déclaré maintenant.",
+    "NotDeclared": "Rien n'est déclaré. Seul le directeur déclare les numéros papier."
   }
 }

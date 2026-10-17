@@ -203,7 +203,10 @@
     "BranchHasAccounts": "Move this branch's accounts to another branch first.",
     "BranchOff": "This branch does not exist or is switched off.",
     "RestoreNotOurs": "This file is not a backup of this program's data. Nothing was replaced.",
-    "RestoreNotHere": "This copy was made by another version of the program, or is damaged. It cannot be restored here. Nothing was replaced."
+    "RestoreNotHere": "This copy was made by another version of the program, or is damaged. It cannot be restored here. Nothing was replaced.",
+    "PaperNumberRange": "Type the last number issued on paper, from 1 to 999999.",
+    "PaperNumberDate": "The date of the last paper document must be this year, and not after today.",
+    "PaperNumbersTooLate": "Numbers of this kind already exist this year: the paper numbers are declared before the first one, once."
   },
   "Table": {
     "ScrollLeft": "Scroll left",
@@ -1449,5 +1452,27 @@
     "Address": "Address",
     "Phone": "Phone",
     "City": "City on its papers («Done at»), if not the centre's"
+  },
+  "PaperNumbers": {
+    "Title": "Numbers issued on paper this year",
+    "Description": "If the centre issued invoices or receipts by hand this year before the program, declare the last number of each, once: the program goes on after it, and never gives those numbers again. The manager's alone, before the first number of that kind.",
+    "INVOICE": {
+      "Label": "Last invoice issued on paper this year",
+      "Confirm": "Declare invoices 1 to {number} as issued on paper?"
+    },
+    "RECEIPT": {
+      "Label": "Last receipt issued on paper this year",
+      "Confirm": "Declare receipts 1 to {number} as issued on paper?"
+    },
+    "ConfirmHint": "This is done once for the year and cannot be changed: the next number given is the one after it.",
+    "LastNumber": "Its number",
+    "LastDate": "Its date",
+    "Reason": "Your reason",
+    "Declare": "Declare",
+    "Declared": "Declared: the program goes on after it.",
+    "Failed": "Could not declare the paper numbers.",
+    "DeclaredLine": "Declared by {by} on {date}:",
+    "AlreadyNumbered": "{count, plural, one {The program has already numbered # this year:} other {The program has already numbered up to # this year:}} nothing is declared now.",
+    "NotDeclared": "Nothing declared. Only the manager declares paper numbers."
   }
 }
