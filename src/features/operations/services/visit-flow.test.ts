@@ -347,7 +347,7 @@ describe("the returned order", () => {
     expect(cancel).toMatchObject({ reason: "حضرت", subjectKind: "WORKER", subjectId: member.id });
   });
 
-  it("refuses a worker ticked absent on a day a closed pay run has paid (PEO-03)", async () => {
+  it("takes a returned order with a worker absent for a month already paid: its seats are paid late (PEO-03)", async () => {
     const { visit, member } = await contractedFileWithTeam();
     const person = await test.db
       .selectFrom("StaffMember")
@@ -373,12 +373,14 @@ describe("the returned order", () => {
       arrivalInitialled: false,
       departureInitialled: false,
     };
-    await expect(test.transact((ex, ctx) => saveReturnedOrder(ex, ctx, { visitId: visit.id, values }))).rejects.toThrow(
-      "This day is in a closed pay run: it can no longer be corrected.",
-    );
-    expect(await test.db.selectFrom("WorkerAbsence").select("id").where("workerId", "=", member.id).execute()).toEqual(
-      [],
-    );
+    await test.transact((ex, ctx) => saveReturnedOrder(ex, ctx, { visitId: visit.id, values }));
+    const seat = await test.db
+      .selectFrom("VisitWorker")
+      .select("seatStatus")
+      .where("visitId", "=", visit.id)
+      .where("workerId", "=", member.id)
+      .executeTakeFirstOrThrow();
+    expect(seat.seatStatus).toBe("ABSENT");
   });
 
   it("asks the right and the reason to tick absent a worker whose times are typed (LOG-Y1)", async () => {

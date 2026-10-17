@@ -1,4 +1,3 @@
-import { refuseClosedPayDay } from "@/features/people/services/closed-days";
 import { requireCapability, requireSection } from "@/lib/access/session";
 import type {
   CommuneRow,
@@ -374,9 +373,8 @@ export async function saveReturnedOrder(
         for (const name of erased) changes[`${label}.${name}`] = [seat[name], null];
         if (seat.workedMin !== null) changes[`${label}.workedMin`] = [seat.workedMin, null];
       }
-      // She did not come: an absence for the visit's hours, for People to treat; never a second one that day (OPS-03),
-      // nor one on a day a closed pay run has paid (PEO-03).
-      await refuseClosedPayDay(ex, { staffId: seat.workerId, from: visit.visitDate });
+      // She did not come: an absence for the visit's hours, for People to treat; never a second one that day (OPS-03).
+      // A day already paid is not refused: People pays the order's seats typed late as arrears (RULINGS 16).
       await refuseOverlappingAbsence(ex, {
         workerId: seat.workerId,
         startDate: visit.visitDate,
