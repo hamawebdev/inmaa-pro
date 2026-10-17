@@ -10,7 +10,7 @@ Kept by the Checker, for the coordinator to run at the end. It proves the develo
 
 ## The scenario tests
 
-`src/testing/scenarios/acceptance/` (the Checker's) walks this script through the owners' exported services, each step as the role that does it, with the clock moved as a month would. Run it with `npx vitest run src/testing/scenarios/acceptance`. Measured on 2026-10-17 at 03:39: 5 files, 23 tests passed, no `todo`, none failing. Every long test has a 180 s timeout, for a machine six teammates load.
+`src/testing/scenarios/acceptance/` (the Checker's) walks this script through the owners' exported services, each step as the role that does it, with the clock moved as a month would. Run it with `npx vitest run src/testing/scenarios/acceptance`. Measured on 2026-10-17 at 18:29: 6 files, 28 tests passed, no `todo`, none failing. Every long test has a 180 s timeout, for a machine six teammates load.
 
 | File | Walks | Result |
 |---|---|---|
@@ -19,6 +19,7 @@ Kept by the Checker, for the coordinator to run at the end. It proves the develo
 | `workers-stock-alerts-sanctions.test.ts` | B1, B2, C1, C2, D1 to D3, E1 to E5 | 7 passed |
 | `payslip.test.ts` | feature 38: the payslip's arithmetic against the settings' rates, and its print logged as a disclosure | 3 passed |
 | `money-paper.test.ts` | A9 and A10 on paper: the stamp-duty scale of the build notes on eleven amounts, the demo's cash invoice and receipt, an organisation's month invoiced in VAT mode (19%, prices including VAT) and paid in cash | 3 passed |
+| `final-review.test.ts` | The paths the final code review found untested: a contract with a first deep clean (quoted with its INITIAL_JOB and PERIODIC lines, signed on the monthly amount, the INITIAL visit planned once, seated, ordered and signed off, the clean invoiced once beside the first month, paid, in income); a contract ended early (later visits and months cancelled, the last month cut to its visits, what was paid ahead kept as credit or placed on the late month, the reminder asking only for the late month); a complaint settled with a discount (the discount line on the next invoice, once); pay (no candidate or refused worker paid, a readmitted worker paid from her return, a payslip's columns adding up to its net) | 5 passed |
 
 A **tested** in the State column below means a test of that folder goes through the step's service and passed at that time. The screens and the sheets are not what these tests look at: they are the print audits' and the screen audits'.
 
