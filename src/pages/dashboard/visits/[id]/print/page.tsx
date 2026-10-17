@@ -57,18 +57,21 @@ export default function VisitOrderPrintPage() {
   const errorMessage = useErrorMessage();
   const blank = id.startsWith("blank-");
   const mayWrite = useSectionLevel("REQUESTS") === "WRITE";
-  const order = useQuery({
-    queryKey: [...pathKey(`${VISITS_PATH}/${id}`), "order"],
-    queryFn: () => getMissionOrderQuery({ visitId: id }),
-    enabled: !blank,
-  });
   const hold = useQuery({
     queryKey: [...pathKey(`${VISITS_PATH}/${id}`), "order-hold"],
     queryFn: () => getOrderHoldQuery({ visitId: id }),
-    enabled: !blank,
+    enabled: !blank && mayWrite,
   });
   const held =
     !blank && (hold.data === undefined || (hold.data !== null && !hold.data.covered && hold.data.released === null));
+  // The sheet names the team and the person on site with their phones: it is drawn, and even read, only for a
+  // reader who may print it now (F4). Anybody else sees the page's notice instead.
+  const mayPrint = !blank && mayWrite && !held;
+  const order = useQuery({
+    queryKey: [...pathKey(`${VISITS_PATH}/${id}`), "order"],
+    queryFn: () => getMissionOrderQuery({ visitId: id }),
+    enabled: mayPrint,
+  });
 
   // The order leaves the office: frozen, counted and logged first; nothing prints if that fails.
   const recordPrint = async () => {
@@ -83,12 +86,18 @@ export default function VisitOrderPrintPage() {
       title={t("MissionOrder.Title")}
       description={t("MissionOrder.Description")}
       back={{ href: blank ? VISITS_PATH : `${VISITS_PATH}/${id}`, label: t("MissionOrder.Back") }}
-      actions={blank ? <PrintButton /> : mayWrite && !held ? <PrintButton onPrint={recordPrint} /> : undefined}
+      actions={blank ? <PrintButton /> : mayPrint ? <PrintButton onPrint={recordPrint} /> : undefined}
     >
       {!blank && hold.data && <HoldNotice visitId={id} hold={hold.data} />}
       {blank ? (
         <MissionOrderSheet order={sampleMissionOrder(id)} />
-      ) : order.isError ? (
+      ) : !mayWrite ? (
+        <p className="rounded-xl border bg-muted/40 p-4 text-sm text-muted-foreground">{t("MissionOrder.ReadOnly")}</p>
+      ) : hold.isError ? (
+        <ErrorState onRetry={() => void hold.refetch()} />
+      ) : hold.isPending ? (
+        <Skeleton className="h-[297mm] w-[210mm] max-w-full" />
+      ) : held ? null : order.isError ? (
         <ErrorState onRetry={() => void order.refetch()} />
       ) : order.data ? (
         <MissionOrderSheet order={order.data} />

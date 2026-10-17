@@ -22,7 +22,8 @@
         "Done": "The order may be printed.",
         "Failed": "The order was not released.",
         "Covered": "The client is marked {state}, but the file was registered on the manager's yes about this sanction: its orders print without a release."
-      }
+      },
+      "ReadOnly": "Your account reads this visit but does not print its order: the order, which names the team and the person on site, is shown only to those who print it."
     },
     "InspectionSheet": {
       "Title": "Supervisor inspection sheet",
