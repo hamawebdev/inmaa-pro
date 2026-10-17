@@ -687,5 +687,5 @@ The model was built as designed. Where building it showed a fault, this is what 
 | The clock's lookups (section 8) | the manager's latest word and the present sign-in by their date | by their place in the log (`chainSeq`) | final review FND-02, FND-03: an entry written at a wrong future date won |
 | The restore (section 8) | any file copied over the open database | checked to be this program's database, staged, swapped by renaming after the connection is closed, undone on failure | final review FND-04 |
 
-No option code was renamed or removed. One was added in F4: `RECEIPTS` in EXPORT_KIND (Money's receipts journal).
+No option code was renamed or removed. Two were added after the model was handed out: `RECEIPTS` in EXPORT_KIND (F4, Money's receipts journal) and `CANCELLED` in END_KIND (a signed contract the client cancels before its start; Clients' fix CLI-3).
 

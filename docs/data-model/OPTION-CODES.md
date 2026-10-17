@@ -289,7 +289,7 @@ Blank lines on F2, F3, F4: one at the foot of columns 1, 2 and 3, two at the foo
 | QUOTE_STATUS | `DRAFT` · `AWAITING_APPROVAL` · `APPROVED` · `NEEDS_REVIEW` · `ISSUED` · `SUPERSEDED` (a newer version was issued) · `CANCELLED` — |
 | QUOTE_RESULT | `PENDING` «في الانتظار» · `ACCEPTED` «قبول» · `REFUSED` «رفض» · `DISCOUNT_REQUESTED` «طلب تخفيض» · `CHANGE_REQUESTED` «طلب تعديل» · `POSTPONED` «مؤجل» · `NO_ANSWER` «لا رد» |
 | QUOTE_LINE_KIND | `INITIAL_JOB` (a first deep clean before a periodic contract: Money builds one due of kind INITIAL_JOB, Operations one visit of origin INITIAL) · `PERIODIC` · `EXTRA` — |
-| END_KIND | `EXPIRED` · `ENDED_BY_CLIENT` · `ENDED_BY_CENTRE` · `NON_PAYMENT` · `RENEWED` · `JOB_DONE` (an on-demand job whose last visit is done) — |
+| END_KIND | `EXPIRED` · `ENDED_BY_CLIENT` · `ENDED_BY_CENTRE` · `NON_PAYMENT` · `RENEWED` · `JOB_DONE` (an on-demand job whose last visit is done) · `CANCELLED` (a signed contract the client cancels before its start; Clients' fix CLI-3) — |
 | RENEWAL_DECISION | `PENDING` · `WILL_RENEW` · `WILL_NOT_RENEW` — |
 | DURATION_UNIT («مدة التنفيذ») | `HOURS` «ساعة» · `DAYS` «يوم» |
 | FIRST_VISIT_RESULT (several; D6, D8) | `SUITABLE` · `NEEDS_STUDY` · `NEEDS_INITIAL_DEEP` · `NEEDS_EQUIPMENT` · `NEEDS_EXTRA_TEAM` · `NEEDS_SPECIAL_SERVICES` «يحتاج إلى خدمات خاصة» (D6) — |
