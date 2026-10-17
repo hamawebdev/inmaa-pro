@@ -34,7 +34,6 @@
       "Site": "Site",
       "ServiceType": "Service",
       "Status": "Status",
-      "Registered": "Registered",
       "Period": "Period"
     },
     "Open": "Open",

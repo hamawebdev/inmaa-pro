@@ -80,18 +80,28 @@ export function FilesView() {
         id: "number",
         header: t("Columns.Number"),
         cell: ({ row }) => (
-          <Link to={fileHubHref(row.original.id)} className="font-bold text-section-requests hover:underline">
-            <Ltr>{row.original.number}</Ltr>
-          </Link>
+          // The number, and below it the day the file was registered.
+          <div className="whitespace-nowrap">
+            <Link
+              to={fileHubHref(row.original.id)}
+              className="block leading-tight font-bold text-section-requests hover:underline"
+            >
+              <Ltr>{row.original.number}</Ltr>
+            </Link>
+            <ScreenDate
+              className="block text-sm leading-tight text-muted-foreground"
+              date={row.original.registrationDate}
+            />
+          </div>
         ),
       },
       {
         id: "client",
         header: t("Columns.Client"),
         cell: ({ row }) => (
-          <div className="min-w-36">
-            <p className="font-bold">{row.original.clientName}</p>
-            <p className="text-sm text-muted-foreground">
+          <div className="max-w-44 min-w-28">
+            <p className="truncate leading-tight font-bold">{row.original.clientName}</p>
+            <p className="truncate text-sm leading-tight text-muted-foreground">
               <Ltr>{phoneText(row.original.phone)}</Ltr>
             </p>
           </div>
@@ -101,47 +111,36 @@ export function FilesView() {
         id: "site",
         header: t("Columns.Site"),
         cell: ({ row }) => (
-          <div className="min-w-40">
-            <p>{row.original.siteName}</p>
-            {row.original.communeName && <p className="text-sm text-muted-foreground">{row.original.communeName}</p>}
+          <div className="max-w-36 min-w-24">
+            <p className="truncate leading-tight">{row.original.siteName}</p>
+            {row.original.communeName && (
+              <p className="truncate text-sm leading-tight text-muted-foreground">{row.original.communeName}</p>
+            )}
           </div>
         ),
       },
-      ...(withService
-        ? [
-            {
-              id: "service",
-              header: t("Columns.ServiceType"),
-              cell: ({ row }) => <span className="whitespace-nowrap">{serviceLabel(row.original.serviceType)}</span>,
-            } satisfies ColumnDef<FileListRow>,
-          ]
-        : []),
       {
         id: "status",
         header: t("Columns.Status"),
         cell: ({ row }) => (
-          <div className="flex flex-wrap gap-1.5">
+          // The kind of service beside the chip where the division takes both: one column fewer.
+          <div className="flex items-center gap-1.5 whitespace-nowrap">
             <StatusChip tone={stageTone(row.original.stage)} label={stageLabel(row.original.stage)} />
             {row.original.closed && <StatusChip tone="danger" label={t("Closed")} />}
+            {withService && (
+              <span className="text-sm text-muted-foreground">{serviceLabel(row.original.serviceType)}</span>
+            )}
           </div>
         ),
-      },
-      {
-        id: "registered",
-        header: t("Columns.Registered"),
-        cell: ({ row }) => <ScreenDate className="whitespace-nowrap" date={row.original.registrationDate} />,
       },
       {
         id: "period",
         header: t("Columns.Period"),
         cell: ({ row }) =>
           row.original.startDate ? (
-            // One date above the other: side by side they would push the row's button out of the window.
-            <div className="leading-snug whitespace-nowrap">
-              <ScreenDate className="block" date={row.original.startDate} />
-              {row.original.endDate && (
-                <ScreenDate className="block text-muted-foreground" date={row.original.endDate} />
-              )}
+            <div className="whitespace-nowrap">
+              <ScreenDate className="block leading-tight" date={row.original.startDate} />
+              <ScreenDate className="block text-sm leading-tight text-muted-foreground" date={row.original.endDate} />
             </div>
           ) : (
             <span className="text-muted-foreground">—</span>
@@ -151,7 +150,7 @@ export function FilesView() {
         id: "actions",
         header: "",
         cell: ({ row }) => (
-          <div className="flex items-center justify-end gap-2">
+          <div className="flex items-center justify-end">
             <Button variant="outline" size="sm" asChild>
               <Link to={fileHubHref(row.original.id)}>
                 <FolderOpen />
