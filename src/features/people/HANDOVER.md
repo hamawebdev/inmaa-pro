@@ -135,7 +135,7 @@ The thirteen findings of `scratchpad/final-review/for-people.md`, each proved by
 - The manager answers signed in as himself: `requestManagerApproval` will not come.
 - From the Checker's screen audit: Save is `success` at the foot in `PageActions`, cancel `outline` beside it; a record's actions stay in the heading; a tab page is headed by its tab; the CNAS tick is an office field, on screen only.
 
-## Decisions taken after the final review (to confirm)
+## Decisions taken after the final review (accepted)
 
 - PEO-05 reuses the cause LEFT: the event's causes have no REFUSED, and the ruling is «as one who leaves».
 - PEO-03: closing refuses when computing again moves any payslip's money, rather than closing figures nobody looked at. Records dated in a closed month are refused rather than priced as arrears; the late seats of workers stay arrears, as designed.
@@ -197,7 +197,7 @@ The thirteen findings of `scratchpad/final-review/for-people.md`, each proved by
 
 ## Needs from others
 
-- **Operations (PEO-03):** a worker's absence or leave dated in a month a closed run paid is never paid or taken off: `recordWorkerAbsence`, `setAbsencePayTreatment`, `cancelWorkerAbsence` and `decideWorkerLeave` should refuse it with `refuseClosedPayDay(ex, { staffId, from, to })` (`services/closed-days.ts`), as People's own records do.
+- **Operations (PEO-03), done (e0d8a41):** its four absence services refuse a day a closed run paid with People's `refuseClosedPayDay(ex, { staffId, from, to })` (`services/closed-days.ts`).
 - **Money:**
   - handle `payout.recorded` and `payout.voided` in its `events.ts`: `postPayoutExpense` reads `getPayoutForExpense(ex, ctx, { staffPayoutId })`;
   - call `addDebtEntry` for equipment lost or damaged (`handOutReturnId`).
