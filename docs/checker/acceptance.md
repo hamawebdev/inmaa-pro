@@ -10,7 +10,7 @@ Kept by the Checker, for the coordinator to run at the end. It proves the develo
 
 ## The scenario tests
 
-`src/testing/scenarios/acceptance/` (the Checker's) walks this script through the owners' exported services, each step as the role that does it, with the clock moved as a month would. Run it with `npx vitest run src/testing/scenarios/acceptance`. Measured on 2026-10-16 at 22:55: 5 files, 23 tests passed, no `todo`, none failing. Every long test has a 180 s timeout, for a machine six teammates load.
+`src/testing/scenarios/acceptance/` (the Checker's) walks this script through the owners' exported services, each step as the role that does it, with the clock moved as a month would. Run it with `npx vitest run src/testing/scenarios/acceptance`. Measured on 2026-10-17 at 03:39: 5 files, 23 tests passed, no `todo`, none failing. Every long test has a 180 s timeout, for a machine six teammates load.
 
 | File | Walks | Result |
 |---|---|---|
