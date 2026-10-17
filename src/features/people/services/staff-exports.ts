@@ -1,3 +1,5 @@
+import { sql } from "kysely";
+
 import { isDate } from "@/features/people/rules/dates";
 import {
   ABILITIES,
@@ -387,8 +389,9 @@ export async function getHourlyLabourCost(
     .where("staffId", "=", input.staffId)
     .where("kind", "=", "PAY_TERMS")
     .where("date", "<=", day)
-    .orderBy("date", "desc")
+    // Of the rows in force by that day, the one written last: as a pay run reads them (PEO-08).
     .orderBy("createdAt", "desc")
+    .orderBy(sql`rowid`, "desc")
     .executeTakeFirst();
   if (!terms || terms.payBasis === null || terms.payRate === null) return null;
   const settings = await getSettings(ex, ["work.dayMin", "pay.monthlyDivisorMin"]);

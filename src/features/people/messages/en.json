@@ -98,7 +98,9 @@
       "zoneHint": "Left empty: the zone of the commune of residence.",
       "cnasDeclared": "Declared to the CNAS",
       "cnasNumber": "Social security number",
-      "registrationCard": "Registration"
+      "registrationCard": "Registration",
+      "payTermsFrom": "The new pay applies from",
+      "payTermsFromHint": "Today when left empty. A month not closed yet is paid at the terms in force in it."
     },
     "Office": {
       "Title": "For the office",
@@ -641,7 +643,7 @@
       "DeductionLabel": "What the deduction is for",
       "Pay": "Pay the wage",
       "Print": "Print the payslip",
-      "DraftPrint": "This month is not closed yet: the payslip has no number and may still change.",
+      "DraftPrint": "This month is not closed yet: the payslip prints marked «مسودة», without the lines to sign, and may still change.",
       "LeftToPay": "Left to pay: {left}",
       "Facts": "The month",
       "StaffNumber": "Registration no.",
@@ -669,7 +671,12 @@
       "PremiumsToPrice": "Premiums to price",
       "OvertimeTyped": "Overtime premium (per task)",
       "RestDayTyped": "Rest-day premium (per task)",
-      "PlannedSeats": "{count} paid at planned time, not typed"
+      "PlannedSeats": "{count} paid at planned time, not typed",
+      "RecurringDeductions": "Recurring deductions this month",
+      "BaseCorrection": "Correction of the base pay (+ or −)",
+      "BaseCorrectionReason": "Why the base is corrected",
+      "NegativeNet": "Takes off more than it pays",
+      "VoidPrint": "This pay run was voided: the payslip prints marked «ملغى», without the lines to sign."
     },
     "Payouts": {
       "Title": "Payments",
@@ -1226,7 +1233,15 @@
     "PayItemNotFound": "This allowance or deduction does not exist.",
     "PersonLeftNoCard": "This person has left: no card is printed.",
     "PremiumsToPrice": "Price the overtime and the rest-day work of every payslip paid per task first.",
-    "DaysNumber": "Enter a number of days."
+    "DaysNumber": "Enter a number of days.",
+    "WorkerRefusedReadmitFirst": "This worker was refused: readmit her first.",
+    "BaseCorrectionAmount": "A correction of the base is an amount in dinars.",
+    "BaseCorrectionReason": "Write the reason for correcting the base pay.",
+    "BaseCorrectionTooLow": "A correction cannot take off more than the base pay.",
+    "PayRunChangedComputeAgain": "The hours or the pay changed since this run was computed: compute it again and check it.",
+    "PayTermsBeforeStart": "New pay terms cannot take effect before the person started.",
+    "PayTermsInClosedMonth": "New pay terms cannot take effect in a month whose pay is closed.",
+    "PersonNotInPostNoCard": "This person is not in post: no card is printed."
   },
   "Cards": {
     "Title": "ID card",

@@ -31,6 +31,9 @@ async function aWorker() {
         birthDate: "1996-01-12",
         phone: "0555 31 42 53",
         role: "CLEANER",
+        // In post: a card is printed for no one else (PEO-12).
+        hiringDecision: "ACCEPTED_ON_TRIAL",
+        issuedDate: "2026-08-01",
       }),
     )
   ).id;

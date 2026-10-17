@@ -8,7 +8,13 @@ import { normaliseName } from "@/lib/text/normalise";
 import { localDate } from "@/lib/units";
 import { createTestDatabase, type TestDatabase } from "@/testing/database";
 
-import { REGISTRATION_REFRESHES, registerWorker, WORKERS_PATH, type RegisterWorkerInput } from "./workers";
+import {
+  REGISTRATION_REFRESHES,
+  registerWorker,
+  workerIdentity,
+  WORKERS_PATH,
+  type RegisterWorkerInput,
+} from "./workers";
 
 let test: TestDatabase;
 beforeEach(async () => {
@@ -394,11 +400,12 @@ describe("registerWorker and the suspended-or-penalised check", () => {
 
   it("lets the manager's yes through once, and never his no", async () => {
     const sanction = await suspended({ phoneKeys: "|0661203142|" });
+    // The identity the question named: a yes is about it only (PEO-06).
     const decision = (status: string) =>
       test.rows.insert("SanctionDecision", {
         context: "WORKER_REGISTRATION",
         attemptKind: "WORKER",
-        attemptIdentity: "{}",
+        attemptIdentity: JSON.stringify(workerIdentity(SAMPLE_WORKER_VALUES)),
         sanctionId: sanction.id,
         matchBasis: "PHONE",
         status,

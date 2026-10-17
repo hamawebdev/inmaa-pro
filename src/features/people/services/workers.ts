@@ -29,6 +29,7 @@ import { normaliseName, phoneKeys } from "@/lib/text/normalise";
 import { dinarsToMoney, hoursToMinutes, localDate, type LocalDate } from "@/lib/units";
 
 import {
+  announceRefusal,
   dateOrNull,
   decimal,
   DERIVED_KEYS,
@@ -37,6 +38,7 @@ import {
   insertStatus,
   orNull,
   passSanctionCheck,
+  payTermsDate,
   readmit,
   recordLeaving,
   refuseSecondRecord,
@@ -384,6 +386,8 @@ export interface UpdateWorkerInput extends SanctionPassage {
    * A part left closed is not touched, whatever its fields hold.
    */
   opened?: { health?: boolean; score?: boolean };
+  /** `YYYY-MM-DD`: the day changed pay terms take effect; today when empty (PEO-08). */
+  payTermsFrom?: string | null;
 }
 
 /** The current copy of each document type: what the form's ticks and dates are compared with. */
@@ -425,6 +429,10 @@ export async function updateWorker(
       : undefined;
   const opened = { health: input.opened?.health === true, score: input.opened?.score === true };
   requireWhatIsRecorded(ctx, { ...opened, decision: newDecision !== undefined });
+  // A refused worker comes back by readmission, which asks the manager about her sanction (PEO-10).
+  if (newDecision !== undefined && before.engagementStatus === "REFUSED") {
+    throw new ServiceError("This worker was refused: readmit her first.");
+  }
 
   const columns = memberColumns(values);
   await refuseSecondRecord(ex, "WORKER", columns.nationalIdNumber, before.id);
@@ -483,13 +491,25 @@ export async function updateWorker(
     await insertStatus(ex, ctx, { staffId: before.id, date: ctx.today, from: before.engagementStatus, to: status });
   }
   const payChanged = ["payBasis", "payRate", "payPeriod", "weeklyCapacityMin"].some((key) => changes && key in changes);
-  if (payChanged) await insertPayTerms(ex, ctx, { staffId: before.id, date: ctx.today, terms: columns });
+  if (payChanged) {
+    // From the day the office says, today unless told (PEO-08).
+    const date = await payTermsDate(ex, ctx, {
+      staffId: before.id,
+      typed: input.payTermsFrom,
+      earliest: before.registrationDate,
+    });
+    await insertPayTerms(ex, ctx, { staffId: before.id, date, terms: columns });
+  }
 
   const documentChanges = await saveDocuments(ex, ctx, before.id, values, columns.registrationDate);
   const confidentialChanges = await saveConfidential(ex, ctx, before.id, values, opened);
 
   if (check) {
     await settleSanctionCheck(ex, ctx, check, { context: "IDENTITY_CHANGE", passage, staffId: before.id, number });
+  }
+  // Refused: no longer available, as one who leaves (PEO-05).
+  if (status === "REFUSED" && before.engagementStatus !== "REFUSED") {
+    await announceRefusal(ex, ctx, { workerId: before.id, date: ctx.today, note: null });
   }
 
   const subject = workerSubject(before.id, number, values);

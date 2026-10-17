@@ -119,6 +119,70 @@ export async function debtAt(ex: Executor, staffId: string, date: string): Promi
   return lines.reduce((sum, line) => sum + (line.direction === "INCREASE" ? line.amount : -line.amount), 0);
 }
 
+/** What is still owed of one line of the ledger that made a debt. */
+export interface DebtPart {
+  entryId: string;
+  reason: DebtReason;
+  violationId: string | null;
+  note: string | null;
+  left: number;
+}
+
+/**
+ * What a person still owes, line by line (PEO-13): each debt made (an
+ * advance, a damage, a violation's deduction…) is taken back in the order it
+ * was made, a repayment undone owes again what it had taken back, and an
+ * undone debt is taken off its own line first.
+ */
+export async function outstandingDebts(ex: Executor, staffId: string): Promise<DebtPart[]> {
+  const lines = await ex
+    .selectFrom("StaffDebtEntry")
+    .select(["id", "direction", "reason", "amount", "note", "violationId", "reversesEntryId"])
+    .where("staffId", "=", staffId)
+    .orderBy("seq")
+    .execute();
+  const parts: DebtPart[] = [];
+  const takenBy = new Map<string, Array<{ part: DebtPart; amount: number }>>();
+  const take = (amount: number, first: DebtPart | undefined) => {
+    const taken: Array<{ part: DebtPart; amount: number }> = [];
+    let rest = amount;
+    for (const part of first ? [first, ...parts.filter((each) => each !== first)] : parts) {
+      if (rest <= 0) break;
+      const now = Math.min(part.left, rest);
+      if (now <= 0) continue;
+      part.left -= now;
+      rest -= now;
+      taken.push({ part, amount: now });
+    }
+    return taken;
+  };
+  for (const line of lines) {
+    if (line.direction === "DECREASE") {
+      const undone =
+        line.reason === "REVERSAL" ? parts.find((part) => part.entryId === line.reversesEntryId) : undefined;
+      takenBy.set(line.id, take(line.amount, undone));
+      continue;
+    }
+    const repaid = line.reason === "REVERSAL" && line.reversesEntryId ? takenBy.get(line.reversesEntryId) : undefined;
+    let rest: number = line.amount;
+    for (const { part, amount } of repaid ?? []) {
+      const back = Math.min(amount, rest);
+      part.left += back;
+      rest -= back;
+    }
+    if (rest > 0) {
+      parts.push({
+        entryId: line.id,
+        reason: (repaid ? "OTHER" : line.reason) as DebtReason,
+        violationId: line.violationId,
+        note: line.note,
+        left: rest,
+      });
+    }
+  }
+  return parts.filter((part) => part.left > 0);
+}
+
 export interface DebtEntryInput {
   staffId: string;
   date: string;

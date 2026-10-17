@@ -1,3 +1,5 @@
+import { sql } from "kysely";
+
 import { addDays, isDate } from "@/features/people/rules/dates";
 import { leaveAccount, leaveCountFrom, type LeaveRules } from "@/features/people/rules/leave";
 import type { IrgTable } from "@/features/people/rules/pay";
@@ -21,7 +23,8 @@ import { basisPoints, localDate, minutes, money, qty, type LocalDate } from "@/l
 
 import { employeeDays } from "./employee-attendance";
 import { HOURS_PATH, weekStart, workerHours } from "./hours";
-import { addDebtEntry, debtAt, debtBalanceOf, requirePay } from "./payouts";
+import { addDebtEntry, debtAt, debtBalanceOf, outstandingDebts, requirePay, type DebtPart } from "./payouts";
+import { ACTIVE_STATUSES } from "./staff-exports";
 import { staffName } from "@/lib/text/names";
 
 /**
@@ -69,6 +72,59 @@ const LINE_AR: Record<PayslipItemType, string> = {
   OTHER: "أخرى",
 };
 
+/** The line of a correction of the base, before its reason. */
+const BASE_CORRECTION_AR = "تصحيح الأجر الأساسي";
+
+/** How a debt taken back on a payslip is worded, by the ledger line it comes from (PEO-13). */
+const DEBT_AR: Partial<Record<string, string>> = {
+  ADVANCE: "تسديد التسبيقات",
+  DAMAGE: "تعويض ضرر",
+  LOSS: "تعويض ضياع",
+  OVERPAYMENT: "استرجاع مبلغ دفع زيادة",
+};
+const OTHER_DEBT_AR = "تسديد ديون أخرى";
+
+/**
+ * What a repayment takes back, as the payslip prints it (PEO-13): the oldest
+ * debts first, an advance as «تسديد التسبيقات», a violation's deduction as
+ * «اقتطاع: مخالفة رقم …», a damage or a loss as its compensation. Lines of the
+ * same wording are added together, in the order they were owed.
+ */
+async function repaymentLines(
+  ex: Executor,
+  staffId: string,
+  amount: number,
+): Promise<Array<{ label: string; amount: number }>> {
+  const parts = await outstandingDebts(ex, staffId);
+  const violationIds = [...new Set(parts.map((part) => part.violationId).filter((id): id is string => id !== null))];
+  const violations = violationIds.length
+    ? await ex.selectFrom("Violation").select(["id", "number"]).where("id", "in", violationIds).execute()
+    : [];
+  const wordingOf = (part: DebtPart) => {
+    const violation = part.violationId ? violations.find((each) => each.id === part.violationId) : undefined;
+    if (violation) return `اقتطاع: مخالفة رقم ${violation.number}`;
+    return DEBT_AR[part.reason] ?? OTHER_DEBT_AR;
+  };
+  const lines: Array<{ label: string; amount: number }> = [];
+  let rest = amount;
+  for (const part of parts) {
+    if (rest <= 0) break;
+    const taken = Math.min(part.left, rest);
+    rest -= taken;
+    const label = wordingOf(part);
+    const same = lines.find((line) => line.label === label);
+    if (same) same.amount += taken;
+    else lines.push({ label, amount: taken });
+  }
+  // Never less than the repayment: what the ledger cannot place is an advance, as before.
+  if (rest > 0) {
+    const advance = lines.find((line) => line.label === DEBT_AR.ADVANCE);
+    if (advance) advance.amount += rest;
+    else lines.push({ label: DEBT_AR.ADVANCE as string, amount: rest });
+  }
+  return lines;
+}
+
 /** What the office typed over the computed values of a payslip. Kept through a refresh. */
 export interface PayslipOverrides {
   cnas?: number;
@@ -80,6 +136,11 @@ export interface PayslipOverrides {
   /** A deduction typed on this payslip, besides the recurring ones. */
   deduction?: number;
   deductionLabel?: string;
+  /** The recurring deductions taken on this payslip, typed over their sum: less in a short month (PEO-09). */
+  recurringDeductions?: number;
+  /** A correction of the base, signed, and why (PEO-08): a rate typed wrong, a raise dated back. */
+  baseCorrection?: number;
+  baseCorrectionReason?: string;
 }
 
 interface StoredOverrides {
@@ -177,10 +238,94 @@ interface Person {
   payRate: number | null;
   leaveOpeningDays: number | null;
   leaveOpeningDate: string | null;
+  /** Whether she was in post (on trial or accepted) on a day, by her dated status history (PEO-01). */
+  inPost: (day: string) => boolean;
+  /** The days of the run's month she was in post. */
+  postDays: number;
 }
 
-/** The people a run of this kind pays: registered by its end, not gone before its start, with pay terms. */
-async function peopleOf(ex: Executor, kind: StaffKind, start: LocalDate, end: LocalDate): Promise<Person[]> {
+/** What a run is, for the people it pays: its kind, its month, its branch. */
+interface RunScope {
+  id: string;
+  staffKind: string;
+  periodStart: LocalDate;
+  periodEnd: LocalDate;
+  branchId: string;
+}
+
+/** Every day from `start` to `end`, both included. */
+function daysFrom(start: string, end: string): string[] {
+  const days: string[] = [];
+  for (let day = start; day <= end; day = addDays(day, 1)) days.push(day);
+  return days;
+}
+
+/**
+ * Whether a person was in post on a day: the status in force then (the latest
+ * dated STATUS row on or before it) is «تحت التجربة» or «مقبول». Before her
+ * registration, and from the day she left, she was not. Registered with no
+ * status written yet on that day: her status now.
+ */
+function inPostOn(
+  person: { registrationDate: string; leftDate: string | null; engagementStatus: string },
+  history: ReadonlyArray<{ date: string; toStatus: string | null }>,
+) {
+  return (day: string): boolean => {
+    if (day < person.registrationDate) return false;
+    if (person.leftDate !== null && day >= person.leftDate) return false;
+    let status: string | null = null;
+    for (const row of history) {
+      if (row.date > day) break;
+      status = row.toStatus;
+    }
+    return ACTIVE_STATUSES.has(status ?? person.engagementStatus);
+  };
+}
+
+/** Typed seats (or seats of done visits, LAB-14) up to a day that no live run but this one has paid. */
+function unpaidSeats(ex: Executor, end: LocalDate, runId: string) {
+  return (
+    ex
+      .selectFrom("VisitWorker as vw")
+      .innerJoin("Visit as v", "v.id", "vw.visitId")
+      .innerJoin("File as f", "f.id", "v.fileId")
+      .where("vw.seatStatus", "=", "ASSIGNED")
+      // Typed, or on a done visit whose times were left empty: then its planned minutes (RULINGS item 14, LAB-14).
+      .where((eb) => eb.or([eb("vw.workedMin", "is not", null), eb("v.status", "=", "DONE")]))
+      .where("v.visitDate", "<=", end)
+      .where("v.status", "in", WORKED_VISITS)
+      .where((eb) => eb.or([eb("v.statusReason", "is", null), eb("v.statusReason", "<>", "PROGRAMME_CHANGED")]))
+      .where((eb) =>
+        eb.not(
+          eb.exists(
+            eb
+              .selectFrom("PayslipSeat as s")
+              .innerJoin("Payslip as p", "p.id", "s.payslipId")
+              .innerJoin("PayRun as r", "r.id", "p.payRunId")
+              .select("s.id")
+              .whereRef("s.visitWorkerId", "=", "vw.id")
+              .where("r.status", "<>", "VOID")
+              .where("r.id", "<>", runId),
+          ),
+        ),
+      )
+  );
+}
+
+/**
+ * The people a run pays (PEO-01, PEO-02): of its kind and its branch, with
+ * pay terms on their file, and in post (on trial or accepted) on at least one
+ * day of the month, or, for a worker, with seats of earlier days in post still
+ * to pay. A candidate, a refused worker, somebody who left before the month
+ * are not paid; a worker readmitted is paid from the day she is in post again.
+ * The terms are those in force at the end of the month: of the dated rows
+ * that took effect by then, the one written last (PEO-08), so that a change
+ * dated back reaches the drafts of the months it covers, and the month of the
+ * last change pays what the file shows. Terms cleared on the file are no
+ * terms.
+ */
+async function peopleOf(ex: Executor, run: RunScope): Promise<Person[]> {
+  const kind = run.staffKind as StaffKind;
   const people = await ex
     .selectFrom("StaffMember")
     .select([
@@ -205,40 +350,62 @@ async function peopleOf(ex: Executor, kind: StaffKind, start: LocalDate, end: Lo
       "numberSeq",
     ])
     .where("kind", "=", kind)
+    .where("branchId", "=", run.branchId)
     .where("deletedAt", "is", null)
-    .where("registrationDate", "<=", end)
-    .where((eb) => eb.or([eb("leftDate", "is", null), eb("leftDate", ">", start)]))
+    .where("registrationDate", "<=", run.periodEnd)
+    .where("payBasis", "is not", null)
+    .where("payRate", "is not", null)
     .orderBy("numberSeq")
     .execute();
-  // The pay terms in force at the end of the month (her history), else the file's.
-  const terms = people.length
-    ? await ex
-        .selectFrom("StaffEvent")
-        .select(["staffId", "payBasis", "payRate", "date", "createdAt"])
-        .where("kind", "=", "PAY_TERMS")
-        .where(
-          "staffId",
-          "in",
-          people.map((person) => person.id),
-        )
-        .where("date", "<=", end)
-        .orderBy("staffId")
-        .orderBy("date")
-        .orderBy("createdAt")
-        .execute()
-    : [];
-  const latest = new Map<string, (typeof terms)[number]>();
-  for (const row of terms) latest.set(row.staffId, row);
-  return people
-    .map((person) => {
-      const inForce = latest.get(person.id);
-      return {
+  if (people.length === 0) return [];
+  const ids = people.map((person) => person.id);
+  const [events, owed] = await Promise.all([
+    ex
+      .selectFrom("StaffEvent")
+      .select(["staffId", "kind", "date", "toStatus", "payBasis", "payRate", "createdAt"])
+      .select(sql<number>`rowid`.as("written"))
+      .where("staffId", "in", ids)
+      .where("date", "<=", run.periodEnd)
+      .orderBy("staffId")
+      .orderBy("date")
+      .orderBy("createdAt")
+      .execute(),
+    kind === "WORKER"
+      ? unpaidSeats(ex, run.periodEnd, run.id)
+          .select("vw.workerId")
+          .distinct()
+          .where("vw.workerId", "in", ids)
+          .execute()
+          .then((rows) => new Set(rows.map((row) => row.workerId)))
+      : Promise.resolve(new Set<string>()),
+  ]);
+  const historyOf = new Map<string, typeof events>();
+  for (const event of events) historyOf.set(event.staffId, [...(historyOf.get(event.staffId) ?? []), event]);
+  const month = daysFrom(run.periodStart, run.periodEnd);
+
+  return people.flatMap((person) => {
+    const history = historyOf.get(person.id) ?? [];
+    const inPost = inPostOn(
+      person,
+      history.filter((event) => event.kind === "STATUS"),
+    );
+    const postDays = month.filter(inPost).length;
+    if (postDays === 0 && !owed.has(person.id)) return [];
+    // The pay terms in force at the end of the month (her history, the row written last), else the file's.
+    const terms = history
+      .filter((event) => event.kind === "PAY_TERMS")
+      .sort((a, b) => a.createdAt.localeCompare(b.createdAt) || a.written - b.written)
+      .at(-1);
+    return [
+      {
         ...person,
-        payBasis: inForce?.payBasis ?? person.payBasis,
-        payRate: inForce?.payRate ?? person.payRate,
-      };
-    })
-    .filter((person) => person.payBasis !== null && person.payRate !== null);
+        payBasis: terms?.payBasis ?? person.payBasis,
+        payRate: terms?.payRate ?? person.payRate,
+        inPost,
+        postDays,
+      },
+    ];
+  });
 }
 
 interface PaidSeat {
@@ -252,32 +419,9 @@ interface PaidSeat {
 
 /** A worker's typed seats up to the end of the month that no live run has paid. */
 async function seatsToPay(ex: Executor, workerId: string, end: LocalDate, runId: string): Promise<PaidSeat[]> {
-  const rows = await ex
-    .selectFrom("VisitWorker as vw")
-    .innerJoin("Visit as v", "v.id", "vw.visitId")
-    .innerJoin("File as f", "f.id", "v.fileId")
+  const rows = await unpaidSeats(ex, end, runId)
     .select(["vw.id", "v.visitDate", "vw.workedMin", "v.plannedDurationMin", "v.status", "f.division"])
     .where("vw.workerId", "=", workerId)
-    .where("vw.seatStatus", "=", "ASSIGNED")
-    // Typed, or on a done visit whose times were left empty: then its planned minutes (RULINGS item 14, LAB-14).
-    .where((eb) => eb.or([eb("vw.workedMin", "is not", null), eb("v.status", "=", "DONE")]))
-    .where("v.visitDate", "<=", end)
-    .where("v.status", "in", WORKED_VISITS)
-    .where((eb) => eb.or([eb("v.statusReason", "is", null), eb("v.statusReason", "<>", "PROGRAMME_CHANGED")]))
-    .where((eb) =>
-      eb.not(
-        eb.exists(
-          eb
-            .selectFrom("PayslipSeat as s")
-            .innerJoin("Payslip as p", "p.id", "s.payslipId")
-            .innerJoin("PayRun as r", "r.id", "p.payRunId")
-            .select("s.id")
-            .whereRef("s.visitWorkerId", "=", "vw.id")
-            .where("r.status", "<>", "VOID")
-            .where("r.id", "<>", runId),
-        ),
-      ),
-    )
     .orderBy("v.visitDate")
     .execute();
   return rows.map((row) => ({
@@ -289,9 +433,40 @@ async function seatsToPay(ex: Executor, workerId: string, end: LocalDate, runId:
   }));
 }
 
+/** Minutes of a worker's seats that live runs other than this one already paid, per day asked about (PEO-04). */
+async function minutesPaidOn(
+  ex: Executor,
+  workerId: string,
+  runId: string,
+  dates: readonly string[],
+): Promise<Map<string, number>> {
+  if (dates.length === 0) return new Map();
+  const rows = await ex
+    .selectFrom("PayslipSeat as s")
+    .innerJoin("Payslip as p", "p.id", "s.payslipId")
+    .innerJoin("PayRun as r", "r.id", "p.payRunId")
+    .select(["s.visitDate", "s.countedMin"])
+    .where("p.staffId", "=", workerId)
+    .where("r.status", "<>", "VOID")
+    .where("r.id", "<>", runId)
+    .where(
+      "s.visitDate",
+      "in",
+      dates.map((date) => localDate(date)),
+    )
+    .execute();
+  const paid = new Map<string, number>();
+  for (const row of rows) paid.set(row.visitDate, (paid.get(row.visitDate) ?? 0) + row.countedMin);
+  return paid;
+}
+
 interface Figures {
   /** Minutes per day of what this payslip pays. */
   days: Map<string, number>;
+  /** The days it pays as days: those with minutes that no other run paid already (PEO-04). */
+  daysWorked: number;
+  /** Σ of what it adds past the standard day, each day taken whole with what was paid of it before (PEO-04). */
+  beyondDayMin: number;
   seats: PaidSeat[];
   overtimeMin: number;
   premiumOnlyMin: number;
@@ -312,7 +487,8 @@ async function workerFigures(
   limits: { dayMin: number; weekMin: number },
 ): Promise<Figures> {
   const [hours] = await workerHours(ex, ctx, { from: period.start, to: period.end, workerId: person.id });
-  const seats = await seatsToPay(ex, person.id, period.end, runId);
+  // What she did while in post is paid; nothing else (PEO-01).
+  const seats = (await seatsToPay(ex, person.id, period.end, runId)).filter((seat) => person.inPost(seat.date));
   const days = new Map<string, number>();
   const divisionMin: Record<string, number> = {};
   for (const seat of seats) {
@@ -320,13 +496,27 @@ async function workerFigures(
     divisionMin[seat.division] = (divisionMin[seat.division] ?? 0) + seat.workedMin;
   }
   for (const line of hours?.adjustments ?? []) {
+    if (!person.inPost(line.date)) continue;
     days.set(line.date, Math.max(0, (days.get(line.date) ?? 0) + line.adjustMin));
     divisionMin.COMMON = (divisionMin.COMMON ?? 0) + line.adjustMin;
   }
-  const weeks = hours?.weeks ?? [];
+  // A month she was in post on no day pays only her late seats: no week, absence or lateness of its own.
+  const ownMonth = person.postDays > 0;
+  const weeks = ownMonth ? (hours?.weeks ?? []) : [];
   let overtimeMin = weeks.reduce((sum, week) => sum + week.overtimeMin, 0);
   let premiumOnlyMin = weeks.reduce((sum, week) => sum + Math.max(0, week.overtimeMin - week.beyondDayMin), 0);
   let restDayMin = weeks.reduce((sum, week) => sum + week.restDayMin, 0);
+
+  // A late seat on a day another run already paid adds to that day: it is not a day more, and what it brings
+  // past the standard day is counted on the whole day (PEO-04).
+  const lateDates = [...new Set(seats.filter((seat) => seat.date < period.start).map((seat) => seat.date))];
+  const paidBefore = await minutesPaidOn(ex, person.id, runId, lateDates);
+  const addedPastDay = (date: string, added: number) => {
+    const before = paidBefore.get(date) ?? 0;
+    return Math.max(0, before + added - limits.dayMin) - Math.max(0, before - limits.dayMin);
+  };
+  const daysWorked = [...days].filter(([date, value]) => value > 0 && !((paidBefore.get(date) ?? 0) > 0)).length;
+  const beyondDayMin = [...days].reduce((sum, [date, value]) => sum + addedPastDay(date, value), 0);
 
   // Arrears (LAB-5): a seat typed after the month its week ended in was closed. Its week is priced again with
   // every seat now typed, and what the late seats add to its overtime and its rest-day work is paid here.
@@ -344,7 +534,9 @@ async function workerFigures(
     const added = lateSeats.reduce((sum, seat) => sum + seat.workedMin, 0);
     const overtimeBefore = Math.max(0, week.workedMin - added - limits.weekMin);
     const overtimeAdded = Math.max(0, week.overtimeMin - overtimeBefore);
-    const beyondAdded = lateSeats.reduce((sum, seat) => sum + Math.max(0, seat.workedMin - limits.dayMin), 0);
+    const byDay = new Map<string, number>();
+    for (const seat of lateSeats) byDay.set(seat.date, (byDay.get(seat.date) ?? 0) + seat.workedMin);
+    const beyondAdded = [...byDay].reduce((sum, [date, value]) => sum + addedPastDay(date, value), 0);
     const onRestDay = lateSeats
       .filter((seat) => seat.date === week.restDate)
       .reduce((sum, seat) => sum + seat.workedMin, 0);
@@ -354,13 +546,15 @@ async function workerFigures(
   }
   return {
     days,
+    daysWorked,
+    beyondDayMin,
     seats,
     overtimeMin,
     premiumOnlyMin,
     restDayMin,
-    paidAbsenceMin: hours?.totals.paidAbsenceMin ?? 0,
-    unpaidAbsenceMin: hours?.totals.unpaidAbsenceMin ?? 0,
-    lateMin: hours?.totals.lateMin ?? 0,
+    paidAbsenceMin: ownMonth ? (hours?.totals.paidAbsenceMin ?? 0) : 0,
+    unpaidAbsenceMin: ownMonth ? (hours?.totals.unpaidAbsenceMin ?? 0) : 0,
+    lateMin: ownMonth ? (hours?.totals.lateMin ?? 0) : 0,
     ordersNotTyped: hours?.totals.ordersNotTyped ?? 0,
     divisionMin,
   };
@@ -374,9 +568,12 @@ async function employeeFigures(
 ): Promise<Figures> {
   const readFrom = weekStart(period.start);
   const all = (await employeeDays(ex, { staffIds: [person.id], from: readFrom, to: period.end })).get(person.id);
-  const minutesOn = (date: string) => all?.get(date)?.minutes ?? 0;
+  // Only the days in post count (PEO-01).
+  const minutesOn = (date: string) => (person.inPost(date) ? (all?.get(date)?.minutes ?? 0) : 0);
   const days = new Map<string, number>();
-  for (const [date, day] of all ?? []) if (date >= period.start && day.minutes > 0) days.set(date, day.minutes);
+  for (const [date, day] of all ?? []) {
+    if (date >= period.start && day.minutes > 0 && person.inPost(date)) days.set(date, day.minutes);
+  }
 
   let overtimeMin = 0;
   let premiumOnlyMin = 0;
@@ -398,10 +595,10 @@ async function employeeFigures(
     restDayMin += minutesOn(restDate);
   }
 
-  const [absences, leaves] = await Promise.all([
+  const [absenceRows, leaveRows] = await Promise.all([
     ex
       .selectFrom("EmployeeAbsence")
-      .select(["absenceMin", "paid"])
+      .select(["date", "absenceMin", "paid"])
       .where("staffId", "=", person.id)
       .where("date", ">=", period.start)
       .where("date", "<=", period.end)
@@ -410,7 +607,7 @@ async function employeeFigures(
       .execute(),
     ex
       .selectFrom("EmployeeLeave")
-      .select(["days", "paid"])
+      .select(["startDate", "days", "paid"])
       .where("staffId", "=", person.id)
       .where("status", "=", "APPROVED")
       .where("deletedAt", "is", null)
@@ -418,11 +615,15 @@ async function employeeFigures(
       .where("endDate", "<=", period.end)
       .execute(),
   ]);
+  const absences = absenceRows.filter((absence) => person.inPost(absence.date));
+  const leaves = leaveRows.filter((leave) => person.inPost(leave.startDate));
   const leaveMin = (rows: typeof leaves) =>
     rows.reduce((sum, leave) => sum + Math.round((leave.days * settings.dayMin) / 1000), 0);
   const paidMin = [...days.values()].reduce((sum, value) => sum + value, 0);
   return {
     days,
+    daysWorked: [...days.values()].filter((value) => value > 0).length,
+    beyondDayMin: [...days.values()].reduce((sum, value) => sum + Math.max(0, value - settings.dayMin), 0),
     seats: [],
     overtimeMin,
     premiumOnlyMin,
@@ -439,16 +640,10 @@ async function employeeFigures(
   };
 }
 
-/** The days of the month a person was employed, for a monthly wage. */
+/** The days of the month a person was in post, for a monthly wage (PEO-01): all of them is the whole month. */
 function monthShare(person: Person, period: { start: LocalDate; end: LocalDate }) {
   const all = Number(period.end.slice(8, 10));
-  const began = person.startDate ?? person.registrationDate;
-  const from = began > period.start ? began : period.start;
-  const lastDay = person.leftDate ? addDays(person.leftDate, -1) : period.end;
-  const to = lastDay < period.end ? lastDay : period.end;
-  if (to < from) return { days: 0, of: all };
-  const days = Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000) + 1;
-  return days >= all ? undefined : { days, of: all };
+  return person.postDays >= all ? undefined : { days: person.postDays, of: all };
 }
 
 /** A line's quantity as stored, in thousandths: hours for minutes, or the days or tasks of the base. */
@@ -517,7 +712,7 @@ async function writePayslip(
   setup: Setup,
   typed: PayslipOverrides,
   keepId?: string,
-): Promise<boolean> {
+): Promise<ReturnType<typeof computePayslip> | null> {
   const period = { start: run.periodStart, end: run.periodEnd };
   const figures =
     person.kind === "WORKER"
@@ -530,26 +725,34 @@ async function writePayslip(
   const basis = person.payBasis as PayBasis;
   const paidMin = [...figures.days.values()].reduce((sum, value) => sum + value, 0);
   // Nothing to pay a worker paid by the hour, day or task who worked nothing and was paid no leave.
-  if (basis !== "MONTHLY" && paidMin === 0 && figures.paidAbsenceMin === 0) return false;
+  if (basis !== "MONTHLY" && paidMin === 0 && figures.paidAbsenceMin === 0) return null;
+  // A monthly wage with no day in post this month has nothing to pay.
+  if (basis === "MONTHLY" && person.postDays === 0 && paidMin === 0) return null;
 
-  const items = await ex
-    .selectFrom("StaffPayItem")
-    .selectAll()
-    .where("staffId", "=", person.id)
-    .where("deletedAt", "is", null)
-    .where("fromDate", "<=", run.periodEnd)
-    .where((eb) => eb.or([eb("toDate", "is", null), eb("toDate", ">=", run.periodStart)]))
-    .execute();
+  // Allowances and recurring deductions belong to a month in post: none for one paid only its late seats.
+  const items =
+    person.postDays === 0
+      ? []
+      : await ex
+          .selectFrom("StaffPayItem")
+          .selectAll()
+          .where("staffId", "=", person.id)
+          .where("deletedAt", "is", null)
+          .where("fromDate", "<=", run.periodEnd)
+          .where((eb) => eb.or([eb("toDate", "is", null), eb("toDate", ">=", run.periodStart)]))
+          .execute();
   const allowances = items.filter((item) => item.type === "ALLOWANCE");
   const recurringDeductions = items.filter((item) => item.type === "DEDUCTION");
-  const deductions = recurringDeductions.reduce((sum, item) => sum + item.amount, 0) + (typed.deduction ?? 0);
+  // The recurring deductions in full, unless the office typed what this payslip takes of them (PEO-09).
+  const recurring = typed.recurringDeductions ?? recurringDeductions.reduce((sum, item) => sum + item.amount, 0);
+  const deductions = recurring + (typed.deduction ?? 0);
   const share = basis === "MONTHLY" ? monthShare(person, period) : undefined;
   const figuresIn = {
     basis,
     rate: money(person.payRate ?? 0),
     paidMin,
-    daysWorked: [...figures.days.values()].filter((value) => value > 0).length,
-    beyondDayMin: [...figures.days.values()].reduce((sum, value) => sum + Math.max(0, value - setup.dayMin), 0),
+    daysWorked: figures.daysWorked,
+    beyondDayMin: figures.beyondDayMin,
     overtimeMin: figures.overtimeMin,
     premiumOnlyMin: figures.premiumOnlyMin,
     restDayMin: figures.restDayMin,
@@ -571,6 +774,15 @@ async function writePayslip(
       overtime: typed.overtime === undefined ? undefined : money(typed.overtime),
       restDayPremium: typed.restDayPremium === undefined ? undefined : money(typed.restDayPremium),
     },
+    baseCorrection:
+      typed.baseCorrection === undefined || typed.baseCorrection === 0
+        ? undefined
+        : {
+            amount: money(typed.baseCorrection),
+            label: typed.baseCorrectionReason
+              ? `${BASE_CORRECTION_AR}: ${typed.baseCorrectionReason}`
+              : BASE_CORRECTION_AR,
+          },
   };
   // Advances and other debts are taken back from what is left: those of this month and of the months before
   // it, unless the office typed another amount (never more than is owed now).
@@ -582,6 +794,8 @@ async function writePayslip(
       ? Math.min(typed.advanceRepayment, owed)
       : Math.max(0, Math.min(owed, owedThen, before.net ?? 0));
   const result = computePayslip({ ...figuresIn, advanceRepayment: money(repay) }, setup.rates);
+  // What is taken back, line by line of the ledger: an advance, a violation's deduction, a damage (PEO-13).
+  const repaid = repay > 0 ? await repaymentLines(ex, person.id, repay) : [];
 
   const positionOrRole =
     person.kind === "WORKER"
@@ -593,7 +807,9 @@ async function writePayslip(
         : null;
   // A payslip computed again keeps its id: the page open on it stays the same record.
   const payslipId = keepId ?? newId();
-  const leaveAccrued = share ? Math.round((setup.leave.perMonth * share.days) / share.of) : setup.leave.perMonth;
+  // Leave is earned for the days in post (PEO-01).
+  const monthDays = Number(run.periodEnd.slice(8, 10));
+  const leaveAccrued = Math.round((setup.leave.perMonth * Math.min(person.postDays, monthDays)) / monthDays);
   const leave = await leaveFigures(ex, person, period, setup.leave);
   await ex
     .insertInto("Payslip")
@@ -616,7 +832,7 @@ async function writePayslip(
       absenceMin: minutes(figures.paidAbsenceMin + figures.unpaidAbsenceMin),
       lateMin: minutes(figures.lateMin),
       divisionMin: JSON.stringify(figures.divisionMin),
-      baseAmount: result.base,
+      baseAmount: money(result.base + result.baseCorrection),
       overtimeAmount: money(result.overtime + result.restDayPremium),
       allowancesTotal: money(result.additions + result.leavePay),
       grossAmount: result.gross,
@@ -651,11 +867,17 @@ async function writePayslip(
     .execute();
 
   const lineLabel = (line: PayslipLine) => {
-    if (line.type === "ALLOWANCE" && line.label) return line.label;
+    if ((line.type === "ALLOWANCE" || line.type === "OTHER") && line.label) return line.label;
     if (line.type === "DEDUCTION" && typed.deductionLabel) return typed.deductionLabel;
     return LINE_AR[line.type];
   };
-  for (const [index, line] of result.lines.entries()) {
+  // The one repayment line of the computation is printed as the ledger's lines it takes back (PEO-13).
+  const written = result.lines.flatMap((line) =>
+    line.type === "ADVANCE_REPAYMENT" && repaid.length > 0
+      ? repaid.map((part) => ({ ...line, label: part.label, amount: money(-part.amount) }))
+      : [line],
+  );
+  for (const [index, line] of written.entries()) {
     const fromItem = line.type === "ALLOWANCE" ? allowances.find((item) => item.label === line.label) : undefined;
     await ex
       .insertInto("PayslipItem")
@@ -664,7 +886,7 @@ async function writePayslip(
         payslipId,
         sortOrder: index,
         type: line.type,
-        label: lineLabel(line),
+        label: line.type === "ADVANCE_REPAYMENT" && line.label ? line.label : lineLabel(line),
         quantity: line.quantity === undefined ? null : lineQuantity(line, basis),
         rate: line.type === "BASE" ? money(person.payRate ?? 0) : null,
         amount: line.amount,
@@ -691,18 +913,18 @@ async function writePayslip(
       })
       .execute();
   }
-  return true;
+  return result;
 }
 
 /** Writes every payslip of a draft run, keeping what was typed on each. */
 async function fillRun(
   ex: Executor,
   ctx: ServiceContext,
-  run: { id: string; staffKind: string; periodStart: LocalDate; periodEnd: LocalDate },
+  run: RunScope,
   kept: Map<string, { id: string; typed: PayslipOverrides }>,
 ): Promise<number> {
   const { rates: payRates, snapshot } = await rates(ex);
-  const people = await peopleOf(ex, run.staffKind as StaffKind, run.periodStart, run.periodEnd);
+  const people = await peopleOf(ex, run);
   let written = 0;
   for (const person of people) {
     const wrote = await writePayslip(
@@ -714,7 +936,7 @@ async function fillRun(
       kept.get(person.id)?.typed ?? {},
       kept.get(person.id)?.id,
     );
-    if (wrote) written += 1;
+    if (wrote !== null) written += 1;
   }
   return written;
 }
@@ -773,6 +995,7 @@ export async function preparePayRun(
     .selectFrom("PayRun")
     .select("id")
     .where("staffKind", "=", input.staffKind)
+    .where("branchId", "=", ctx.branchId)
     .where("status", "=", "DRAFT")
     .where("periodStart", "<", start)
     .executeTakeFirst();
@@ -800,7 +1023,7 @@ export async function preparePayRun(
   const payslips = await fillRun(
     ex,
     ctx,
-    { id: payRunId, staffKind: input.staffKind, periodStart: start, periodEnd: end },
+    { id: payRunId, staffKind: input.staffKind, periodStart: start, periodEnd: end, branchId: ctx.branchId },
     new Map(),
   );
   await logChange(ex, ctx, {
@@ -836,7 +1059,11 @@ export async function refreshPayRun(
   return { payRunId: run.id, payslips };
 }
 
-/** Types over a draft payslip's CNAS, IRG, repayment, or adds a deduction. Kept through a refresh. */
+/**
+ * Types over a draft payslip's CNAS, IRG, repayment, its recurring
+ * deductions, or adds a deduction, or corrects its base with the reason.
+ * Kept through a refresh.
+ */
 export async function updatePayslip(
   ex: Executor,
   ctx: ServiceContext,
@@ -852,7 +1079,16 @@ export async function updatePayslip(
   requirePay(ctx, "WRITE");
   if (slip.status !== "DRAFT") throw new ServiceError("A closed payslip can no longer be changed.");
   const typed: PayslipOverrides = { ...parseOverrides(slip.manualOverrides).typed };
-  for (const key of ["cnas", "irg", "advanceRepayment", "deduction", "overtime", "restDayPremium"] as const) {
+  const amounts = [
+    "cnas",
+    "irg",
+    "advanceRepayment",
+    "deduction",
+    "overtime",
+    "restDayPremium",
+    "recurringDeductions",
+  ] as const;
+  for (const key of amounts) {
     const value = input[key];
     if (value === undefined) continue;
     if (value === null) delete typed[key];
@@ -863,17 +1099,37 @@ export async function updatePayslip(
     if (input.deductionLabel === null || input.deductionLabel.trim() === "") delete typed.deductionLabel;
     else typed.deductionLabel = input.deductionLabel.trim();
   }
+  // A correction of the base is signed, and says why (PEO-08).
+  if (input.baseCorrectionReason !== undefined) {
+    const reason = input.baseCorrectionReason?.trim() ?? "";
+    if (reason === "") delete typed.baseCorrectionReason;
+    else typed.baseCorrectionReason = reason;
+  }
+  if (input.baseCorrection !== undefined) {
+    if (input.baseCorrection === null || input.baseCorrection === 0) {
+      delete typed.baseCorrection;
+      delete typed.baseCorrectionReason;
+    } else if (!Number.isSafeInteger(input.baseCorrection)) {
+      throw new ServiceError("A correction of the base is an amount in dinars.");
+    } else {
+      typed.baseCorrection = input.baseCorrection;
+    }
+  }
+  if (typed.baseCorrection !== undefined && !typed.baseCorrectionReason) {
+    throw new ServiceError("Write the reason for correcting the base pay.");
+  }
   // The payslip is written again, alone, with what was typed.
   const run = await runOf(ex, slip.runId);
   await ex.deleteFrom("PayslipSeat").where("payslipId", "=", slip.id).execute();
   await ex.deleteFrom("PayslipItem").where("payslipId", "=", slip.id).execute();
   await ex.deleteFrom("Payslip").where("id", "=", slip.id).execute();
   const { rates: payRates, snapshot } = await rates(ex);
-  const person = (await peopleOf(ex, run.staffKind as StaffKind, run.periodStart, run.periodEnd)).find(
-    (each) => each.id === slip.staffId,
-  );
+  const person = (await peopleOf(ex, run)).find((each) => each.id === slip.staffId);
   if (!person) throw new ServiceError("This person has no pay terms for this month.");
-  await writePayslip(ex, ctx, run, person, setupFrom(payRates, snapshot), typed, slip.id);
+  const result = await writePayslip(ex, ctx, run, person, setupFrom(payRates, snapshot), typed, slip.id);
+  if (result && typed.baseCorrection !== undefined && result.baseCorrection !== typed.baseCorrection) {
+    throw new ServiceError("A correction cannot take off more than the base pay.");
+  }
   await logChange(ex, ctx, {
     owner: "PEOPLE",
     action: "UPDATE",
@@ -882,6 +1138,7 @@ export async function updatePayslip(
     entityLabel: slip.staffName,
     subject: { kind: run.staffKind === "EMPLOYEE" ? "EMPLOYEE" : "WORKER", id: slip.staffId, label: slip.staffName },
     changes: Object.fromEntries(Object.entries(typed).map(([key, value]) => [key, [null, value]])),
+    reason: typed.baseCorrectionReason,
   });
 }
 
@@ -895,6 +1152,33 @@ export async function closePayRun(
   requirePay(ctx, "WRITE");
   if (run.status !== "DRAFT") throw new ServiceError("Only a draft pay run can be closed.");
   if (run.periodEnd >= ctx.today) throw new ServiceError("A month is closed once it is over.");
+
+  // What closes is what the hours, the absences and the pay items say now (PEO-03): the draft is computed again
+  // here, and closed only if that changed nothing; otherwise it is to be looked at again first.
+  const figuresOf = async () =>
+    (
+      await ex
+        .selectFrom("Payslip")
+        .select(["staffId", "grossAmount", "netAmount", "cnasAmount", "irgAmount", "advanceRepayment"])
+        .select(["otherDeductions", "employerCnasAmount"])
+        .where("payRunId", "=", run.id)
+        .orderBy("staffId")
+        .execute()
+    )
+      .map((slip) => Object.values(slip).join("|"))
+      .join("\n");
+  const seen = await figuresOf();
+  await fillRun(ex, ctx, run, await emptyRun(ex, run.id));
+  if ((await figuresOf()) !== seen) {
+    throw new ServiceError("The hours or the pay changed since this run was computed: compute it again and check it.");
+  }
+  const { snapshot } = await rates(ex);
+  await ex
+    .updateTable("PayRun")
+    .set({ ratesSnapshot: JSON.stringify(snapshot) })
+    .where("id", "=", run.id)
+    .execute();
+
   const payslips = await ex
     .selectFrom("Payslip")
     .selectAll()

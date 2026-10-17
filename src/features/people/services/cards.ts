@@ -8,6 +8,7 @@ import { ServiceError } from "@/lib/service/errors";
 import { getSettings } from "@/lib/settings";
 import { staffName } from "@/lib/text/names";
 
+import { ACTIVE_STATUSES } from "./staff-exports";
 import { SECTION_OF_KIND } from "./staff-shared";
 
 /**
@@ -49,6 +50,10 @@ async function peopleOf(ex: Executor, ctx: ServiceContext, ids: readonly string[
   for (const person of people) {
     requireSection(ctx, SECTION_OF_KIND[person.kind as StaffKind], "READ");
     if (person.engagementStatus === "LEFT") throw new ServiceError("This person has left: no card is printed.");
+    // A card is for someone in post, on trial or accepted: never a candidate or a refused worker (PEO-12).
+    if (!ACTIVE_STATUSES.has(person.engagementStatus)) {
+      throw new ServiceError("This person is not in post: no card is printed.");
+    }
   }
   // In the order asked for, so a batch prints as it was chosen.
   return wanted.map((id) => people.find((person) => person.id === id) as (typeof people)[number]);

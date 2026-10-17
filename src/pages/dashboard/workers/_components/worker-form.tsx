@@ -103,6 +103,8 @@ export function WorkerForm({ mode, defaultValues }: Props) {
   const { control, formState } = form;
   // A new worker's restricted cards are open, to fill. A registered worker's are opened on demand.
   const [opened, setOpened] = React.useState<Opened>({ HEALTH: mode.kind === "new", SCORE: mode.kind === "new" });
+  // The day changed pay terms take effect: today when left empty (PEO-08).
+  const [payFrom, setPayFrom] = React.useState("");
 
   const zones = useQuery({ queryKey: [...pathKey(PLACES_PATH), "zones"], queryFn: () => listZonesQuery(undefined) });
 
@@ -141,6 +143,7 @@ export function WorkerForm({ mode, defaultValues }: Props) {
         id: mode.id,
         values,
         opened: { health: opened.HEALTH, score: opened.SCORE },
+        payTermsFrom: payFrom || null,
         ...passage,
       });
       if (!result.success) {
@@ -149,6 +152,7 @@ export function WorkerForm({ mode, defaultValues }: Props) {
       }
       toast.success(t("Actions.Saved"));
       form.reset(values);
+      setPayFrom("");
       return;
     }
 
@@ -192,7 +196,11 @@ export function WorkerForm({ mode, defaultValues }: Props) {
           </ScreenCard>
         ))}
 
-        <OfficeCard control={control} zones={zones.data ?? []} />
+        <OfficeCard
+          control={control}
+          zones={zones.data ?? []}
+          payFrom={mode.kind === "edit" ? { value: payFrom, onChange: setPayFrom, saved: defaultValues } : undefined}
+        />
       </fieldset>
 
       {/* The foot of the form, as the academy's: the way out beside the save, which is the screen's one green button. */}
@@ -846,8 +854,20 @@ function ScoreField({
 }
 
 /** «للاستخدام الإداري»: what the plan's features need and his form does not ask. Not printed. */
-function OfficeCard({ control, zones }: { control: FormControl; zones: readonly Zone[] }) {
+/** On a registered worker's file: the day her changed pay terms take effect, shown once they are changed. */
+interface PayFrom {
+  value: string;
+  onChange: (value: string) => void;
+  saved: WorkerFormValues;
+}
+
+const PAY_KEYS = ["payBasis", "payRate", "payPeriod", "weeklyCapacityHours"] as const;
+
+function OfficeCard({ control, zones, payFrom }: { control: FormControl; zones: readonly Zone[]; payFrom?: PayFrom }) {
   const t = useTranslations("WorkerForm");
+  const pay = useWatch({ control, name: PAY_KEYS });
+  const payChanged =
+    payFrom !== undefined && PAY_KEYS.some((key, index) => (pay[index] ?? "") !== (payFrom.saved[key] ?? ""));
   const sex = useWatch({ control, name: "sex" });
   const canCollect = useWatch({ control, name: "canCollectCash" });
   const declared = useWatch({ control, name: "cnasDeclared" });
@@ -902,6 +922,19 @@ function OfficeCard({ control, zones }: { control: FormControl; zones: readonly 
           label={t("Fields.payPeriod")}
           options={PAY_PERIODS.map((code) => ({ value: code, label: t(`PayPeriods.${code}`) }))}
         />
+        {payChanged && payFrom && (
+          <Field>
+            <FieldLabel htmlFor="worker-payTermsFrom">{t("Fields.payTermsFrom")}</FieldLabel>
+            <Input
+              id="worker-payTermsFrom"
+              type="date"
+              dir="ltr"
+              value={payFrom.value}
+              onChange={(event) => payFrom.onChange(event.target.value)}
+            />
+            <FieldDescription>{t("Fields.payTermsFromHint")}</FieldDescription>
+          </Field>
+        )}
         <Controller
           control={control}
           name="canCollectCash"

@@ -28,7 +28,8 @@ import { usePayEntries } from "../../_components/use-pay-entries";
 /**
  * One payslip: what the month pays a person and why, the corrections the
  * office may type while the run is a draft (CNAS, IRG, the advance taken back,
- * a deduction), and, once the run is closed, the wage paid on it.
+ * a deduction, the recurring deductions of a short month, a correction of the
+ * base with its reason), and, once the run is closed, the wage paid on it.
  *
  * Closest academy screen: a payout's page in finance (the facts of one
  * payment in cards, its lines in a table).
@@ -76,8 +77,16 @@ export default function PayslipPage() {
   const dinars = (centimes: number | undefined) => (centimes === undefined ? "" : String(centimes / 100));
 
   const correct = async () => {
-    const number = (name: string, label: string, value: number | undefined) =>
-      ({ kind: "number", name, label, step: "0.01", suffix: t("Entry.Dinars"), defaultValue: dinars(value) }) as const;
+    const number = (name: string, label: string, value: number | undefined, min?: string) =>
+      ({
+        kind: "number",
+        name,
+        label,
+        step: "0.01",
+        suffix: t("Entry.Dinars"),
+        defaultValue: dinars(value),
+        ...(min === undefined ? {} : { min }),
+      }) as const;
     const values = await ask({
       title: t("Slips.CorrectTitle"),
       description: t("Slips.CorrectDescription"),
@@ -100,11 +109,24 @@ export default function PayslipPage() {
           label: t("Slips.DeductionLabel"),
           defaultValue: slip.typed.deductionLabel,
         },
+        number("recurringDeductions", t("Slips.RecurringDeductions"), slip.typed.recurringDeductions),
+        // Signed: a rate typed too high is corrected downwards (PEO-08).
+        number("baseCorrection", t("Slips.BaseCorrection"), slip.typed.baseCorrection, "-99999999"),
+        {
+          kind: "text",
+          name: "baseCorrectionReason",
+          label: t("Slips.BaseCorrectionReason"),
+          defaultValue: slip.typed.baseCorrectionReason,
+        },
       ],
     });
     if (!values) return;
     // An emptied field goes back to what the program computes.
     const typed = (text: string) => (text === "" ? null : centimesOf(text));
+    const signed = (text: string | undefined) => {
+      const value = Number((text ?? "").replace(",", ".").trim());
+      return (text ?? "").trim() === "" || !Number.isFinite(value) ? null : Math.round(value * 100);
+    };
     const result = await updatePayslipAction({
       payslipId: slip.id,
       cnas: typed(values.cnas),
@@ -115,6 +137,9 @@ export default function PayslipPage() {
         ? { overtime: typed(values.overtime ?? ""), restDayPremium: typed(values.restDayPremium ?? "") }
         : {}),
       deductionLabel: values.deductionLabel || null,
+      recurringDeductions: typed(values.recurringDeductions ?? ""),
+      baseCorrection: signed(values.baseCorrection),
+      baseCorrectionReason: values.baseCorrectionReason || null,
     });
     if (result.success) toast.success(t("Slips.Corrected"));
     else toast.error(errorMessage(result.error, t("Entry.Failed")));
@@ -149,14 +174,13 @@ export default function PayslipPage() {
               {t("Slips.Pay")}
             </Button>
           )}
-          {closed && (
-            <Button variant="outline" asChild>
-              <Link to={`/dashboard/hours-pay/payslips/${slip.id}/print`}>
-                <Printer />
-                {t("Slips.Print")}
-              </Link>
-            </Button>
-          )}
+          {/* A draft prints marked «مسودة» and a voided one «ملغى», without the lines to sign (PEO-11). */}
+          <Button variant="outline" asChild>
+            <Link to={`/dashboard/hours-pay/payslips/${slip.id}/print`}>
+              <Printer />
+              {t("Slips.Print")}
+            </Link>
+          </Button>
         </>
       }
     >
@@ -171,6 +195,7 @@ export default function PayslipPage() {
           {(slip.missing.includes("OVERTIME") || slip.missing.includes("REST_DAY")) && (
             <StatusChip tone="warning" label={t("Slips.PremiumsToPrice")} />
           )}
+          {draft && slip.netAmount < 0 && <StatusChip tone="danger" label={t("Slips.NegativeNet")} />}
           {slip.ordersNotTypedCount > 0 && (
             <StatusChip tone="warning" label={t("Slips.OrdersNotTyped", { count: slip.ordersNotTypedCount })} />
           )}

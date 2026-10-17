@@ -18,7 +18,7 @@ import { getSetting, getSettings } from "@/lib/settings";
 import { staffName } from "@/lib/text/names";
 import { localDate, localTime } from "@/lib/units";
 
-import { insertStatus, staffOf } from "./staff-shared";
+import { announceRefusal, insertStatus, staffOf } from "./staff-shared";
 import { STATUS_OF_DECISION } from "./workers";
 
 /**
@@ -149,6 +149,8 @@ export async function decideHiring(
   if (!isDate(date)) throw new ServiceError("Enter a valid date.");
   const worker = await staffOf(ex, "WORKER", input.staffId);
   if (worker.engagementStatus === "LEFT") throw new ServiceError("This worker has left: readmit her first.");
+  // A refused worker comes back by readmission, which asks the manager about her sanction (PEO-10).
+  if (worker.engagementStatus === "REFUSED") throw new ServiceError("This worker was refused: readmit her first.");
   let trialEndDate: string | null = null;
   if (input.decision === "ACCEPTED_ON_TRIAL") {
     trialEndDate = input.trialEndDate?.trim() || addDays(date, await getSetting(ex, "hiring.trialDays"));
@@ -194,6 +196,9 @@ export async function decideHiring(
     changes: changes ?? { engagementStatus: [worker.engagementStatus, status] },
     context: { decision: input.decision, trialEndDate },
   });
+  if (status === "REFUSED") {
+    await announceRefusal(ex, ctx, { workerId: worker.id, date: localDate(date), note: input.note?.trim() || null });
+  }
 }
 
 export interface CandidateRow {

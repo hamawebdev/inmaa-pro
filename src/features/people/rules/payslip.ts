@@ -69,6 +69,12 @@ export interface PayslipFigures {
    * premium, which the office prices (People's round-0 ruling).
    */
   overrides?: { cnas?: Money; irg?: Money; overtime?: Money; restDayPremium?: Money };
+  /**
+   * A correction of the base typed by the office, signed, with its reason
+   * (PEO-08): a rate typed wrong for a month already drafted, a raise dated
+   * back. It is paid as the base is, and never takes off more than the base.
+   */
+  baseCorrection?: { amount: Money; label: string };
 }
 
 export interface PayslipLine {
@@ -91,6 +97,8 @@ export type PayslipWarning =
 
 export interface PayslipResult {
   base: Money;
+  /** The correction typed over the base, as applied: it never takes off more than the base left after absence. */
+  baseCorrection: Money;
   overtime: Money;
   restDayPremium: Money;
   leavePay: Money;
@@ -203,6 +211,14 @@ export function computePayslip(input: PayslipFigures, rates: PayslipRates): Pays
     }
   }
 
+  let baseCorrection = 0;
+  if (input.baseCorrection && input.baseCorrection.amount !== 0) {
+    if (!Number.isSafeInteger(input.baseCorrection.amount)) throw new RangeError("A correction is whole centimes");
+    baseCorrection = Math.max(-(base - absence), input.baseCorrection.amount);
+    if (baseCorrection !== 0) {
+      earnedLine({ type: "OTHER", label: input.baseCorrection.label, amount: money(baseCorrection) });
+    }
+  }
   if (leavePay > 0) earnedLine({ type: "LEAVE_PAY", quantity: paidAbsenceMin, amount: money(leavePay) });
   let restDayPremium = 0;
   if (restDayMin > 0) {
@@ -240,7 +256,7 @@ export function computePayslip(input: PayslipFigures, rates: PayslipRates): Pays
   }
 
   // ── Social security and income tax ──────────────────────────────────────
-  const earned = base - absence + overtime + restDayPremium + leavePay;
+  const earned = base + baseCorrection - absence + overtime + restDayPremium + leavePay;
   const gross = earned + additions;
   const contributableBase = earned + contributableAdditions;
   const computedCnas = input.declared ? mulDivRound(contributableBase, rates.cnasEmployeeBp, 10000) : 0;
@@ -269,6 +285,7 @@ export function computePayslip(input: PayslipFigures, rates: PayslipRates): Pays
 
   return {
     base: money(base),
+    baseCorrection: money(baseCorrection),
     overtime: money(overtime),
     restDayPremium: money(restDayPremium),
     leavePay: money(leavePay),

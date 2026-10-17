@@ -16,6 +16,8 @@ import { getSettings } from "@/lib/settings";
 import { localDate, minutes, type LocalDate } from "@/lib/units";
 import { staffName } from "@/lib/text/names";
 
+import { refuseClosedPayDay } from "./closed-days";
+
 /**
  * A cleaning worker's hours (feature 21): what Operations' typed orders say
  * she worked, seat by seat, with her absences and People's own corrections,
@@ -509,18 +511,12 @@ export async function removeHoursAdjustment(
   });
 }
 
-/** A day already paid by a closed run is not corrected afterwards: the next run would not see it. */
+/**
+ * A day already paid by a closed run is not corrected afterwards: the next run would not see it. The run of her
+ * kind and branch, whether or not she had a payslip in it (PEO-03).
+ */
 async function refuseClosedDay(ex: Executor, staffId: string, date: string): Promise<void> {
-  const closed = await ex
-    .selectFrom("Payslip as p")
-    .innerJoin("PayRun as r", "r.id", "p.payRunId")
-    .select("r.id")
-    .where("p.staffId", "=", staffId)
-    .where("r.status", "=", "CLOSED")
-    .where("r.periodStart", "<=", localDate(date))
-    .where("r.periodEnd", ">=", localDate(date))
-    .executeTakeFirst();
-  if (closed) throw new ServiceError("This day is in a closed pay run: it can no longer be corrected.");
+  await refuseClosedPayDay(ex, { staffId, from: date });
 }
 
 // What the screens import.

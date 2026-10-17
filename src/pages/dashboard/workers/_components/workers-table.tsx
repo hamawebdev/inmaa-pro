@@ -22,6 +22,7 @@ import { formatPhone } from "@/features/people/components/format";
 import { RowMenu } from "@/features/people/components/row-menu";
 import { SanctionChip } from "@/features/people/components/sanction-chip";
 import { STATUS_TONE } from "@/features/people/components/status-tones";
+import { ACTIVE_STATUSES as IN_POST } from "@/features/people/services/staff-exports";
 import type { WorkerListRow } from "@/features/people/services/worker-reads";
 import { ENGAGEMENT_STATUSES, WORKER_ROLES } from "@/features/people/validators/staff-codes";
 import { normaliseName, phoneKey } from "@/lib/text/normalise";
@@ -78,7 +79,7 @@ export function WorkersTable({
         id: "choose",
         header: "",
         cell: ({ row }) =>
-          row.original.status === "LEFT" ? null : (
+          !IN_POST.has(row.original.status) ? null : (
             <Checkbox
               aria-label={tCards("Select")}
               checked={chosen.has(row.original.id)}
@@ -153,7 +154,7 @@ export function WorkersTable({
                   icon: <FileText />,
                   onSelect: () => navigate(`/dashboard/workers/${row.original.id}`),
                 },
-                ...(row.original.status === "LEFT"
+                ...(!IN_POST.has(row.original.status)
                   ? []
                   : [
                       {

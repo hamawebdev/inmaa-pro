@@ -56,7 +56,9 @@ export default function PayslipPrintPage() {
     >
       <div className="space-y-5">
         {slip.run.status !== "CLOSED" && (
-          <p className="text-base font-semibold text-warning-ink">{t("Slips.DraftPrint")}</p>
+          <p className="text-base font-semibold text-warning-ink">
+            {t(slip.run.status === "VOID" ? "Slips.VoidPrint" : "Slips.DraftPrint")}
+          </p>
         )}
         <PayslipSheet slip={slip} />
       </div>

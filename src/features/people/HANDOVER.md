@@ -1,6 +1,24 @@
 # People: handover
 
-Owner of features 21, 25, 37, 38: centre employees, cleaning workers, his worker form, hiring and training, hours, pay, and the suspended-or-penalised check. Paths: `src/features/people/**`, pages `employees/`, `employee-attendance/`, `workers/`, `hiring/`, `hours-pay/`. Updated at the end of round 4.
+Owner of features 21, 25, 37, 38: centre employees, cleaning workers, his worker form, hiring and training, hours, pay, and the suspended-or-penalised check. Paths: `src/features/people/**`, pages `employees/`, `employee-attendance/`, `workers/`, `hiring/`, `hours-pay/`. Updated after the final review (PEO-01 to PEO-13).
+
+## Final review, done
+
+The thirteen findings of `scratchpad/final-review/for-people.md`, each proved by a test named by its id in `services/final-review.test.ts`:
+
+- PEO-01: a run pays only people in post (on trial or accepted), for the days in post, read from the dated STATUS history (`inPostOn`): never a candidate or a refused worker; a worker readmitted is paid from the day she is in post again; a monthly wage is the share of days in post; leave is earned for those days; terms cleared on the file are no terms. A worker who left is still paid her seats of days in post typed late.
+- PEO-02: a run takes only its branch's people; the earlier-draft check is per branch.
+- PEO-03: `closePayRun` computes the draft again and closes only if nothing moved («compute it again and check it» otherwise). A check, an absence, a leave, or an hours correction dated in a month a closed run of the person's kind and branch paid is refused, payslip or not (`services/closed-days.ts`); cancelling a leave leaves its paid month's part as it was.
+- PEO-04: a late seat on a day another run paid is no new day; what it adds past the standard day is counted on the whole day.
+- PEO-05: a worker refused (on the hiring screen or on her file) emits `staff.unavailable`, cause LEFT, from the decision's day, reason «قرار الإدارة: رفض المعني النهائي» and the note (`announceRefusal`, `staff-shared.ts`).
+- PEO-06: the manager's yes holds only for the identity and the record the question named (`sameAttemptIdentity`, `rules/sanction-match.ts`): same names, birth date, identity number, phones and tax numbers; a client's file may add the numbers its record holds.
+- PEO-07: on the printed payslip an absence (or a correction downwards) is a minus in «المستحق»; «المقتطع» is CNAS, IRG, the debts taken back and the deductions (`sheets/payslip-columns.ts`).
+- PEO-08: a pay-terms change takes an effective date (the forms ask it once the terms change; today when empty; not before the start, not in a closed month: `payTermsDate`); a run reads, of the rows in force by its month's end, the one written last; a payslip takes a signed correction of its base with its reason («تصحيح الأجر الأساسي: …»).
+- PEO-09: the payslip's recurring deductions can be typed for the month (`recurringDeductions`); a negative net is flagged on the payslip.
+- PEO-10: «قرار الإدارة» is refused on a refused worker, on the hiring screen and on her file: she comes back by readmission.
+- PEO-11: a draft payslip prints «مسودة» across it, a voided one «ملغى», neither with the lines to sign; the payslip prints from any state.
+- PEO-12: an ID card prints only for someone on trial or accepted; the list and the file offer it only then.
+- PEO-13: what a payslip takes back is printed line by line of the ledger, oldest first: «تسديد التسبيقات», «اقتطاع: مخالفة رقم …», «تعويض ضرر», «تعويض ضياع», «تسديد ديون أخرى» (`outstandingDebts`, `payouts.ts`).
 
 ## Round 4, done
 
@@ -115,9 +133,17 @@ Owner of features 21, 25, 37, 38: centre employees, cleaning workers, his worker
 - The manager answers signed in as himself: `requestManagerApproval` will not come.
 - From the Checker's screen audit: Save is `success` at the foot in `PageActions`, cancel `outline` beside it; a record's actions stay in the heading; a tab page is headed by its tab; the CNAS tick is an office field, on screen only.
 
+## Decisions taken after the final review (to confirm)
+
+- PEO-05 reuses the cause LEFT: the event's causes have no REFUSED, and the ruling is «as one who leaves».
+- PEO-03: closing refuses when computing again moves any payslip's money, rather than closing figures nobody looked at. Records dated in a closed month are refused rather than priced as arrears; the late seats of workers stay arrears, as designed.
+- PEO-08: of the pay-terms rows in force by a month's end, the one written last wins (a correction dated back reaches the drafts it covers, and the file always shows what the last month pays). A change dated in a closed month is refused: that month is corrected on a later payslip, or its run voided.
+- PEO-09: the office types the recurring deductions of a short month; nothing is carried to the ledger by itself.
+- PEO-13: a ledger line made by undoing a repayment owes again what that repayment took back, under its first wording.
+
 ## Decisions taken in round 4 (to confirm)
 
-- An ID card is printed only for someone in post, by a holder of `staff.write` reading the person's section; each card printed is one DISCLOSE line. Eight cards to an A4 page, without the letterhead.
+- An ID card is printed only for someone in post (on trial or accepted, the coordinator's ruling on PEO-12), by a holder of `staff.write` reading the person's section; each card printed is one DISCLOSE line. Eight cards to an A4 page, without the letterhead.
 - A document's scan is filed by a holder of `staff.write` who also holds `staff.health.read`, until `staff.documents.read` exists. A scan attached to a document never handed in creates its current row, handed in that day.
 - A late seat's week is priced again from the minutes now typed: what the late seats add to its overtime is paid at +50%; for a daily wage, the minutes past the day of the late seats themselves are paid as before and only the rest is premium-only.
 - Under Law 90-11 an employee who started this reference year has nothing to take until 1 July; leave taken before is shown as taken in advance (a negative balance).
@@ -169,6 +195,7 @@ Owner of features 21, 25, 37, 38: centre employees, cleaning workers, his worker
 
 ## Needs from others
 
+- **Operations (PEO-03):** a worker's absence or leave dated in a month a closed run paid is never paid or taken off: `recordWorkerAbsence`, `setAbsencePayTreatment`, `cancelWorkerAbsence` and `decideWorkerLeave` should refuse it with `refuseClosedPayDay(ex, { staffId, from, to })` (`services/closed-days.ts`), as People's own records do.
 - **Money:**
   - handle `payout.recorded` and `payout.voided` in its `events.ts`: `postPayoutExpense` reads `getPayoutForExpense(ex, ctx, { staffPayoutId })`;
   - call `addDebtEntry` for equipment lost or damaged (`handOutReturnId`).

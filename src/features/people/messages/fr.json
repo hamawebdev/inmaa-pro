@@ -98,7 +98,9 @@
       "zoneHint": "Laissée vide : la zone de la commune de résidence.",
       "cnasDeclared": "Déclaré à la CNAS",
       "cnasNumber": "Numéro de sécurité sociale",
-      "registrationCard": "Inscription"
+      "registrationCard": "Inscription",
+      "payTermsFrom": "La nouvelle rémunération s’applique à partir du",
+      "payTermsFromHint": "Aujourd’hui si vide. Un mois pas encore clôturé est payé selon la rémunération en vigueur ce mois-là."
     },
     "Office": {
       "Title": "Usage administratif",
@@ -641,7 +643,7 @@
       "DeductionLabel": "Motif de la retenue",
       "Pay": "Payer le salaire",
       "Print": "Imprimer le bulletin",
-      "DraftPrint": "Ce mois n'est pas encore clôturé : le bulletin n'a pas de numéro et peut encore changer.",
+      "DraftPrint": "Ce mois n'est pas encore clôturé : le bulletin s'imprime marqué «مسودة», sans les lignes de signature, et peut encore changer.",
       "LeftToPay": "Reste à payer : {left}",
       "Facts": "Le mois",
       "StaffNumber": "N° d'inscription",
@@ -669,7 +671,12 @@
       "PremiumsToPrice": "Majorations à chiffrer",
       "OvertimeTyped": "Majoration des heures supplémentaires (à la tâche)",
       "RestDayTyped": "Majoration du jour de repos (à la tâche)",
-      "PlannedSeats": "{count} payés au temps prévu, non saisis"
+      "PlannedSeats": "{count} payés au temps prévu, non saisis",
+      "RecurringDeductions": "Retenues récurrentes ce mois-ci",
+      "BaseCorrection": "Correction du salaire de base (+ ou −)",
+      "BaseCorrectionReason": "Motif de la correction du salaire de base",
+      "NegativeNet": "Retient plus qu'il ne paie",
+      "VoidPrint": "Cette paie a été annulée : le bulletin s'imprime marqué «ملغى», sans les lignes de signature."
     },
     "Payouts": {
       "Title": "Paiements",
@@ -1226,7 +1233,15 @@
     "PayItemNotFound": "Cette prime ou retenue n'existe pas.",
     "PersonLeftNoCard": "Cette personne est partie : aucune carte n'est imprimée.",
     "PremiumsToPrice": "Chiffrez d'abord les heures supplémentaires et le travail du jour de repos de chaque bulletin payé à la tâche.",
-    "DaysNumber": "Saisissez un nombre de jours."
+    "DaysNumber": "Saisissez un nombre de jours.",
+    "WorkerRefusedReadmitFirst": "Cette agente a été refusée : réadmettez-la d'abord.",
+    "BaseCorrectionAmount": "Une correction du salaire de base est un montant en dinars.",
+    "BaseCorrectionReason": "Écrivez le motif de la correction du salaire de base.",
+    "BaseCorrectionTooLow": "Une correction ne peut pas retirer plus que le salaire de base.",
+    "PayRunChangedComputeAgain": "Les heures ou la paie ont changé depuis le calcul de cette paie : recalculez-la et vérifiez-la.",
+    "PayTermsBeforeStart": "La nouvelle rémunération ne peut pas prendre effet avant l'entrée de la personne.",
+    "PayTermsInClosedMonth": "La nouvelle rémunération ne peut pas prendre effet dans un mois dont la paie est clôturée.",
+    "PersonNotInPostNoCard": "Cette personne n'est pas en poste : aucune carte n'est imprimée."
   },
   "Cards": {
     "Title": "Carte professionnelle",

@@ -10,6 +10,7 @@ import type { Executor, ServiceContext } from "@/lib/service/context";
 import { ServiceError } from "@/lib/service/errors";
 import { localDate, type LocalDate, type Minutes, type Money } from "@/lib/units";
 
+import { closedPayRunOn } from "./closed-days";
 import { checkSanction, consumeDecision, type CheckSanctionResult } from "./sanctions";
 import { staffName } from "@/lib/text/names";
 
@@ -195,6 +196,29 @@ export async function insertPayTerms(
     .execute();
 }
 
+/**
+ * The day changed pay terms take effect (PEO-08): the one the office typed,
+ * today when none. Not before the person was registered (or started), and
+ * not in a month whose pay a closed run has fixed: that month is corrected on
+ * a later payslip («تصحيح الأجر الأساسي»), or its run voided. A draft of an
+ * earlier month then reads the terms in force in it: of the rows that took
+ * effect by its end, the one written last.
+ */
+export async function payTermsDate(
+  ex: Executor,
+  ctx: ServiceContext,
+  input: { staffId: string; typed: string | null | undefined; earliest: string },
+): Promise<LocalDate> {
+  const typed = input.typed?.trim() || ctx.today;
+  if (!isDate(typed)) throw new ServiceError("Enter a valid date.");
+  const date = localDate(typed);
+  if (date < input.earliest) throw new ServiceError("New pay terms cannot take effect before the person started.");
+  if (await closedPayRunOn(ex, { staffId: input.staffId, from: date, to: "9999-12-31" })) {
+    throw new ServiceError("New pay terms cannot take effect in a month whose pay is closed.");
+  }
+  return date;
+}
+
 const NOT_FOUND = { WORKER: "This worker does not exist.", EMPLOYEE: "This employee does not exist." } as const;
 
 /** The person's record, or the refusal that says there is none. */
@@ -265,6 +289,29 @@ export async function recordLeaving(
     });
   }
 }
+
+/**
+ * A worker refused (at the end of her trial, or before) is no longer
+ * available, as one who leaves (PEO-05, CONTRACTS section 4): Operations
+ * gives up her seats, teams and file assignments from the decision's day, and
+ * Money lists what she holds. The reason is the decision's note, or its words.
+ */
+export async function announceRefusal(
+  ex: Executor,
+  ctx: ServiceContext,
+  input: { workerId: string; date: LocalDate; note: string | null },
+): Promise<void> {
+  await emit(ex, ctx, "staff.unavailable", {
+    workerId: input.workerId,
+    fromDate: input.date,
+    toDate: null,
+    cause: "LEFT",
+    reason: input.note ? `${REFUSAL_AR}: ${input.note}` : REFUSAL_AR,
+  });
+}
+
+/** The words of his form: «قرار الإدارة» ticked at «رفض المعني النهائي». */
+const REFUSAL_AR = "قرار الإدارة: رفض المعني النهائي";
 
 /**
  * Somebody who left, or was refused, comes back on the same file and number.

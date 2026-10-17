@@ -146,6 +146,31 @@ function compare(attempt: SanctionAttempt, sanction: SanctionEntry): Omit<Sancti
   return { foundBy: "NAME_ONLY", strength: "WEAK" };
 }
 
+function idSet(numbers: PersonIdentity["taxNumbers"]): Set<string> {
+  return new Set((numbers ?? []).map((n) => idKey(n, 6)).filter(Boolean));
+}
+
+const within = <T>(a: ReadonlySet<T>, b: ReadonlySet<T>) => [...a].every((item) => b.has(item));
+const sameSet = <T>(a: ReadonlySet<T>, b: ReadonlySet<T>) => a.size === b.size && within(a, b);
+
+/**
+ * Whether the identity saved now is the one a question to the manager named
+ * (PEO-06): the manager's yes is about that identity only. The same name (in
+ * Arabic and in Latin letters), the same date of birth, the same identity
+ * number, the same phones and tax numbers. A client's file may add the second
+ * phone and the numbers its record holds (`mayAdd`), never change one given;
+ * a person's identity may change in nothing: another person, or the person
+ * under sanction herself, needs a question of her own.
+ */
+export function sameAttemptIdentity(asked: PersonIdentity, now: PersonIdentity, mayAdd: boolean): boolean {
+  if (arabicNameKey(asked) !== arabicNameKey(now)) return false;
+  if (nameKey(asked.nameLatin) !== nameKey(now.nameLatin)) return false;
+  if ((asked.birthDate || null) !== (now.birthDate || null)) return false;
+  if (idKey(asked.nationalId, 6) !== idKey(now.nationalId, 6)) return false;
+  const compare = mayAdd ? within : sameSet;
+  return compare(phoneSet(asked), phoneSet(now)) && compare(idSet(asked.taxNumbers), idSet(now.taxNumbers));
+}
+
 const RANK: Record<FoundBy, number> = {
   SAME_RECORD: 0,
   NATIONAL_ID: 1,

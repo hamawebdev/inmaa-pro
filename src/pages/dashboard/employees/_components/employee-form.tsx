@@ -1,3 +1,5 @@
+import * as React from "react";
+
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
@@ -7,7 +9,8 @@ import { Ltr } from "@/components/ltr";
 import { PageActions } from "@/components/screen";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Field, FieldLabel } from "@/components/ui/field";
+import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
 import { ChoiceField, DateField, TextField, TickField } from "@/features/people/components/form-fields";
 import { ResidenceField } from "@/features/people/components/residence-fields";
 import { isolate, useMay, useMayIn } from "@/features/people/components/may";
@@ -44,6 +47,8 @@ type Mode = { kind: "new"; decisionId?: string | null } | { kind: "edit"; id: st
 const SPAN_BOTH = "sm:col-span-2";
 const identityKey = (values: EmployeeFormValues) => JSON.stringify(employeeIdentity(values));
 
+const PAY_KEYS = ["payBasis", "payRate", "payPeriod"] as const;
+
 export function EmployeeForm({ mode, defaultValues }: { mode: Mode; defaultValues: EmployeeFormValues }) {
   const t = useTranslations("Employees");
   const tWorker = useTranslations("WorkerForm");
@@ -55,6 +60,11 @@ export function EmployeeForm({ mode, defaultValues }: { mode: Mode; defaultValue
   const form = useForm<EmployeeFormValues>({ resolver: zodResolver(employeeFormSchema), defaultValues });
   const { control, formState } = form;
   const declared = useWatch({ control, name: "cnasDeclared" });
+  // The day changed pay terms take effect, asked once they are changed on a registered file: today when empty (PEO-08).
+  const [payFrom, setPayFrom] = React.useState("");
+  const pay = useWatch({ control, name: PAY_KEYS });
+  const payChanged =
+    mode.kind === "edit" && PAY_KEYS.some((key, index) => (pay[index] ?? "") !== (defaultValues[key] ?? ""));
 
   const onSubmit = async (values: EmployeeFormValues) => {
     if (mode.kind === "edit") {
@@ -69,13 +79,19 @@ export function EmployeeForm({ mode, defaultValues }: { mode: Mode; defaultValue
               ignoreOwnRecord: true,
             });
       if (!passage) return;
-      const result = await updateEmployeeAction({ id: mode.id, values, ...passage });
+      const result = await updateEmployeeAction({
+        id: mode.id,
+        values,
+        payTermsFrom: payChanged && payFrom ? payFrom : null,
+        ...passage,
+      });
       if (!result.success) {
         toast.error(errorMessage(result.error, t("Form.SaveFailed")));
         return;
       }
       toast.success(t("Form.Saved"));
       form.reset(values);
+      setPayFrom("");
       return;
     }
     const passage = await passGate({
@@ -277,6 +293,19 @@ export function EmployeeForm({ mode, defaultValues }: { mode: Mode; defaultValue
               label={tWorker("Fields.payPeriod")}
               options={PAY_PERIODS.map((code) => ({ value: code, label: tWorker(`PayPeriods.${code}`) }))}
             />
+            {payChanged && (
+              <Field>
+                <FieldLabel htmlFor="employee-payTermsFrom">{tWorker("Fields.payTermsFrom")}</FieldLabel>
+                <Input
+                  id="employee-payTermsFrom"
+                  type="date"
+                  dir="ltr"
+                  value={payFrom}
+                  onChange={(event) => setPayFrom(event.target.value)}
+                />
+                <FieldDescription>{tWorker("Fields.payTermsFromHint")}</FieldDescription>
+              </Field>
+            )}
           </CardContent>
         </Card>
       </fieldset>

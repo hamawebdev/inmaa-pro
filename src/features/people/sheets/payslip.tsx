@@ -6,6 +6,8 @@ import type { PayslipFile } from "@/features/people/services/pay-runs";
 import { PAYMENT_METHOD_AR, type PaymentMethod } from "@/lib/options";
 import { formatMoney, MONEY_UNIT_AR } from "@/lib/units";
 
+import { payslipColumns, TAKEN_OFF_TYPES } from "./payslip-columns";
+
 /**
  * «كشف الراتب»: one person's payslip of a month, on the centre's letterhead,
  * to sign and stamp (feature 38).
@@ -16,6 +18,16 @@ import { formatMoney, MONEY_UNIT_AR } from "@/lib/units";
  * show is the law's: the employer and the person, the month, what is earned
  * line by line, what is taken off (social security, income tax, advances),
  * and the net to pay.
+ *
+ * What is earned is one column and what is taken off the other, so that
+ * «المجموع» less «المقتطع» is «الصافي للدفع» (PEO-07): an unpaid absence, or a
+ * correction that lowers the base, is a reduction of what is earned, printed
+ * with its minus sign in the first column; social security, income tax, the
+ * debts taken back and the deductions are the second.
+ *
+ * A payslip of a run not closed prints «مسودة» across it, and one of a voided
+ * run «ملغى», neither with the lines to sign (PEO-11): only a closed run's
+ * payslip is a document to hand over.
  *
  * A pure picture of its data: the sheet is drawn twice, as the preview and as
  * the copy that prints.
@@ -55,9 +67,17 @@ const hours = (minutes: number) => `${Math.floor(minutes / 60)}:${String(minutes
 /** «2,5» */
 const days = (thousandths: number) => String(thousandths / 1000).replace(".", ",");
 
-function Money({ value }: { value: number }) {
-  return <Ltr>{formatMoney(Math.abs(value))}</Ltr>;
+function Money({ value, signed = false }: { value: number; signed?: boolean }) {
+  return (
+    <Ltr>
+      {signed && value < 0 ? "-" : ""}
+      {formatMoney(Math.abs(value))}
+    </Ltr>
+  );
 }
+
+/** The word printed across a payslip that is not a document to hand over, by its run's state. */
+const MARK_AR: Partial<Record<string, string>> = { DRAFT: "مسودة", VOID: "ملغى" };
 
 function Row({ name, children, second }: { name: string; children: ReactNode; second?: [string, ReactNode] }) {
   return (
@@ -90,14 +110,37 @@ export function PayslipSheet({ slip }: { slip: PayslipFile }) {
       </>
     );
   };
-  const takenOff = slip.items.filter((item) => item.amount < 0).reduce((sum, item) => sum - item.amount, 0);
+  const { takenOff } = payslipColumns(slip.items);
+  const mark = MARK_AR[slip.run.status];
   const lastPayout = slip.payouts.filter((payout) => payout.voidedAt === null).at(-1);
   const WIDTH = [44, 50, 42, 44] as const;
   const LINES = [84, 30, 33, 33] as const;
 
   return (
     <PrintSheet letterhead="worker">
-      <div style={{ marginInline: "5mm" }}>
+      <div style={{ marginInline: "5mm", position: "relative" }}>
+        {mark && (
+          <div
+            aria-hidden
+            style={{
+              position: "absolute",
+              insetInline: 0,
+              top: "70mm",
+              textAlign: "center",
+              fontFamily: SHEET_FONT.traditional,
+              fontSize: "110pt",
+              fontWeight: 700,
+              lineHeight: 1,
+              color: "#9a9a9a",
+              opacity: 0.45,
+              transform: "rotate(-28deg)",
+              pointerEvents: "none",
+              zIndex: 1,
+            }}
+          >
+            {mark}
+          </div>
+        )}
         <h1 style={{ textAlign: "center", fontSize: "20pt", fontWeight: 700, lineHeight: "11mm" }}>كشف الراتب</h1>
         <p
           style={{
@@ -211,8 +254,10 @@ export function PayslipSheet({ slip }: { slip: PayslipFile }) {
             <SheetRow key={item.id} heightMm={7.5}>
               <SheetCell style={cell}>{item.label}</SheetCell>
               <SheetCell style={figure}>{quantity(item)}</SheetCell>
-              <SheetCell style={figure}>{item.amount >= 0 && <Money value={item.amount} />}</SheetCell>
-              <SheetCell style={figure}>{item.amount < 0 && <Money value={item.amount} />}</SheetCell>
+              <SheetCell style={figure}>
+                {!TAKEN_OFF_TYPES.has(item.type) && <Money value={item.amount} signed />}
+              </SheetCell>
+              <SheetCell style={figure}>{TAKEN_OFF_TYPES.has(item.type) && <Money value={item.amount} />}</SheetCell>
             </SheetRow>
           ))}
           <SheetRow heightMm={8}>
@@ -257,13 +302,15 @@ export function PayslipSheet({ slip }: { slip: PayslipFile }) {
           </Row>
         </SheetTable>
 
-        <KeepTogether style={{ marginTop: "9mm" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", ...label, fontSize: "14pt" }}>
-            <span style={{ width: "80mm", textAlign: "center" }}>إمضاء وختم المستخدم</span>
-            <span style={{ width: "80mm", textAlign: "center" }}>إمضاء المعني{woman ? "ة" : ""}</span>
-          </div>
-          <div style={{ height: "24mm" }} />
-        </KeepTogether>
+        {!mark && (
+          <KeepTogether style={{ marginTop: "9mm" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", ...label, fontSize: "14pt" }}>
+              <span style={{ width: "80mm", textAlign: "center" }}>إمضاء وختم المستخدم</span>
+              <span style={{ width: "80mm", textAlign: "center" }}>إمضاء المعني{woman ? "ة" : ""}</span>
+            </div>
+            <div style={{ height: "24mm" }} />
+          </KeepTogether>
+        )}
       </div>
     </PrintSheet>
   );

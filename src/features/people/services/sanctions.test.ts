@@ -138,11 +138,12 @@ describe("checkSanction", () => {
 
   it("answers with the manager's decision on this attempt", async () => {
     const sanction = await workerSanction();
+    // The identity the question named: a yes is about it only (PEO-06).
     const decision = (over: Partial<Insertable<DB["SanctionDecision"]>>) =>
       test.rows.insert("SanctionDecision", {
         context: "WORKER_REGISTRATION",
         attemptKind: "WORKER",
-        attemptIdentity: "{}",
+        attemptIdentity: JSON.stringify({ phones: ["0555000111"] }),
         sanctionId: sanction.id,
         matchBasis: "PHONE",
         ...over,

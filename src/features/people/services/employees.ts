@@ -38,6 +38,7 @@ import {
   idNumber,
   insertPayTerms,
   insertStatus,
+  payTermsDate,
   orNull,
   passSanctionCheck,
   readmit,
@@ -202,6 +203,8 @@ export async function registerEmployee(
 export interface UpdateEmployeeInput extends SanctionPassage {
   id: string;
   values: EmployeeFormValues;
+  /** `YYYY-MM-DD`: the day changed pay terms take effect; today when empty (PEO-08). */
+  payTermsFrom?: string | null;
 }
 
 export async function updateEmployee(
@@ -241,7 +244,12 @@ export async function updateEmployee(
     .where("id", "=", before.id)
     .execute();
   if (["payBasis", "payRate", "payPeriod", "weeklyCapacityMin"].some((key) => key in changes)) {
-    await insertPayTerms(ex, ctx, { staffId: before.id, date: ctx.today, terms: columns });
+    const date = await payTermsDate(ex, ctx, {
+      staffId: before.id,
+      typed: input.payTermsFrom,
+      earliest: before.startDate ?? before.registrationDate,
+    });
+    await insertPayTerms(ex, ctx, { staffId: before.id, date, terms: columns });
   }
   if (check) {
     await settleSanctionCheck(ex, ctx, check, {

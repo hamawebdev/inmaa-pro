@@ -21,6 +21,8 @@ import { getSettings } from "@/lib/settings";
 import { localDate, localTime, minutes, qty } from "@/lib/units";
 import { staffName } from "@/lib/text/names";
 
+import { closedPayRunOn, refuseClosedPayDay } from "./closed-days";
+
 /**
  * Centre employees' attendance (his section 1; the academy's employee
  * attendance family): the times they come in and leave, their absences, and
@@ -97,6 +99,7 @@ export async function recordCheck(ex: Executor, ctx: ServiceContext, input: Chec
   const { date, time } = checkTime(input);
   if (date > ctx.today) throw new ServiceError("A time cannot be recorded for a day still to come.");
   const person = await employeeOf(ex, input.staffId);
+  await refuseClosedPayDay(ex, { staffId: person.id, from: date });
   const id = newId();
   await ex
     .insertInto("EmployeeCheckRecord")
@@ -144,6 +147,8 @@ export async function editCheck(
     .executeTakeFirst();
   if (!before) throw new ServiceError("This record does not exist.");
   const person = await employeeOf(ex, before.staffId);
+  await refuseClosedPayDay(ex, { staffId: person.id, from: before.localDate });
+  await refuseClosedPayDay(ex, { staffId: person.id, from: date });
   const { set, changes } = changedColumns(before, {
     type: input.type,
     localDate: date,
@@ -186,6 +191,7 @@ export async function deleteCheck(
     .executeTakeFirst();
   if (!before) throw new ServiceError("This record does not exist.");
   const person = await employeeOf(ex, before.staffId);
+  await refuseClosedPayDay(ex, { staffId: person.id, from: before.localDate });
   await ex
     .updateTable("EmployeeCheckRecord")
     .set({ deletedAt: ctx.now, updatedAt: ctx.now, updatedByUserId: ctx.userId })
@@ -317,6 +323,7 @@ export async function recordEmployeeAbsence(
   requireWrite(ctx);
   const person = await employeeOf(ex, input.staffId);
   const columns = await absenceColumns(ex, input);
+  await refuseClosedPayDay(ex, { staffId: person.id, from: columns.date });
   const id = newId();
   await ex
     .insertInto("EmployeeAbsence")
@@ -356,7 +363,10 @@ export async function editEmployeeAbsence(
     .executeTakeFirst();
   if (!before) throw new ServiceError("This absence does not exist.");
   const person = await employeeOf(ex, before.staffId);
-  const { set, changes } = changedColumns(before, await absenceColumns(ex, input));
+  const columns = await absenceColumns(ex, input);
+  await refuseClosedPayDay(ex, { staffId: person.id, from: before.date });
+  await refuseClosedPayDay(ex, { staffId: person.id, from: columns.date });
+  const { set, changes } = changedColumns(before, columns);
   if (!changes) return;
   await ex
     .updateTable("EmployeeAbsence")
@@ -389,6 +399,7 @@ export async function deleteEmployeeAbsence(
     .executeTakeFirst();
   if (!before) throw new ServiceError("This absence does not exist.");
   const person = await employeeOf(ex, before.staffId);
+  await refuseClosedPayDay(ex, { staffId: person.id, from: before.date });
   await ex
     .updateTable("EmployeeAbsence")
     .set({ deletedAt: ctx.now, updatedAt: ctx.now, updatedByUserId: ctx.userId })
@@ -454,6 +465,7 @@ export async function requestEmployeeLeave(
   if (input.endDate < input.startDate) throw new ServiceError("The end date must not be before the start date.");
   if (!(LEAVE_TYPES as readonly string[]).includes(input.type)) throw new ServiceError("Choose the kind of leave.");
   const person = await employeeOf(ex, input.staffId);
+  await refuseClosedPayDay(ex, { staffId: person.id, from: input.startDate, to: input.endDate });
   const overlapping = await ex
     .selectFrom("EmployeeLeave")
     .select("id")
@@ -537,6 +549,11 @@ export async function decideEmployeeLeave(
   const parts = await leaveGroup(ex, input.leaveId);
   if (parts.some((part) => part.status !== "REQUESTED")) throw new ServiceError("This leave has already been decided.");
   const person = await employeeOf(ex, parts[0].staffId);
+  if (input.status === "APPROVED") {
+    for (const part of parts) {
+      await refuseClosedPayDay(ex, { staffId: person.id, from: part.startDate, to: part.endDate });
+    }
+  }
   for (const part of parts) {
     await ex
       .updateTable("EmployeeLeave")
@@ -575,8 +592,19 @@ export async function cancelEmployeeLeave(
     throw new ServiceError("This leave is no longer in force.");
   }
   const person = await employeeOf(ex, parts[0].staffId);
+  // A part of the leave in a month whose pay is closed stays as it was paid (PEO-03).
+  const open: typeof parts = [];
   for (const part of parts) {
     if (part.status === "CANCELLED" || part.status === "REFUSED") continue;
+    const paid =
+      part.status === "APPROVED" &&
+      (await closedPayRunOn(ex, { staffId: person.id, from: part.startDate, to: part.endDate }));
+    if (!paid) open.push(part);
+  }
+  if (open.length === 0) {
+    throw new ServiceError("This day is in a closed pay run: it can no longer be corrected.");
+  }
+  for (const part of open) {
     await ex
       .updateTable("EmployeeLeave")
       .set({ status: "CANCELLED", updatedAt: ctx.now, updatedByUserId: ctx.userId })
@@ -591,7 +619,8 @@ export async function cancelEmployeeLeave(
     entityId: parts[0].id,
     entityLabel: `${person.number} ${person.subject.label}`,
     subject: person.subject,
-    changes: { status: [parts[0].status, "CANCELLED"] },
+    changes: { status: [open[0].status, "CANCELLED"] },
+    context: open.length < parts.length ? { partsCancelled: open.length, parts: parts.length } : undefined,
   });
 }
 

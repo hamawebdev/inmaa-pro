@@ -143,7 +143,8 @@ export default function WorkerPage() {
                 {t("File.Leave")}
               </Button>
             ))}
-          {keepsFiles && file.status !== "LEFT" && (
+          {/* An ID card is for someone in post, on trial or accepted (PEO-12). */}
+          {keepsFiles && (file.status === "ON_TRIAL" || file.status === "ACCEPTED") && (
             <Button asChild variant="outline">
               <Link to={`/dashboard/workers/${id}/print-card`}>
                 <IdCard />

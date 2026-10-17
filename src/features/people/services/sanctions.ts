@@ -2,6 +2,7 @@ import { isDate } from "@/features/people/rules/dates";
 import {
   checkOutcome,
   findSanctionMatches,
+  sameAttemptIdentity,
   type FoundBy,
   type PersonIdentity,
   type SanctionEntry,
@@ -135,6 +136,29 @@ async function sanctionsInForce(ex: Executor, ctx: ServiceContext): Promise<Sanc
   });
 }
 
+/** The identity a question to the manager named, as it was kept on it. */
+function askedIdentity(text: string): PersonIdentity {
+  try {
+    const value = JSON.parse(text) as Record<string, unknown>;
+    const textOf = (key: string) => (typeof value[key] === "string" ? (value[key] as string) : null);
+    const listOf = (key: string) =>
+      Array.isArray(value[key]) ? (value[key] as unknown[]).filter((item) => typeof item === "string") : [];
+    return {
+      lastName: textOf("lastName"),
+      firstName: textOf("firstName"),
+      name: textOf("name"),
+      nameLatin: textOf("nameLatin"),
+      birthDate: textOf("birthDate"),
+      phones: listOf("phones") as string[],
+      nationalId: textOf("nationalId"),
+      taxNumbers: listOf("taxNumbers") as string[],
+    };
+  } catch {
+    // Unreadable: it names nobody, and allows nobody.
+    return { name: "\u0000" };
+  }
+}
+
 export async function checkSanction(
   ex: Executor,
   ctx: ServiceContext,
@@ -177,6 +201,7 @@ export async function checkSanction(
     const decision = await ex
       .selectFrom("SanctionDecision")
       .select(["id", "context", "attemptKind", "sanctionId", "status", "consumedAt"])
+      .select(["attemptIdentity", "attemptStaffId", "attemptClientId"])
       .where("id", "=", input.decisionId)
       .executeTakeFirst();
     if (!decision) throw new ServiceError("This decision of the manager does not exist.");
@@ -193,12 +218,15 @@ export async function checkSanction(
     ]);
     const about = matches.some((match) => named.has(match.sanctionId));
     if (about && decision.status === "REFUSED") return { outcome: "REFUSED", matches };
-    // A yes is about one attempt: it allows when it named every sanction matched now.
+    // A yes is about one attempt: its context and kind, the record it was about, and the identity it named
+    // (PEO-06); it allows when it named every sanction matched now. Anything else is a new question.
     const freshYes =
       decision.status === "ALLOWED" &&
       decision.consumedAt === null &&
       decision.context === input.context &&
-      decision.attemptKind === input.subjectKind;
+      decision.attemptKind === input.subjectKind &&
+      (decision.attemptStaffId ?? decision.attemptClientId ?? null) === (input.subjectId ?? null) &&
+      sameAttemptIdentity(askedIdentity(decision.attemptIdentity), input.identity, input.subjectKind === "CLIENT");
     if (freshYes && matches.every((match) => named.has(match.sanctionId))) {
       return { outcome: "ALLOWED", matches };
     }
