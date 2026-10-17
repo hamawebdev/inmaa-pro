@@ -254,6 +254,25 @@ export async function onDemandJobFinished(ex: Executor, fileId: string): Promise
   return !complaint;
 }
 
+/**
+ * Closes an on-demand job that has nothing left to do (RULINGS-NEEDED 15): no visit of the job open, no complaint
+ * open, no extra visit proposed. The end date is its last visit done. Called after a sign-off, a dismissed
+ * proposal, and a complaint settled or rejected (INT-6). True when it closed the job.
+ */
+export async function closeJobIfFinished(ex: Executor, ctx: ServiceContext, fileId: string): Promise<boolean> {
+  if (!(await onDemandJobFinished(ex, fileId))) return false;
+  if ((await listExtraVisitProposals(ex, ctx, { fileId })).length > 0) return false;
+  const last = await ex
+    .selectFrom("Visit")
+    .select((eb) => eb.fn.max("visitDate").as("lastDate"))
+    .where("fileId", "=", fileId)
+    .where("status", "=", "DONE")
+    .executeTakeFirst();
+  if (!last?.lastDate) return false;
+  const result = await closeFile(ex, ctx, { fileId, reason: "JOB_DONE", endedDate: last.lastDate });
+  return result.closed;
+}
+
 /** The office's decision written on a visit whose order asked for an extra visit it will not plan. */
 export const NO_EXTRA_VISIT = "لا حاجة لزيارة إضافية";
 

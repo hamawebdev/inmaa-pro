@@ -45,6 +45,7 @@ import type {
   VisitEntryReport,
   VisitEntryWorker,
 } from "../components/visit-entry/visit-entry-data";
+import { refuseOverlappingAbsence } from "./absences";
 import { OPEN_STATUSES, VISITS_PATH } from "./programme";
 import { checklistOf, freezeChecklist, lineForKey } from "./tasks";
 
@@ -232,8 +233,9 @@ export async function getVisitEntry(
       otherSeats: await weekSeats(ex, seat.workerId, row.id, row.visitDate),
       absentDates: await absentDatesOf(ex, seat.workerId, row.visitDate),
     };
-    if (seat.seatStatus === "RESTING") resting.push({ ...entry, replaced: replacedSeats.has(seat.id) });
-    else workers.push(entry);
+    const replaced = replacedSeats.has(seat.id);
+    if (seat.seatStatus === "RESTING") resting.push({ ...entry, replaced });
+    else workers.push({ ...entry, replaced });
   }
 
   const lines = await checklistOf(ex, row);
@@ -371,7 +373,12 @@ export async function saveReturnedOrder(
         for (const name of erased) changes[`${label}.${name}`] = [seat[name], null];
         if (seat.workedMin !== null) changes[`${label}.workedMin`] = [seat.workedMin, null];
       }
-      // She did not come: an absence for the visit's hours, for People to treat.
+      // She did not come: an absence for the visit's hours, for People to treat; never a second one that day (OPS-03).
+      await refuseOverlappingAbsence(ex, {
+        workerId: seat.workerId,
+        startDate: visit.visitDate,
+        endDate: visit.visitDate,
+      });
       const absenceId = newId();
       await ex
         .insertInto("WorkerAbsence")

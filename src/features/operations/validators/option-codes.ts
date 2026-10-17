@@ -186,6 +186,7 @@ export const PROGRAMME_WARNINGS = [
   "MISSING_DATES",
   "OUTSIDE_SITE_DAYS",
   "OUTSIDE_SITE_HOURS",
+  "RENEWAL_SLOTS_FROM_FORM",
 ] as const;
 export type ProgrammeWarning = (typeof PROGRAMME_WARNINGS)[number];
 

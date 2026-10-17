@@ -20,7 +20,7 @@ import {
   type ComplaintCounter,
   type OfficeHours,
 } from "../rules/complaint-counter";
-import { planExtraVisit } from "./extra-visits";
+import { closeJobIfFinished, planExtraVisit } from "./extra-visits";
 import { VISITS_PATH } from "./programme";
 
 /**
@@ -901,6 +901,8 @@ export async function settleComplaint(
     },
   });
   if (input.settlement === "DISCOUNT") await emit(ex, ctx, "complaint.settled", { complaintId: before.id });
+  // An on-demand job waiting only for this complaint ends with it (INT-6).
+  if (before.fileId) await closeJobIfFinished(ex, ctx, before.fileId);
   return { status, redoVisit, violation };
 }
 
@@ -935,6 +937,8 @@ export async function rejectComplaint(
     subject: { kind: "CLIENT", id: before.clientId, label: before.clientName },
     changes: changes ?? undefined,
   });
+  // An on-demand job waiting only for this complaint ends with it (INT-6).
+  if (before.fileId) await closeJobIfFinished(ex, ctx, before.fileId);
   return { status };
 }
 

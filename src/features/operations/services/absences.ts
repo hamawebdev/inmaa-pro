@@ -128,6 +128,27 @@ function refuseSickLeave(leaveType: string | null | undefined): void {
     throw new ServiceError("Record a sickness under the category Sick, not as a type of leave.");
 }
 
+/**
+ * Two absences of one worker cannot cover the same day (OPS-03): People counts each one, and a monthly worker's
+ * pay would be cut twice. The one already there is cancelled or changed first.
+ */
+export async function refuseOverlappingAbsence(
+  ex: Executor,
+  input: { workerId: string; startDate: string; endDate: string },
+): Promise<void> {
+  const clash = await ex
+    .selectFrom("WorkerAbsence")
+    .select("id")
+    .where("workerId", "=", input.workerId)
+    .where("status", "in", ["RECORDED", "APPROVED", "REQUESTED"])
+    .where("startDate", "<=", localDate(input.endDate))
+    .where("endDate", ">=", localDate(input.startDate))
+    .executeTakeFirst();
+  if (clash) {
+    throw new ServiceError("This worker already has an absence on one of these days. Cancel or change it first.");
+  }
+}
+
 // ── Rows ────────────────────────────────────────────────────────────────────
 
 type AbsenceRow = Awaited<ReturnType<typeof absenceGroup>>[number];
@@ -310,6 +331,7 @@ export async function recordWorkerAbsence(
   }
   if (!isIsoDate(input.startDate) || !isIsoDate(input.endDate)) throw new ServiceError("Enter a valid date.");
   if (input.endDate < input.startDate) throw new ServiceError("The absence cannot end before it starts.");
+  await refuseOverlappingAbsence(ex, input);
 
   // The hours, for half a day or some hours.
   let startTime = blankToNull(input.startTime);
@@ -583,6 +605,15 @@ async function whySeatStaysOpen(
   workerId: string,
   visitId: string,
 ): Promise<string | null> {
+  // A seat filled meanwhile by «إضافة عامل» is not given back on top of it (OPS-07).
+  const visit = await ex.selectFrom("Visit").select("workersNeeded").where("id", "=", visitId).executeTakeFirst();
+  const held = await ex
+    .selectFrom("VisitWorker")
+    .select("id")
+    .where("visitId", "=", visitId)
+    .where("seatStatus", "=", "ASSIGNED")
+    .execute();
+  if (visit && held.length >= visit.workersNeeded) return "Every seat of this visit is already filled.";
   try {
     const worker = await workerForSeat(ex, ctx, workerId);
     await judgeSeat(ex, ctx, worker, await readVisitForSeat(ex, visitId), null);
@@ -898,6 +929,19 @@ export async function replaceSeat(ex: Executor, ctx: ServiceContext, input: Repl
     throw new ServiceError("The team of this visit can no longer change.");
   if ((await workersOnVisit(ex, visit.id)).has(input.workerId)) {
     throw new ServiceError("This worker is already on this visit.");
+  }
+  // The team keeps its size (OPS-07): a seat is replaced once, and a replacement never fills a seat already full.
+  const seats = await ex
+    .selectFrom("VisitWorker")
+    .select(["id", "seatStatus", "replacesVisitWorkerId"])
+    .where("visitId", "=", visit.id)
+    .execute();
+  if (seats.some((seat) => seat.replacesVisitWorkerId === old.id && seat.seatStatus === "ASSIGNED")) {
+    throw new ServiceError("This seat is already replaced: replace the worker who took it instead.");
+  }
+  const held = seats.filter((seat) => seat.seatStatus === "ASSIGNED").length;
+  if (old.seatStatus !== "ASSIGNED" && held >= visit.workersNeeded) {
+    throw new ServiceError("Every seat of this visit is already filled.");
   }
 
   const worker = await workerForSeat(ex, ctx, input.workerId);

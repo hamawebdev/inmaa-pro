@@ -538,3 +538,67 @@ describe("cancelling an absence under the working-time rules (audit LAB-10)", ()
     expect(await visitStatus(monday.id)).toBe("AWAITING_CONFIRMATION");
   });
 });
+
+describe("one absence a day (OPS-03)", () => {
+  it("refuses a second absence of a worker on a day she is already absent, until the first is cancelled", async () => {
+    const a = await worker();
+    const first = await record({ workerId: a.id, startDate: "2026-11-02", endDate: "2026-11-04" });
+    const refused = "This worker already has an absence on one of these days. Cancel or change it first.";
+    await expect(record({ workerId: a.id, startDate: "2026-11-04", endDate: "2026-11-05" })).rejects.toThrow(refused);
+    await expect(
+      record({
+        workerId: a.id,
+        startDate: "2026-11-03",
+        endDate: "2026-11-03",
+        type: "HOURS",
+        startTime: "09:00",
+        endTime: "10:00",
+      }),
+    ).rejects.toThrow(refused);
+    await test.transact((ex, ctx) =>
+      cancelWorkerAbsence(ex, ctx, { absenceId: first.absenceIds[0], reason: "سُجّلت خطأ" }),
+    );
+    await record({ workerId: a.id, startDate: "2026-11-04", endDate: "2026-11-05", category: "SICK" });
+    expect((await absences(a.id)).filter((row) => row.status === "RECORDED")).toHaveLength(1);
+  });
+});
+
+describe("the team keeps its size (OPS-07)", () => {
+  it("replaces an absent seat once, and gives a cancelled absence's seat back only if the visit is not full", async () => {
+    const { monday, a, b, seatA } = await confirmedMonday();
+    await record({ workerId: a.id });
+    const c = await worker();
+    const d = await worker();
+    await test.transact((ex, ctx) => replaceSeat(ex, ctx, { seatId: seatA, workerId: c.id, reason: "ABSENCE" }));
+    await expect(
+      test.transact((ex, ctx) => replaceSeat(ex, ctx, { seatId: seatA, workerId: d.id, reason: "ABSENCE" })),
+    ).rejects.toThrow("This seat is already replaced: replace the worker who took it instead.");
+    const held = await test.db
+      .selectFrom("VisitWorker")
+      .select("workerId")
+      .where("visitId", "=", monday.id)
+      .where("seatStatus", "=", "ASSIGNED")
+      .execute();
+    expect(held.map((seat) => seat.workerId).sort()).toEqual([b.id, c.id].sort());
+  });
+
+  it("leaves a cancelled absence's seat open when the visit was filled meanwhile", async () => {
+    const { monday, a, seatA } = await confirmedMonday();
+    const { absenceIds } = await record({ workerId: a.id });
+    const c = await worker();
+    await assign(monday.id, c.id);
+    const result = await test.transact((ex, ctx) =>
+      cancelWorkerAbsence(ex, ctx, { absenceId: absenceIds[0], reason: "Elle est venue" }),
+    );
+    expect(result.seatsLeftOpen).toEqual([
+      expect.objectContaining({ seatId: seatA, why: "Every seat of this visit is already filled." }),
+    ]);
+    const held = await test.db
+      .selectFrom("VisitWorker")
+      .select("id")
+      .where("visitId", "=", monday.id)
+      .where("seatStatus", "=", "ASSIGNED")
+      .execute();
+    expect(held).toHaveLength(2);
+  });
+});

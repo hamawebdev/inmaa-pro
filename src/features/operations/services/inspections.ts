@@ -1514,6 +1514,42 @@ export async function markMissedInspections(
   return { missed: late.length };
 }
 
+/**
+ * For the file.ended handler: the file's inspections still planned after its end are cancelled, in one log
+ * entry giving the cause (INT-7, OPS-09). Returns how many.
+ */
+export async function cancelInspectionsAfter(
+  ex: Executor,
+  ctx: ServiceContext,
+  input: { fileId: string; afterDate: string; endKind?: string | null },
+): Promise<number> {
+  const planned = await ex
+    .selectFrom("Inspection")
+    .select(["id", "number"])
+    .where("fileId", "=", input.fileId)
+    .where("status", "=", "PLANNED")
+    .where("plannedDate", ">", localDate(input.afterDate))
+    .execute();
+  if (planned.length === 0) return 0;
+  await ex
+    .updateTable("Inspection")
+    .set({ status: "CANCELLED", updatedAt: ctx.now, updatedByUserId: ctx.userId })
+    .where(
+      "id",
+      "in",
+      planned.map((row) => row.id),
+    )
+    .execute();
+  await logChange(ex, ctx, {
+    owner: "OPERATIONS",
+    action: "STATUS_CHANGE",
+    entity: "Inspection",
+    changes: { status: ["PLANNED", "CANCELLED"] },
+    context: { cause: "CONTRACT_ENDED", endKind: input.endKind ?? null, inspections: planned.map((row) => row.number) },
+  });
+  return planned.length;
+}
+
 // ── Demo data ───────────────────────────────────────────────────────────────
 
 const DEMO_GOOD_MARKS: Readonly<Record<string, number | "n/a">> = { LIFTS: "n/a", GLASS: 8, DUST: 8 };

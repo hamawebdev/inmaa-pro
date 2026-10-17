@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
+import { emit } from "@/lib/events";
 import type { Executor, ServiceContext } from "@/lib/service/context";
 import { localDate, localTime } from "@/lib/units";
 import { createTestDatabase, type TestDatabase } from "@/testing/database";
@@ -673,5 +674,49 @@ describe("lists and the day-start job", () => {
       listInspections(ex, ctx, { from: "2026-10-06", to: "2026-10-12" }),
     );
     expect(inOctober.map((line) => line.id)).toEqual([lastWeek.id, today.id]);
+  });
+
+  it("cancels the inspections planned after a contract's early end, and keeps those before (INT-7, OPS-09)", async () => {
+    const supervisor = await employee();
+    const { file } = await contractFile({
+      frequency: "WEEKLY",
+      dayOfWeek: 2,
+      visitDates: ["2026-10-12", "2026-10-19", "2026-10-26", "2026-11-02"],
+      zoneSupervisorId: supervisor.id,
+    });
+    await test.transact((ex, ctx) => planInspections(ex, ctx, { upTo: "2026-11-01" }));
+    expect((await inspectionsOf(file.id)).map((row) => row.status)).toEqual([
+      "PLANNED",
+      "PLANNED",
+      "PLANNED",
+      "PLANNED",
+    ]);
+
+    await test.transact((ex, ctx) =>
+      emit(ex, ctx, "file.ended", { fileId: file.id, endKind: "ENDED_BY_CLIENT", endedDate: localDate("2026-10-20") }),
+    );
+    const rows = await inspectionsOf(file.id);
+    expect(rows.map((row) => [row.plannedDate, row.status])).toEqual([
+      ["2026-10-12", "PLANNED"],
+      ["2026-10-19", "PLANNED"],
+      ["2026-10-26", "CANCELLED"],
+      ["2026-11-02", "CANCELLED"],
+    ]);
+    // Neither counted as due nor marked missed later, and the plan makes no new one.
+    test.clock.advance({ days: 30 });
+    await test.transact((ex, ctx) => markMissedInspections(ex, ctx, { today: "2026-11-11" }));
+    const again = await test.transact((ex, ctx) => planInspections(ex, ctx, { upTo: "2026-12-01" }));
+    expect(again.created).toBe(0);
+    expect((await inspectionsOf(file.id)).slice(2).map((row) => row.status)).toEqual(["CANCELLED", "CANCELLED"]);
+    const entries = await test.db
+      .selectFrom("AuditLog")
+      .select("context")
+      .where("entity", "=", "Inspection")
+      .where("operation", "=", "CHANGE")
+      .execute();
+    const contexts = entries.map((row) => JSON.parse(row.context ?? "{}") as Record<string, unknown>);
+    expect(contexts.find((context) => context.cause === "CONTRACT_ENDED")).toMatchObject({
+      endKind: "ENDED_BY_CLIENT",
+    });
   });
 });

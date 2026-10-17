@@ -72,6 +72,8 @@ export interface VisitEntryWorker {
   >;
   /** Her other seats that week, as worked or planned, for the working-time rules. */
   otherSeats: readonly Seat[];
+  /** Another worker took this seat over (an absent or resting seat): it is not replaced again (OPS-07). */
+  replaced?: boolean;
   /** The days of the week a recorded absence or leave covers. */
   absentDates: readonly string[];
 }

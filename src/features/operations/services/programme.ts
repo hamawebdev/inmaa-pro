@@ -23,7 +23,7 @@ import {
 } from "../rules/visit-dates";
 import { contractWeekIndex, restDatesForWeek, type Seat } from "../rules/working-time";
 import type { DayPeriod, DurationUnit, ProgrammeWarning, VisitStatus } from "../validators/option-codes";
-import { findingsWithVisit, seatsBetween, workTimeSettings, type VisitForSeat } from "./assignment";
+import { findingsWithVisit, sanctionedWorkers, seatsBetween, workTimeSettings, type VisitForSeat } from "./assignment";
 import { VISITS_PATH } from "./paths";
 import { readFileForScheduling, readSiteForOrder, readWorkers, type FileForScheduling } from "./upstream";
 import { seedTasksFromServices } from "./tasks";
@@ -163,6 +163,72 @@ function formSlots(file: FileForScheduling, settings: ProgrammeSettings): Weekly
     { ...formTimesOf(file), executionWeekdays: weekdaysOfCodes(file.executionDays), workersCount: file.workersCount },
     settings,
   );
+}
+
+const slotKey = (slot: WeeklySlot) => `${slot.weekday}|${slot.startTime}|${slot.durationMin}|${slot.workersNeeded}`;
+const sameSlots = (a: readonly WeeklySlot[], b: readonly WeeklySlot[]) =>
+  a.map(slotKey).sort().join(",") === b.map(slotKey).sort().join(",");
+
+/**
+ * Slots stored before the file has any visit can only be a renewal's copy of the old contract's (`copyFileSetup`).
+ * When the renewal's own signed form gives other days, hours or headcount, the copy is out of date: the form wins
+ * (rule 6; INT-5, OPS-05). True when the stored slots are such a copy that the form contradicts.
+ */
+async function copiedSlotsOutOfDate(
+  ex: Executor,
+  file: FileForScheduling,
+  stored: readonly WeeklySlot[],
+  settings: ProgrammeSettings,
+): Promise<boolean> {
+  if (stored.length === 0) return false;
+  const form = formSlots(file, settings);
+  if (form.length === 0 || sameSlots(stored, form)) return false;
+  const anyVisit = await ex.selectFrom("Visit").select("id").where("fileId", "=", file.id).executeTakeFirst();
+  return !anyVisit;
+}
+
+/**
+ * Sets aside slots copied from the old contract that the renewal's form contradicts, before its first visits are
+ * made: they are switched off, the copied team keeps its members on the form's slots of the same weekday, and the
+ * office is told by a warning on the generation and a log entry. Returns whether it did.
+ */
+async function setAsideCopiedSlots(
+  ex: Executor,
+  ctx: ServiceContext,
+  file: FileForScheduling,
+  settings: ProgrammeSettings,
+): Promise<boolean> {
+  const stored = await activeSlots(ex, file.id);
+  if (!(await copiedSlotsOutOfDate(ex, file, stored, settings))) return false;
+  await ex
+    .updateTable("FileSlot")
+    .set({ isActive: 0, updatedAt: ctx.now, updatedByUserId: ctx.userId })
+    .where(
+      "id",
+      "in",
+      stored.map((slot) => slot.id),
+    )
+    .execute();
+  const fresh = await ensureSlots(ex, ctx, file, settings);
+  for (const old of stored) {
+    const next = fresh.find((slot) => slot.weekday === old.weekday)?.id ?? null;
+    await ex
+      .updateTable("FileAssignment")
+      .set({ fileSlotId: next, updatedAt: ctx.now, updatedByUserId: ctx.userId })
+      .where("fileId", "=", file.id)
+      .where("fileSlotId", "=", old.id)
+      .execute();
+  }
+  await logChange(ex, ctx, {
+    owner: "OPERATIONS",
+    action: "UPDATE",
+    entity: "File",
+    entityId: file.id,
+    entityLabel: file.number,
+    changes: { slots: [stored.map(slotKey).join(","), fresh.map(slotKey).join(",")] },
+    context: { cause: "RENEWAL_SLOTS_FROM_FORM" },
+  });
+  return true;
 }
 
 /** The slots of a contract: the stored ones, or one per ticked day of «أيام التنفيذ», written now. */
@@ -394,11 +460,16 @@ export async function generateFileVisits(
   await ensureProgramme(ex, ctx, file);
   await seedTasksFromServices(ex, ctx, file.id);
 
+  const setAside = file.serviceType === "CONTRACT" && (await setAsideCopiedSlots(ex, ctx, file, settings));
   const slots = file.serviceType === "CONTRACT" ? await ensureSlots(ex, ctx, file, settings) : [];
   const programme = plannedProgramme(file, slots, settings);
   const planned = inRange(programme.visits, file, range);
   const site = await readSiteForOrder(ex, { siteId: file.siteId, securityTicked: false });
-  const warnings = [...programme.warnings, ...siteWarnings(planned, site)];
+  const warnings: ProgrammeWarning[] = [
+    ...programme.warnings,
+    ...siteWarnings(planned, site),
+    ...(setAside ? (["RENEWAL_SLOTS_FROM_FORM"] as const) : []),
+  ];
 
   const toCreate = visitsToCreate(planned, await existingKeys(ex, file.id));
   if (toCreate.length === 0) return summarise(planned, { created: 0, missing: 0, canGenerate: true }, warnings);
@@ -533,20 +604,18 @@ async function planSeats(
   const ids = [...new Set(team.map((seat) => seat.workerId))];
   const absences = await blockingAbsences(ex, ids, first, last);
 
-  // People's word on each member (RULINGS item 11).
+  // People's word on each member (RULINGS item 11), on each visit's own date: in post that day, and not suspended
+  // or penalised that day, even by a sanction set ahead (INT-4, OPS-01).
   const people = await readWorkers(ex, ctx, { ids, date: ctx.today });
-  const blocking = (await getSettings(ex, ["sanction.blockingStates"]))["sanction.blockingStates"].WORKER ?? [];
-  const unavailable = (workerId: string, date: string) => {
-    const worker = people.find((person) => person.id === workerId);
-    if (!worker || !worker.activeOnDate) return true;
-    const sanction = worker.sanction;
-    return (
-      sanction !== null &&
-      blocking.includes(sanction.state) &&
-      sanction.since <= date &&
-      (!sanction.until || sanction.until >= date)
-    );
-  };
+  const blockedOn = new Map<string, Set<string>>();
+  for (const date of ids.length > 0 ? new Set(ordered.map((visit) => visit.date)) : []) {
+    const inPost = await readWorkers(ex, ctx, { ids, date: localDate(date) });
+    const blocked = await sanctionedWorkers(ex, ctx, date, ids);
+    for (const id of ids) if (!inPost.some((worker) => worker.id === id && worker.activeOnDate)) blocked.add(id);
+    blockedOn.set(date, blocked);
+  }
+  const unavailable = (workerId: string, date: string) =>
+    !people.some((person) => person.id === workerId) || (blockedOn.get(date)?.has(workerId) ?? true);
 
   // The rotating rest day: each member's rest date in each week, by the order of the standing team.
   const programmeRow = await ex
@@ -672,7 +741,10 @@ export async function previewVisitGeneration(
   if (!file) throw new ServiceError("This client file does not exist.");
   const settings = await programmeSettings(ex);
   const stored = file.serviceType === "CONTRACT" ? await activeSlots(ex, file.id) : [];
-  const slots = file.serviceType === "CONTRACT" && stored.length === 0 ? formSlots(file, settings) : stored;
+  // A renewal's copied slots that its own form contradicts will be set aside at signature (INT-5, OPS-05).
+  const outOfDate = await copiedSlotsOutOfDate(ex, file, stored, settings);
+  const slots =
+    file.serviceType === "CONTRACT" && (stored.length === 0 || outOfDate) ? formSlots(file, settings) : stored;
   const programme = plannedProgramme(file, slots, settings);
   const planned = inRange(programme.visits, file, {});
   const site = await readSiteForOrder(ex, { siteId: file.siteId, securityTicked: false });
@@ -698,7 +770,11 @@ export async function previewVisitGeneration(
   const summary = summarise(
     planned,
     { created: 0, missing: missing.length, canGenerate: stage?.stage === "CONTRACTED" && !stage.closedAt },
-    [...programme.warnings, ...siteWarnings(planned, site)],
+    [
+      ...programme.warnings,
+      ...siteWarnings(planned, site),
+      ...(outOfDate ? (["RENEWAL_SLOTS_FROM_FORM"] as const) : []),
+    ],
     seats,
   );
   return { ...summary, formChanged: Boolean(programmeRow?.formChangedAt) };

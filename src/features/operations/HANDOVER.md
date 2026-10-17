@@ -121,6 +121,24 @@ Import rule: `VISITS_PATH` now lives in `services/paths.ts` (programme.ts re-exp
   `dayOrder`, `vehicleId`); «برنامج العمل» has three views: the week, «ترتيب يوم الفرق», «الفرق والمركبات».
   Assigning a team's day seats nobody.
 
+## Final review (17 October)
+
+- INT-4, OPS-01: `sanctionedWorkers(ex, ctx, date, ids)` asks People's `getSanctionStates` for the visit's own date;
+  generation (`planSeats`) checks each visit's date, and every seat goes through `judgeSeat`, so the picker, the
+  manual seat, a replacement and a make-up follow.
+- INT-5, OPS-05: a renewal whose own form names other days, hours or headcount sets the copied slots aside
+  (`setAsideCopiedSlots`), makes fresh ones from the form, and warns `RENEWAL_SLOTS_FROM_FORM`.
+- OPS-03: `refuseOverlappingAbsence` (recording, and the no-show of a typed order).
+- OPS-04, OPS-07: the programme update takes off the seats over a smaller headcount (non-leaders, latest first) and
+  seats the standing team on a larger one (`seatStandingMembers`); a seat is replaced once, a full visit refuses a
+  replacement and a give-back; the team card hides «استبدال» on a replaced absent row and marks it «عُوِّض».
+- OPS-08: `services/initial-visit.ts`; File › الزيارات shows «التنظيف الأولي العميق» on a contract whose accepted
+  quote holds an INITIAL_JOB line, and plans its one visit of origin INITIAL on the day chosen.
+- INT-6: `closeJobIfFinished`, after the last order's sign-off and after a complaint settled or rejected.
+- INT-7, OPS-09: `cancelInspectionsAfter` in the file.ended handler.
+- OPS-06: postponing sets the original aside before seating the make-up.
+- OPS-10: a new zone supervisor stops the day before one already planned from a later day.
+
 ## Open items
 
 - `listVisitsForBilling` is not exported yet; Money reads `Visit`, `VisitReport`, `VisitWorker` itself.

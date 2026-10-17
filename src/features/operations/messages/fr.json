@@ -101,7 +101,8 @@
     "NO_WORKING_DAY_IN_RANGE": "Aucun jour ouvré entre les deux dates",
     "MISSING_DATES": "Le formulaire ne donne ni date de début ni date de fin",
     "OUTSIDE_SITE_DAYS": "Une visite tombe un jour que le site n'autorise pas",
-    "OUTSIDE_SITE_HOURS": "Une visite sort des heures que le site autorise"
+    "OUTSIDE_SITE_HOURS": "Une visite sort des heures que le site autorise",
+    "RENEWAL_SLOTS_FROM_FORM": "Le formulaire du renouvellement donne d'autres jours, heures ou agents que l'ancien contrat : les visites suivent le formulaire du renouvellement."
   },
   "ComplaintCounter": {
     "RUNNING": "Dans le délai visé",
@@ -419,7 +420,12 @@
     "TeamNeedsWorker": "Une équipe a au moins un agent.",
     "TeamLeaderMember": "Le chef d'équipe est l'un de ses agents.",
     "TeamNotFound": "Cette équipe n'existe pas.",
-    "VisitNotThatDay": "Cette visite n'est pas ce jour-là."
+    "VisitNotThatDay": "Cette visite n'est pas ce jour-là.",
+    "AbsenceOverlaps": "Cet agent a déjà une absence l'un de ces jours. Annulez-la ou modifiez-la d'abord.",
+    "SeatAlreadyReplaced": "Cette place est déjà remplacée : remplacez plutôt l'agent qui l'a prise.",
+    "FewerWorkersNow": "La visite demande moins d'agents désormais.",
+    "NoInitialJobInQuote": "Le devis accepté de ce contrat ne comprend aucun nettoyage initial.",
+    "InitialVisitAlreadyPlanned": "Le nettoyage initial est déjà planifié."
   },
   "FileVisits": {
     "ProgrammeTitle": "Programme",
@@ -495,7 +501,8 @@
     },
     "WeekHours": "Heures de la semaine",
     "Resting": "Repos par roulement",
-    "RestingReplaced": "Repos, remplacé"
+    "RestingReplaced": "Repos, remplacé",
+    "ReplacedChip": "Remplacé"
   },
   "ReplacementReasons": {
     "ABSENCE": "Absence",
@@ -1702,5 +1709,21 @@
       "MAINTENANCE": "En maintenance",
       "RETIRED": "Hors service"
     }
+  },
+  "InitialVisit": {
+    "Title": "Nettoyage initial en profondeur",
+    "Planned": "Planifié :",
+    "Hint": "Le devis accepté comprend un nettoyage initial. Choisissez son jour : il est ensuite affecté et ordonné comme toute visite.",
+    "Open": "Ouvrir la visite",
+    "Plan": "Planifier le nettoyage initial",
+    "DialogHint": "Une visite, avant ou au début du contrat. L'équipe fixe y est affectée là où les règles le permettent.",
+    "Date": "Date",
+    "Time": "Heure de début",
+    "Hours": "Heures",
+    "Workers": "Agents",
+    "Back": "Retour",
+    "Confirm": "Planifier",
+    "Saved": "Visite {number} planifiée.",
+    "Failed": "Le nettoyage initial n'a pas pu être planifié."
   }
 }

@@ -82,6 +82,26 @@ describe("postponeVisit", () => {
     expect(seats).toEqual([{ workerId: worker.id }]);
   });
 
+  it("keeps the team when the visit moves to a later hour the same day (OPS-06)", async () => {
+    const { visit, worker } = await arrange();
+    const result = await test.transact((ex, ctx) =>
+      postponeVisit(ex, ctx, {
+        visitId: visit.id,
+        reason: "CLIENT_REQUEST",
+        note: "العميل يطلب التاسعة",
+        newDate: localDate("2026-10-14"),
+        newStartTime: localTime("09:00"),
+      }),
+    );
+    expect(result.seated).toBe(1);
+    const seats = await test.db
+      .selectFrom("VisitWorker")
+      .select(["workerId", "seatStatus"])
+      .where("visitId", "=", result.makeupVisitId as string)
+      .execute();
+    expect(seats).toEqual([{ workerId: worker.id, seatStatus: "ASSIGNED" }]);
+  });
+
   it("asks why, and refuses a visit already done", async () => {
     const { visit } = await arrange();
     await expect(

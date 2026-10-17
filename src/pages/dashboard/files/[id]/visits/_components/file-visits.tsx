@@ -36,6 +36,7 @@ import { useCodeLabel } from "@/i18n/use-code-label";
 import { pathKey } from "@/lib/compat/revalidate";
 
 import { ExtraVisitProposals } from "./extra-visit-proposals";
+import { InitialVisitCard } from "./initial-visit-card";
 import { FutureVisitsUpdate } from "./future-visits-update";
 import { WEEKDAYS } from "@/lib/options";
 
@@ -274,6 +275,7 @@ export function FileVisits({ fileId }: { fileId: string }) {
         </CardContent>
       </Card>
 
+      <InitialVisitCard fileId={fileId} mayWrite={mayWrite} />
       <ExtraVisitProposals fileId={fileId} mayWrite={mayWrite} />
 
       <div className="space-y-4">

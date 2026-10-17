@@ -16,7 +16,8 @@ import { readWorkers } from "./upstream";
 /**
  * Who supervises which zone (#36). A zone has one supervisor at a time: naming
  * a new one ends the one before the day before, and the zone's visits still to
- * come take the new name (an order already printed is marked changed instead).
+ * come take the new name (an order already printed is marked changed too), up to
+ * the first day of a supervisor already planned for later.
  */
 
 export const SUPERVISORS_PATH = "/dashboard/supervisors";
@@ -57,6 +58,16 @@ export async function assignZoneSupervisor(
         .execute();
     }
   }
+  // One planned from a later day keeps its days: the new row stops the day before it, and so does the re-stamping
+  // (OPS-10).
+  const next = await ex
+    .selectFrom("SupervisorAssignment")
+    .select("fromDate")
+    .where("zoneId", "=", zone.id)
+    .where("fromDate", ">", input.fromDate)
+    .orderBy("fromDate")
+    .limit(1)
+    .executeTakeFirst();
   const assignmentId = newId();
   await ex
     .insertInto("SupervisorAssignment")
@@ -65,6 +76,7 @@ export async function assignZoneSupervisor(
       supervisorEmployeeId: supervisor.id,
       zoneId: zone.id,
       fromDate: input.fromDate,
+      toDate: next ? localDate(addDays(next.fromDate, -1)) : null,
       createdAt: ctx.now,
       updatedAt: ctx.now,
       createdByUserId: ctx.userId,
@@ -72,14 +84,15 @@ export async function assignZoneSupervisor(
     })
     .execute();
 
-  // The zone's visits from that day on that are still to happen.
-  const visits = await ex
+  // The zone's visits from that day on that are still to happen, up to the next supervisor's first day.
+  let visitQuery = ex
     .selectFrom("Visit")
     .select(["id", "orderPrintedAt", "supervisorEmployeeId"])
     .where("zoneId", "=", zone.id)
     .where("visitDate", ">=", input.fromDate)
-    .where("status", "in", [...OPEN_STATUSES])
-    .execute();
+    .where("status", "in", [...OPEN_STATUSES]);
+  if (next) visitQuery = visitQuery.where("visitDate", "<", next.fromDate);
+  const visits = await visitQuery.execute();
   const changed = visits.filter((visit) => visit.supervisorEmployeeId !== supervisor.id);
   const unprinted = changed.filter((visit) => visit.orderPrintedAt === null).map((visit) => visit.id);
   const printed = changed.filter((visit) => visit.orderPrintedAt !== null).map((visit) => visit.id);
@@ -110,7 +123,12 @@ export async function assignZoneSupervisor(
     entityLabel: zone.name,
     subject: { kind: "EMPLOYEE", id: supervisor.id, label: supervisor.number },
     changes: { supervisorEmployeeId: [current[0]?.supervisorEmployeeId ?? null, supervisor.id] },
-    context: { fromDate: input.fromDate, visitsRestamped: unprinted.length, ordersMarked: printed.length },
+    context: {
+      fromDate: input.fromDate,
+      toDate: next ? addDays(next.fromDate, -1) : null,
+      visitsRestamped: unprinted.length,
+      ordersMarked: printed.length,
+    },
   });
   return { assignmentId, visitsRestamped: unprinted.length, ordersMarked: printed.length };
 }

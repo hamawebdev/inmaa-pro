@@ -4,6 +4,7 @@ import { emit } from "@/lib/events";
 import { localDate, localTime, minutes } from "@/lib/units";
 import { createTestDatabase, type TestDatabase } from "@/testing/database";
 
+import { rejectComplaint, settleComplaint } from "./complaints";
 import { listExtraVisitProposals, onDemandJobFinished, planExtraVisit, type PlanExtraVisitInput } from "./extra-visits";
 
 let test: TestDatabase;
@@ -278,6 +279,44 @@ describe("onDemandJobFinished", () => {
       .where("id", "=", file.id)
       .executeTakeFirstOrThrow();
     expect(closed.closedAt).not.toBeNull();
+  });
+
+  it("closes the job once the complaint its last order opened is settled or rejected (INT-6)", async () => {
+    for (const close of ["settle", "reject"] as const) {
+      const { file, second, site } = await twoDayJob();
+      await setVisit(second.id, { status: "DONE" });
+      await test.rows.insert("VisitReport", {
+        visitId: second.id,
+        entryState: "COMPLETE",
+        completion: "FULL",
+        signoffStatus: "NOT_ACCEPTED",
+      });
+      const complaint = await test.rows.insert("Complaint", {
+        clientId: site.clientId,
+        fileId: file.id,
+        visitId: second.id,
+        status: "NEW",
+      });
+      await test.transact((ex, ctx) => emit(ex, ctx, "visit.signedOff", { visitId: second.id }));
+      const open = await test.db
+        .selectFrom("File")
+        .select("closedAt")
+        .where("id", "=", file.id)
+        .executeTakeFirstOrThrow();
+      expect(open.closedAt).toBeNull();
+      await test.transact((ex, ctx) =>
+        close === "settle"
+          ? settleComplaint(ex, ctx, { complaintId: complaint.id, centreAtFault: "NO", settlement: "NONE" })
+          : rejectComplaint(ex, ctx, { complaintId: complaint.id, reason: "لا أساس للشكوى" }),
+      );
+      const after = await test.db
+        .selectFrom("File")
+        .select(["endKind", "endedDate", "closedAt"])
+        .where("id", "=", file.id)
+        .executeTakeFirstOrThrow();
+      expect(after).toMatchObject({ endKind: "JOB_DONE", endedDate: second.visitDate });
+      expect(after.closedAt).not.toBeNull();
+    }
   });
 
   it("keeps the job open while an extra visit asked for on the order is not planned", async () => {

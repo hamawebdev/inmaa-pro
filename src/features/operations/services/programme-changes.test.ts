@@ -4,6 +4,7 @@ import { emit } from "@/lib/events";
 import { localDate, localTime } from "@/lib/units";
 import { createTestDatabase, type TestDatabase } from "@/testing/database";
 
+import { previewVisitGeneration } from "./programme";
 import { previewFutureVisitsUpdate, updateFutureVisits } from "./programme-changes";
 
 let test: TestDatabase;
@@ -256,6 +257,55 @@ describe("updateFutureVisits", () => {
     expect(seats.every((seat) => seat.seatStatus === "REMOVED")).toBe(true);
   });
 
+  it("takes off the seats over a smaller headcount, and seats the standing team on a larger one (OPS-04)", async () => {
+    const members: Array<{ id: string }> = [];
+    for (let index = 0; index < 3; index += 1) {
+      members.push(
+        await test.rows.insert("StaffMember", {
+          role: index === 0 ? "TEAM_LEADER" : "CLEANER",
+          sex: "MALE",
+          engagementStatus: "ACCEPTED",
+          availableDays: JSON.stringify(["SAT", "SUN", "MON", "TUE", "WED", "THU", "FRI"]),
+        } as never),
+      );
+    }
+    const { file } = await contracted({ workersCount: 2 }, async (fileId) => {
+      for (const [sortOrder, member] of members.entries()) {
+        await test.rows.insert("FileAssignment", {
+          fileId,
+          workerId: member.id,
+          role: sortOrder === 0 ? "LEADER" : "MEMBER",
+          validFrom: localDate("2026-11-01"),
+          sortOrder,
+        });
+      }
+    });
+    const held = async () =>
+      test.db
+        .selectFrom("VisitWorker")
+        .innerJoin("Visit", "Visit.id", "VisitWorker.visitId")
+        .select(["Visit.id", "VisitWorker.workerId"])
+        .where("Visit.fileId", "=", file.id)
+        .where("VisitWorker.seatStatus", "=", "ASSIGNED")
+        .execute();
+    expect(await held()).toHaveLength(13 * 2);
+
+    await setFile(file.id, { workersCount: 3 });
+    const grown = await update(file.id);
+    expect(grown.seatsAdded).toBe(13);
+    expect(await held()).toHaveLength(13 * 3);
+    expect((await visitsOf(file.id)).every((visit) => visit.status === "CONFIRMED")).toBe(true);
+
+    await setFile(file.id, { workersCount: 2 });
+    expect((await preview(file.id)).seatsDropped).toHaveLength(13);
+    const shrunk = await update(file.id);
+    expect(shrunk.seatsDropped.every((seat) => seat.why === "The visit needs fewer workers now.")).toBe(true);
+    const after = await held();
+    expect(after).toHaveLength(13 * 2);
+    // The leader stays on every visit.
+    expect(after.filter((seat) => seat.workerId === members[0].id)).toHaveLength(13);
+  });
+
   it("moves an on-demand job to its new days", async () => {
     const site = await test.rows.insert("Site", { division: "HOUSING" });
     const file = await test.rows.insert("File", {
@@ -318,7 +368,7 @@ describe("updateFutureVisits", () => {
 });
 
 describe("file.renewed", () => {
-  it("gives the renewing file the old set-up, from which its own contract makes its visits", async () => {
+  it("gives the renewing file the old set-up, its own form deciding its slots (INT-5, OPS-05)", async () => {
     const leader = await test.rows.insert("StaffMember", {
       role: "TEAM_LEADER",
       engagementStatus: "ACCEPTED",
@@ -489,25 +539,34 @@ describe("file.renewed", () => {
       ]);
     }
 
-    // Signed: its visits come from the copied slots, not from the days on its form.
+    // Signed: its own form says Sunday and Tuesday, 10:00 to 12:00, the copied slots Sat/Mon/Wed: the form wins, the
+    // copy is set aside and the office is told (INT-5, OPS-05).
     await setFile(renewal.id, { stage: "CONTRACTED" });
+    expect(
+      (await test.transact((ex, ctx) => previewVisitGeneration(ex, ctx, { fileId: renewal.id }))).warnings,
+    ).toContain("RENEWAL_SLOTS_FROM_FORM");
     await test.transact((ex, ctx) => emit(ex, ctx, "file.contracted", { fileId: renewal.id }));
     const visits = await visitsOf(renewal.id);
-    expect(visits).toHaveLength(13);
-    expect(visits.filter((visit) => visit.plannedStartTime === "09:30").map((visit) => visit.visitDate)).toEqual([
-      "2026-12-07",
-      "2026-12-14",
-      "2026-12-21",
-      "2026-12-28",
-    ]);
-    expect(new Set(visits.map((visit) => visit.fileSlotId))).toEqual(new Set(slots.map((slot) => slot.id)));
+    // December 2026: Sundays 6..27 (4), Tuesdays 1..29 (5).
+    expect(visits).toHaveLength(9);
+    expect(visits.every((visit) => visit.plannedStartTime === "10:00")).toBe(true);
+    const fresh = await slotsOf(renewal.id);
+    expect(fresh.filter((slot) => slot.isActive === 1).map((slot) => slot.dayOfWeek)).toEqual([1, 3]);
+    expect(slots.every((slot) => fresh.find((each) => each.id === slot.id)?.isActive === 0)).toBe(true);
+    const told = await test.db
+      .selectFrom("AuditLog")
+      .select("context")
+      .where("entity", "=", "File")
+      .where("entityId", "=", renewal.id)
+      .execute();
+    expect(told.some((entry) => (entry.context ?? "").includes("RENEWAL_SLOTS_FROM_FORM"))).toBe(true);
     const seats = await test.db
       .selectFrom("VisitWorker")
       .innerJoin("Visit", "Visit.id", "VisitWorker.visitId")
       .select(["VisitWorker.workerId"])
       .where("Visit.fileId", "=", renewal.id)
       .execute();
-    expect(seats).toHaveLength(13);
+    expect(seats).toHaveLength(9);
     expect(seats.every((seat) => seat.workerId === leader.id)).toBe(true);
     // The service tick was already a task: it is not seeded a second time.
     expect(await test.db.selectFrom("FileTask").select("id").where("fileId", "=", renewal.id).execute()).toHaveLength(

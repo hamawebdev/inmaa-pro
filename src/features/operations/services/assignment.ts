@@ -324,9 +324,10 @@ export async function sanctionedWorkers(
   const found = new Set<string>();
   const blocking = (await getSettings(ex, ["sanction.blockingStates"]))["sanction.blockingStates"].WORKER ?? [];
   if (blocking.length === 0 || workerIds.length === 0) return found;
-  const states = await getSanctionStates(ex, ctx, { kind: "WORKER", ids: [...new Set(workerIds)] });
+  // The sanction in force on the visit's own date, not today's: one dated ahead blocks its days only (INT-4, OPS-01).
+  const states = await getSanctionStates(ex, ctx, { kind: "WORKER", ids: [...new Set(workerIds)], date });
   for (const [workerId, state] of Object.entries(states)) {
-    if (state && blocking.includes(state.state) && (!state.until || state.until >= date)) found.add(workerId);
+    if (state && blocking.includes(state.state)) found.add(workerId);
   }
   return found;
 }

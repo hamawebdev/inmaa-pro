@@ -73,6 +73,7 @@ export async function postponeVisit(
 
   let makeupVisitId: string | null = null;
   let seated = 0;
+  let team: Array<{ workerId: string }> = [];
   if (input.newDate) {
     const [number] = await nextNumbers(ex, ctx, "VISIT", { date: input.newDate, count: 1 });
     makeupVisitId = newId();
@@ -101,28 +102,17 @@ export async function postponeVisit(
         updatedByUserId: ctx.userId,
       })
       .execute();
-    // The same team where the rules let each one come; the others' seats stay open.
-    const team = await ex
+    team = await ex
       .selectFrom("VisitWorker")
       .select("workerId")
       .where("visitId", "=", visit.id)
       .where("seatStatus", "=", "ASSIGNED")
       .orderBy("createdAt")
       .execute();
-    const makeup = await readVisitForSeat(ex, makeupVisitId);
-    for (const { workerId } of team) {
-      try {
-        const worker = await workerForSeat(ex, ctx, workerId);
-        await judgeSeat(ex, ctx, worker, makeup, null);
-        await insertSeat(ex, ctx, { visitId: makeupVisitId, worker });
-        seated += 1;
-      } catch (error) {
-        if (!(error instanceof ServiceError)) throw error;
-      }
-    }
-    await settleVisitTeam(ex, ctx, makeupVisitId);
   }
 
+  // The original is set aside first, so that its own seats neither clash with the make-up's nor count twice in
+  // the week (OPS-06).
   await ex
     .updateTable("Visit")
     .set({
@@ -138,6 +128,21 @@ export async function postponeVisit(
     })
     .where("id", "=", visit.id)
     .execute();
+  if (makeupVisitId) {
+    // The same team where the rules let each one come; the others' seats stay open.
+    const makeup = await readVisitForSeat(ex, makeupVisitId);
+    for (const { workerId } of team) {
+      try {
+        const worker = await workerForSeat(ex, ctx, workerId);
+        await judgeSeat(ex, ctx, worker, makeup, null);
+        await insertSeat(ex, ctx, { visitId: makeupVisitId, worker });
+        seated += 1;
+      } catch (error) {
+        if (!(error instanceof ServiceError)) throw error;
+      }
+    }
+    await settleVisitTeam(ex, ctx, makeupVisitId);
+  }
   await logChange(ex, ctx, {
     owner: "OPERATIONS",
     action: "STATUS_CHANGE",

@@ -61,6 +61,45 @@ it("names a zone's supervisor, ends the one before and re-stamps the visits to c
   expect(by(done.id).supervisorEmployeeId).toBeNull();
 });
 
+it("leaves a supervisor planned from a later day his days and his visits (OPS-10)", async () => {
+  const zone = await test.rows.insert("Zone", { name: "أم البواقي" });
+  const later = await test.rows.insert("StaffMember", { kind: "EMPLOYEE" } as never);
+  const sooner = await test.rows.insert("StaffMember", { kind: "EMPLOYEE" } as never);
+  const before = await test.rows.insert("Visit", { zoneId: zone.id, visitDate: localDate("2026-11-10") } as never);
+  const after = await test.rows.insert("Visit", { zoneId: zone.id, visitDate: localDate("2026-11-16") } as never);
+
+  await test.transact((ex, ctx) =>
+    assignZoneSupervisor(ex, ctx, {
+      zoneId: zone.id,
+      supervisorEmployeeId: later.id,
+      fromDate: localDate("2026-11-15"),
+    }),
+  );
+  const result = await test.transact((ex, ctx) =>
+    assignZoneSupervisor(ex, ctx, {
+      zoneId: zone.id,
+      supervisorEmployeeId: sooner.id,
+      fromDate: localDate("2026-11-01"),
+    }),
+  );
+  expect(result.visitsRestamped).toBe(1);
+
+  const rows = await test.db
+    .selectFrom("SupervisorAssignment")
+    .selectAll()
+    .where("zoneId", "=", zone.id)
+    .orderBy("fromDate")
+    .execute();
+  expect(rows.map((row) => [row.supervisorEmployeeId, row.fromDate, row.toDate])).toEqual([
+    [sooner.id, "2026-11-01", "2026-11-14"],
+    [later.id, "2026-11-15", null],
+  ]);
+  const visits = await test.db.selectFrom("Visit").select(["id", "supervisorEmployeeId"]).execute();
+  const by = (id: string) => visits.find((visit) => visit.id === id)!;
+  expect(by(before.id).supervisorEmployeeId).toBe(sooner.id);
+  expect(by(after.id).supervisorEmployeeId).toBe(later.id);
+});
+
 it("refuses a worker as supervisor", async () => {
   const zone = await test.rows.insert("Zone", { name: "عين البيضاء" });
   const worker = await test.rows.insert("StaffMember", { kind: "WORKER" } as never);

@@ -1,8 +1,8 @@
-import { closeFile } from "@/features/clients/services/files";
 import type { OnEvent } from "@/lib/events";
 
 import { openComplaintFromSignoff } from "./services/complaints";
-import { listExtraVisitProposals, onDemandJobFinished } from "./services/extra-visits";
+import { closeJobIfFinished } from "./services/extra-visits";
+import { cancelInspectionsAfter } from "./services/inspections";
 import { cancelFutureVisits, generateFileVisits } from "./services/programme";
 import { copyFileSetup, markFormChanged } from "./services/programme-changes";
 import { applySiteChange, applyStaffUnavailable } from "./services/staff-changes";
@@ -22,7 +22,7 @@ export function registerEvents(on: OnEvent) {
 
   // The contract or the job ended: what was still to come is cancelled, and the
   // file's inspections stop.
-  on("file.ended", async (ex, ctx, { fileId, endedDate }) => {
+  on("file.ended", async (ex, ctx, { fileId, endedDate, endKind }) => {
     await cancelFutureVisits(ex, ctx, { fileId, afterDate: endedDate, reason: "CONTRACT_ENDED" });
     await ex
       .updateTable("FileProgramme")
@@ -30,6 +30,9 @@ export function registerEvents(on: OnEvent) {
       .where("fileId", "=", fileId)
       .where("inspectionIsActive", "=", 1)
       .execute();
+    // Inspections already planned after the end are cancelled too: a site the centre no longer serves is not
+    // inspected, nor counted as missed (INT-7, OPS-09).
+    await cancelInspectionsAfter(ex, ctx, { fileId, afterDate: endedDate, endKind });
   });
 
   // The days, times, dates, workers or service ticks of a contracted file were
@@ -68,11 +71,8 @@ export function registerEvents(on: OnEvent) {
       .select(["fileId", "status", "visitDate"])
       .where("id", "=", visitId)
       .executeTakeFirst();
-    if (visit?.status !== "DONE" || !(await onDemandJobFinished(ex, visit.fileId))) return;
-    // An extra visit asked for on a returned order and not planned yet keeps the job open.
-    if ((await listExtraVisitProposals(ex, ctx, { fileId: visit.fileId })).length > 0) return;
-    // The last visit of an on-demand job is done and nothing is left open: the
-    // job ends here, in this transaction (RULINGS-NEEDED 15).
-    await closeFile(ex, ctx, { fileId: visit.fileId, reason: "JOB_DONE", endedDate: visit.visitDate });
+    // The last visit of an on-demand job is done and nothing is left open (no visit, complaint or extra visit
+    // asked for): the job ends here, in this transaction (RULINGS-NEEDED 15).
+    if (visit?.status === "DONE") await closeJobIfFinished(ex, ctx, visit.fileId);
   });
 }

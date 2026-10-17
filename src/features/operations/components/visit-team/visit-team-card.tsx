@@ -111,6 +111,7 @@ export function VisitTeamCard({ data, mayWrite = true }: { data: VisitEntryData;
                         <bdi>{workerName(entry.worker)}</bdi>
                       </span>
                       {absent && <StatusChip tone="danger" label={t("Absent")} />}
+                      {absent && entry.replaced && <StatusChip tone="info" label={t("ReplacedChip")} />}
                     </div>
                     <p className="text-sm text-muted-foreground">
                       <Ltr>{entry.worker.number}</Ltr>
@@ -119,10 +120,12 @@ export function VisitTeamCard({ data, mayWrite = true }: { data: VisitEntryData;
                   </div>
                   {open && (
                     <div className="flex flex-wrap items-center gap-2">
-                      <Button type="button" variant="outline" size="sm" onClick={() => setReplacing(entry)}>
-                        <Repeat />
-                        {t("ReplaceWorker")}
-                      </Button>
+                      {!(absent && entry.replaced) && (
+                        <Button type="button" variant="outline" size="sm" onClick={() => setReplacing(entry)}>
+                          <Repeat />
+                          {t("ReplaceWorker")}
+                        </Button>
+                      )}
                       {!absent && (
                         <Button type="button" variant="outline" size="sm" onClick={() => setRemoving(entry)}>
                           <UserMinus />
