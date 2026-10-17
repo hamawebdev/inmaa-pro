@@ -5,6 +5,7 @@ import { KeyRound, Link2, Save, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import { useLocale, useTranslations } from "use-intl";
 
+import { BranchPicker } from "@/components/branch-picker";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -26,6 +27,7 @@ import {
   USERS_PATH,
   type AccountRow,
 } from "@/features/core/services/users";
+import { useBranches } from "@/hooks/use-branches";
 import { useSession } from "@/hooks/use-session";
 import { useErrorMessage } from "@/i18n/errors";
 import { MANAGER_ROLE, ROLE_CODES, ROLE_LABELS, type RoleCode } from "@/lib/access/catalogue";
@@ -113,6 +115,10 @@ export function NewAccountDialog({ open, onOpenChange }: { open: boolean; onOpen
   const [displayName, setDisplayName] = React.useState("");
   const [roleId, setRoleId] = React.useState<RoleCode>("RECEPTION_SALES");
   const [staffMemberId, setStaffMemberId] = React.useState("");
+  // Null: the branch of whoever makes the account (the service's default).
+  const [branchId, setBranchId] = React.useState<string | null>(null);
+  const branches = useBranches();
+  const session = useSession();
   const [busy, setBusy] = React.useState(false);
 
   function close(next: boolean) {
@@ -121,6 +127,7 @@ export function NewAccountDialog({ open, onOpenChange }: { open: boolean; onOpen
       setDisplayName("");
       setRoleId("RECEPTION_SALES");
       setStaffMemberId("");
+      setBranchId(null);
     }
     onOpenChange(next);
   }
@@ -135,6 +142,7 @@ export function NewAccountDialog({ open, onOpenChange }: { open: boolean; onOpen
         displayName,
         roleId,
         staffMemberId: staffMemberId || null,
+        branchId: branchId ?? undefined,
       });
       if (!result.success) {
         toast.error(errorMessage(result.error, t("SaveFailed")));
@@ -185,6 +193,16 @@ export function NewAccountDialog({ open, onOpenChange }: { open: boolean; onOpen
             <Label htmlFor="account_employee">{t("Employee")}</Label>
             <EmployeeSelect id="account_employee" value={staffMemberId} onChange={setStaffMemberId} open={open} />
           </div>
+          {branches.several && (
+            <div className="grid gap-2">
+              <Label htmlFor="account_branch">{t("Branch")}</Label>
+              <BranchPicker
+                id="account_branch"
+                value={branchId ?? session?.branchId ?? null}
+                onChange={(next) => setBranchId(next)}
+              />
+            </div>
+          )}
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => close(false)}>
               {tCommon("Cancel")}
@@ -228,6 +246,8 @@ function EditAccountForm({ account, onDone }: { account: AccountRow; onDone: () 
   const errorMessage = useErrorMessage();
   const [displayName, setDisplayName] = React.useState(account.displayName);
   const [roleId, setRoleId] = React.useState<RoleCode>(account.roleId as RoleCode);
+  const [branchId, setBranchId] = React.useState<string | null>(account.branchId || null);
+  const branches = useBranches();
   const [busy, setBusy] = React.useState(false);
 
   async function submit(event: React.FormEvent) {
@@ -235,7 +255,12 @@ function EditAccountForm({ account, onDone }: { account: AccountRow; onDone: () 
     if (busy) return;
     setBusy(true);
     try {
-      const result = await updateAccountAction({ userId: account.id, displayName, roleId });
+      const result = await updateAccountAction({
+        userId: account.id,
+        displayName,
+        roleId,
+        branchId: branchId ?? undefined,
+      });
       if (!result.success) {
         toast.error(errorMessage(result.error, t("SaveFailed")));
         return;
@@ -258,6 +283,12 @@ function EditAccountForm({ account, onDone }: { account: AccountRow; onDone: () 
         <Label htmlFor="edit_role">{t("Role")}</Label>
         <RoleSelect id="edit_role" value={roleId} onChange={setRoleId} />
       </div>
+      {branches.several && (
+        <div className="grid gap-2">
+          <Label htmlFor="edit_branch">{t("Branch")}</Label>
+          <BranchPicker id="edit_branch" value={branchId} onChange={setBranchId} />
+        </div>
+      )}
       <DialogFooter>
         <Button type="button" variant="outline" onClick={onDone}>
           {tCommon("Cancel")}

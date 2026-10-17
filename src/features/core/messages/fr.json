@@ -195,7 +195,13 @@
     "ManagerRoleByManager": "Seul le directeur donne ou modifie le rôle de directeur.",
     "OwnRoleUnchanged": "Personne ne change le rôle du compte avec lequel il est connecté.",
     "ManagerRightsByManager": "Seul le directeur donne ou retire ses propres droits.",
-    "OwnRoleNotRaised": "Personne n'élargit les droits de son propre rôle."
+    "OwnRoleNotRaised": "Personne n'élargit les droits de son propre rôle.",
+    "BranchCode": "Le code d'une agence compte au plus six lettres majuscules ou chiffres.",
+    "BranchCodeTaken": "Une autre agence a déjà ce code.",
+    "BranchMissing": "Cette agence n'existe pas.",
+    "MainBranchOn": "L'agence principale ne peut pas être désactivée.",
+    "BranchHasAccounts": "Déplacez d'abord les comptes de cette agence vers une autre agence.",
+    "BranchOff": "Cette agence n'existe pas ou est désactivée."
   },
   "Table": {
     "ScrollLeft": "Défiler à gauche",
@@ -1134,7 +1140,8 @@
       "LastSignIn": "Dernière connexion",
       "State": "État",
       "SearchPlaceholder": "Rechercher un nom",
-      "Empty": "Aucun compte ne correspond."
+      "Empty": "Aucun compte ne correspond.",
+      "Branch": "Agence"
     },
     "States": {
       "Active": "Actif",
@@ -1161,7 +1168,8 @@
         "program": "Le programme"
       }
     },
-    "DisplayNameHint": "Le nom de famille d'abord, comme sur ses formulaires : « بن عمر سعاد ». Un compte lié à un employé du centre porte le nom de cet employé."
+    "DisplayNameHint": "Le nom de famille d'abord, comme sur ses formulaires : « بن عمر سعاد ». Un compte lié à un employé du centre porte le nom de cet employé.",
+    "Branch": "Agence"
   },
   "Capabilities": {
     "staff_write": "Créer et modifier les dossiers des agents et employés ; décider d'un congé",
@@ -1415,5 +1423,29 @@
       "Consequence": "Seulement si c'est la date enregistrée qui était fausse : confirmez la date du jour avec votre motif. Le travail est alors mesuré à partir d'aujourd'hui. Une facture datée d'avant la dernière reste refusée.",
       "Confirm": "La date du jour est juste"
     }
+  },
+  "Branches": {
+    "Title": "Agences",
+    "Description": "Une seule base pour tout le centre. Chaque compte appartient à une agence, et ce qu'il enregistre porte cette agence, pour que les listes et les rapports filtrent dessus. L'agence principale vient en premier et n'est jamais désactivée.",
+    "All": "Toutes les agences",
+    "Off": "désactivée",
+    "Main": "Agence principale",
+    "Active": "Active",
+    "Add": "Ajouter une agence",
+    "Edit": "Modifier",
+    "SwitchOff": "Désactiver",
+    "SwitchOn": "Activer",
+    "SwitchOffTitle": "Désactiver l'agence « {name} » ?",
+    "SwitchOffHint": "Elle est gardée avec tout ce qui a été enregistré sous son nom ; elle n'est plus proposée pour un compte. Déplacez d'abord ses comptes vers une autre agence.",
+    "SwitchedOff": "L'agence est désactivée.",
+    "SwitchedOn": "L'agence est activée.",
+    "Saved": "L'agence est enregistrée.",
+    "SaveFailed": "Impossible d'enregistrer l'agence.",
+    "DialogHint": "Son nom et son adresse tels que ses documents les montrent ; le code est ce que montrent les listes et les rapports.",
+    "Name": "Nom",
+    "Code": "Code",
+    "Address": "Adresse",
+    "Phone": "Téléphone",
+    "City": "Ville de ses documents (« Fait à »), si ce n'est pas celle du centre"
   }
 }

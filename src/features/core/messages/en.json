@@ -195,7 +195,13 @@
     "ManagerRoleByManager": "Only the manager gives or changes the manager's role.",
     "OwnRoleUnchanged": "Nobody changes the role of the account he is signed in with.",
     "ManagerRightsByManager": "Only the manager gives or takes away the manager's own rights.",
-    "OwnRoleNotRaised": "Nobody raises the rights of his own role."
+    "OwnRoleNotRaised": "Nobody raises the rights of his own role.",
+    "BranchCode": "A branch's code is up to six capital letters or digits.",
+    "BranchCodeTaken": "Another branch already has this code.",
+    "BranchMissing": "This branch does not exist.",
+    "MainBranchOn": "The main branch cannot be switched off.",
+    "BranchHasAccounts": "Move this branch's accounts to another branch first.",
+    "BranchOff": "This branch does not exist or is switched off."
   },
   "Table": {
     "ScrollLeft": "Scroll left",
@@ -1134,7 +1140,8 @@
       "LastSignIn": "Last sign-in",
       "State": "State",
       "SearchPlaceholder": "Search a name",
-      "Empty": "No account matches."
+      "Empty": "No account matches.",
+      "Branch": "Branch"
     },
     "States": {
       "Active": "Active",
@@ -1161,7 +1168,8 @@
         "program": "The program"
       }
     },
-    "DisplayNameHint": "Surname first, as on his forms: «بن عمر سعاد». An account linked to a centre employee goes by that employee's name."
+    "DisplayNameHint": "Surname first, as on his forms: «بن عمر سعاد». An account linked to a centre employee goes by that employee's name.",
+    "Branch": "Branch"
   },
   "Capabilities": {
     "staff_write": "Create and edit worker and employee files; decide a worker's leave",
@@ -1415,5 +1423,29 @@
       "Consequence": "Only if the recorded date was itself wrong: confirm today's date with your reason. The work is then measured from today. An invoice dated before the last one stays refused.",
       "Confirm": "Today's date is right"
     }
+  },
+  "Branches": {
+    "Title": "Branches",
+    "Description": "One database for the whole centre. Each account belongs to a branch, and what it records carries that branch, for the lists and reports to filter on. The main branch comes first and is never switched off.",
+    "All": "All branches",
+    "Off": "switched off",
+    "Main": "Main branch",
+    "Active": "Active",
+    "Add": "Add a branch",
+    "Edit": "Edit",
+    "SwitchOff": "Switch off",
+    "SwitchOn": "Switch on",
+    "SwitchOffTitle": "Switch off the branch «{name}»?",
+    "SwitchOffHint": "It is kept with everything recorded under it; it is no longer offered for an account. Move its accounts to another branch first.",
+    "SwitchedOff": "The branch is switched off.",
+    "SwitchedOn": "The branch is switched on.",
+    "Saved": "The branch is saved.",
+    "SaveFailed": "Could not save the branch.",
+    "DialogHint": "Its name and address as its papers show them; the code is what lists and reports show.",
+    "Name": "Name",
+    "Code": "Code",
+    "Address": "Address",
+    "Phone": "Phone",
+    "City": "City on its papers («Done at»), if not the centre's"
   }
 }

@@ -24,6 +24,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { setAccountActiveAction, type AccountRow } from "@/features/core/services/users";
+import { useBranches } from "@/hooks/use-branches";
 import { useSession } from "@/hooks/use-session";
 import { useErrorMessage } from "@/i18n/errors";
 import { normaliseName } from "@/lib/text/normalise";
@@ -42,6 +43,8 @@ export function AccountsTable({ rows }: { rows: AccountRow[] }) {
   const locale = useLocale();
   const format = useFormatter();
   const session = useSession();
+  // With one branch there is nothing to show (feature 47).
+  const severalBranches = useBranches().several;
   const errorMessage = useErrorMessage();
   const [confirm, confirmDialog] = useConfirm();
   const [search, setSearch] = React.useState("");
@@ -90,6 +93,15 @@ export function AccountsTable({ rows }: { rows: AccountRow[] }) {
         header: t("Table.Employee"),
         cell: ({ row }) => row.original.staffLabel ?? <span className="text-muted-foreground">{t("NoEmployee")}</span>,
       },
+      ...(severalBranches
+        ? [
+            {
+              id: "branch",
+              header: t("Table.Branch"),
+              cell: ({ row }) => row.original.branchName,
+            } as ColumnDef<AccountRow>,
+          ]
+        : []),
       {
         id: "lastSignIn",
         header: t("Table.LastSignIn"),
@@ -173,7 +185,7 @@ export function AccountsTable({ rows }: { rows: AccountRow[] }) {
         },
       },
     ],
-    [t, locale, format, session?.userId, switchActive],
+    [t, locale, format, session?.userId, switchActive, severalBranches],
   );
 
   const filtered = React.useMemo(() => {

@@ -682,6 +682,7 @@ The model was built as designed. Where building it showed a fault, this is what 
 | `staff.documents.read` | none (People stored those scans under `staff.health.read`) | default HR_OFFICER | People's round 4 |
 | `ProblemReport.deletedAt`, `deletedByUserId` | none | soft delete | audit LOG-14 (Operations): a re-typed order takes a report away |
 | `staff.unavailable` payload | workerId, dates, cause | and `reason`, the typed reason of the act that caused it | audit LOG-X1: Operations' ERASE entries need it |
+| Branches on screen (feature 47) | the `Branch` table and `User.branchId`, on no screen | a card in Settings › عام (add, rename, switch off; the manager's; the main branch first and never off; off only with no active account), an account's branch on the accounts tab (`ctx.branchId`), `<BranchPicker allowAll>` for lists and reports | the Checker's audit, F-47 |
 
 No option code was renamed or removed. One was added in F4: `RECEIPTS` in EXPORT_KIND (Money's receipts journal).
 

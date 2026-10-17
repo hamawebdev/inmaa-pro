@@ -21,6 +21,8 @@ import type { Executor, ServiceContext } from "@/lib/service/context";
 import { ServiceError } from "@/lib/service/errors";
 import { staffName } from "@/lib/text/names";
 
+import { requireActiveBranch } from "./branches";
+
 /**
  * Sign-in accounts (plan feature 23, DESIGN.md section 12).
  *
@@ -73,6 +75,8 @@ export async function createAccount(
   const taken = await ex.selectFrom("User").select("id").where("username", "=", username).executeTakeFirst();
   if (taken) throw new ServiceError("This sign-in name is already taken.");
   if (input.staffMemberId) await checkLinkableStaff(ex, input.staffMemberId, null);
+  const branchId = input.branchId ?? ctx.branchId;
+  await requireActiveBranch(ex, branchId);
 
   const id = newId();
   await ex
@@ -85,7 +89,7 @@ export async function createAccount(
       recoveryHash: null,
       roleId: input.roleId,
       staffMemberId: input.staffMemberId ?? null,
-      branchId: input.branchId ?? ctx.branchId,
+      branchId,
       mustChangePassword: 1,
       createdAt: ctx.now,
       updatedAt: ctx.now,
@@ -164,6 +168,9 @@ export interface AccountRow {
   staffMemberId: string | null;
   /** The linked employee as People numbers and names him: «7 — بن عمر سعاد». */
   staffLabel: string | null;
+  /** Its branch (feature 47): the `ctx.branchId` of everything it writes. */
+  branchId: string;
+  branchName: string;
   lastSignInAt: string | null;
   failedSignInCount: number;
 }
@@ -174,11 +181,14 @@ export async function listAccounts(ex: Executor, ctx: ServiceContext): Promise<A
     .selectFrom("User as u")
     .innerJoin("Role as r", "r.id", "u.roleId")
     .leftJoin("StaffMember as s", "s.id", "u.staffMemberId")
+    .leftJoin("Branch as b", "b.id", "u.branchId")
     .select([
       "u.id",
       "u.username",
       "u.displayName",
       "u.roleId",
+      "u.branchId",
+      "b.name as branchName",
       "u.isActive",
       "u.passwordHash",
       "u.mustChangePassword",
@@ -217,28 +227,34 @@ export async function listAccounts(ex: Executor, ctx: ServiceContext): Promise<A
       : null,
     lastSignInAt: row.lastSignInAt,
     failedSignInCount: row.failedSignInCount,
+    branchId: row.branchId ?? "",
+    branchName: row.branchName ?? "",
   }));
 }
 
 async function accountFor(ex: Executor, userId: string) {
   const account = await ex
     .selectFrom("User")
-    .select(["id", "username", "displayName", "roleId", "isActive", "staffMemberId"])
+    .select(["id", "username", "displayName", "roleId", "isActive", "staffMemberId", "branchId"])
     .where("id", "=", userId)
     .executeTakeFirst();
   if (!account) throw new ServiceError("This account does not exist or is not active.");
   return account;
 }
 
-/** A new name or a new role for an account. A new role takes effect at its next sign-in. */
+/** A new name, role or branch for an account. A new role or branch takes effect at its next sign-in. */
 export async function updateAccount(
   ex: Executor,
   ctx: ServiceContext,
-  input: { userId: string; displayName?: string; roleId?: RoleCode },
+  input: { userId: string; displayName?: string; roleId?: RoleCode; branchId?: string },
 ): Promise<{ id: string }> {
   requireCapability(ctx, "users.manage");
   const before = await accountFor(ex, input.userId);
-  const patch: { displayName?: string; roleId?: string } = {};
+  const patch: { displayName?: string; roleId?: string; branchId?: string } = {};
+  if (input.branchId !== undefined && input.branchId !== before.branchId) {
+    await requireActiveBranch(ex, input.branchId);
+    patch.branchId = input.branchId;
+  }
   if (input.displayName !== undefined) {
     const displayName = input.displayName.trim().replace(/\s+/g, " ");
     if (!displayName) throw new ServiceError("A name is required.");

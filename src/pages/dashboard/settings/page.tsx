@@ -12,6 +12,7 @@ import { APP_CONFIG } from "@/config/app-config";
 import { AccountCard } from "./_components/account-card";
 import { AppearanceCard, LanguageCard } from "./_components/appearance-cards";
 import { BackupCard } from "./_components/backup-card";
+import { BranchesCard } from "./_components/branches-card";
 import { CentreIdentityCard } from "./_components/centre-identity-card";
 import { LicenseCard } from "./_components/license-card";
 import { SettingsGroups } from "./_components/settings-form/settings-groups";
@@ -24,7 +25,8 @@ import { SettingsGroups } from "./_components/settings-form/settings-groups";
  *
  *  1. Identity, first because it is what reaches paper: the name and logo,
  *     then the address and contacts, the tax and registration numbers an
- *     invoice needs, and the bank (DESIGN.md section 11, «عام»).
+ *     invoice needs, and the bank (DESIGN.md section 11, «عام»); then the
+ *     centre's branches (feature 47).
  *  2. The account that is signed in: its password and, for the manager, his
  *     recovery code. (Accounts and what each role may open are the third tab.)
  *  3. Language and appearance: how this machine shows everything above; then
@@ -54,6 +56,7 @@ export default function SettingsPage() {
       <div className="flex flex-col gap-6 tall:gap-7">
         <CentreIdentityCard />
         <SettingsGroups tab="general" only={["centre", "taxIds", "bank"]} />
+        <BranchesCard />
 
         <AccountCard />
 
