@@ -602,3 +602,70 @@ describe("the team keeps its size (OPS-07)", () => {
     expect(held).toHaveLength(2);
   });
 });
+
+describe("a month whose pay is closed (PEO-03)", () => {
+  it("refuses an absence, a leave approved, a pay treatment and a cancellation on a day a closed pay run has paid", async () => {
+    const a = await worker();
+    const sick = (await record({ workerId: a.id, startDate: "2026-09-15", endDate: "2026-09-15" })).absenceIds[0];
+    const across = await record({ workerId: a.id, startDate: "2026-09-29", endDate: "2026-10-01" });
+    expect(across.absenceIds).toHaveLength(2);
+    const asked = await record({
+      workerId: a.id,
+      startDate: "2026-09-22",
+      endDate: "2026-09-23",
+      category: "LEAVE",
+      leaveType: "ANNUAL",
+      days: 2000,
+      status: "REQUESTED",
+    });
+    const person = await test.db
+      .selectFrom("StaffMember")
+      .select(["kind", "branchId"])
+      .where("id", "=", a.id)
+      .executeTakeFirstOrThrow();
+    await test.rows.insert("PayRun", {
+      staffKind: person.kind,
+      branchId: person.branchId,
+      periodType: "MONTHLY",
+      periodStart: localDate("2026-09-01"),
+      periodEnd: localDate("2026-09-30"),
+      status: "CLOSED",
+    } as never);
+    const closed = "This day is in a closed pay run: it can no longer be corrected.";
+
+    await expect(record({ workerId: a.id, startDate: "2026-09-10", endDate: "2026-09-10" })).rejects.toThrow(closed);
+    await expect(record({ workerId: a.id, startDate: "2026-10-05", endDate: "2026-10-05" })).resolves.toBeTruthy();
+
+    await expect(
+      test.transact((ex, ctx) => setAbsencePayTreatment(ex, ctx, { absenceId: sick, paid: true, justified: true })),
+    ).rejects.toThrow(closed);
+    // Saved unchanged, it is no correction.
+    await expect(
+      test.transact((ex, ctx) => setAbsencePayTreatment(ex, ctx, { absenceId: sick, paid: false, justified: false })),
+    ).resolves.toEqual({ absenceId: sick, changed: false });
+
+    await expect(
+      test.transact((ex, ctx) =>
+        decideWorkerLeave(ex, ctx, { absenceId: asked.absenceIds[0], status: "APPROVED", reason: "موافق" }),
+      ),
+    ).rejects.toThrow(closed);
+    // Refusing it changes no pay.
+    await test.transact((ex, ctx) =>
+      decideWorkerLeave(ex, ctx, { absenceId: asked.absenceIds[0], status: "REFUSED", reason: "الشهر مغلق" }),
+    );
+
+    await expect(
+      test.transact((ex, ctx) => cancelWorkerAbsence(ex, ctx, { absenceId: sick, reason: "خطأ في الإدخال" })),
+    ).rejects.toThrow(closed);
+    // An absence across the closing: its October part is cancelled, its September part stays as it was paid.
+    const cancelled = await test.transact((ex, ctx) =>
+      cancelWorkerAbsence(ex, ctx, { absenceId: across.absenceIds[0], reason: "عادت إلى العمل" }),
+    );
+    expect(cancelled.absenceIds).toEqual([across.absenceIds[1]]);
+    const rows = await absences(a.id);
+    const statusOf = (id: string) => rows.find((row) => row.id === id)?.status;
+    expect([statusOf(across.absenceIds[0]), statusOf(across.absenceIds[1])]).toEqual(["RECORDED", "CANCELLED"]);
+    expect(statusOf(sick)).toBe("RECORDED");
+    expect(statusOf(asked.absenceIds[0])).toBe("REFUSED");
+  });
+});

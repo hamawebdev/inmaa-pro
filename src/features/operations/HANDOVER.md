@@ -138,6 +138,9 @@ Import rule: `VISITS_PATH` now lives in `services/paths.ts` (programme.ts re-exp
 - INT-7, OPS-09: `cancelInspectionsAfter` in the file.ended handler.
 - OPS-06: postponing sets the original aside before seating the make-up.
 - OPS-10: a new zone supervisor stops the day before one already planned from a later day.
+- PEO-03: People's `refuseClosedPayDay` guards recording an absence, approving a leave, a pay treatment changed and a
+  no-show typed from an order; a cancellation keeps the parts in force in a closed month (People's own rule for
+  leave) and refuses when nothing else is left; refusing a leave asked for stays open.
 
 ## Open items
 

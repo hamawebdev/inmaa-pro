@@ -1,3 +1,4 @@
+import { closedPayRunOn, refuseClosedPayDay } from "@/features/people/services/closed-days";
 import type { SectionLevel } from "@/lib/access/catalogue";
 import { requireCapability, requireSection, sectionLevel } from "@/lib/access/session";
 import { newId } from "@/lib/db/rows";
@@ -331,6 +332,8 @@ export async function recordWorkerAbsence(
   }
   if (!isIsoDate(input.startDate) || !isIsoDate(input.endDate)) throw new ServiceError("Enter a valid date.");
   if (input.endDate < input.startDate) throw new ServiceError("The absence cannot end before it starts.");
+  // A day a closed pay run has paid would never be paid or deducted again (PEO-03).
+  await refuseClosedPayDay(ex, { staffId: input.workerId, from: input.startDate, to: input.endDate });
   await refuseOverlappingAbsence(ex, input);
 
   // The hours, for half a day or some hours.
@@ -441,6 +444,12 @@ export async function decideWorkerLeave(
   if (group.some((row) => row.status !== "REQUESTED")) {
     throw new ServiceError("Only a leave that was asked for can be approved or refused.");
   }
+  // Approving a part in a month whose pay is closed would never reach a payslip; a refusal changes no pay (PEO-03).
+  if (input.status === "APPROVED") {
+    for (const row of group) {
+      await refuseClosedPayDay(ex, { staffId: row.workerId, from: row.startDate, to: row.endDate });
+    }
+  }
 
   const seatsHit: SeatHit[] = [];
   for (const row of group) {
@@ -498,8 +507,18 @@ export async function cancelWorkerAbsence(
     throw new ServiceError("This absence is already cancelled or refused.");
   }
   if (group.some((row) => row.category === "LEAVE")) requireLeaveRight(ctx);
-
+  // A part in force in a month whose pay is closed stays as it was paid (PEO-03); the other parts are cancelled.
+  const open: typeof group = [];
   for (const row of group) {
+    if (row.status === "CANCELLED" || row.status === "REFUSED") continue;
+    const paid =
+      IN_FORCE.includes(row.status as AbsenceStatus) &&
+      (await closedPayRunOn(ex, { staffId: row.workerId, from: row.startDate, to: row.endDate }));
+    if (!paid) open.push(row);
+  }
+  if (open.length === 0) throw new ServiceError("This day is in a closed pay run: it can no longer be corrected.");
+
+  for (const row of open) {
     const { set, changes } = changedColumns(row, { status: "CANCELLED" });
     if (!changes) continue;
     await ex
@@ -509,7 +528,7 @@ export async function cancelWorkerAbsence(
       .execute();
   }
 
-  const ids = group.map((row) => row.id);
+  const ids = open.map((row) => row.id);
   const seats = await ex
     .selectFrom("VisitWorker")
     .innerJoin("Visit", "Visit.id", "VisitWorker.visitId")
@@ -582,9 +601,10 @@ export async function cancelWorkerAbsence(
     entityId: input.absenceId,
     entityLabel: rangeLabel({ startDate: group[0].startDate, endDate: group[group.length - 1].endDate }),
     subject: { kind: "WORKER", id: worker.id, label: worker.number },
-    changes: { status: [group[0].status, "CANCELLED"] },
+    changes: { status: [open[0].status, "CANCELLED"] },
     context: {
       absenceIds: ids,
+      ...(open.length < group.length ? { partsCancelled: open.length, parts: group.length } : {}),
       seatsGivenBack: seatsForLog(seatsGivenBack),
       seatsReplaced: seatsForLog(seatsReplaced),
       seatsLeftOpen: seatsLeftOpen.map((seat) => ({ visit: seat.visitNumber, why: seat.why })),
@@ -654,6 +674,8 @@ export async function setAbsencePayTreatment(
     days,
   });
   if (!changes) return { absenceId: before.id, changed: false };
+  // How a day a closed pay run has paid was treated is what was paid (PEO-03).
+  await refuseClosedPayDay(ex, { staffId: before.workerId, from: before.startDate, to: before.endDate });
   await ex
     .updateTable("WorkerAbsence")
     .set({ ...set, updatedAt: ctx.now, updatedByUserId: ctx.userId })
