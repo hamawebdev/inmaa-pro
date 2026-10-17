@@ -465,7 +465,7 @@ mod tests {
     }
 
     #[test]
-    fn no_copy_is_written_into_a_synchronised_folder() {
+    fn no_copy_by_hand_or_by_the_program_is_written_into_a_synchronised_folder_off_x1() {
         let none: [PathBuf; 0] = [];
         let refused = refuse_synced_with(Path::new("C:/Users/samir/OneDrive/sauvegardes/inmaa-backup-2026-10-14.db"), &none)
             .expect_err("a OneDrive folder must be refused");

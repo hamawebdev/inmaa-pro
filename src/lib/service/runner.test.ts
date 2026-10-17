@@ -1,11 +1,13 @@
 import { sql } from "kysely";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { memoryAnchorStore } from "@/lib/chain/anchor";
+import { compareAnchor, memoryAnchorStore } from "@/lib/chain/anchor";
 import { logSecurity } from "@/lib/log";
 import { createTestDatabase, type TestDatabase } from "@/testing/database";
 
+import { anchorWhenClosing } from "./close";
 import { ServiceError, UNEXPECTED_ERROR } from "./errors";
+import { createRunner } from "./runner";
 
 let test: TestDatabase;
 
@@ -118,5 +120,72 @@ describe("the action wrapper", () => {
       "OPERATIONS",
       "ACCOUNTANT",
     ]);
+  });
+});
+
+describe("the anchor of the log's last minute (LOG-10)", () => {
+  /** A runner on the test database whose timer is in the test's hands. */
+  function runnerWithTimer() {
+    const timers: Array<{ work: () => void; ms: number }> = [];
+    const runner = createRunner({
+      db: test.db,
+      session: () => test.manager,
+      clock: () => test.clock,
+      anchor: () => test.anchor,
+      revalidate: () => {},
+      later: (work, ms) => timers.push({ work, ms }),
+    });
+    const log = () => runner.transact((ex, ctx) => logSecurity(ex, ctx, { owner: "FOUNDATION", action: "LOCK" }));
+    return { runner, timers, log };
+  }
+  const state = async () => (await compareAnchor(test.db, test.anchor, test.ctx().now)).state;
+
+  it("is written when the window closes: the close path anchors the head the minute rule left behind (LOG-10)", async () => {
+    const { runner, log } = runnerWithTimer();
+    await log(); // anchored: the first of the minute
+    await log(); // inside the same minute: left for later
+    expect(await state()).toBe("ahead");
+
+    let closing: (() => Promise<void>) | undefined;
+    await anchorWhenClosing(
+      {
+        onCloseRequested: async (handler) => {
+          closing = handler;
+        },
+      },
+      runner.anchorNow,
+    );
+    if (!closing) throw new Error("test: the close was not watched");
+    await closing();
+    expect(await state()).toBe("normal");
+  });
+
+  it("is written when its minute is up, if nothing anchored it meanwhile (LOG-10)", async () => {
+    const { timers, log } = runnerWithTimer();
+    await log();
+    await log();
+    await log();
+    // One timer for the minute, however many entries wait.
+    expect(timers).toHaveLength(1);
+    expect(timers[0].ms).toBeGreaterThan(0);
+    expect(timers[0].ms).toBeLessThanOrEqual(60_000);
+    expect(await state()).toBe("ahead");
+    test.clock.advance({ minutes: 1 });
+    timers[0].work();
+    await vi.waitFor(async () => expect(await state()).toBe("normal"));
+  });
+
+  it("never holds the close up: a write that hangs lets the window close after the wait (LOG-10)", async () => {
+    let closing: (() => Promise<void>) | undefined;
+    await anchorWhenClosing(
+      {
+        onCloseRequested: async (handler) => {
+          closing = handler;
+        },
+      },
+      () => new Promise<void>(() => {}),
+      20,
+    );
+    await expect(closing?.()).resolves.toBeUndefined();
   });
 });

@@ -5,6 +5,7 @@ import { Save } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslations } from "use-intl";
 
+import { CENTRE_EMBLEM_SRC } from "@/assets/letterhead/emblem";
 import { PageActions } from "@/components/screen";
 import { MediaUploadField, createEmptyUploadSelection, type UploadSelection } from "@/components/media-upload-field";
 import { Button } from "@/components/ui/button";
@@ -112,6 +113,13 @@ export function CentreIdentityCard() {
               disabled={save.isPending}
               previewAlt={t("Logo")}
             />
+            {/* Nothing stored: the emblem cut from his letterhead stands in, on cards as here. */}
+            {!branding?.logoUrl && !logo.file && (
+              <div className="flex min-w-0 items-center gap-4 rounded-md border border-border bg-muted/10 p-3">
+                <img src={CENTRE_EMBLEM_SRC} alt={t("Logo")} className="size-16 shrink-0 object-contain" />
+                <p className="min-w-0 text-base leading-relaxed text-muted-foreground">{t("DefaultLogo")}</p>
+              </div>
+            )}
 
             <PageActions className="mt-0 pt-5 tall:mt-0 tall:pt-6">
               <Button type="submit" variant="success" loading={save.isPending} disabled={!nameValue.trim()}>

@@ -276,7 +276,8 @@
       "Logo": "Logo",
       "LogoHint": "Shown on printed documents. A square image works best.",
       "Saved": "Centre details saved.",
-      "SaveFailed": "Could not save the centre details."
+      "SaveFailed": "Could not save the centre details.",
+      "DefaultLogo": "No logo stored: the emblem from the centre's letterhead is used."
     },
     "Language": {
       "Title": "Language",

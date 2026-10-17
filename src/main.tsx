@@ -13,6 +13,7 @@ import { I18nProvider } from "@/i18n/provider";
 import { registerRouter } from "@/lib/compat/router-instance";
 import { queryClient } from "@/lib/query-client";
 import { anchorNow } from "@/lib/service/action";
+import { anchorWhenClosing } from "@/lib/service/close";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { PreferencesStoreProvider } from "@/stores/preferences/preferences-provider";
 
@@ -71,21 +72,10 @@ function renderStartFailure(error: unknown) {
   );
 }
 
-/**
- * The anchor follows the log's head at most once a minute; the last entries
- * before the window closes are anchored as it closes (DESIGN.md section 8,
- * audit LOG-10). Two seconds at most: a close is never held up for long.
- */
+/** The last entries before the window closes are anchored as it closes (src/lib/service/close.ts). */
 function anchorOnClose() {
   try {
-    void getCurrentWindow()
-      .onCloseRequested(async () => {
-        await Promise.race([
-          anchorNow().catch((error: unknown) => console.error("anchor: not written at close", error)),
-          new Promise((resolve) => window.setTimeout(resolve, 2_000)),
-        ]);
-      })
-      .catch((error: unknown) => console.error("anchor: the close cannot be watched", error));
+    void anchorWhenClosing(getCurrentWindow(), anchorNow);
   } catch (error) {
     console.error("anchor: the close cannot be watched", error);
   }

@@ -173,6 +173,16 @@ describe("offline, by construction", () => {
     expect(granted).toEqual([]);
   });
 
+  it("lets no window delete a stored file: a file's bytes are kept ten years (LOG-13)", () => {
+    const removes = Object.entries(capabilities).flatMap(([file, text]) =>
+      (JSON.parse(text) as { permissions: Array<string | { identifier: string }> }).permissions
+        .map((permission) => (typeof permission === "string" ? permission : permission.identifier))
+        .filter((identifier) => identifier === "fs:allow-remove" || identifier.startsWith("fs:allow-remove-"))
+        .map((identifier) => `${file}: ${identifier}`),
+    );
+    expect(removes).toEqual([]);
+  });
+
   it("keeps a content security policy that names no outside address, in every configuration", () => {
     const main = JSON.parse(Object.entries(tauriConfigs).find(([file]) => file.endsWith("/tauri.conf.json"))![1]) as {
       app: { security: { csp: Record<string, string> | string | null } };

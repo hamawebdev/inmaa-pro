@@ -276,7 +276,8 @@
       "Logo": "Logo",
       "LogoHint": "Affiché sur les documents imprimés. Une image carrée convient le mieux.",
       "Saved": "Informations du centre enregistrées.",
-      "SaveFailed": "Impossible d'enregistrer les informations du centre."
+      "SaveFailed": "Impossible d'enregistrer les informations du centre.",
+      "DefaultLogo": "Aucun logo enregistré : l'emblème de l'en-tête du centre est utilisé."
     },
     "Language": {
       "Title": "Langue",

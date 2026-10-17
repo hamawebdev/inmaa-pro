@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { FILE_PARTS, fileHubHref, filePartHref } from "./file-parts";
+import { CAPABILITIES, DEFAULT_SECTION_LEVELS, type Capability, type RoleCode } from "@/lib/access/catalogue";
+import type { Session } from "@/lib/service/context";
+
+import { FILE_PARTS, fileHubHref, filePartHref, mayOpenFilePart } from "./file-parts";
 import {
   HOME_PATH,
   PRIMARY_SECTIONS,
@@ -205,5 +208,60 @@ describe("file parts", () => {
       expect(resolveSection(href)).toBe("requests");
       expect(resolveTab("requests", href)).toBe("files");
     }
+  });
+});
+
+describe("what opens each part of a file", () => {
+  /** A session of a seeded role, with its default grants. */
+  function roleSession(role: Exclude<RoleCode, "MANAGER">): Session {
+    return {
+      userId: `user-${role}`,
+      userName: role,
+      roleId: role,
+      staffMemberId: null,
+      branchId: "branch-main",
+      sections: DEFAULT_SECTION_LEVELS[role],
+      capabilities: new Set(
+        (Object.keys(CAPABILITIES) as Capability[]).filter((key) =>
+          (CAPABILITIES[key] as readonly string[]).includes(role),
+        ),
+      ),
+    };
+  }
+  const openTo = (session: Session) =>
+    FILE_PARTS.filter((part) => mayOpenFilePart(session, part)).map((part) => part.id);
+
+  it("leaves out of the hub what the reader could only be refused (S-31)", () => {
+    expect(openTo(roleSession("RECEPTION_SALES"))).toEqual([
+      "form",
+      "inspection",
+      "quote",
+      "contract",
+      "tasks",
+      "visits",
+      "payments",
+    ]);
+    expect(openTo(roleSession("ACCOUNTANT"))).toEqual([
+      "form",
+      "inspection",
+      "quote",
+      "contract",
+      "tasks",
+      "visits",
+      "handouts",
+      "payments",
+    ]);
+    expect(openTo(roleSession("SUPERVISOR"))).toEqual([
+      "form",
+      "inspection",
+      "quote",
+      "contract",
+      "tasks",
+      "visits",
+      "residents",
+      "handouts",
+    ]);
+    // The manager opens them all.
+    expect(openTo({ ...roleSession("ACCOUNTANT"), roleId: "MANAGER" })).toEqual(FILE_PARTS.map((part) => part.id));
   });
 });

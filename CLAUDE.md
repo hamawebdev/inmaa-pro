@@ -153,7 +153,7 @@ Every tab and every part of a file already has a page with a `<PagePlaceholder>`
 
 Add it to your own list: `{ path: "workers/:id", element: <WorkerPage /> }`. The path is relative to `/dashboard`, is written as a plain string, and its first segment must be one of yours. `src/navigation/routes.test.ts` fails otherwise. A new tab or section is a change to `src/navigation/sections.ts`: ask Foundation.
 
-A file's pages are `files/:id/<part>`. The list of parts is `src/navigation/file-parts.ts`; the hub page links to every part from it, so the three owners never edit each other's files.
+A file's pages are `files/:id/<part>`. The list of parts is `src/navigation/file-parts.ts`; the hub page links to every part from it, so the three owners never edit each other's files. Each part says what opens it (`opens`: a section level or a capability, any one enough), and `mayOpenFilePart(session, part)` tells the hub whether to list it: a reader is never offered a part he could only be refused.
 
 ### The data model
 
@@ -389,6 +389,7 @@ Everything that goes to paper is drawn on the A4 sheet in `src/components/print/
 - A sheet is always Arabic and right to left, white paper and black ink, whatever the interface language and theme. Its text is written in the sheet, in his words, not in the message files. Digits read left to right go inside `<Ltr>`.
 - A sheet is rendered twice (the preview, and the copy that prints), so it must be a pure picture of its data: no state, no effects.
 - `<PageBreak />` must be a direct child of `<PrintSheet>`.
+- The centre's logo (an ID card's header band): `useCentreLogo()` (`src/hooks/use-centre-logo.ts`) gives the logo stored in Settings › عام, or the emblem cut from his letterhead while none is stored (`CENTRE_EMBLEM_SRC`, `@/assets/letterhead/emblem`). The page reads it and passes `src` to the sheet.
 - Look at what will reach paper: `npm run pdf -- --route /dashboard/…/print --png`, then open the PNG of each page. It prints with the print dialog's defaults (no "Background graphics"); shading inside a sheet survives that.
 
 ### Offline, enforced

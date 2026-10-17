@@ -1,5 +1,6 @@
 import { useTranslations } from "use-intl";
 
+import { CENTRE_EMBLEM_SRC } from "@/assets/letterhead/emblem";
 import { useUploadSrc } from "@/lib/use-upload-src";
 import { cn } from "@/lib/utils";
 
@@ -8,19 +9,12 @@ type Props = {
   name: string;
   className?: string;
   imageClassName?: string;
-  fallbackClassName?: string;
 };
 
-export function AdminLogoMark({ logoUrl, name, className, imageClassName, fallbackClassName }: Props) {
+export function AdminLogoMark({ logoUrl, name, className, imageClassName }: Props) {
   const t = useTranslations("AdminLogoMark");
   // Stored as a managed-upload path; the webview needs the asset-protocol URL.
   const resolvedLogoUrl = useUploadSrc(logoUrl);
-  const fallback = name
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase())
-    .join("");
 
   return (
     <div
@@ -29,15 +23,12 @@ export function AdminLogoMark({ logoUrl, name, className, imageClassName, fallba
         className,
       )}
     >
-      {logoUrl ? (
-        <img
-          src={resolvedLogoUrl ?? undefined}
-          alt={t("LogoAlt", { name })}
-          className={cn("size-full object-contain", imageClassName)}
-        />
-      ) : (
-        <span className={cn("text-xs font-semibold tracking-tight", fallbackClassName)}>{fallback || "AM"}</span>
-      )}
+      {/* No logo stored: the emblem from his letterhead (src/assets/letterhead/emblem.ts), never initials. */}
+      <img
+        src={logoUrl ? (resolvedLogoUrl ?? undefined) : CENTRE_EMBLEM_SRC}
+        alt={t("LogoAlt", { name })}
+        className={cn("size-full object-contain", imageClassName)}
+      />
     </div>
   );
 }
