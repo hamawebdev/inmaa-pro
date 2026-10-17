@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { Fragment, type ReactNode } from "react";
 
 import { Ltr } from "@/components/ltr";
 import { DottedBlank, KeepTogether, PrintSheet, SHEET_FONT, SheetCell, SheetRow, SheetTable } from "@/components/print";
@@ -38,6 +38,20 @@ function Line({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
+/** What the amount is for: «لكل شهر» on a per-period contract, «لكامل العقد» on a whole one; nothing for a job. */
+function basisWordsOf(data: QuoteSheetData): string | null {
+  if (data.serviceType !== "CONTRACT") return null;
+  if (data.quote.terms.amountBasis === "WHOLE_CONTRACT") return "لكامل العقد";
+  if (data.quote.terms.amountBasis !== "PER_PAYMENT_PERIOD") return null;
+  const perPeriod: Record<string, string> = {
+    PER_VISIT: "لكل زيارة",
+    WEEKLY: "لكل أسبوع",
+    BIWEEKLY: "لكل أسبوعين",
+    MONTHLY: "لكل شهر",
+  };
+  return (data.paymentFrequency && perPeriod[data.paymentFrequency]) ?? "لكل فترة سداد";
+}
+
 export function QuoteSheet({ data }: { data: QuoteSheetData }) {
   const { quote, client, site } = data;
   const number = quote.version > 1 ? `${quote.number} (${quote.version})` : quote.number;
@@ -45,11 +59,29 @@ export function QuoteSheet({ data }: { data: QuoteSheetData }) {
   // before tax, the tax and the total after it; under the IFU the mention that says so.
   const underVat = quote.taxMode === "VAT" && quote.vatRate !== null;
   const rate = quote.vatRate ?? 0;
-  const beforeTax =
-    underVat && quote.pricesIncludeVat ? Math.round((quote.total * 10000) / (10000 + rate)) : quote.total;
-  const toPay =
-    underVat && !quote.pricesIncludeVat ? quote.total + Math.round((quote.total * rate) / 10000) : quote.total;
-  const vat = toPay - beforeTax;
+  const taxed = (amount: number) => {
+    const beforeTax = underVat && quote.pricesIncludeVat ? Math.round((amount * 10000) / (10000 + rate)) : amount;
+    const toPay = underVat && !quote.pricesIncludeVat ? amount + Math.round((amount * rate) / 10000) : amount;
+    return { beforeTax, vat: toPay - beforeTax, toPay };
+  };
+  // The one-off lines (a first deep clean, a job) and the per-period ones are totalled apart, each saying what it
+  // is (ruling on CLI-8); the discount comes off the periodic part, as the file takes it.
+  const oneOff = quote.lines.filter((line) => line.kind === "INITIAL_JOB").reduce((sum, line) => sum + line.amount, 0);
+  const periodic = quote.lines
+    .filter((line) => line.kind !== "INITIAL_JOB")
+    .reduce((sum, line) => sum + line.amount, 0);
+  // Only a contract has a periodic part: a job on demand is one amount, whatever its lines.
+  const mixed = data.serviceType === "CONTRACT" && oneOff > 0 && periodic > 0;
+  const basisWords = basisWordsOf(data);
+  const parts: { label: string; amount: number }[] = mixed
+    ? [
+        { label: "المبلغ لمرة واحدة (التنظيف الأولي)", amount: oneOff },
+        {
+          label: `المبلغ الدوري${basisWords ? ` (${basisWords})` : ""}`,
+          amount: Math.max(0, periodic - quote.discount),
+        },
+      ]
+    : [{ label: `المبلغ الإجمالي${basisWords ? ` (${basisWords})` : ""}`, amount: quote.total }];
   const included = (value: boolean | null) => (value === null ? null : value ? "مشمولة" : "غير مشمولة");
 
   return (
@@ -135,41 +167,70 @@ export function QuoteSheet({ data }: { data: QuoteSheetData }) {
               </SheetRow>
             </>
           )}
-          {underVat && (
+          {mixed && (
             <>
               <SheetRow heightMm={9}>
                 <SheetCell colSpan={5} style={TYPE.head}>
-                  المبلغ خارج الرسم
+                  مجموع الأعمال لمرة واحدة
                 </SheetCell>
                 <SheetCell align="center" style={TYPE.cell}>
-                  <Ltr>{formatMoney(beforeTax)}</Ltr>
+                  <Ltr>{formatMoney(oneOff)}</Ltr>
                 </SheetCell>
               </SheetRow>
               <SheetRow heightMm={9}>
                 <SheetCell colSpan={5} style={TYPE.head}>
-                  الرسم على القيمة المضافة (<Ltr>{percentText(quote.vatRate ?? 0)}%</Ltr>)
+                  مجموع الخدمات الدورية
                 </SheetCell>
                 <SheetCell align="center" style={TYPE.cell}>
-                  <Ltr>{formatMoney(vat)}</Ltr>
+                  <Ltr>{formatMoney(periodic)}</Ltr>
                 </SheetCell>
               </SheetRow>
             </>
           )}
-          <SheetRow heightMm={10}>
-            <SheetCell shaded colSpan={5} style={TYPE.head}>
-              {underVat ? "المبلغ الإجمالي مع احتساب الرسم" : "المبلغ الإجمالي"}
-            </SheetCell>
-            <SheetCell shaded align="center" style={TYPE.head}>
-              <Ltr>{formatMoneyAr(toPay)}</Ltr>
-            </SheetCell>
-          </SheetRow>
+          {parts.map((part) => {
+            const { beforeTax, vat, toPay } = taxed(part.amount);
+            return (
+              <Fragment key={part.label}>
+                {underVat && (
+                  <>
+                    <SheetRow heightMm={9}>
+                      <SheetCell colSpan={5} style={TYPE.head}>
+                        {part.label} خارج الرسم
+                      </SheetCell>
+                      <SheetCell align="center" style={TYPE.cell}>
+                        <Ltr>{formatMoney(beforeTax)}</Ltr>
+                      </SheetCell>
+                    </SheetRow>
+                    <SheetRow heightMm={9}>
+                      <SheetCell colSpan={5} style={TYPE.head}>
+                        الرسم على القيمة المضافة (<Ltr>{percentText(quote.vatRate ?? 0)}%</Ltr>)
+                      </SheetCell>
+                      <SheetCell align="center" style={TYPE.cell}>
+                        <Ltr>{formatMoney(vat)}</Ltr>
+                      </SheetCell>
+                    </SheetRow>
+                  </>
+                )}
+                <SheetRow heightMm={10}>
+                  <SheetCell shaded colSpan={5} style={TYPE.head}>
+                    {underVat ? `${part.label} مع احتساب الرسم` : part.label}
+                  </SheetCell>
+                  <SheetCell shaded align="center" style={TYPE.head}>
+                    <Ltr>{formatMoneyAr(toPay)}</Ltr>
+                  </SheetCell>
+                </SheetRow>
+              </Fragment>
+            );
+          })}
         </SheetTable>
       </div>
 
-      <p style={{ ...TYPE.text, margin: "3mm 0 0" }}>
-        <span style={{ fontWeight: 700 }}>المبلغ بالحروف: </span>
-        {amountInWordsAr(toPay)}
-      </p>
+      {parts.map((part) => (
+        <p key={part.label} style={{ ...TYPE.text, margin: "2mm 0 0" }}>
+          <span style={{ fontWeight: 700 }}>{mixed ? `${part.label} بالحروف: ` : "المبلغ بالحروف: "}</span>
+          {amountInWordsAr(taxed(part.amount).toPay)}
+        </p>
+      ))}
       {underVat && quote.pricesIncludeVat === true && (
         <p style={{ ...TYPE.small, margin: "1mm 0 0" }}>الأسعار أعلاه تشمل الرسم على القيمة المضافة.</p>
       )}

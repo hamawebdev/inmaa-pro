@@ -207,6 +207,8 @@ export const END_KINDS = [
   "NON_PAYMENT",
   "RENEWED",
   "JOB_DONE",
+  /** A signed contract the client gave up before its start (ruling on CLI-3). */
+  "CANCELLED",
 ] as const;
 export type EndKind = (typeof END_KINDS)[number];
 

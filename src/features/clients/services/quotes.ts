@@ -14,7 +14,7 @@ import { getSetting, getSettings } from "@/lib/settings";
 import { basisPoints, money, qty, type LocalDate } from "@/lib/units";
 import { FILES_PATH } from "@/navigation/file-parts";
 
-import { fileAmountOf, marginOver, QUOTE_STEPS, quoteLineAmount, quoteTotals } from "../rules/pricing";
+import { fileAmountOf, marginOver, periodPriceOf, QUOTE_STEPS, quoteLineAmount, quoteTotals } from "../rules/pricing";
 import { stageMove } from "../rules/stage-moves";
 import type { AmountBasis, ServiceType } from "../validators/option-lists";
 import {
@@ -119,6 +119,19 @@ function parsed<T>(
   return result.data;
 }
 
+/** Nothing more is done to a version of a file whose client accepted another (CLI-4). */
+async function refuseIfAccepted(ex: Executor, quote: QuoteRow): Promise<void> {
+  const accepted = await ex
+    .selectFrom("Quote")
+    .select("id")
+    .where("fileId", "=", quote.fileId)
+    .where("id", "<>", quote.id)
+    .where("result", "=", "ACCEPTED")
+    .where("deletedAt", "is", null)
+    .executeTakeFirst();
+  if (accepted) throw new ServiceError("This file's quote is already accepted.");
+}
+
 async function requireQuote(ex: Executor, quoteId: string): Promise<{ quote: QuoteRow; record: FileRecord }> {
   const quote = await ex.selectFrom("Quote").selectAll().where("id", "=", quoteId).executeTakeFirst();
   if (!quote || quote.deletedAt !== null) throw new ServiceError("This quote does not exist.");
@@ -141,6 +154,8 @@ async function linesOf(ex: Executor, quoteIds: readonly string[]) {
 
 function stepsOf(ctx: ServiceContext, quote: QuoteRow, others: readonly QuoteRow[]): QuoteStep[] {
   const status = quote.status as QuoteStatus;
+  // Once the client has accepted a version, the others are dead (CLI-4).
+  if (others.some((other) => other.result === "ACCEPTED")) return [];
   const steps: QuoteStep[] = QUOTE_STEPS[status].filter((step) => step !== "DECIDE" || can(ctx, "quote.approve"));
   if (status === "ISSUED") {
     steps.push("ANSWER");
@@ -258,6 +273,27 @@ export async function getFileQuotes(
   });
 
   const facts = await stageFactsOf(ex, ctx, record);
+  // The client's yes gives the file the issued quote's amount and basis before the move (CLI-9): judge with them.
+  const live = rows.find((row) => row.status === "ISSUED");
+  if (live) {
+    const liveLines = lines.filter((line) => line.quoteId === live.id);
+    const totals = quoteTotals(
+      liveLines.map((line) => ({
+        kind: line.kind as QuoteLineKind,
+        quantity: line.quantity,
+        unitPrice: line.unitPrice,
+      })),
+      live.discount,
+    );
+    facts.values = { ...facts.values, totalAmount: fileAmountOf(totals, file.serviceType as ServiceType) as never };
+    facts.office = {
+      ...facts.office,
+      amountBasis:
+        (live.amountBasis as AmountBasis | null) ??
+        (file.amountBasis as AmountBasis | null) ??
+        (file.serviceType === "ON_DEMAND" ? "WHOLE_CONTRACT" : null),
+    };
+  }
   const move =
     file.stage === "CONTRACTED" || file.stage === "CONTRACT_ENDED"
       ? { allowed: false as const, refusal: "SAME_STAGE" as const }
@@ -278,11 +314,23 @@ async function suggestedQuote(ex: Executor, ctx: ServiceContext, record: FileRec
   const { file } = record;
   const values = sheetValuesOf(record);
   const study = can(ctx, "cost.read")
-    ? await ex.selectFrom("CostStudy").select("finalPrice").where("fileId", "=", file.id).executeTakeFirst()
+    ? await ex
+        .selectFrom("CostStudy")
+        .select(["finalPrice", "pricePerVisit", "pricePerWeek", "pricePerMonth"])
+        .where("fileId", "=", file.id)
+        .executeTakeFirst()
     : undefined;
-  const price = study?.finalPrice ?? file.totalAmount ?? 0;
-  const validity = await getSetting(ex, "quote.validityDays");
   const contract = file.serviceType === "CONTRACT";
+  const basis = (file.amountBasis as AmountBasis | null) ?? (contract ? null : "WHOLE_CONTRACT");
+  // The study prices the whole contract; a per-period contract takes the price of one period (CLI-2).
+  const studyPrice =
+    study === undefined
+      ? null
+      : basis === "PER_PAYMENT_PERIOD"
+        ? periodPriceOf(study, file.paymentFrequency)
+        : study.finalPrice;
+  const price = studyPrice ?? file.totalAmount ?? 0;
+  const validity = await getSetting(ex, "quote.validityDays");
   return {
     date: ctx.today,
     validUntil: addDays(ctx.today, validity),
@@ -294,7 +342,7 @@ async function suggestedQuote(ex: Executor, ctx: ServiceContext, record: FileRec
     duration: null,
     visits: typeof values.visitsPerWeek === "number" ? String(values.visitsPerWeek) : null,
     discount: 0,
-    amountBasis: (file.amountBasis as AmountBasis | null) ?? (contract ? null : "WHOLE_CONTRACT"),
+    amountBasis: basis,
     lines: [
       {
         kind: contract ? "PERIODIC" : "INITIAL_JOB",
@@ -494,6 +542,7 @@ export async function submitQuote(
   requireSection(ctx, "REQUESTS", "WRITE");
   const { quote, record } = await requireQuote(ex, input.quoteId);
   requireOpenFile(record);
+  await refuseIfAccepted(ex, quote);
   if (!QUOTE_STEPS[quote.status as QuoteStatus].includes("SUBMIT")) {
     throw new ServiceError("This quote is not waiting to be sent for approval.");
   }
@@ -513,6 +562,7 @@ export async function decideQuote(
   requireCapability(ctx, "quote.approve");
   const { quote, record } = await requireQuote(ex, input.quoteId);
   requireOpenFile(record);
+  await refuseIfAccepted(ex, quote);
   if (quote.status !== "AWAITING_APPROVAL") throw new ServiceError("This quote is not waiting for approval.");
   const note = input.note.trim();
   if (!note) throw new ServiceError("A reason is required.");
@@ -546,18 +596,30 @@ export async function issueQuote(
   requireSection(ctx, "REQUESTS", "WRITE");
   const { quote, record } = await requireQuote(ex, input.quoteId);
   requireOpenFile(record);
+  await refuseIfAccepted(ex, quote);
   if (quote.status !== "APPROVED") throw new ServiceError("A quote is issued once the manager has approved it.");
   const [tax, study] = await Promise.all([
     getSettings(ex, ["tax.mode", "tax.vatRate", "tax.pricesIncludeVat"]),
-    ex.selectFrom("CostStudy").select("totalCost").where("fileId", "=", quote.fileId).executeTakeFirst(),
+    ex
+      .selectFrom("CostStudy")
+      .select(["totalCost", "finalPrice", "pricePerVisit", "pricePerWeek", "pricePerMonth"])
+      .where("fileId", "=", quote.fileId)
+      .executeTakeFirst(),
   ]);
-  const margin = marginOver(study?.totalCost ?? null, quote.total);
+  // Cost and price over the same span (CLI-2): a per-period quote is set against one period of the study's cost.
+  let cost: number | null = study?.totalCost ?? null;
+  if (study && cost !== null && quote.amountBasis === "PER_PAYMENT_PERIOD") {
+    const period = periodPriceOf(study, record.file.paymentFrequency);
+    cost = period !== null && study.finalPrice ? Math.round((cost * period) / study.finalPrice) : null;
+  }
+  const margin = marginOver(cost, quote.total);
 
   const replaced = await ex
     .selectFrom("Quote")
     .selectAll()
     .where("fileId", "=", quote.fileId)
     .where("status", "=", "ISSUED")
+    .where("result", "<>", "ACCEPTED")
     .where("id", "<>", quote.id)
     .where("deletedAt", "is", null)
     .execute();
@@ -575,7 +637,7 @@ export async function issueQuote(
       taxMode: tax["tax.mode"],
       vatRate: basisPoints(tax["tax.vatRate"]),
       pricesIncludeVat: tax["tax.pricesIncludeVat"] ? 1 : 0,
-      costTotal: study?.totalCost ?? null,
+      costTotal: cost === null ? null : money(cost),
       marginBp: margin === null ? null : basisPoints(margin),
     },
     { action: "ISSUE" },
@@ -703,6 +765,31 @@ export async function recordQuoteResult(
   }
 
   let contracted = false;
+  if (answer.result === "ACCEPTED") {
+    // The other versions still being prepared are dead once the client has said yes (CLI-4).
+    const working = await ex
+      .selectFrom("Quote")
+      .selectAll()
+      .where("fileId", "=", quote.fileId)
+      .where("id", "<>", quote.id)
+      .where("status", "in", WORKING)
+      .where("deletedAt", "is", null)
+      .execute();
+    for (const other of working) {
+      await setStatus(
+        ex,
+        ctx,
+        other,
+        record,
+        "CANCELLED",
+        {},
+        {
+          action: "CANCEL",
+          reason: "Another version of this quote was accepted.",
+        },
+      );
+    }
+  }
   if (answer.result === "ACCEPTED" && !signed) {
     const lines = await linesOf(ex, [quote.id]);
     const totals = quoteTotals(
@@ -790,6 +877,9 @@ export async function addQuoteFollowUp(
 export interface QuoteSheetData {
   fileId: string;
   fileNumber: string;
+  serviceType: string;
+  /** «دورية السداد» of the file: what a per-period amount is for. */
+  paymentFrequency: string | null;
   quote: QuoteView;
   client: { name: string; managerName: string | null; phone: string | null; address: string | null };
   site: { name: string | null; address: string | null; commune: string | null };
@@ -810,6 +900,8 @@ export async function getQuoteSheet(
   return {
     fileId: record.file.id,
     fileNumber: record.file.number,
+    serviceType: record.file.serviceType,
+    paymentFrequency: record.file.paymentFrequency,
     quote: { ...view, costTotal: null, marginBp: null },
     client: {
       name: textOf(values.clientName) ?? record.client.name,

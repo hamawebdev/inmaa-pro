@@ -1,8 +1,8 @@
 import * as React from "react";
 
 import { useQuery } from "@tanstack/react-query";
-import { CalendarX2, Plus, Printer, RefreshCcw, Trash2 } from "lucide-react";
-import { Link, useParams } from "react-router-dom";
+import { Ban, CalendarX2, Plus, Printer, RefreshCcw, Trash2 } from "lucide-react";
+import { Link, useParams, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { useTranslations } from "use-intl";
 
@@ -20,6 +20,7 @@ import { ChoiceField, Fact, FieldGrid, TextField } from "@/features/clients/comp
 import {
   EARLY_END_KINDS,
   endContractAction,
+  recordNoRenewalAction,
   getContractPartQuery,
   renewFileAction,
   saveFileClausesAction,
@@ -27,6 +28,7 @@ import {
   type EarlyEndKind,
 } from "@/features/clients/services/contracts";
 import { fileQueryPath } from "@/features/clients/services/file-reads";
+import { useSanctionGate } from "@/features/people/components/sanction-gate";
 import { useCentreClock } from "@/hooks/use-centre-clock";
 import { useSectionLevel } from "@/hooks/use-session";
 import { useErrorMessage } from "@/i18n/errors";
@@ -36,6 +38,7 @@ import { pathKey } from "@/lib/compat/revalidate";
 import { fileHubHref, filePartHref } from "@/navigation/file-parts";
 
 import { ltr } from "../../_components/ltr-text";
+import { ReasonDialog } from "../../_components/reason-dialog";
 import { stageTone } from "../../_components/stage-tone";
 import { useFileOpened } from "../../_components/use-file-opened";
 
@@ -59,6 +62,10 @@ export default function FileContractPage() {
   useFileOpened(id);
   const back = { href: fileHubHref(id), label: tNav("FileHub") };
   const [ending, setEnding] = React.useState(false);
+  const [refusing, setRefusing] = React.useState(false);
+  const [passGate, gateDialogs] = useSanctionGate();
+  const [params] = useSearchParams();
+  const decisionId = params.get("decision");
   const [busy, setBusy] = React.useState(false);
   const [clauses, setClauses] = React.useState<Clause[] | null>(null);
 
@@ -82,8 +89,19 @@ export default function FileContractPage() {
   const editsClauses = writes && !data.locked && !data.file.closed;
 
   async function renew() {
+    if (!part.data) return;
+    // A renewal registers a file: it passes the suspended-or-penalised gate like a registration (CLI-6).
+    const passage = await passGate({
+      context: "CLIENT_FILE",
+      subjectKind: "CLIENT",
+      subjectId: part.data.file.clientId,
+      identity: { name: part.data.file.clientName, phones: [part.data.clientPhone] },
+      decisionId: decisionId ?? null,
+      resumeRoute: filePartHref(id, "contract"),
+    });
+    if (!passage) return;
     setBusy(true);
-    const result = await renewFileAction({ fileId: id });
+    const result = await renewFileAction({ fileId: id, ...passage });
     setBusy(false);
     if (!result.success) {
       toast.error(errorMessage(result.error, t("Failed")));
@@ -117,6 +135,12 @@ export default function FileContractPage() {
             <Button type="button" variant="add" disabled={busy} onClick={() => void renew()}>
               <RefreshCcw />
               {t("Renew")}
+            </Button>
+          )}
+          {writes && data.canRefuseRenewal && (
+            <Button type="button" variant="outline" disabled={busy} onClick={() => setRefusing(true)}>
+              <Ban />
+              {t("WillNotRenew")}
             </Button>
           )}
           {writes && data.canEnd && (
@@ -169,6 +193,12 @@ export default function FileContractPage() {
                   <Link to={fileHubHref(data.renewalOf.id)} className="font-bold text-section-requests hover:underline">
                     <Ltr>{data.renewalOf.number}</Ltr>
                   </Link>
+                </Fact>
+              )}
+              {data.renewalDecision === "WILL_NOT_RENEW" && (
+                <Fact label={t("RenewalDecision")} className="sm:col-span-2">
+                  {t("NotRenewed")}
+                  {data.renewalNote ? ` · ${data.renewalNote}` : ""}
                 </Fact>
               )}
               {data.renewedBy && (
@@ -251,20 +281,47 @@ export default function FileContractPage() {
         </Card>
       </div>
       {ending && (
-        <EndDialog fileId={id} busy={busy} setBusy={setBusy} labelOf={endLabel} onClose={() => setEnding(false)} />
+        <EndDialog
+          fileId={id}
+          notStarted={data.notStarted}
+          busy={busy}
+          setBusy={setBusy}
+          labelOf={endLabel}
+          onClose={() => setEnding(false)}
+        />
       )}
+      <ReasonDialog
+        open={refusing}
+        title={t("WillNotRenew")}
+        description={t("WillNotRenewHint")}
+        confirmLabel={t("WillNotRenew")}
+        busy={busy}
+        onCancel={() => setRefusing(false)}
+        onConfirm={async (reason) => {
+          setRefusing(false);
+          setBusy(true);
+          const result = await recordNoRenewalAction({ fileId: id, reason });
+          setBusy(false);
+          if (!result.success) toast.error(errorMessage(result.error, t("Failed")));
+          else toast.success(t("NotRenewedSaved"));
+        }}
+      />
+      {gateDialogs}
     </DetailScreen>
   );
 }
 
 function EndDialog({
   fileId,
+  notStarted,
   busy,
   setBusy,
   labelOf,
   onClose,
 }: {
   fileId: string;
+  /** Not started yet: the client may cancel it, and it is the one ending offered first (CLI-3). */
+  notStarted: boolean;
   busy: boolean;
   setBusy: (busy: boolean) => void;
   labelOf: (code: string) => string;
@@ -274,7 +331,7 @@ function EndDialog({
   const tCommon = useTranslations("Common");
   const errorMessage = useErrorMessage();
   const { today } = useCentreClock();
-  const [endKind, setEndKind] = React.useState<EarlyEndKind>("ENDED_BY_CLIENT");
+  const [endKind, setEndKind] = React.useState<EarlyEndKind>(notStarted ? "CANCELLED" : "ENDED_BY_CLIENT");
   const [endedDate, setEndedDate] = React.useState(today);
   const [note, setNote] = React.useState("");
 
@@ -289,11 +346,15 @@ function EndDialog({
           <ChoiceField
             label={t("EndKind")}
             value={endKind}
-            options={EARLY_END_KINDS}
+            options={EARLY_END_KINDS.filter((kind) => kind !== "CANCELLED" || notStarted)}
             labelOf={labelOf}
             onChange={(next) => next && setEndKind(next)}
           />
-          <TextField label={t("EndedOn")} type="date" value={endedDate} onChange={setEndedDate} />
+          {endKind === "CANCELLED" ? (
+            <p className="self-end text-sm text-muted-foreground">{t("CancelledHint")}</p>
+          ) : (
+            <TextField label={t("EndedOn")} type="date" value={endedDate} onChange={setEndedDate} />
+          )}
           <TextField label={t("EndNote")} multiline value={note} onChange={setNote} className="sm:col-span-2" />
         </FieldGrid>
         <DialogFooter>

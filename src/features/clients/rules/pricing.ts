@@ -101,6 +101,29 @@ export interface PricedLine {
   unitPrice: number;
 }
 
+/**
+ * What one payment period of «دورية السداد» costs in a study that prices the
+ * whole contract (CLI-2): per visit, per week, every two weeks, per month.
+ * Null when the study cannot say it.
+ */
+export function periodPriceOf(
+  totals: Pick<CostStudyTotals, "pricePerVisit" | "pricePerWeek" | "pricePerMonth">,
+  frequency: string | null,
+): number | null {
+  switch (frequency) {
+    case "PER_VISIT":
+      return totals.pricePerVisit;
+    case "WEEKLY":
+      return totals.pricePerWeek;
+    case "BIWEEKLY":
+      return totals.pricePerWeek === null ? null : totals.pricePerWeek * 2;
+    case "MONTHLY":
+      return totals.pricePerMonth;
+    default:
+      return null;
+  }
+}
+
 /** A line's amount: quantity × unit price. */
 export const quoteLineAmount = (line: Pick<PricedLine, "quantity" | "unitPrice">) =>
   Math.round((line.quantity * line.unitPrice) / 1000);

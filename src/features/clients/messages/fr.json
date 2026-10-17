@@ -459,7 +459,8 @@
       "ENDED_BY_CENTRE": "Résilié par le centre",
       "NON_PAYMENT": "Défaut de paiement",
       "RENEWED": "Renouvelé",
-      "JOB_DONE": "Travail terminé"
+      "JOB_DONE": "Travail terminé",
+      "CANCELLED": "Annulé avant son début"
     },
     "CostLine": {
       "LABOUR": "Main-d'œuvre",
@@ -613,7 +614,8 @@
     "InvoiceTradeRegisterAnswer": "Indiquez sur la fiche du client si l'entreprise a un registre de commerce.",
     "InvoiceNif": "Le numéro d'identification fiscale (NIF) de ce client est nécessaire sur la facture.",
     "InvoiceNis": "Le numéro d'identification statistique (NIS) de ce client est nécessaire sur la facture.",
-    "FileJobDoneOnDemand": "Seule une prestation ponctuelle prend fin avec sa dernière visite."
+    "FileJobDoneOnDemand": "Seule une prestation ponctuelle prend fin avec sa dernière visite.",
+    "ContractNotStartedOnly": "Seul un contrat qui n'a pas encore commencé s'annule."
   },
   "Alerts": {
     "QuoteFollowUp": {
@@ -914,7 +916,13 @@
     "SaveClauses": "Enregistrer les clauses",
     "ClausesSaved": "Les clauses ont été enregistrées.",
     "Unchanged": "Rien n'a changé.",
-    "Failed": "L'opération n'a pas pu être effectuée."
+    "Failed": "L'opération n'a pas pu être effectuée.",
+    "CancelledHint": "Le contrat prend fin la veille de son début : sa première visite et sa première échéance tombent avec lui.",
+    "WillNotRenew": "Ne sera pas renouvelé",
+    "WillNotRenewHint": "Le contrat court jusqu'à sa date de fin et n'est pas renouvelé. Indiquez pourquoi : il quitte la tuile «contrat proche de sa fin».",
+    "RenewalDecision": "Renouvellement",
+    "NotRenewed": "Ne sera pas renouvelé",
+    "NotRenewedSaved": "Noté : le contrat ne sera pas renouvelé."
   },
   "ResidentsPart": {
     "Change": "Modifier la liste",

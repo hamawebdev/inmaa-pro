@@ -28,6 +28,7 @@ export const EARLY_END_KINDS = [
   "ENDED_BY_CLIENT",
   "ENDED_BY_CENTRE",
   "NON_PAYMENT",
+  "CANCELLED",
 ] as const satisfies readonly EndKind[];
 export type EarlyEndKind = (typeof EARLY_END_KINDS)[number];
 
@@ -53,6 +54,12 @@ export interface ContractPart {
   clauses: Clause[];
   canRenew: boolean;
   canEnd: boolean;
+  /** The contract has not started yet: the client may cancel it (kind CANCELLED). */
+  notStarted: boolean;
+  /** «لن يُجدَّد» can be recorded: a signed contract with no renewal under way and no decision yet. */
+  canRefuseRenewal: boolean;
+  renewalNote: string | null;
+  clientPhone: string | null;
 }
 
 function clausesOf(text: string | null): Clause[] {
@@ -64,12 +71,16 @@ function clausesOf(text: string | null): Clause[] {
 }
 
 async function successorOf(ex: Executor, fileId: string) {
-  return ex
-    .selectFrom("File")
-    .select(["id", "number", "stage"])
-    .where("renewalOfFileId", "=", fileId)
-    .where("deletedAt", "is", null)
-    .executeTakeFirst();
+  return (
+    ex
+      .selectFrom("File")
+      .select(["id", "number", "stage"])
+      .where("renewalOfFileId", "=", fileId)
+      .where("deletedAt", "is", null)
+      // A renewal that was closed (refused, never signed) does not stand in the way of another (CLI-7, INT-9).
+      .where("closedAt", "is", null)
+      .executeTakeFirst()
+  );
 }
 
 /** A contract that is signed and running, or one that ran out on its date, may be renewed once. */
@@ -104,11 +115,15 @@ export async function getContractPart(
     endKind: file.endKind as EndKind | null,
     endNote: file.endNote,
     renewalDecision: file.renewalDecision,
+    renewalNote: file.renewalNote,
+    clientPhone: record.client.phone1,
     renewalOf: renewalOf ?? null,
     renewedBy: renewedBy ?? null,
     clauses: clausesOf(file.clauses),
     canRenew: renewable(record) && renewedBy === undefined,
     canEnd: file.stage === "CONTRACTED" && file.closedAt === null,
+    notStarted: file.stage === "CONTRACTED" && file.startDate !== null && ctx.today <= file.startDate,
+    canRefuseRenewal: renewable(record) && renewedBy === undefined && file.renewalDecision !== "WILL_NOT_RENEW",
   };
 }
 
@@ -129,6 +144,31 @@ export async function renewFile(
   const { file } = record;
   if (!renewable(record)) throw new ServiceError("Only a signed contract, running or ended on its date, is renewed.");
   if (await successorOf(ex, file.id)) throw new ServiceError("This contract is already being renewed.");
+  // A closed renewal keeps its link in the log, and gives its place to this one (CLI-7, INT-9): the
+  // database allows one renewal per contract.
+  const closedRenewals = await ex
+    .selectFrom("File")
+    .select(["id", "number"])
+    .where("renewalOfFileId", "=", file.id)
+    .where("closedAt", "is not", null)
+    .execute();
+  for (const closed of closedRenewals) {
+    await ex
+      .updateTable("File")
+      .set({ renewalOfFileId: null, updatedAt: ctx.now, updatedByUserId: ctx.userId })
+      .where("id", "=", closed.id)
+      .execute();
+    await logChange(ex, ctx, {
+      owner: "CLIENTS",
+      action: "UPDATE",
+      entity: "File",
+      entityId: closed.id,
+      entityLabel: closed.number,
+      subject: clientSubjectOf(record),
+      changes: { renewalOfFileId: [file.id, null] },
+      context: { replacedByANewRenewalOf: file.number },
+    });
+  }
 
   const previous = liveSheetValuesOf(record);
   const start = file.endDate ? addDays(localDate(file.endDate), 1) : null;
@@ -209,6 +249,21 @@ export async function endContract(
   if (file.stage !== "CONTRACTED" || file.closedAt !== null) {
     throw new ServiceError("Only a signed contract that is running can be ended.");
   }
+  if (input.endKind === "CANCELLED") {
+    // Given up before it starts (ruling on CLI-3): it ends the day before its start, so that its first visit and
+    // its first due go with everything after them.
+    if (!file.startDate || ctx.today > file.startDate) {
+      throw new ServiceError("Only a contract that has not started yet is cancelled.");
+    }
+    await moveFileStage(ex, ctx, {
+      fileId: file.id,
+      to: "CONTRACT_ENDED",
+      endKind: "CANCELLED",
+      endedDate: addDays(localDate(file.startDate), -1),
+      note,
+    });
+    return { fileId: file.id };
+  }
   if (input.endedDate > ctx.today) throw new ServiceError("A contract is ended on the day it ends, not before.");
   if (file.startDate && input.endedDate < file.startDate) {
     throw new ServiceError("A contract cannot end before it starts.");
@@ -219,6 +274,43 @@ export async function endContract(
     endKind: input.endKind,
     endedDate: input.endedDate as LocalDate,
     note,
+  });
+  return { fileId: file.id };
+}
+
+/**
+ * «لن يُجدَّد» (ruling on CLI-5): the client will not renew. The contract runs
+ * to its date and ends EXPIRED; Money's tile «عقد يقترب من نهايته» leaves it.
+ * The reason typed is kept on the file and in the log.
+ */
+export async function recordNoRenewal(
+  ex: Executor,
+  ctx: ServiceContext,
+  input: { fileId: string; reason: string },
+): Promise<{ fileId: string }> {
+  requireSection(ctx, "REQUESTS", "WRITE");
+  const reason = input.reason.trim();
+  if (!reason) throw new ServiceError("A reason is required.");
+  const record = await requireFileRecord(ex, input.fileId);
+  const { file } = record;
+  if (!renewable(record)) throw new ServiceError("Only a signed contract, running or ended on its date, is renewed.");
+  if (await successorOf(ex, file.id)) throw new ServiceError("This contract is already being renewed.");
+  const { set, changes } = changedColumns(file, { renewalDecision: "WILL_NOT_RENEW", renewalNote: reason });
+  if (!changes) return { fileId: file.id };
+  await ex
+    .updateTable("File")
+    .set({ ...set, updatedAt: ctx.now, updatedByUserId: ctx.userId })
+    .where("id", "=", file.id)
+    .execute();
+  await logChange(ex, ctx, {
+    owner: "CLIENTS",
+    action: "UPDATE",
+    reason,
+    entity: "File",
+    entityId: file.id,
+    entityLabel: file.number,
+    subject: clientSubjectOf(record),
+    changes,
   });
   return { fileId: file.id };
 }
@@ -276,4 +368,7 @@ export const getContractPartQuery = query(getContractPart);
 export const countResidentsQuery = query(countResidents);
 export const renewFileAction = action(renewFile, REFRESH);
 export const endContractAction = action(endContract, REFRESH);
+export const recordNoRenewalAction = action(recordNoRenewal, {
+  revalidate: [...REFRESH.revalidate, "/dashboard/payments"],
+});
 export const saveFileClausesAction = action(saveFileClauses, REFRESH);

@@ -1243,6 +1243,28 @@ export async function closeFile(
     context: { formKind: record.kind, closeReason: input.reason, ...(note ? { note } : {}) },
   });
 
+  // A renewal closed before it was signed gives the contract it renewed its decision back (INT-9).
+  if (!ended && file.renewalOfFileId) {
+    const renewed = await ex.selectFrom("File").selectAll().where("id", "=", file.renewalOfFileId).executeTakeFirst();
+    if (renewed && renewed.renewalDecision === "WILL_RENEW") {
+      await ex
+        .updateTable("File")
+        .set({ renewalDecision: null, updatedAt: ctx.now, updatedByUserId: ctx.userId })
+        .where("id", "=", renewed.id)
+        .execute();
+      await logChange(ex, ctx, {
+        owner: "CLIENTS",
+        action: "UPDATE",
+        entity: "File",
+        entityId: renewed.id,
+        entityLabel: renewed.number,
+        subject: clientSubject(record.client),
+        changes: { renewalDecision: ["WILL_RENEW", null] },
+        context: { renewalClosed: file.number },
+      });
+    }
+  }
+
   if (ended) await emit(ex, ctx, "file.ended", { fileId: file.id, ...ended });
   return { fileId: file.id, closed: true };
 }

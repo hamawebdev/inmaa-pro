@@ -101,6 +101,18 @@ Rep visits (list, new, detail, call-backs due, a file opened from a visit with i
 
 Phones on screen and paper go through `phoneText`; the radio workaround is gone since Foundation's fix of the shared checkbox and radio.
 
+## Final review fixed (scratchpad/final-review/for-clients.md; tests in `services/review-fixes.test.ts`)
+
+- CLI-1: a contract's «المبلغ إجمالي» is the periodic part; the INITIAL_JOB total stays on the accepted quote (`getAcceptedQuote().totals`, `getFileBillingTerms().acceptedQuoteTotals`). Billing it is Money's, the INITIAL visit Operations'.
+- CLI-2: a per-period contract's suggested quote takes one period of the study (`periodPriceOf`); the frozen cost and margin cover the same span.
+- CLI-3: `endContract` with kind CANCELLED, before or on the start day, ends the day before the start. CANCELLED is a new END_KIND code (to add to OPTION-CODES.md; the column has no check).
+- CLI-4: the client's yes cancels the versions being prepared; nothing is submitted, approved or issued beside an accepted quote, and an accepted quote is never superseded.
+- CLI-5: `recordNoRenewal` («لن يُجدَّد», with its reason).
+- CLI-6: the renewal button passes People's sanction gate; the manager's answer comes back to the contract page with `?decision=`.
+- CLI-7, INT-9: a closed renewal no longer counts; it gives the contract its decision back, and a new renewal takes its place (its link is cleared and logged, so the one-renewal index holds).
+- CLI-8: the quote sheet totals a contract's one-off and periodic parts apart, with what each is for («لكل شهر», «لكامل العقد»).
+- CLI-9: whether the client's yes can contract the file is judged with the issued quote's amount and basis.
+
 ## My own wording, to check against his documents
 
 The plan names these codes without his words; the Arabic is mine:

@@ -459,7 +459,8 @@
       "ENDED_BY_CENTRE": "Ended by the centre",
       "NON_PAYMENT": "Not paid",
       "RENEWED": "Renewed",
-      "JOB_DONE": "Job done"
+      "JOB_DONE": "Job done",
+      "CANCELLED": "Cancelled before its start"
     },
     "CostLine": {
       "LABOUR": "Labour",
@@ -613,7 +614,8 @@
     "InvoiceTradeRegisterAnswer": "Say on the client's card whether the organisation has a trade register.",
     "InvoiceNif": "This client's tax identification number (NIF) is needed on the invoice.",
     "InvoiceNis": "This client's statistical identification number (NIS) is needed on the invoice.",
-    "FileJobDoneOnDemand": "Only a job on demand ends when its last visit is done."
+    "FileJobDoneOnDemand": "Only a job on demand ends when its last visit is done.",
+    "ContractNotStartedOnly": "Only a contract that has not started yet is cancelled."
   },
   "Alerts": {
     "QuoteFollowUp": {
@@ -914,7 +916,13 @@
     "SaveClauses": "Save the clauses",
     "ClausesSaved": "The clauses were saved.",
     "Unchanged": "Nothing changed.",
-    "Failed": "That could not be done."
+    "Failed": "That could not be done.",
+    "CancelledHint": "The contract ends the day before its start: its first visit and its first due go with it.",
+    "WillNotRenew": "Will not be renewed",
+    "WillNotRenewHint": "The contract runs to its end date and is not renewed. Say why: it leaves the «contract nearing its end» tile.",
+    "RenewalDecision": "Renewal",
+    "NotRenewed": "Will not be renewed",
+    "NotRenewedSaved": "Noted: the contract will not be renewed."
   },
   "ResidentsPart": {
     "Change": "Change the list",
