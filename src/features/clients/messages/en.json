@@ -108,7 +108,8 @@
       "ExtraLabel": "What it counts",
       "ExtraValue": "Value",
       "ExtraHint": "A line without a label on the form: write what it counts.",
-      "Choose": "Choose"
+      "Choose": "Choose",
+      "areaUnit": "m²"
     },
     "Office": {
       "NotPrinted": "Not printed",
@@ -878,7 +879,10 @@
       "rcNumber": "its trade register number (RC)",
       "nif": "its NIF",
       "nis": "its NIS"
-    }
+    },
+    "LastVisit": "Last visit:",
+    "NextVisit": "Next visit:",
+    "Rating": "Rating {average}/5 ({count})"
   },
   "Contract": {
     "Renew": "Renew the contract",
@@ -917,7 +921,7 @@
     "Print": "Print the list",
     "Restricted": "The list of residents is open only to those allowed to read it.",
     "RestrictedCount": "{count} residents on the list. It is open only to those allowed to read it.",
-    "Title": "List of residents ({count})",
+    "Title": "List of residents of the building ({count})",
     "Empty": "Nobody on the list."
   },
   "RepVisits": {

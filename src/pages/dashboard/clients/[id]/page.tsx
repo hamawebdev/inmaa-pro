@@ -64,6 +64,7 @@ export default function ClientCardPage() {
   const divisionLabel = useCodeLabel("Options.Division");
   const stageLabel = useCodeLabel("Options.FileStage");
   const kindLabel = useCodeLabel("FileForms.Kinds");
+  const paymentLabel = useCodeLabel("MoneyCodes.PaymentStates");
   const errorMessage = useErrorMessage();
   const router = useRouter();
   const writes = useSectionLevel("REQUESTS") === "WRITE";
@@ -255,6 +256,24 @@ export default function ClientCardPage() {
                   <StatusChip tone={stageTone(file.stage)} label={stageLabel(file.stage)} />
                   {file.closed && <StatusChip tone="danger" label={t("Closed")} />}
                   <ScreenDate className="text-muted-foreground" date={file.registrationDate} />
+                  {/* Scope section 3: last and next service, payment state, rating. */}
+                  <span className="text-sm text-muted-foreground">
+                    {t("LastVisit")} {file.lastVisit ? <ScreenDate date={file.lastVisit} /> : "—"}
+                  </span>
+                  <span className="text-sm text-muted-foreground">
+                    {t("NextVisit")} {file.nextVisit ? <ScreenDate date={file.nextVisit} /> : "—"}
+                  </span>
+                  {file.payment && (
+                    <StatusChip
+                      tone={file.payment.overdue > 0 ? "danger" : file.payment.state === "PAID" ? "success" : "pending"}
+                      label={paymentLabel(file.payment.state)}
+                    />
+                  )}
+                  {file.rating && (
+                    <span className="text-sm text-muted-foreground">
+                      {t("Rating", { average: file.rating.average, count: file.rating.count })}
+                    </span>
+                  )}
                   <Button variant="outline" size="sm" asChild className="ms-auto">
                     <Link to={fileHubHref(file.id)}>
                       <FolderOpen />

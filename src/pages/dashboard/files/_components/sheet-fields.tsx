@@ -3,7 +3,6 @@ import { Controller, type Control, type FieldPath } from "react-hook-form";
 import { useLocale, useTranslations } from "use-intl";
 
 import { Ltr } from "@/components/ltr";
-import { StatusChip } from "@/components/status-chip";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Field, FieldDescription, FieldError, FieldLabel } from "@/components/ui/field";
@@ -17,7 +16,12 @@ import { labelKeyOf, LIST_NAMESPACES } from "@/features/clients/forms/screen-lab
 import type { FormOption, FormRow } from "@/features/clients/forms/types";
 import type { FieldKey } from "@/features/clients/forms/values";
 import type { FileScreenState } from "@/features/clients/validators/file-screen";
-import type { FileStatusTick, FormKind, OptionListName } from "@/features/clients/validators/option-lists";
+import {
+  codesOf,
+  type FileStatusTick,
+  type FormKind,
+  type OptionListName,
+} from "@/features/clients/validators/option-lists";
 import { useErrorMessage } from "@/i18n/errors";
 import { useCodeLabel } from "@/i18n/use-code-label";
 import { pathKey } from "@/lib/compat/revalidate";
@@ -432,13 +436,20 @@ export function StatusTicksField({ label, ticks }: { label: string; ticks: reado
   return (
     <Field className={SPAN_BOTH}>
       <FieldLabel>{label}</FieldLabel>
-      <div className="flex min-h-[52px] flex-wrap items-center gap-2">
-        {ticks.map((tick) => (
-          <StatusChip
-            key={tick}
-            tone={tick === "SUSPENDED" || tick === "PENALISED" ? "danger" : "info"}
-            label={tickLabel(tick)}
-          />
+      {/* His eight statuses, in his order, ticked as the sheet prints them (scope A5; B-007 and its kin). */}
+      <div className="flex min-h-[52px] flex-wrap items-center gap-x-6 gap-y-2">
+        {codesOf("FILE_STATUS_TICK").map((code) => (
+          <div key={code} className="flex items-center gap-2">
+            <Checkbox
+              id={`status-tick-${code}`}
+              checked={ticks.includes(code as FileStatusTick)}
+              disabled
+              aria-readonly
+            />
+            <Label htmlFor={`status-tick-${code}`} className="font-normal">
+              {tickLabel(code)}
+            </Label>
+          </div>
         ))}
       </div>
       <FieldDescription>{t("StatusTicksHint")}</FieldDescription>
@@ -524,7 +535,7 @@ export function SheetRowField({
           control={control}
           path={path}
           label={label}
-          unit={row.suffix?.replace(/\s/g, "") || "m²"}
+          unit={row.suffix?.replace(/\s/g, "") || t("Fields.areaUnit")}
           inputMode="decimal"
         />
       );

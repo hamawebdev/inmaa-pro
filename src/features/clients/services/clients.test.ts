@@ -152,3 +152,19 @@ it("takes the answer to «السجل التجاري» on the card", async () => 
   const card = await test.transact((ex, ctx) => openClientCard(ex, ctx, { clientId: org.clientId }));
   expect(card).toMatchObject({ hasTradeRegister: false, missingIdentifiers: [] });
 });
+
+it("F-01a: the card gives each file its last and next visit, its payment state and its rating", async () => {
+  const demo = await createTestDatabase({ demo: ["clients"] });
+  try {
+    const card = await demo.transact((ex, ctx) =>
+      openClientCard(ex, ctx, { clientId: demo.demo.clients.housingContractClient }),
+    );
+    const file = card.files.find((one) => one.id === demo.demo.clients.housingContract)!;
+    expect(file.nextVisit).not.toBeNull();
+    expect(file.nextVisit! >= "2026-10-12").toBe(true);
+    expect(file.payment).toMatchObject({ state: "UNPAID" });
+    expect(file.rating).toBeNull();
+  } finally {
+    demo.close();
+  }
+});

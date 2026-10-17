@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { CLIENT_SANCTIONS, FILE_STAGES } from "../validators/option-lists";
+import { CLIENT_SANCTIONS, codesOf, FILE_STAGES } from "../validators/option-lists";
 
 import { statusTicks } from "./status-ticks";
 
@@ -51,4 +51,17 @@ describe("the eight boxes of «حالة الملف»", () => {
       }
     }
   });
+});
+
+it("B-007, OR-007, OC-007, HR-007, HC-007: «حالة الملف» lists his eight statuses in his order", () => {
+  expect(codesOf("FILE_STATUS_TICK")).toEqual([
+    "OLD",
+    "NEW",
+    "VISIT",
+    "QUOTE",
+    "CONTRACTED",
+    "CONTRACT_ENDED",
+    "SUSPENDED",
+    "PENALISED",
+  ]);
 });

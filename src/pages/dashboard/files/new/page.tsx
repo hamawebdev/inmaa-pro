@@ -56,7 +56,8 @@ import { ReturningDialog, type ReturningLink } from "../_components/returning-di
  * his yes travels with the save.
  */
 
-const FILE_STATUSES = ["NEW", "OLD"] as const;
+/** «حالة الملف» in his order: «قديم» before «جديد». */
+const FILE_STATUSES = ["OLD", "NEW"] as const;
 
 /** A request the sales rep brought: the prospect's details on his form, «مندوب» as its source. */
 function draftOfRepVisit(fill: RepVisitFill): FileDraft {

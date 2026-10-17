@@ -108,7 +108,8 @@
       "ExtraLabel": "Ce qui est compté",
       "ExtraValue": "Valeur",
       "ExtraHint": "Une ligne sans libellé sur le formulaire : indiquez ce qu'elle compte.",
-      "Choose": "Choisir"
+      "Choose": "Choisir",
+      "areaUnit": "m²"
     },
     "Office": {
       "NotPrinted": "Non imprimé",
@@ -811,7 +812,7 @@
       "Files": "Dossiers",
       "State": "État"
     },
-    "FilesCount": "{count} ({live} sous contrat)",
+    "FilesCount": "{count} ({live} actifs)",
     "Open": "Ouvrir",
     "SearchPlaceholder": "Nom, téléphone ou n° de dossier",
     "Division": "Division",
@@ -878,7 +879,10 @@
       "rcNumber": "son numéro RC",
       "nif": "son NIF",
       "nis": "son NIS"
-    }
+    },
+    "LastVisit": "Dernière visite :",
+    "NextVisit": "Prochaine visite :",
+    "Rating": "Note {average}/5 ({count})"
   },
   "Contract": {
     "Renew": "Renouveler le contrat",
@@ -917,7 +921,7 @@
     "Print": "Imprimer la liste",
     "Restricted": "La liste des résidents n'est ouverte qu'aux personnes autorisées.",
     "RestrictedCount": "{count} résidents sur la liste. Elle n'est ouverte qu'aux personnes autorisées.",
-    "Title": "Liste des résidents ({count})",
+    "Title": "Liste des résidents de l'immeuble ({count})",
     "Empty": "Personne sur la liste."
   },
   "RepVisits": {

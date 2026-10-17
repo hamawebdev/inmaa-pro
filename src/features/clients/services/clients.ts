@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { getFilePaymentSummary } from "@/features/money/services/dues";
 import { getSanctionStates } from "@/features/people/services/sanctions";
 import type { SanctionState } from "@/features/people/validators/staff-codes";
 import { requireSection } from "@/lib/access/session";
@@ -208,6 +209,13 @@ export interface ClientCard {
     startDate: string | null;
     endDate: string | null;
     siteId: string;
+    /** The last visit done and the next one to come (Operations' visits, read as CONTRACTS section 2 allows). */
+    lastVisit: string | null;
+    nextVisit: string | null;
+    /** Money's payment state of the file («حالة الدفع»), or null when nothing is due yet. */
+    payment: { state: string; remaining: number; overdue: number } | null;
+    /** The average of the client's overall ratings on the file's signed-off visits (1 to 5), and how many. */
+    rating: { average: number; count: number } | null;
   }[];
 }
 
@@ -324,18 +332,63 @@ export async function openClientCard(
       address: site.address,
       communeName: site.communeName ?? null,
     })),
-    files: files.map((file) => ({
-      id: file.id,
-      number: file.number,
-      formKind: file.formKind as FormKind,
-      division: file.division as Division,
-      stage: file.stage as FileStage,
-      closed: file.closedAt !== null,
-      registrationDate: file.registrationDate,
-      startDate: file.startDate,
-      endDate: file.endDate,
-      siteId: file.siteId,
-    })),
+    files: await Promise.all(
+      files.map(async (file) => ({
+        ...(await serviceSummaryOf(ex, ctx, file.id)),
+        id: file.id,
+        number: file.number,
+        formKind: file.formKind as FormKind,
+        division: file.division as Division,
+        stage: file.stage as FileStage,
+        closed: file.closedAt !== null,
+        registrationDate: file.registrationDate,
+        startDate: file.startDate,
+        endDate: file.endDate,
+        siteId: file.siteId,
+      })),
+    ),
+  };
+}
+
+/** A file's last and next visit, its payment state and its rating, for the client card (scope section 3). */
+async function serviceSummaryOf(ex: Executor, ctx: ServiceContext, fileId: string) {
+  const [last, next, ratings] = await Promise.all([
+    ex
+      .selectFrom("Visit")
+      .select("visitDate")
+      .where("fileId", "=", fileId)
+      .where("status", "=", "DONE")
+      .orderBy("visitDate", "desc")
+      .executeTakeFirst(),
+    ex
+      .selectFrom("Visit")
+      .select("visitDate")
+      .where("fileId", "=", fileId)
+      .where("status", "in", ["CONFIRMED", "AWAITING_CONFIRMATION", "IN_PROGRESS"])
+      .where("visitDate", ">=", ctx.today)
+      .orderBy("visitDate")
+      .executeTakeFirst(),
+    ex
+      .selectFrom("VisitReport as r")
+      .innerJoin("Visit as v", "v.id", "r.visitId")
+      .select("r.ratingOverall")
+      .where("v.fileId", "=", fileId)
+      .where("r.ratingOverall", "is not", null)
+      .execute(),
+  ]);
+  const summary = await getFilePaymentSummary(ex, ctx, { fileId });
+  const scores = ratings.map((row) => row.ratingOverall!);
+  return {
+    lastVisit: last?.visitDate ?? null,
+    nextVisit: next?.visitDate ?? null,
+    payment:
+      summary.amount > 0 ? { state: summary.state, remaining: summary.remaining, overdue: summary.overdue } : null,
+    rating: scores.length
+      ? {
+          average: Math.round((scores.reduce((sum, score) => sum + score, 0) / scores.length) * 10) / 10,
+          count: scores.length,
+        }
+      : null,
   };
 }
 

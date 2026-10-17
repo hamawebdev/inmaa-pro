@@ -68,7 +68,7 @@ export default function ClientsPage() {
         id: "name",
         header: t("Columns.Name"),
         cell: ({ row }) => (
-          <div className="max-w-72 min-w-36">
+          <div className="max-w-56 min-w-36">
             <p className="truncate leading-tight font-bold">{row.original.name}</p>
             <p className="truncate text-sm leading-tight text-muted-foreground">
               {row.original.divisions.map((code) => divisionLabel(code)).join("، ")}
@@ -106,9 +106,10 @@ export default function ClientsPage() {
         cell: ({ row }) => (
           <div className="flex items-center justify-end">
             <Button variant="outline" size="sm" asChild>
-              <Link to={`${CLIENTS_PATH}/${row.original.id}`}>
+              <Link to={`${CLIENTS_PATH}/${row.original.id}`} aria-label={t("Open")} title={t("Open")}>
                 <UserRound />
-                {t("Open")}
+                {/* On a small window the button is its icon: the table then fits its box in French (F-01a, S-29). */}
+                <span className="sr-only xl:not-sr-only">{t("Open")}</span>
               </Link>
             </Button>
           </div>

@@ -30,6 +30,7 @@ import { ltr } from "../../_components/ltr-text";
 export default function FileResidentsPage() {
   const { id = "" } = useParams();
   const t = useTranslations("ResidentsPart");
+  const tForm = useTranslations("FileForm.Residents");
   const tNav = useTranslations("Nav");
   const tHub = useTranslations("FileHub");
   const reads = useCan("residents.read");
@@ -102,20 +103,38 @@ export default function FileResidentsPage() {
             {(list.data ?? []).length === 0 ? (
               <p className="text-muted-foreground">{t("Empty")}</p>
             ) : (
-              <ul className="divide-y">
+              // His four columns, one fixed cell each, so an empty phone or date keeps its own place (B-072).
+              <div role="table" className="min-w-0 divide-y rounded-lg border">
+                <div
+                  role="row"
+                  className="grid grid-cols-[4rem_minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)] gap-4 bg-muted/50 px-4 py-3 text-sm font-semibold"
+                >
+                  <span role="columnheader">{tForm("Number")}</span>
+                  <span role="columnheader">{tForm("Name")}</span>
+                  <span role="columnheader">{tForm("Phone")}</span>
+                  <span role="columnheader">{tForm("RegisteredDate")}</span>
+                </div>
                 {(list.data ?? []).map((resident) => (
-                  <li key={resident.id} className="flex min-w-0 flex-wrap items-baseline gap-x-6 gap-y-1 py-3">
-                    <Ltr className="w-10 shrink-0 font-bold tabular-nums">{resident.number}</Ltr>
-                    <span className="min-w-0 flex-1 truncate font-medium">{resident.name}</span>
-                    {resident.phone && (
-                      <Ltr className="text-muted-foreground tabular-nums">{phoneText(resident.phone)}</Ltr>
-                    )}
-                    {resident.registeredDate && (
-                      <ScreenDate className="text-muted-foreground" date={resident.registeredDate} />
-                    )}
-                  </li>
+                  <div
+                    key={resident.id}
+                    role="row"
+                    className="grid grid-cols-[4rem_minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)] items-center gap-4 px-4 py-3"
+                  >
+                    <Ltr role="cell" className="font-bold tabular-nums">
+                      {resident.number}
+                    </Ltr>
+                    <span role="cell" className="truncate font-medium">
+                      {resident.name}
+                    </span>
+                    <span role="cell" className="truncate text-muted-foreground">
+                      {resident.phone ? <Ltr className="tabular-nums">{phoneText(resident.phone)}</Ltr> : "—"}
+                    </span>
+                    <span role="cell" className="truncate text-muted-foreground">
+                      {resident.registeredDate ? <ScreenDate date={resident.registeredDate} /> : "—"}
+                    </span>
+                  </div>
                 ))}
-              </ul>
+              </div>
             )}
           </CardContent>
         </Card>
