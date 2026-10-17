@@ -252,7 +252,7 @@ These came out of the data model. Each has a working default that is a setting o
 2. «رقم التسجيل» and «رقم الملف»: one counter per form kind that never restarts, suffix BLC on the building contract and none on the others (the complexes copy too, so its numbers never look like a building contract's); one counter for all clients; workers numbered `n/H` or `n/F`. Which suffixes does he want for the other forms and for complexes? Does he already have numbers on paper to continue from?
 3. «طريقة السداد»: can several be ticked? Default: yes on the file, one chosen on each invoice.
 4. Stamp duty on cash: on the whole tax-included amount from 300 DA, or by bands? Default: the whole amount.
-5. VAT or IFU, and when he quotes «المبلغ إجمالي» under VAT, is tax included? Default: asked at first run; read as tax included. Does he have a NIN to print?
+5. VAT or IFU, and when he quotes «المبلغ إجمالي» under VAT, is tax included? Default: not chosen until the manager chooses it in Settings (no invoice issues before); amounts read as tax included. Does he have a NIN to print?
 6. Pay: the CNAS rates (9% and 26% assumed), the IRG scale (not seeded), the leave year, the premium for work on a rest day.
 7. Lead times and lengths with no source in his documents: document expiry warning (30 days), trial period (30 days), quote validity (15 days), worker evaluation every 3 months.
 8. Credit notes and refunds. Default: none; a wrong invoice is voided and issued again, and an overpayment stays as the file's credit.
@@ -260,7 +260,7 @@ These came out of the data model. Each has a working default that is a setting o
 10. Friday and public holidays. Default: client forms offer six days; a Friday visit only by hand.
 11. When «على عاتق صاحبها» is ticked, does the amount beside it mean anything? Default: stored, ignored in totals.
 12. A first deep clean followed by a periodic contract. Default: one file and one sheet, with the first job as an extra amount due.
-13. Who types the sales rep's visits (feature 40)? Default: whoever writes the employees section (the manager and الإدارة); the manager can give reception the right in Settings.
+13. Who types the sales rep's visits (feature 40)? Default: whoever writes the employees section (the manager and the HR officer); the manager can give that right to another role in Settings.
 14. Wording the program had to invent, where his documents give none, for him to confirm or replace: the first visit's results (مناسب للخدمة، يحتاج إلى دراسة، يحتاج إلى تنظيف أولي عميق، يحتاج إلى معدات، يحتاج إلى فريق إضافي، يحتاج إلى خدمات خاصة), the site's condition factors (بقايا إسمنت أو طلاء، دهون، روائح قوية، حيوانات أليفة، نفايات متراكمة، أشغال حديثة، أجهزة حساسة), the rep visit's interest levels and the contact roles. Default: as worded.
 15. An organisation without a trade register (an administration, an association): the program asks for its NIF and NIS on every first invoice, and its RC only when «السجل التجاري» is نعم. Is that what his accountant wants?
 
