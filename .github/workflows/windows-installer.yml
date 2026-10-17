@@ -1,0 +1,66 @@
+# Builds the Windows installers (.exe with NSIS, and .msi) and attaches them to a GitHub Release.
+# Run it from the Actions tab ("Windows installer" › Run workflow), with `gh workflow run windows-installer.yml`,
+# or by pushing a tag `v<version>`. The release is named after the version in src-tauri/tauri.conf.json.
+name: Windows installer
+
+on:
+  workflow_dispatch:
+    inputs:
+      prerelease:
+        description: Mark the release as a pre-release
+        type: boolean
+        default: true
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: windows-installer-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+
+      - name: Install the JavaScript dependencies
+        run: npm ci
+
+      # beforeBuildCommand runs `npm run build` (type-check, then the production bundle) before Rust compiles.
+      # The Windows bundle targets (nsis, msi) and the offline WebView2 installer are set in
+      # src-tauri/tauri.windows.conf.json and src-tauri/tauri.conf.json.
+      - name: Build the installers and publish the release
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: v__VERSION__
+          releaseName: Inmaa Pro v__VERSION__ (Windows)
+          releaseBody: |
+            Windows installers of Inmaa Pro (مركز إنماء برو), version __VERSION__.
+
+            - `Inmaa Pro_<version>_x64-setup.exe`: the installer to give the centre (NSIS).
+            - `Inmaa Pro_<version>_x64_en-US.msi`: the same program as an MSI package.
+
+            For Windows 10 or 11, 64-bit. The program needs no internet connection, to install or to run:
+            the WebView2 runtime is inside the installer. The installers are not code-signed, so Windows may show
+            "Windows protected your PC": choose "More info", then "Run anyway".
+
+            The program opens on a 7-day trial; the developer makes the unlock code from the device id it shows.
+          releaseDraft: false
+          prerelease: ${{ github.event_name == 'workflow_dispatch' && inputs.prerelease }}
