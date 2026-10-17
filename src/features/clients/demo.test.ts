@@ -87,8 +87,18 @@ it("registers one file per division through the services, each at its stage", as
       totalAmount: 3400000,
       client: "7",
     }),
+    // A contract signed on a quote with a first deep clean: the file takes the monthly part only.
+    expect.objectContaining({
+      id: names.contractWithInitialJob,
+      formKind: "ORG_CONTRACT",
+      number: "2",
+      stage: "CONTRACTED",
+      totalAmount: 4500000,
+      amountBasis: "PER_PAYMENT_PERIOD",
+      client: "8",
+    }),
   ]);
-  expect(files.filter((file) => file.lockedAt !== null)).toHaveLength(6);
+  expect(files.filter((file) => file.lockedAt !== null)).toHaveLength(7);
 
   // Each on-demand file has its study and its quote, approved by the manager and issued.
   const quotes = await test.db
@@ -98,10 +108,17 @@ it("registers one file per division through the services, each at its stage", as
     .execute();
   expect(quotes).toEqual([
     { id: names.housingJobQuote, number: "0001/2026", status: "ISSUED", result: "ACCEPTED", total: 950000 },
-    { id: names.orgJobQuote, number: "0002/2026", status: "ISSUED", result: "ACCEPTED", total: 3400000 },
-    { id: names.housingRequestQuote, number: "0003/2026", status: "ISSUED", result: "PENDING", total: 1800000 },
+    {
+      id: names.contractWithInitialJobQuote,
+      number: "0002/2026",
+      status: "ISSUED",
+      result: "ACCEPTED",
+      total: 7000000,
+    },
+    { id: names.orgJobQuote, number: "0003/2026", status: "ISSUED", result: "ACCEPTED", total: 3400000 },
+    { id: names.housingRequestQuote, number: "0004/2026", status: "ISSUED", result: "PENDING", total: 1800000 },
   ]);
-  expect(await test.db.selectFrom("CostStudy").select("id").execute()).toHaveLength(3);
+  expect(await test.db.selectFrom("CostStudy").select("id").execute()).toHaveLength(4);
 
   // Each step on its own day, by the account that would have taken it.
   const history = await test.db

@@ -622,6 +622,46 @@ export const DEMO_FILES: readonly DemoFile[] = [
     },
     moves: [{ at: at("2026-10-11", "09:00"), to: "VISIT" }],
   },
+  {
+    // A contract signed on a quote with a first deep clean beside its monthly part (RULINGS 3): the file takes
+    // the monthly amount, and the first clean stays on the accepted quote for Money's due and Operations' visit.
+    name: "contractWithInitialJob",
+    by: "RECEPTION_SALES",
+    registeredAt: at("2026-10-11", "08:00"),
+    input: {
+      kind: "ORG_CONTRACT",
+      values: {
+        ...ORG_CONTRACT,
+        siteNumber: "11",
+        managerName: "بن عمار ياسين",
+        address: "حي الإخوة بوخلوف، محل رقم 4",
+        commune: "أم البواقي",
+        commonName: "مخبزة الأمل",
+        clientName: "مخبزة الأمل",
+        phone: "0773 18 22 90",
+        firstVisitDate: "2026-10-10",
+        offices: 2,
+        halls: 1,
+        stores: 1,
+        toilets: 1,
+        windows: 6,
+        doors: 4,
+        carParks: 0,
+        startDate: "2026-10-17",
+        endDate: "2027-01-16",
+        visitsPerWeek: 3,
+        executionDays: ["SAT", "MON", "WED"],
+        payerName: "بن عمار ياسين",
+        payerPhone: "0773 18 22 90",
+        totalAmount: dinarsToMoney(45000),
+        firstDueDate: "2026-11-17",
+        issuedDate: "2026-10-11",
+      },
+      office: { source: "PHONE", priority: "NORMAL", amountBasis: "PER_PAYMENT_PERIOD", expensesIncluded: true },
+      siteOffice: { landmark: "قرب ساحة الشهداء" },
+    },
+    moves: [],
+  },
 ];
 
 const jobLine = (label: string, dinars: number): QuoteInput["lines"][number] => ({
@@ -840,6 +880,29 @@ export const DEMO_QUOTES: ReadonlyArray<{
     approvedAt: at("2026-10-11", "11:15"),
     issuedAt: at("2026-10-11", "11:30"),
     accepted: { at: at("2026-10-12", "08:40"), date: "2026-10-12", note: "وصل سند الطلب موقّعا" },
+  },
+  {
+    file: "contractWithInitialJob",
+    study: studyOf(2, 2, 5000, 1000),
+    quote: quoteOf(
+      "2026-10-11",
+      [
+        jobLine("تنظيف أولي عميق قبل بداية العقد", 25000),
+        {
+          kind: "PERIODIC",
+          label: "تنظيف دوري: ثلاث زيارات في الأسبوع",
+          description: null,
+          quantity: toQty(1),
+          unit: "شهر",
+          unitPrice: dinarsToMoney(45000),
+        },
+      ],
+      { validUntil: "2026-10-26", amountBasis: "PER_PAYMENT_PERIOD", workers: 2, visits: "3 في الأسبوع" },
+    ),
+    preparedAt: at("2026-10-11", "08:30"),
+    approvedAt: at("2026-10-11", "09:05"),
+    issuedAt: at("2026-10-11", "09:15"),
+    accepted: { at: at("2026-10-11", "15:00"), date: "2026-10-11", note: "وقّع العقد في المركز" },
   },
   {
     file: "housingRequest",
