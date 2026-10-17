@@ -1,10 +1,11 @@
-import { PackageMinus, Wrench } from "lucide-react";
+import { HandCoins, PackageMinus, Wrench } from "lucide-react";
 
 import type { RegisterAlert } from "@/lib/alerts";
 import type { Executor, ServiceContext } from "@/lib/service/context";
 
 import { isLowStock, maintenanceAlert } from "./rules/alerts";
-import { INVENTORY_PATH, MAINTENANCE_PATH } from "./services/paths";
+import { getEquipmentIncidents } from "./services/incidents";
+import { HANDOUTS_PATH, INVENTORY_PATH, MAINTENANCE_PATH } from "./services/paths";
 import type { ItemCondition, StockKind } from "./validators/option-codes";
 
 /**
@@ -15,7 +16,15 @@ import type { ItemCondition, StockKind } from "./validators/option-codes";
  *    the kind that needs buying, materials first.
  *  - `maintenance.due`: a piece of equipment whose maintenance date is within
  *    the lead time or past, or that was reported in need of it.
+ *  - `stock.chargesToSettle`: equipment lost or damaged on a return, at a cost
+ *    above nothing, that the manager has not settled yet (MON-10). The tile
+ *    opens التسليم, whose first list is «للتسوية».
  */
+
+/** The charges «للتسوية»: returns that lost or damaged equipment at a cost, with no ledger line yet. */
+export async function countChargesToSettle(ex: Executor, ctx: ServiceContext): Promise<number> {
+  return (await getEquipmentIncidents(ex, ctx, { pendingOnly: true })).length;
+}
 
 export async function findLowStock(ex: Executor): Promise<{ count: number; kind: StockKind | null }> {
   const items = await ex
@@ -83,5 +92,14 @@ export function registerAlerts(register: RegisterAlert) {
     leadSetting: "alerts.maintenanceLeadDays",
     route: MAINTENANCE_PATH,
     count: (ex, ctx, { days }) => countMaintenanceDue(ex, ctx, { leadDays: days ?? 7 }),
+  });
+  register({
+    key: "stock.chargesToSettle",
+    section: "stock",
+    severity: "warning",
+    name: "ChargesToSettle",
+    icon: HandCoins,
+    route: HANDOUTS_PATH,
+    count: (ex, ctx) => countChargesToSettle(ex, ctx),
   });
 }

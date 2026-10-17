@@ -373,22 +373,10 @@ export async function bringUnitToStore(
   return { id: unit.id };
 }
 
-/** The records whose cost was reversed: cancelled (MON-08). */
-async function cancelledRecords(ex: Executor, recordIds: readonly string[]): Promise<Set<string>> {
-  if (recordIds.length === 0) return new Set();
-  const rows = await ex
-    .selectFrom("Expense")
-    .select("maintenanceRecordId")
-    .where("maintenanceRecordId", "in", [...recordIds])
-    .where("amount", "<", money(0))
-    .execute();
-  return new Set(rows.flatMap((row) => (row.maintenanceRecordId ? [row.maintenanceRecordId] : [])));
-}
-
 /**
- * Cancels a maintenance record typed wrong (MON-08), with the reason typed: its cost is reversed by an opposite
- * entry on its own day, never deleted, and when it was the piece's latest the piece goes back to the record
- * before it. A record that cost nothing has no money to correct: its piece's dates are corrected in its plan.
+ * Cancels a maintenance record typed wrong (MON-08), with the reason typed: it is marked cancelled, never
+ * deleted; its cost, when it had one, is reversed by an opposite entry on its own day; and when it was the
+ * piece's latest, the piece goes back to the record before it.
  */
 export async function cancelMaintenanceRecord(
   ex: Executor,
@@ -405,17 +393,24 @@ export async function cancelMaintenanceRecord(
     .where("id", "=", input.recordId)
     .executeTakeFirst();
   if (!record) throw new ServiceError("This maintenance record does not exist.");
-  if ((await cancelledRecords(ex, [record.id])).has(record.id)) {
-    throw new ServiceError("This maintenance record is already cancelled.");
-  }
-  if (record.cost <= 0) {
-    throw new ServiceError("This maintenance cost nothing: correct the piece's next date in its plan.");
-  }
+  if (record.cancelledAt !== null) throw new ServiceError("This maintenance record is already cancelled.");
   const unit = await ex
     .selectFrom("EquipmentUnit")
     .selectAll()
     .where("id", "=", record.unitId)
     .executeTakeFirstOrThrow();
+
+  await ex
+    .updateTable("MaintenanceRecord")
+    .set({
+      cancelledAt: ctx.now,
+      cancelledByUserId: ctx.userId,
+      cancelReason: reason,
+      updatedAt: ctx.now,
+      updatedByUserId: ctx.userId,
+    })
+    .where("id", "=", record.id)
+    .execute();
 
   const expense = await ex
     .selectFrom("Expense")
@@ -423,42 +418,41 @@ export async function cancelMaintenanceRecord(
     .where("maintenanceRecordId", "=", record.id)
     .where("deletedAt", "is", null)
     .executeTakeFirst();
-  await ex
-    .insertInto("Expense")
-    .values({
-      id: newId(),
-      date: localDate(record.date),
-      division: expense?.division ?? "COMMON",
-      category: "MAINTENANCE",
-      amount: money(-record.cost),
-      method: null,
-      paidTo: record.provider,
-      recurrence: "NONE",
-      source: "MAINTENANCE",
-      maintenanceRecordId: record.id,
-      note: `إلغاء صيانة (${unit.number}): ${reason}`,
-      branchId: expense?.branchId ?? unit.branchId,
-      createdAt: ctx.now,
-      updatedAt: ctx.now,
-      createdByUserId: ctx.userId,
-      updatedByUserId: ctx.userId,
-    })
-    .execute();
+  if (record.cost > 0) {
+    await ex
+      .insertInto("Expense")
+      .values({
+        id: newId(),
+        date: localDate(record.date),
+        division: expense?.division ?? "COMMON",
+        category: "MAINTENANCE",
+        amount: money(-record.cost),
+        method: null,
+        paidTo: record.provider,
+        recurrence: "NONE",
+        source: "MAINTENANCE",
+        maintenanceRecordId: record.id,
+        note: `إلغاء صيانة (${unit.number}): ${reason}`,
+        branchId: expense?.branchId ?? unit.branchId,
+        createdAt: ctx.now,
+        updatedAt: ctx.now,
+        createdByUserId: ctx.userId,
+        updatedByUserId: ctx.userId,
+      })
+      .execute();
+  }
 
   // The piece follows its latest record still standing.
-  const others = await ex
-    .selectFrom("MaintenanceRecord")
-    .selectAll()
-    .where("unitId", "=", unit.id)
-    .where("id", "!=", record.id)
-    .orderBy("date", "desc")
-    .orderBy("createdAt", "desc")
-    .execute();
-  const cancelled = await cancelledRecords(
-    ex,
-    others.map((other) => other.id),
-  );
-  const latest = others.find((other) => !cancelled.has(other.id)) ?? null;
+  const latest =
+    (await ex
+      .selectFrom("MaintenanceRecord")
+      .selectAll()
+      .where("unitId", "=", unit.id)
+      .where("id", "!=", record.id)
+      .where("cancelledAt", "is", null)
+      .orderBy("date", "desc")
+      .orderBy("createdAt", "desc")
+      .executeTakeFirst()) ?? null;
   if (unit.lastMaintenanceDate === record.date && (latest === null || latest.date <= record.date)) {
     const fallbackNext =
       unit.maintenanceIntervalDays === null
@@ -484,7 +478,7 @@ export async function cancelMaintenanceRecord(
     entity: "MaintenanceRecord",
     entityId: record.id,
     entityLabel: unit.number,
-    context: { cost: "reversed" },
+    context: { costReversed: record.cost > 0 },
   });
   return { id: record.id };
 }
@@ -497,7 +491,7 @@ export interface MaintenanceLine {
   cost: number;
   provider: string | null;
   conditionAfter: ItemCondition;
-  /** Cancelled with its cost reversed (MON-08). */
+  /** Cancelled, its cost reversed (MON-08). */
   cancelled: boolean;
 }
 
@@ -510,15 +504,11 @@ export async function listMaintenance(
   requireSection(ctx, "STOCK", "READ");
   const rows = await ex
     .selectFrom("MaintenanceRecord")
-    .select(["id", "date", "kind", "description", "cost", "provider", "conditionAfter"])
+    .select(["id", "date", "kind", "description", "cost", "provider", "conditionAfter", "cancelledAt"])
     .where("unitId", "=", input.unitId)
     .orderBy("date", "desc")
     .orderBy("createdAt", "desc")
     .execute();
-  const cancelled = await cancelledRecords(
-    ex,
-    rows.map((row) => row.id),
-  );
   return rows.map((row) => ({
     id: row.id,
     date: row.date as LocalDate,
@@ -527,7 +517,7 @@ export async function listMaintenance(
     cost: row.cost,
     provider: row.provider,
     conditionAfter: oneOf<ItemCondition>(ITEM_CONDITIONS, row.conditionAfter, "GOOD"),
-    cancelled: cancelled.has(row.id),
+    cancelled: row.cancelledAt !== null,
   }));
 }
 

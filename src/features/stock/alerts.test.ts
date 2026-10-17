@@ -3,8 +3,10 @@ import { afterEach, beforeEach, expect, it } from "vitest";
 import { evaluateAlerts } from "@/lib/alerts";
 import { createTestDatabase, type TestDatabase } from "@/testing/database";
 
-import { countMaintenanceDue, findLowStock } from "./alerts";
-import { stockItem } from "./testing/fixtures";
+import { countChargesToSettle, countMaintenanceDue, findLowStock } from "./alerts";
+import { createHandOut, recordHandOutReturn } from "./services/handouts";
+import { settleEquipmentCharge } from "./services/incidents";
+import { stockItem, workerOnFile } from "./testing/fixtures";
 
 let test: TestDatabase;
 beforeEach(async () => {
@@ -47,4 +49,82 @@ it("counts the equipment whose maintenance is near, past, or asked for", async (
   await unit({ condition: "NEEDS_MAINTENANCE" });
   await unit({ nextMaintenanceDate: "2026-10-01", retiredAt: "2026-10-02T08:00:00.000Z", retireReason: "مكسورة" });
   expect(await test.transact((ex, ctx) => countMaintenanceDue(ex, ctx, { leadDays: 7 }))).toBe(3);
+});
+
+it("counts the equipment charges still to settle, and opens التسليم (MON-10)", async () => {
+  const worker = await workerOnFile(test);
+  const mops = await stockItem(test, {
+    nameAr: "ممسحة",
+    kind: "EQUIPMENT",
+    category: "TOOL",
+    unit: "PIECE",
+    openingQty: 5,
+  });
+  const free = await stockItem(test, {
+    nameAr: "دلو قديم",
+    kind: "EQUIPMENT",
+    category: "TOOL",
+    unit: "PIECE",
+    openingQty: 2,
+  });
+  await test.db
+    .updateTable("StockItem")
+    .set({ avgCost: 60_000 } as never)
+    .where("id", "=", mops.id)
+    .execute();
+  const kit = await test.transact((ex, ctx) =>
+    createHandOut(ex, ctx, {
+      date: "2026-10-12",
+      purpose: "WORKER_KIT",
+      workerId: worker.id,
+      lines: [
+        { itemId: mops.id, qty: 2, condition: "GOOD" },
+        { itemId: free.id, qty: 1, condition: "GOOD" },
+      ],
+    }),
+  );
+  const lines = await test.db
+    .selectFrom("HandOutLine")
+    .select(["id", "itemId"])
+    .where("handOutId", "=", kit.id)
+    .execute();
+  const lineOf = (itemId: string) => lines.find((line) => line.itemId === itemId)?.id ?? "";
+  const tile = async () =>
+    (await test.transact((ex, ctx) => evaluateAlerts(ex, ctx))).find((alert) => alert.key === "stock.chargesToSettle");
+  // A tile shows only above zero.
+  expect((await tile())?.count).toBe(0);
+
+  const broken = await test.transact((ex, ctx) =>
+    recordHandOutReturn(ex, ctx, {
+      handOutLineId: lineOf(mops.id),
+      date: "2026-10-12",
+      qtyReturned: 1,
+      condition: "GOOD",
+      qtyDamaged: 1,
+      note: "انكسرت",
+    }),
+  );
+  // A piece handed out at no recorded cost has nothing to charge: no tile for it.
+  await test.transact((ex, ctx) =>
+    recordHandOutReturn(ex, ctx, {
+      handOutLineId: lineOf(free.id),
+      date: "2026-10-12",
+      qtyReturned: 0,
+      qtyLost: 1,
+      note: "ضاع",
+    }),
+  );
+  expect(await test.transact((ex, ctx) => countChargesToSettle(ex, ctx))).toBe(1);
+  expect(await tile()).toMatchObject({
+    owner: "stock",
+    section: "stock",
+    severity: "warning",
+    count: 1,
+    route: "/dashboard/handouts",
+  });
+
+  await test.transact((ex, ctx) =>
+    settleEquipmentCharge(ex, ctx, { handOutReturnId: broken.id, amount: 0, reason: "تآكل" }),
+  );
+  expect((await tile())?.count).toBe(0);
 });

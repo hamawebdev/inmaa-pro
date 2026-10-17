@@ -254,6 +254,57 @@ describe("a purchase or a maintenance typed wrong is cancelled, its expense reve
     await expect(
       test.transact((ex, ctx) => cancelMaintenanceRecord(ex, ctx, { recordId: wrong.id, reason: "مرة أخرى" })),
     ).rejects.toThrow("This maintenance record is already cancelled.");
+    const marked = await test.db
+      .selectFrom("MaintenanceRecord")
+      .select(["cancelReason", "cancelledAt"])
+      .where("id", "=", wrong.id)
+      .executeTakeFirstOrThrow();
+    expect(marked.cancelReason).toBe("المبلغ خاطئ");
+    expect(marked.cancelledAt).not.toBeNull();
+  });
+
+  it("cancels a maintenance that cost nothing too: marked, no expense, the piece back on its record before (MON-08)", async () => {
+    const { machines } = await arrange();
+    const { id: supplierId } = await test.transact((ex, ctx) => createSupplier(ex, ctx, { name: "مؤسسة الصفاء" }));
+    await test.transact((ex, ctx) =>
+      recordPurchase(ex, ctx, {
+        date: "2026-10-01",
+        supplierId,
+        method: "CASH",
+        lines: [{ itemId: machines.id, qty: 1, unitPrice: 45_000 }],
+      }),
+    );
+    const unit = await test.db
+      .selectFrom("EquipmentUnit")
+      .select("id")
+      .where("supplierId", "=", supplierId)
+      .executeTakeFirstOrThrow();
+    await test.transact((ex, ctx) => setMaintenancePlan(ex, ctx, { unitId: unit.id, intervalDays: 30 }));
+    const wrong = await test.transact((ex, ctx) =>
+      recordMaintenance(ex, ctx, {
+        unitId: unit.id,
+        date: "2026-10-12",
+        kind: "PREVENTIVE",
+        description: "تنظيف داخلي",
+        cost: 0,
+        conditionAfter: "GOOD",
+      }),
+    );
+    await expect(
+      test.transact((ex, ctx) => cancelMaintenanceRecord(ex, ctx, { recordId: wrong.id, reason: "  " })),
+    ).rejects.toThrow("A reason is required.");
+    await test.transact((ex, ctx) =>
+      cancelMaintenanceRecord(ex, ctx, { recordId: wrong.id, reason: "سُجّلت لقطعة أخرى" }),
+    );
+    expect(await liveExpenses("maintenanceRecordId", wrong.id)).toEqual([]);
+    const piece = await test.db
+      .selectFrom("EquipmentUnit")
+      .selectAll()
+      .where("id", "=", unit.id)
+      .executeTakeFirstOrThrow();
+    expect(piece).toMatchObject({ lastMaintenanceDate: null, nextMaintenanceDate: "2026-10-31" });
+    const [line] = await test.transact((ex, ctx) => listMaintenance(ex, ctx, { unitId: unit.id }));
+    expect(line).toMatchObject({ id: wrong.id, cancelled: true });
   });
 });
 

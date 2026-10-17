@@ -127,7 +127,6 @@
     "PurchaseLeftStore": "Une partie de cet achat a déjà quitté le magasin : il ne peut pas être annulé.",
     "MaintenanceNotFound": "Cette fiche de maintenance n'existe pas.",
     "MaintenanceAlreadyCancelled": "Cette fiche de maintenance est déjà annulée.",
-    "MaintenanceCostNothing": "Cette maintenance n'a rien coûté : corrigez la prochaine date dans le plan de la pièce.",
     "PieceInStore": "Cette pièce est déjà au magasin.",
     "PieceExpected": "Une remise attend encore cette pièce : enregistrez son retour sur la remise.",
     "NoLossOnReturn": "Ce retour ne compte ni perte ni dommage.",
@@ -142,6 +141,10 @@
     "MaintenanceDue": {
       "Title": "Maintenance à faire",
       "Hint": "Dans les {days} jours, ou signalée"
+    },
+    "ChargesToSettle": {
+      "Title": "Imputations d'équipement à régler",
+      "Hint": "Perdu ou abîmé au retour : décidez ce que l'agent doit"
     }
   },
   "ItemForm": {

@@ -335,7 +335,7 @@ function History({ unit, onClose }: { unit: EquipmentUnitRow; onClose: () => voi
                   {line.cancelled ? <StatusChip tone="neutral" label={t("Cancelled")} /> : money(line.cost)}
                 </TableCell>
                 <TableCell>
-                  {manages && !line.cancelled && line.cost > 0 && (
+                  {manages && !line.cancelled && (
                     <Button
                       type="button"
                       variant="outline"

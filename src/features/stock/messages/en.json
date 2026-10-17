@@ -127,7 +127,6 @@
     "PurchaseLeftStore": "Part of this purchase has already left the store: it cannot be cancelled.",
     "MaintenanceNotFound": "This maintenance record does not exist.",
     "MaintenanceAlreadyCancelled": "This maintenance record is already cancelled.",
-    "MaintenanceCostNothing": "This maintenance cost nothing: correct the piece's next date in its plan.",
     "PieceInStore": "This piece is already in the store.",
     "PieceExpected": "A hand-out still expects this piece back: record its return on the hand-out.",
     "NoLossOnReturn": "This return lost or damaged nothing.",
@@ -142,6 +141,10 @@
     "MaintenanceDue": {
       "Title": "Maintenance due",
       "Hint": "Within {days} days, or reported in need of it"
+    },
+    "ChargesToSettle": {
+      "Title": "Equipment charges to settle",
+      "Hint": "Lost or damaged on a return: decide what the worker owes"
     }
   },
   "ItemForm": {
