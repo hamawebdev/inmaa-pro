@@ -31,12 +31,13 @@ import { fileQueryPath, getFileHubQuery, type FileHub } from "@/features/clients
 import { FORM_KIND_OF } from "@/features/clients/validators/option-lists";
 import { FileProfitabilityCard } from "@/features/money/components/file-profitability-card";
 import { formatMoney } from "@/features/money/rules/centimes";
+import { useSession } from "@/hooks/use-session";
 import { useCodeLabel } from "@/i18n/use-code-label";
 import { pathKey } from "@/lib/compat/revalidate";
 import { WILAYAS } from "@/lib/geo/wilayas";
 import { cn } from "@/lib/utils";
 import { phoneText } from "@/lib/text/phone";
-import { FILE_PARTS, filePartHref, type FilePartId } from "@/navigation/file-parts";
+import { FILE_PARTS, filePartHref, mayOpenFilePart, type FilePartId } from "@/navigation/file-parts";
 
 import { filesHref } from "../_components/files-filter";
 import { ltr } from "../_components/ltr-text";
@@ -223,8 +224,11 @@ function Parts({ hub }: { hub: FileHub }) {
   const t = useTranslations("FileHub");
   const tNav = useTranslations("Nav");
   const building = FORM_DEFINITIONS[hub.kind].family === "BUILDING";
-  // «القاطنون» belongs to buildings and residential complexes only.
-  const parts = FILE_PARTS.filter((part) => part.id !== "residents" || building);
+  const session = useSession();
+  // «القاطنون» belongs to buildings and residential complexes only; a part the reader cannot open is not offered (S-31).
+  const parts = FILE_PARTS.filter(
+    (part) => (part.id !== "residents" || building) && session !== null && mayOpenFilePart(session, part),
+  );
   return (
     <section className="space-y-4" aria-labelledby="file-parts">
       <h2 id="file-parts" className="text-lg font-bold">
