@@ -20,7 +20,7 @@ beforeEach(async () => {
 });
 afterEach(() => test.close());
 
-const december = { from: "2026-12-01", to: "2026-12-31" } as never;
+const december = { from: localDate("2026-12-01"), to: localDate("2026-12-31") };
 
 async function novemberInvoiced(method: "CASH" | "BANK_TRANSFER") {
   const file = await contractedFile(test);
@@ -275,4 +275,19 @@ it("reports each worker's period: the visits done, the hours, the lateness and w
     handOuts: 1,
     lostOrDamaged: 0,
   });
+});
+
+it("reports one branch's period, or the whole centre's (F-47)", async () => {
+  await centreReady(test);
+  const file = await novemberInvoiced("CASH");
+  await test.transact((ex, ctx) =>
+    recordPayment(ex, ctx, { fileId: file.id, receivedDate: "2026-12-03", method: "CASH", amount: da(45_000) }),
+  );
+  const other = await test.rows.insert("Branch", { name: "فرع عين البيضاء" } as never);
+  const whole = await test.transact((ex, ctx) => getPeriodReport(ex, ctx, december));
+  const mine = await test.transact((ex, ctx) => getPeriodReport(ex, ctx, { ...december, branchId: file.branchId }));
+  const elsewhere = await test.transact((ex, ctx) => getPeriodReport(ex, ctx, { ...december, branchId: other.id }));
+  expect(mine.result.totalIncome).toBe(whole.result.totalIncome);
+  expect(elsewhere.result.totalIncome).toBe(0);
+  expect(elsewhere.contracts).toEqual([]);
 });

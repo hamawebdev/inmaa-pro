@@ -476,7 +476,10 @@
     "PlusRenewals": "+ {amount} if renewed",
     "ByWorker": "By worker",
     "NoWorkers": "No worker did a visit or received a hand-out in this period.",
-    "StillOut": "{count, plural, one {# piece still out} other {# pieces still out}}"
+    "StillOut": "{count, plural, one {# piece still out} other {# pieces still out}}",
+    "Print": "Print the report",
+    "PrintTitle": "The period's report",
+    "PrintNotRecorded": "The print could not be recorded, so nothing was printed."
   },
   "FileMoney": {
     "Of": "{client} · file {number}",
@@ -613,5 +616,29 @@
     "FileKind": "CSV file",
     "Saved": "Saved: {path}",
     "Failed": "The file could not be saved."
+  },
+  "Analytics": {
+    "Contracts": "Contract profitability",
+    "Revenue": "Revenue",
+    "Cost": "Cost",
+    "Result": "Result",
+    "NotSet": "Not known",
+    "Nothing": "Nothing in this period.",
+    "HoursOver": "Hours over the estimate",
+    "ByServiceType": "By service type",
+    "ByZone": "By zone",
+    "ByClient": "By client",
+    "NoZone": "No zone",
+    "CashFlow": "Cash flow",
+    "Table": {
+      "File": "File",
+      "Estimate": "Estimated cost",
+      "Actual": "Actual cost",
+      "Month": "Month",
+      "In": "Money in",
+      "Out": "Money out",
+      "Net": "Net",
+      "Running": "Balance"
+    }
   }
 }

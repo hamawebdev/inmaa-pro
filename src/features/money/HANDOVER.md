@@ -84,6 +84,12 @@ CSV, UTF-8 with a byte-order mark, `;` between columns, Windows line ends; amoun
 - The visit statement keeps its last three rows, its counts and its signatures together (`KeepTogether`); the rows before them run on as they come, the title row repeated on each page.
 - Decree 05-468 under VAT (the coordinator's ruling): each line shows its unit price and amount before tax. A price typed with its tax in it is brought back line by line (`shareBeforeTax`): the totals are computed on what was typed, so the total with tax is the agreed one to the centime; each line takes its share of the total before tax, the rounding left over goes to the largest line, and a line that no longer multiplies out becomes one lump sum. `Invoice.pricesIncludeVat` says whether the lines carry the tax: under VAT it is now 0 (the database's check ties it to the lines), and the price agreed with its tax is the file's `amountIncludesVat` and the invoice's total with tax.
 
+## The screen-column audit (N2-06 to N2-18, F-30b, F-41) and feature 47
+
+- التسليم as his page draws it: the side «المعدات · المواد» (`?kind=`), then «نوع الخدمة» «الكل · عند الطلب · عقد» (`?service=`), then the four divisions with «الكل» (`?division=`), all four under either service type; a worker's own kit shows only under «الكل». `listHandOuts` filters.
+- The reports carry «ربحية العقود» (for `cost.read`), the analytics by service type, zone and client, and the cash flow of the period (payments as received, stamp duty and tax in, like «المحصَّل»; expenses as paid, the tax handed over among them as «ضرائب»); a print page `/dashboard/reports/print` (the sheet `period-report-sheet.tsx`, client letterhead, its print a DISCLOSE).
+- A branch filter on the reports and their print (`?branch=`), drawn when the centre has several; the services take `branchId`. People's payroll in the forecast stays the whole centre's.
+
 ## Conventions I follow
 
 - Money in centimes, quantities in thousandths, dates `YYYY-MM-DD`, everything integer. Money is written by Foundation's `formatMoney` / `useMoneyText` (re-exported from `rules/centimes.ts` and `components/use-money-text.ts`).

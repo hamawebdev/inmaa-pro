@@ -15,6 +15,7 @@ import { cn } from "@/lib/utils";
 import { filePartHref } from "@/navigation/file-parts";
 
 import { AccountantExport } from "./accountant-export";
+import { AnalyticsView } from "./analytics-view";
 
 /**
  * The report of the period, top to bottom as the manager reads it: what is
@@ -25,7 +26,7 @@ import { AccountantExport } from "./accountant-export";
  * four divisions, and spreading them would give each a result nobody decided.
  * A loss is written with its minus sign and in the alert colour.
  */
-export function ReportView({ report }: { report: PeriodReport }) {
+export function ReportView({ report, branchId = null }: { report: PeriodReport; branchId?: string | null }) {
   const t = useTranslations("Reports");
   const money = useMoneyText();
   const dates = useDateText();
@@ -206,6 +207,8 @@ export function ReportView({ report }: { report: PeriodReport }) {
           </TableBody>
         </Table>
       </section>
+
+      <AnalyticsView from={report.from} to={report.to} branchId={branchId} />
 
       <AccountantExport from={report.from} to={report.to} />
 

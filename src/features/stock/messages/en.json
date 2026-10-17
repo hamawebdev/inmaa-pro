@@ -182,7 +182,11 @@
     "CancelDescription": "Everything it took goes back to the store. Only a hand-out typed by mistake, with nothing returned yet.",
     "HandoutCount": "{count, plural, =0 {No hand-outs} one {# hand-out} other {# hand-outs}}",
     "SearchPlaceholder": "Search by number, worker, client or file…",
-    "NoHandouts": "Nothing has been handed out yet."
+    "NoHandouts": "Nothing has been handed out yet.",
+    "All": "All",
+    "KindSwitch": "Equipment or materials",
+    "ServiceSwitch": "Service type",
+    "DivisionSwitch": "Division"
   },
   "HandoutReturn": {
     "Title": "What came back of hand-out {number}",

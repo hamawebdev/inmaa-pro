@@ -478,3 +478,38 @@ describe("what the hand-out form offers", () => {
     ]);
   });
 });
+
+describe("the list as his page «التسليم» draws it (N2-06 to N2-18)", () => {
+  it("filters by side, by «نوع الخدمة» and by division, a hand-out with no job only under «الكل» (N2-06, N2-07, N2-09, N2-18)", async () => {
+    const { file, worker, cleaner, buckets } = await arrange();
+    const job = await test.transact((ex, ctx) =>
+      createHandOut(ex, ctx, {
+        date: "2026-10-12",
+        purpose: "JOB",
+        fileId: file.id,
+        workerId: worker.id,
+        lines: [{ itemId: buckets.id, qty: 1, condition: "GOOD" }],
+      }),
+    );
+    const kit = await test.transact((ex, ctx) =>
+      createHandOut(ex, ctx, {
+        date: "2026-10-12",
+        purpose: "WORKER_KIT",
+        workerId: worker.id,
+        lines: [{ itemId: cleaner.id, qty: 1 }],
+      }),
+    );
+    const ids = async (filter: Parameters<typeof listHandOuts>[2]) =>
+      (await test.transact((ex, ctx) => listHandOuts(ex, ctx, filter))).map((row) => row.id).sort();
+
+    expect(await ids({})).toEqual([job.id, kit.id].sort());
+    // «المعدات» holds the bucket's hand-out; «المواد» the cleaner's.
+    expect(await ids({ kind: "EQUIPMENT" })).toEqual([job.id]);
+    expect(await ids({ kind: "MATERIAL" })).toEqual([kit.id]);
+    // The job is a building contract: «عقد» and «العمارات» find it, «عند الطلب» and «المنازل» do not; the kit is in neither.
+    expect(await ids({ serviceType: "CONTRACT" })).toEqual([job.id]);
+    expect(await ids({ serviceType: "ON_DEMAND" })).toEqual([]);
+    expect(await ids({ serviceType: "CONTRACT", division: "BUILDING" })).toEqual([job.id]);
+    expect(await ids({ kind: "EQUIPMENT", serviceType: "CONTRACT", division: "HOUSING" })).toEqual([]);
+  });
+});

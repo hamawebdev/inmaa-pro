@@ -182,7 +182,11 @@
     "CancelDescription": "Tout ce qu'elle a sorti revient au stock. Réservé à une remise saisie par erreur, sans retour enregistré.",
     "HandoutCount": "{count, plural, =0 {Aucune remise} one {# remise} other {# remises}}",
     "SearchPlaceholder": "Rechercher par numéro, agent, client ou dossier…",
-    "NoHandouts": "Aucune remise enregistrée."
+    "NoHandouts": "Aucune remise enregistrée.",
+    "All": "Tous",
+    "KindSwitch": "Équipements ou produits",
+    "ServiceSwitch": "Type de service",
+    "DivisionSwitch": "Division"
   },
   "HandoutReturn": {
     "Title": "Retour de la remise {number}",

@@ -506,10 +506,20 @@ export interface HandOutListRow {
   cancelled: boolean;
 }
 
+export interface HandOutFilter {
+  fileId?: string | null;
+  /** His two sides, «المعدات · المواد»: a hand-out is on a side when one of its lines is an item of that kind. */
+  kind?: StockKind | null;
+  /** «نوع الخدمة» and the division, as he drew them under each side. A hand-out with no job matches neither. */
+  serviceType?: ServiceType | null;
+  division?: Division | null;
+}
+
+/** The hand-outs, the latest first, filtered as his page «التسليم» draws it (scope A1, N3). */
 export async function listHandOuts(
   ex: Executor,
   ctx: ServiceContext,
-  input: { fileId?: string | null } = {},
+  input: HandOutFilter = {},
 ): Promise<HandOutListRow[]> {
   requireSection(ctx, "STOCK", "READ");
   let rows = ex
@@ -535,6 +545,20 @@ export async function listHandOuts(
     .orderBy("HandOut.date", "desc")
     .orderBy("HandOut.numberSeq", "desc");
   if (input.fileId) rows = rows.where("HandOut.fileId", "=", input.fileId);
+  if (input.serviceType) rows = rows.where("HandOut.serviceType", "=", input.serviceType);
+  if (input.division) rows = rows.where("HandOut.division", "=", input.division);
+  if (input.kind) {
+    const kind = input.kind;
+    rows = rows.where(({ exists, selectFrom }) =>
+      exists(
+        selectFrom("HandOutLine")
+          .innerJoin("StockItem", "StockItem.id", "HandOutLine.itemId")
+          .select("HandOutLine.id")
+          .whereRef("HandOutLine.handOutId", "=", "HandOut.id")
+          .where("StockItem.kind", "=", kind),
+      ),
+    );
+  }
   const handOuts = await rows.execute();
   if (handOuts.length === 0) return [];
 

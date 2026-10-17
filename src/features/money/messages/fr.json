@@ -476,7 +476,10 @@
     "PlusRenewals": "+ {amount} si renouvelé",
     "ByWorker": "Par agent",
     "NoWorkers": "Aucun agent n'a fait de visite ni reçu de remise sur cette période.",
-    "StillOut": "{count, plural, one {# pièce dehors} other {# pièces dehors}}"
+    "StillOut": "{count, plural, one {# pièce dehors} other {# pièces dehors}}",
+    "Print": "Imprimer le rapport",
+    "PrintTitle": "Rapport de la période",
+    "PrintNotRecorded": "L'impression n'a pas pu être enregistrée : rien n'a été imprimé."
   },
   "FileMoney": {
     "Of": "{client} · dossier {number}",
@@ -613,5 +616,29 @@
     "FileKind": "Fichier CSV",
     "Saved": "Enregistré : {path}",
     "Failed": "Le fichier n'a pas pu être enregistré."
+  },
+  "Analytics": {
+    "Contracts": "Rentabilité des contrats",
+    "Revenue": "Recette",
+    "Cost": "Coût",
+    "Result": "Résultat",
+    "NotSet": "Inconnu",
+    "Nothing": "Rien sur cette période.",
+    "HoursOver": "Heures au-delà",
+    "ByServiceType": "Par type de service",
+    "ByZone": "Par zone",
+    "ByClient": "Par client",
+    "NoZone": "Sans zone",
+    "CashFlow": "Trésorerie",
+    "Table": {
+      "File": "Dossier",
+      "Estimate": "Coût estimé",
+      "Actual": "Coût réel",
+      "Month": "Mois",
+      "In": "Entrées",
+      "Out": "Sorties",
+      "Net": "Net",
+      "Running": "Solde"
+    }
   }
 }

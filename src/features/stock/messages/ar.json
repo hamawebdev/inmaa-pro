@@ -182,7 +182,11 @@
     "CancelDescription": "يعود كل ما أُخرج به إلى المخزون. خاص بتسليم أُدخل خطأً ولم يُسترجع منه شيء.",
     "HandoutCount": "{count, plural, =0 {لا توجد عمليات تسليم} one {عملية تسليم واحدة} two {عمليتا تسليم} few {# عمليات تسليم} many {# عملية تسليم} other {# عملية تسليم}}",
     "SearchPlaceholder": "بحث بالرقم أو العامل أو العميل أو الملف…",
-    "NoHandouts": "لم يُسجَّل أي تسليم بعد."
+    "NoHandouts": "لم يُسجَّل أي تسليم بعد.",
+    "All": "الكل",
+    "KindSwitch": "المعدات أو المواد",
+    "ServiceSwitch": "نوع الخدمة",
+    "DivisionSwitch": "القسم"
   },
   "HandoutReturn": {
     "Title": "ما استُرجع من التسليم {number}",

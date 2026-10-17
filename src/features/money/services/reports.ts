@@ -1,6 +1,7 @@
 import { requireSection } from "@/lib/access/session";
 import { staffName } from "@/lib/text/names";
-import { query } from "@/lib/service/action";
+import { logDisclose } from "@/lib/log";
+import { action, query } from "@/lib/service/action";
 import type { Executor, ServiceContext } from "@/lib/service/context";
 import { getSetting } from "@/lib/settings";
 import { basisPoints, localDate, money, type LocalDate } from "@/lib/units";
@@ -54,7 +55,7 @@ export interface IncomeData {
 export async function getIncomeData(
   ex: Executor,
   ctx: ServiceContext,
-  input: { from: LocalDate; to: LocalDate },
+  input: { from: LocalDate; to: LocalDate; branchId?: string | null },
 ): Promise<IncomeData> {
   requireSection(ctx, "MONEY", "READ");
   const tax = await readTaxSettings(ex);
@@ -78,6 +79,7 @@ export async function getIncomeData(
     ])
     .where("Payment.receivedDate", ">=", input.from)
     .where("Payment.receivedDate", "<=", input.to)
+    .$if(input.branchId != null, (qb) => qb.where("Payment.branchId", "=", input.branchId ?? ""))
     .where(({ not, exists, selectFrom }) =>
       not(
         exists(
@@ -126,6 +128,7 @@ export async function getIncomeData(
     )
     .where("Invoice.issueDate", ">=", input.from)
     .where("Invoice.issueDate", "<=", input.to)
+    .$if(input.branchId != null, (qb) => qb.where("Invoice.branchId", "=", input.branchId ?? ""))
     .execute();
 
   const dues = await ex
@@ -134,6 +137,7 @@ export async function getIncomeData(
     .select(["PaymentDue.id", "PaymentDue.amount", "PaymentDue.paidAmount", "File.division"])
     .where("PaymentDue.cancelledAt", "is", null)
     .whereRef("PaymentDue.paidAmount", "<", "PaymentDue.amount")
+    .$if(input.branchId != null, (qb) => qb.where("File.branchId", "=", input.branchId ?? ""))
     .execute();
 
   return {
@@ -218,7 +222,7 @@ const NOT_DONE: ReadonlySet<string> = new Set(["CANCELLED", "POSTPONED", "PROBLE
 export async function getPeriodReport(
   ex: Executor,
   ctx: ServiceContext,
-  input: { from: LocalDate; to: LocalDate },
+  input: { from: LocalDate; to: LocalDate; branchId?: string | null },
 ): Promise<PeriodReport> {
   requireSection(ctx, "MONEY", "READ");
   const data = await getIncomeData(ex, ctx, input);
@@ -245,6 +249,7 @@ export async function getPeriodReport(
     .select(["division", "date", "amount", "recurrence", "source"])
     .where("deletedAt", "is", null)
     .where("date", ">=", localDate(addMonths(firstDayOfMonth(monthOf(ctx.today)), -3)))
+    .$if(input.branchId != null, (qb) => qb.where("branchId", "=", input.branchId ?? ""))
     .execute();
   const recent = expenseRows.filter((row) => isExpenseDivision(row.division));
   const expenses = expensesByDivision(
@@ -266,6 +271,7 @@ export async function getPeriodReport(
       .where("deletedAt", "is", null)
       .where("date", ">=", input.from)
       .where("date", "<", localDate(floor < input.to ? floor : addDays(input.to, 1)))
+      .$if(input.branchId != null, (qb) => qb.where("branchId", "=", input.branchId ?? ""))
       .execute();
     for (const row of older) if (isExpenseDivision(row.division)) expenses[row.division] += row.amount;
   }
@@ -286,6 +292,7 @@ export async function getPeriodReport(
     .where("PaymentDue.cancelledAt", "is", null)
     .whereRef("PaymentDue.paidAmount", "<", "PaymentDue.amount")
     .where("File.deletedAt", "is", null)
+    .$if(input.branchId != null, (qb) => qb.where("File.branchId", "=", input.branchId ?? ""))
     .execute();
   const owed = openDues.map((due) => ({
     fileId: due.fileId,
@@ -296,10 +303,12 @@ export async function getPeriodReport(
   // ── The work done ──
   const visits = await ex
     .selectFrom("Visit")
+    .innerJoin("File", "File.id", "Visit.fileId")
     .leftJoin("VisitReport", "VisitReport.visitId", "Visit.id")
     .select(["Visit.status", "Visit.statusReason", "Visit.visitDate", "Visit.orderPrintedAt", "VisitReport.entryState"])
     .where("Visit.visitDate", ">=", input.from)
     .where("Visit.visitDate", "<=", input.to)
+    .$if(input.branchId != null, (qb) => qb.where("File.branchId", "=", input.branchId ?? ""))
     .execute();
   // A visit taken out because the programme changed never was a visit of the period.
   const counted = visits.filter(
@@ -336,7 +345,7 @@ export async function getPeriodReport(
     today: ctx.today,
     months,
     dues: owed,
-    duesIfRenewed: await renewalDues(ex, ctx, lastDayOfMonth(addToMonth(thisMonth, months))),
+    duesIfRenewed: await renewalDues(ex, ctx, lastDayOfMonth(addToMonth(thisMonth, months)), input.branchId ?? null),
     recurringExpenses,
     lastPayRun,
     otherExpensesOfLastMonths,
@@ -348,6 +357,7 @@ export async function getPeriodReport(
     .select(["Invoice.fileId", "Invoice.totalTTC"])
     .where("Invoice.issueDate", ">=", input.from)
     .where("Invoice.issueDate", "<=", input.to)
+    .$if(input.branchId != null, (qb) => qb.where("Invoice.branchId", "=", input.branchId ?? ""))
     .where(({ not, exists, selectFrom }) =>
       not(
         exists(
@@ -364,6 +374,7 @@ export async function getPeriodReport(
     .select(["Payment.fileId", "Payment.amount"])
     .where("Payment.receivedDate", ">=", input.from)
     .where("Payment.receivedDate", "<=", input.to)
+    .$if(input.branchId != null, (qb) => qb.where("Payment.branchId", "=", input.branchId ?? ""))
     .where(({ not, exists, selectFrom }) =>
       not(
         exists(
@@ -410,7 +421,7 @@ export async function getPeriodReport(
       ordersNotReturned,
     },
     forecast,
-    workers: await workerLines(ex, input.from, input.to),
+    workers: await workerLines(ex, input.from, input.to, input.branchId ?? null),
     contracts: files
       .filter((file) => isDivision(file.division))
       .map((file) => ({
@@ -427,10 +438,12 @@ export async function getPeriodReport(
  * The per-worker report of a period: from the visits done (Operations' seats, read only) and the
  * store's hand-outs and returns. Only workers with something in the period are listed.
  */
-async function workerLines(ex: Executor, from: string, to: string): Promise<WorkerLine[]> {
+async function workerLines(ex: Executor, from: string, to: string, branchId: string | null): Promise<WorkerLine[]> {
   const seats = await ex
     .selectFrom("VisitWorker")
     .innerJoin("Visit", "Visit.id", "VisitWorker.visitId")
+    .innerJoin("File", "File.id", "Visit.fileId")
+    .$if(branchId != null, (qb) => qb.where("File.branchId", "=", branchId ?? ""))
     .select(["VisitWorker.workerId", "VisitWorker.workedMin", "VisitWorker.lateMin"])
     .where("Visit.status", "=", "DONE")
     .where("VisitWorker.seatStatus", "=", "ASSIGNED")
@@ -440,6 +453,7 @@ async function workerLines(ex: Executor, from: string, to: string): Promise<Work
   const handOuts = await ex
     .selectFrom("HandOut")
     .select(["HandOut.workerId"])
+    .$if(branchId != null, (qb) => qb.where("HandOut.branchId", "=", branchId ?? ""))
     .where("HandOut.cancelledAt", "is", null)
     .where("HandOut.date", ">=", localDate(from))
     .where("HandOut.date", "<=", localDate(to))
@@ -449,6 +463,7 @@ async function workerLines(ex: Executor, from: string, to: string): Promise<Work
     .innerJoin("HandOutLine", "HandOutLine.id", "HandOutReturn.handOutLineId")
     .innerJoin("HandOut", "HandOut.id", "HandOutLine.handOutId")
     .select(["HandOut.workerId", "HandOutReturn.qtyLost", "HandOutReturn.qtyDamaged", "HandOutLine.unitCost"])
+    .$if(branchId != null, (qb) => qb.where("HandOut.branchId", "=", branchId ?? ""))
     .where("HandOutReturn.date", ">=", localDate(from))
     .where("HandOutReturn.date", "<=", localDate(to))
     .execute();
@@ -536,7 +551,7 @@ async function workerLines(ex: Executor, from: string, to: string): Promise<Work
  * office said will not be renewed brings nothing. A contract paid visit by
  * visit is left out: its next visits are not planned yet.
  */
-async function renewalDues(ex: Executor, ctx: ServiceContext, horizon: string) {
+async function renewalDues(ex: Executor, ctx: ServiceContext, horizon: string, branchId: string | null) {
   const ending = await ex
     .selectFrom("File")
     .select(["File.id"])
@@ -547,6 +562,7 @@ async function renewalDues(ex: Executor, ctx: ServiceContext, horizon: string) {
     .where("File.endKind", "is", null)
     .where("File.endDate", ">=", ctx.today)
     .where("File.endDate", "<=", localDate(horizon))
+    .$if(branchId != null, (qb) => qb.where("File.branchId", "=", branchId ?? ""))
     .where((eb) => eb.or([eb("File.renewalDecision", "is", null), eb("File.renewalDecision", "!=", "WILL_NOT_RENEW")]))
     .where(({ not, exists, selectFrom }) =>
       not(
@@ -570,7 +586,27 @@ async function renewalDues(ex: Executor, ctx: ServiceContext, horizon: string) {
   return dues;
 }
 
+/** The period's report went to paper: it names workers and clients, so its print is a disclosure. */
+export async function recordReportPrinted(
+  ex: Executor,
+  ctx: ServiceContext,
+  input: { from: string; to: string },
+): Promise<{ from: string; to: string }> {
+  requireSection(ctx, "MONEY", "READ");
+  await logDisclose(ex, ctx, {
+    owner: "MONEY",
+    action: "PRINT",
+    entity: "PeriodReport",
+    entityId: `${input.from}:${input.to}`,
+    entityLabel: `${input.from} → ${input.to}`,
+    disclosure: "PRINT",
+    context: { sheet: "PERIOD_REPORT" },
+  });
+  return input;
+}
+
 // ── What the screens call ────────────────────────────────────────────────────
 
 export const getIncomeDataQuery = query(getIncomeData);
+export const recordReportPrintedAction = action(recordReportPrinted);
 export const getPeriodReportQuery = query(getPeriodReport);

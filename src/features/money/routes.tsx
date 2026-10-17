@@ -23,6 +23,7 @@ import ReminderPrintPage from "@/pages/dashboard/payments/reminders/[fileId]/pri
 import NewPurchasePage from "@/pages/dashboard/purchases/new/page";
 import PurchasesPage from "@/pages/dashboard/purchases/page";
 import ReportsPage from "@/pages/dashboard/reports/page";
+import ReportPrintPage from "@/pages/dashboard/reports/print/page";
 
 /**
  * Money and stock's routes: both sections, one owner, one list.
@@ -58,6 +59,7 @@ export const moneyRoutes: RouteObject[] = [
   { path: "payments/receipts/batch/:id/print", element: <ReceiptBatchPrintPage /> },
   { path: "payments/reminders/:fileId/print", element: <ReminderPrintPage /> },
   { path: "handouts/:id/print", element: <HandoutPrintPage /> },
+  { path: "reports/print", element: <ReportPrintPage /> },
 
   // Parts of a file. The list of parts is src/navigation/file-parts.ts.
   { path: "files/:id/handouts", element: <FileHandoutsPage /> },

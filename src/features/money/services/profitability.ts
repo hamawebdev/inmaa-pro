@@ -12,7 +12,7 @@ import { isIsoDate } from "../rules/dates";
 import { contractProfitability, type Profitability } from "../rules/profitability";
 
 import { readTaxSettings } from "./money-settings";
-import { readFileBilling } from "./terms";
+import { readFileBilling, type FileBilling } from "./terms";
 
 /**
  * «ربحية العقد» (feature 30): what a contract really earns over a period, on
@@ -55,12 +55,6 @@ export async function getFileProfitability(
   requireCapability(ctx, "cost.read");
   const file = await readFileBilling(ex, ctx, input.fileId);
   if (!file) throw new ServiceError("This file does not exist.");
-  const start = file.startDate ?? ctx.today;
-  const end = file.endedDate ?? file.endDate ?? ctx.today;
-  const from = localDate(input.from && isIsoDate(input.from) ? input.from : start);
-  const to = localDate(input.to && isIsoDate(input.to) ? input.to : end < ctx.today ? end : ctx.today);
-  if (from > to) throw new ServiceError("The start of the period cannot be after its end.");
-
   await logConsultOnce(ex, ctx, {
     owner: "MONEY",
     action: "VIEW_RESTRICTED",
@@ -70,6 +64,24 @@ export async function getFileProfitability(
     subject: { kind: "CLIENT", id: file.clientId },
     context: { what: "PROFITABILITY" },
   });
+  return computeFileProfitability(ex, ctx, { file, from: input.from, to: input.to });
+}
+
+/**
+ * The profitability of one file over a period, with no check and no log: for a caller that checked
+ * `cost.read` and logged the reading its own way (the file's card above, the reports' tables).
+ */
+export async function computeFileProfitability(
+  ex: Executor,
+  ctx: ServiceContext,
+  input: { file: FileBilling; from?: string | null; to?: string | null },
+): Promise<FileProfitability> {
+  const { file } = input;
+  const start = file.startDate ?? ctx.today;
+  const end = file.endedDate ?? file.endDate ?? ctx.today;
+  const from = localDate(input.from && isIsoDate(input.from) ? input.from : start);
+  const to = localDate(input.to && isIsoDate(input.to) ? input.to : end < ctx.today ? end : ctx.today);
+  if (from > to) throw new ServiceError("The start of the period cannot be after its end.");
 
   const settings = await getSettings(ex, ["costing.hourlyLabourCost", "costing.hoursOverrunPercent"]);
   const tax = await readTaxSettings(ex);
