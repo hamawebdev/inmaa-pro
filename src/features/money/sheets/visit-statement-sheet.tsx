@@ -121,37 +121,38 @@ export function VisitStatementBody({ data }: { data: VisitStatementData }) {
       />
       <Gap mm={4} />
 
-      {body.length > 0 && (
-        <SheetTable
-          columns={STATEMENT_COLUMNS}
-          // The title row is printed again at the top of every page a long statement runs onto.
-          head={titleRow}
-        >
-          {body.map(visitRow)}
-        </SheetTable>
-      )}
-      {/* The last rows, the counts and the signatures stay together: a signature never stands on a page alone. */}
-      <KeepTogether>
-        <SheetTable columns={STATEMENT_COLUMNS} head={body.length === 0 ? titleRow : undefined}>
-          {tail.map(visitRow)}
-        </SheetTable>
-        <Gap mm={3} />
+      <SheetTable
+        columns={STATEMENT_COLUMNS}
+        // The title row is printed again at the top of every page the statement runs onto, the last one too.
+        head={titleRow}
+      >
+        {body.map(visitRow)}
+        {/* The last rows, the counts and the signatures are one row of the same table, kept whole: a signature
+            never stands on a page alone, and on the page they open the table's title row is printed above them. */}
+        <SheetRow>
+          <SheetCell colSpan={STATEMENT_COLUMNS.length} borderless style={{ padding: 0 }}>
+            <KeepTogether>
+              <SheetTable columns={STATEMENT_COLUMNS}>{tail.map(visitRow)}</SheetTable>
+              <Gap mm={3} />
 
-        <FieldTable
-          widths={[37, 11, 37, 11, 30, 11, 28, 22.3]}
-          rows={[
-            [
-              ...field("الزيارات المبرمجة", <Num>{data.rows.length}</Num>),
-              ...field("الزيارات المحتسبة", <Num>{billed.length}</Num>),
-              ...field("غير المحتسبة", <Num>{data.rows.length - billed.length}</Num>),
-              ...field("ساعات العمل", <Num>{hoursText(workedMin)}</Num>),
-            ],
-          ]}
-        />
-        <Gap mm={6} />
+              <FieldTable
+                widths={[37, 11, 37, 11, 30, 11, 28, 22.3]}
+                rows={[
+                  [
+                    ...field("الزيارات المبرمجة", <Num>{data.rows.length}</Num>),
+                    ...field("الزيارات المحتسبة", <Num>{billed.length}</Num>),
+                    ...field("غير المحتسبة", <Num>{data.rows.length - billed.length}</Num>),
+                    ...field("ساعات العمل", <Num>{hoursText(workedMin)}</Num>),
+                  ],
+                ]}
+              />
+              <Gap mm={6} />
 
-        <SignatureBlock place={data.place} date={data.issueDate} boxes={["إمضاء العميل", "الإمضاء والختم"]} />
-      </KeepTogether>
+              <SignatureBlock place={data.place} date={data.issueDate} boxes={["إمضاء العميل", "الإمضاء والختم"]} />
+            </KeepTogether>
+          </SheetCell>
+        </SheetRow>
+      </SheetTable>
     </div>
   );
 }

@@ -1,6 +1,6 @@
-import { logConsult } from "@/lib/log";
 import { setSetting } from "@/lib/settings";
 import type { TestDatabase } from "@/testing/database";
+import { workUntil } from "@/testing/days";
 
 /**
  * Rows Money's tests start from: what Clients, Operations and People would
@@ -107,20 +107,12 @@ export async function visitOn(
 }
 
 /**
- * Moves the clock to a working day and records the day's first work, as the
- * office does every morning: the log then holds an operation of that day.
- * Without it, a test that jumps weeks ahead looks like a PC whose date is
- * wrong, and a legal document is refused until the manager confirms the date
- * (`assertClockSane`).
+ * Moves the clock to a working day the way the office gets there: it worked
+ * every day in between (Foundation's `workUntil`), so the clock guard sees
+ * what it would see at the centre and a legal document issues.
  */
 export async function openDay(test: TestDatabase, instant: string) {
-  test.clock.set(instant);
-  // A working morning: the office reads the debt list and the read is logged, as a real day's first
-  // operation would be. The clock guard measures the PC's date against the work recorded, not against
-  // a sign-in (written at the PC's own time); this gives it the day's work to measure against.
-  await test.transact((ex, ctx) =>
-    logConsult(ex, ctx, { owner: "MONEY", action: "VIEW", entity: "PaymentDue", context: { list: "debts" } }),
-  );
+  await workUntil(test, instant);
 }
 
 /** The four Tuesdays of November 2026. */
