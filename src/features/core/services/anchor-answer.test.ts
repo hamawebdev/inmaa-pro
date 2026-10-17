@@ -46,7 +46,7 @@ it("the manager keeps a restored older copy: the act is recorded, the lost numbe
       preRestorePath: "E:/sauvegardes/inmaa-pre-restore-2026-10-12-09-00-00.db",
     }),
   );
-  await writeAnchor(restored.db, restored.anchor, restored.ctx().now);
+  await writeAnchor(restored.db, restored.anchor, restored.ctx().now, { accept: "ANSWERED" });
 
   expect((await compareAnchor(restored.db, restored.anchor, restored.ctx().now)).state).toBe("normal");
   const next = await restored.transact((ex, ctx) => peekLegalNumber(ex, ctx, "INVOICE", { date: ctx.today }));

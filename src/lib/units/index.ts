@@ -93,6 +93,17 @@ export function percentOf(amount: Money, rate: BasisPoints): Money {
   return money(Math.floor((amount * rate + 5000) / 10000));
 }
 
+/**
+ * A duration in minutes as every screen and sheet writes it (S-33): hours and
+ * minutes, «318:00», «7:05», «-0:30»; never a decimal («38,8» hours is not what
+ * the office counts). Put it inside `<Ltr>` (a sheet's `<Num>`), so that Arabic
+ * does not turn it round.
+ */
+export function formatHoursMinutes(value: number): string {
+  const whole = Math.abs(Math.round(value));
+  return `${value < 0 ? "-" : ""}${Math.floor(whole / 60)}:${String(whole % 60).padStart(2, "0")}`;
+}
+
 export const hoursToMinutes = (hours: number) => minutes(Math.round(hours * 60));
 export const minutesToHours = (value: Minutes) => value / 60;
 

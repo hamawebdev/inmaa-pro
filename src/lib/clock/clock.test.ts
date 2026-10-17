@@ -198,6 +198,57 @@ describe("the clock across sessions (audit INV-1)", () => {
     await expect(test.transact((ex, ctx) => assertClockSane(ex, ctx), accountant)).resolves.toBeUndefined();
   });
 
+  it("takes the manager's word that the recorded date was wrong, after a wrong year had been confirmed (FND-02)", async () => {
+    const { accountantId } = await office();
+
+    // The PC shows next year; the manager confirms it by mistake, and work is recorded at that date.
+    test.clock.set("2027-10-13T08:00:00.000Z");
+    const wrongYear = await signInAs(FIRST_MANAGER_ID, "manager-pass");
+    await test.transact((ex, ctx) => confirmClockJump(ex, ctx), wrongYear);
+    await test.transact(
+      (ex, ctx) => logConsult(ex, ctx, { owner: "MONEY", action: "VIEW", entity: "PaymentDue" }),
+      wrongYear,
+    );
+    await test.transact((ex, ctx) => signOut(ex, ctx), wrongYear);
+
+    // The date is corrected: nobody else signs in until the manager says the recorded date was the wrong one.
+    test.clock.set("2026-10-13T08:00:00.000Z");
+    await expect(
+      asProgram((ex, ctx) => signIn(ex, ctx, { userId: accountantId, password: "own-pass" })),
+    ).rejects.toThrow(CLOCK_BEHIND);
+    const manager = await signInAs(FIRST_MANAGER_ID, "manager-pass");
+    await test.transact((ex, ctx) => confirmClockJump(ex, ctx, { reason: "السنة كُتبت خطأ ثم أُكّدت" }), manager);
+    expect((await test.transact((ex, ctx) => checkClock(ex, ctx), SYSTEM_SESSION)).state).toBe("ok");
+    await test.transact((ex, ctx) => signOut(ex, ctx), manager);
+    const accountant = await signInAs(accountantId, "own-pass");
+    await expect(test.transact((ex, ctx) => assertClockSane(ex, ctx), accountant)).resolves.toBeUndefined();
+  });
+
+  it("does not take a sign-in made at a wrong future date as her present session once the date is corrected (FND-03)", async () => {
+    const { accountantId } = await office();
+
+    // One morning the PC shows 20 November; she signs in, notices, signs out, and the date is corrected.
+    test.clock.set("2026-11-20T08:00:00.000Z");
+    const wrong = await signInAs(accountantId, "own-pass");
+    await test.transact((ex, ctx) => signOut(ex, ctx), wrong);
+
+    // The office works every day as usual.
+    for (const day of ["2026-10-13", "2026-10-14", "2026-10-15", "2026-10-16", "2026-10-17"]) {
+      test.clock.set(`${day}T08:00:00.000Z`);
+      const manager = await signInAs(FIRST_MANAGER_ID, "manager-pass");
+      await test.transact(
+        (ex, ctx) => logConsult(ex, ctx, { owner: "MONEY", action: "VIEW", entity: "PaymentDue" }),
+        manager,
+      );
+      await test.transact((ex, ctx) => signOut(ex, ctx), manager);
+    }
+
+    test.clock.set("2026-10-17T09:00:00.000Z");
+    const accountant = await signInAs(accountantId, "own-pass");
+    expect((await test.transact((ex, ctx) => checkClock(ex, ctx), accountant)).state).toBe("ok");
+    await expect(test.transact((ex, ctx) => assertClockSane(ex, ctx), accountant)).resolves.toBeUndefined();
+  });
+
   it("is confirmed once by the manager after a closure; the next sign-ins are ordinary (INV-1)", async () => {
     const { accountantId } = await office();
 

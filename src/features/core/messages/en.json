@@ -201,7 +201,9 @@
     "BranchMissing": "This branch does not exist.",
     "MainBranchOn": "The main branch cannot be switched off.",
     "BranchHasAccounts": "Move this branch's accounts to another branch first.",
-    "BranchOff": "This branch does not exist or is switched off."
+    "BranchOff": "This branch does not exist or is switched off.",
+    "RestoreNotOurs": "This file is not a backup of this program's data. Nothing was replaced.",
+    "RestoreNotHere": "This copy was made by another version of the program, or is damaged. It cannot be restored here. Nothing was replaced."
   },
   "Table": {
     "ScrollLeft": "Scroll left",

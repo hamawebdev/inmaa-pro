@@ -57,8 +57,28 @@ function changed(): void {
   for (const listener of listeners) listener();
 }
 
+/**
+ * The runners write the anchor after a chained commit, before a backup and when
+ * the window closes, but only while the database agrees with it (audit
+ * FND-01): a database in question, or one that could not be compared, has no
+ * anchor bound, and nothing anybody does (a sign-in, a lock, closing the
+ * window) can make it pass as normal at the next start. `writeAnchor` refuses
+ * it as well. The manager's answer writes it (`anchorAfterAnswer`).
+ */
 async function compareAtStart(clock: Clock): Promise<void> {
   anchorAtStart = await reconcileAnchorAtStart(db, desktopAnchorStore, clock.now().toISOString());
+  setProgramAnchor(anchorAtStart.state === "normal" ? desktopAnchorStore : null);
+}
+
+/**
+ * After the manager's answer on the anchor screen is committed: the anchor
+ * follows the database he kept, then the comparison is made again (it is
+ * normal now, and the runners are bound to the anchor once more).
+ */
+export async function anchorAfterAnswer(): Promise<StartupAnchor | null> {
+  const clock = programClock();
+  await writeAnchor(db, desktopAnchorStore, clock.now().toISOString(), { accept: "ANSWERED" });
+  return recheckStartupAnchor();
 }
 
 async function checkClockAtStart(clock: Clock): Promise<void> {
@@ -125,7 +145,8 @@ export async function recheckStartupClock(): Promise<ClockState | null> {
 export async function startProgram(): Promise<void> {
   const clock = systemClock(await getSetting(db, "system.utcOffsetMin"));
   setProgramClock(clock);
-  setProgramAnchor(desktopAnchorStore);
+  // Bound once the comparison has found the database in order (`compareAtStart`).
+  setProgramAnchor(null);
 
   // The registries each folder fills, before first run: it runs the owners' seed steps.
   loadFeatureEvents();
@@ -137,7 +158,9 @@ export async function startProgram(): Promise<void> {
     const ctx = buildContext(SYSTEM_SESSION, clock);
     await db.transaction().execute((trx) => firstRun(trx, ctx));
     // Only where there is no anchor yet: a new database beside an old anchor is for the manager to judge.
-    if (!(await desktopAnchorStore.read())) await writeAnchor(db, desktopAnchorStore, ctx.now);
+    if (!(await desktopAnchorStore.read())) {
+      await writeAnchor(db, desktopAnchorStore, ctx.now, { accept: "FIRST_RUN" });
+    }
   }
 
   await compareAtStart(clock);

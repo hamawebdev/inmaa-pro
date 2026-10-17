@@ -201,7 +201,9 @@
     "BranchMissing": "Cette agence n'existe pas.",
     "MainBranchOn": "L'agence principale ne peut pas être désactivée.",
     "BranchHasAccounts": "Déplacez d'abord les comptes de cette agence vers une autre agence.",
-    "BranchOff": "Cette agence n'existe pas ou est désactivée."
+    "BranchOff": "Cette agence n'existe pas ou est désactivée.",
+    "RestoreNotOurs": "Ce fichier n'est pas une sauvegarde des données de ce programme. Rien n'a été remplacé.",
+    "RestoreNotHere": "Cette copie a été faite par une autre version du programme, ou elle est endommagée. Elle ne peut pas être restaurée ici. Rien n'a été remplacé."
   },
   "Table": {
     "ScrollLeft": "Défiler à gauche",

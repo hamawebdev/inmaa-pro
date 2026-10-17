@@ -85,11 +85,45 @@ export async function snapshotAnchor(ex: Executor, writtenAt: string): Promise<A
   };
 }
 
-/** Writes the anchor from the database as it stands. After a commit, never inside a transaction. */
-export async function writeAnchor(ex: Executor, store: AnchorStore, writtenAt: string): Promise<AnchorRecord> {
-  const record = await snapshotAnchor(ex, writtenAt);
-  await store.write(record);
-  return record;
+/** Thrown when the anchor would be rewritten from a database in question (audit FND-01). */
+export class AnchorRefusedError extends Error {
+  constructor(readonly state: AnchorState) {
+    super(`anchor: the database is ${state} against its anchor; the anchor is not rewritten until the manager answers`);
+    this.name = "AnchorRefusedError";
+  }
+}
+
+/**
+ * Writes the anchor from the database as it stands. After a commit, never
+ * inside a transaction.
+ *
+ * Only over an anchor this database continues (audit FND-01): the comparison
+ * must be "normal" or "ahead" (every anchored head still in place, the
+ * database gone on from it). A database behind, altered, foreign or
+ * unanchored is in question, and rewriting its anchor would make an older copy
+ * or a changed file pass as normal at the next start, its lost numbers given
+ * again. That is refused (`AnchorRefusedError`), whoever asks: a sign-in, a
+ * lock, the window closing, a backup.
+ *
+ * `accept` is for the two callers that answer for the database: first run,
+ * which makes the first anchor of a new database, and the manager's answer on
+ * the anchor screen, committed just before.
+ */
+export async function writeAnchor(
+  ex: Executor,
+  store: AnchorStore,
+  writtenAt: string,
+  options: { accept?: "FIRST_RUN" | "ANSWERED" } = {},
+): Promise<AnchorRecord> {
+  if (options.accept) {
+    const record = await snapshotAnchor(ex, writtenAt);
+    await store.write(record);
+    return record;
+  }
+  const comparison = await compareAnchor(ex, store, writtenAt);
+  if (comparison.state !== "normal" && comparison.state !== "ahead") throw new AnchorRefusedError(comparison.state);
+  await store.write(comparison.database);
+  return comparison.database;
 }
 
 /**

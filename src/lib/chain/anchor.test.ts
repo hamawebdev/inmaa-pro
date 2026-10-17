@@ -1,5 +1,6 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { logSecurity } from "@/lib/log";
 import { peekLegalNumber } from "@/lib/numbering";
 import { localDate } from "@/lib/units";
 import { mkdtempSync, rmSync } from "node:fs";
@@ -13,6 +14,7 @@ import {
   acceptDatabaseAsItIs,
   acceptRestoredDatabase,
   compareAnchor,
+  AnchorRefusedError,
   memoryAnchorStore,
   reconcileAnchorAtStart,
   reconcileAnchor,
@@ -52,6 +54,43 @@ async function restoreCopy(file: string): Promise<TestDatabase> {
 }
 
 describe("a restored older copy (B7)", () => {
+  it("stays in question, whatever is done before the manager answers: no write passes it off as normal (FND-01)", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    await issue(test, "2026-10-12");
+    const backup = test.snapshot();
+    test.clock.advance({ days: 3 });
+    await issue(test, "2026-10-15");
+    await issue(test, "2026-10-15");
+
+    const restored = await restoreCopy(backup);
+    expect((await reconcileAnchorAtStart(restored.db, restored.anchor, restored.ctx().now)).state).toBe("behind");
+
+    // Somebody signs in, locks, or the window closes, before the manager has answered.
+    await restored.run.transact((ex, ctx) => logSecurity(ex, ctx, { owner: "FOUNDATION", action: "SIGN_IN" }));
+    await restored.run.transact((ex, ctx) => logSecurity(ex, ctx, { owner: "FOUNDATION", action: "LOCK" }));
+    await expect(restored.run.anchorNow()).rejects.toBeInstanceOf(AnchorRefusedError);
+    await expect(writeAnchor(restored.db, restored.anchor, restored.ctx().now)).rejects.toBeInstanceOf(
+      AnchorRefusedError,
+    );
+
+    // The next start still finds it behind, and still knows the two numbers it lost.
+    restored.clock.advance({ hours: 2 });
+    const again = await reconcileAnchorAtStart(restored.db, restored.anchor, restored.ctx().now);
+    expect(again.state).toBe("behind");
+    expect(again.state === "behind" && again.lostNumbers).toEqual([
+      { key: "INVOICE", year: 2026, fromValue: 2, toValue: 3, lastDate: "2026-10-15" },
+    ]);
+
+    // Only the manager's answer moves it on: no invoice number is given twice.
+    if (again.state !== "behind") throw new Error("test: not behind");
+    await restored.transact((ex, ctx) => acceptRestoredDatabase(ex, ctx, { comparison: again, reason: "نسخة الأمس" }));
+    await writeAnchor(restored.db, restored.anchor, restored.ctx().now, { accept: "ANSWERED" });
+    expect((await reconcileAnchorAtStart(restored.db, restored.anchor, restored.ctx().now)).state).toBe("normal");
+    const next = await restored.transact((ex, ctx) => peekLegalNumber(ex, ctx, "INVOICE", { date: ctx.today }));
+    expect(next.display).toBe("000004/2026");
+    vi.restoreAllMocks();
+  });
+
   it("is found behind its anchor; after the manager's answer the lost numbers are never given again", async () => {
     await issue(test, "2026-10-12");
     const backup = test.snapshot();
@@ -89,7 +128,7 @@ describe("a restored older copy (B7)", () => {
         preRestorePath: "/backups/inmaa-pre-restore.db",
       }),
     );
-    await writeAnchor(restored.db, restored.anchor, now);
+    await writeAnchor(restored.db, restored.anchor, now, { accept: "ANSWERED" });
 
     const gap = await restored.db.selectFrom("SequenceGap").selectAll().executeTakeFirstOrThrow();
     expect(gap).toMatchObject({
@@ -189,7 +228,7 @@ describe("an anchor that cannot be followed (B8)", () => {
     expect((await test.anchor.read())?.databaseId).toBe("another-database");
 
     await test.transact((ex, ctx) => acceptDatabaseAsItIs(ex, ctx, { comparison, reason: "تثبيت جديد للنظام" }));
-    await writeAnchor(test.db, test.anchor, now);
+    await writeAnchor(test.db, test.anchor, now, { accept: "ANSWERED" });
     expect((await compareAnchor(test.db, test.anchor, now)).state).toBe("normal");
     const entry = await test.db
       .selectFrom("AuditLog")

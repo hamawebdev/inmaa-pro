@@ -268,8 +268,17 @@ export async function restoreDatabase(input: {
       byUserName: currentSession().userName,
     };
     await invoke("db_checkpoint");
-    await invoke("restore_from", { source: input.source, note: JSON.stringify(note) });
-    // The open connection still has the replaced file mapped: start again on the restored one.
+    try {
+      // Rust checks the file is this program's database before anything is replaced (audit FND-04).
+      await invoke("restore_from", { source: input.source, note: JSON.stringify(note) });
+    } catch (error) {
+      // Refused before anything was touched: say why. Failed after the open database was closed:
+      // the files were put back as they were, and the program must start again either way.
+      const message = messageOf(error);
+      if (!message.startsWith("RESTORE_RELAUNCH:")) return { done: false, error: message };
+      console.error("restore: failed after the database was closed", message);
+    }
+    // The open connection was closed for the swap: start again on the database now in place.
     await relaunch();
     // Only reached while the restart is on its way: there is nothing to report.
     return { done: false, error: null };

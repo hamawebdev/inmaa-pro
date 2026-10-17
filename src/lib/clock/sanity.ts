@@ -60,7 +60,7 @@ async function clockReference(ex: Executor, ctx: ServiceContext): Promise<string
     .select(["chainSeq", "occurredAt"])
     .where("operation", "=", "SECURITY")
     .where("action", "=", "CLOCK_WARNING")
-    .orderBy("localDate", "desc")
+    // The log's order is the order of his words; the date is exactly what is in doubt (audit FND-02).
     .orderBy("chainSeq", "desc")
     .limit(1)
     .executeTakeFirst();
@@ -75,7 +75,7 @@ async function clockReference(ex: Executor, ctx: ServiceContext): Promise<string
           .where("operation", "=", "SECURITY")
           .where("action", "=", "SIGN_IN")
           .where("userId", "=", ctx.userId)
-          .orderBy("localDate", "desc")
+          // Her latest sign-in in the log's order, not by its date: one made at a wrong future date is not "present" (FND-03).
           .orderBy("chainSeq", "desc")
           .limit(1)
           .executeTakeFirst();

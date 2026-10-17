@@ -291,14 +291,127 @@ pub async fn restore_pending_clear(app: tauri::AppHandle) -> Result<(), CommandE
     Ok(())
 }
 
+/// What the window shows when the chosen file cannot be restored (core's
+/// `Errors`, translated there).
+const NOT_OURS: &str = "This file is not a backup of this program's data. Nothing was replaced.";
+const NOT_HERE: &str =
+    "This copy was made by another version of the program, or is damaged. It cannot be restored here. Nothing was replaced.";
+/// The prefix of an error after which the open database was closed: the window restarts whatever happened.
+const RELAUNCH: &str = "RESTORE_RELAUNCH:";
+
+/// Whether a file is this program's database, before anything is replaced with
+/// it (audit FND-04): a SQLite file that passes its quick check, holds this
+/// program's tables and a database id, and whose applied migrations are all
+/// ones this build carries, with the same checksums. Anything else would stop
+/// the program at its next start, for good. Opened read-only and immutable:
+/// nothing is written beside the file on the stick.
+pub(crate) async fn check_restore_source(path: &Path) -> Result<(), CommandError> {
+    use sqlx::sqlite::{SqliteConnectOptions, SqliteConnection};
+    use sqlx::Connection;
+
+    let options = SqliteConnectOptions::new()
+        .filename(path)
+        .read_only(true)
+        .immutable(true)
+        .create_if_missing(false);
+    let mut conn = SqliteConnection::connect_with(&options)
+        .await
+        .map_err(|_| CommandError::new(NOT_OURS))?;
+    let checked: Result<(), CommandError> = async {
+        let quick: String = sqlx::query_scalar("PRAGMA quick_check")
+            .fetch_one(&mut conn)
+            .await
+            .map_err(|_| CommandError::new(NOT_OURS))?;
+        if quick != "ok" {
+            return Err(CommandError::new(NOT_HERE));
+        }
+        let id: Option<String> = sqlx::query_scalar(r#"SELECT "value" FROM "Setting" WHERE "key" = 'system.databaseId'"#)
+            .fetch_optional(&mut conn)
+            .await
+            .map_err(|_| CommandError::new(NOT_OURS))?;
+        let id = id.and_then(|value| serde_json::from_str::<String>(&value).ok()).unwrap_or_default();
+        if id.trim().is_empty() {
+            return Err(CommandError::new(NOT_OURS));
+        }
+        let applied: Vec<(i64, Vec<u8>)> = sqlx::query_as(r#"SELECT "version", "checksum" FROM "_sqlx_migrations""#)
+            .fetch_all(&mut conn)
+            .await
+            .map_err(|_| CommandError::new(NOT_OURS))?;
+        let ours = sqlx::migrate!("./migrations");
+        for (version, checksum) in applied {
+            let known = ours
+                .iter()
+                .any(|migration| migration.version == version && migration.checksum.as_ref() == checksum.as_slice());
+            if !known {
+                return Err(CommandError::new(NOT_HERE));
+            }
+        }
+        Ok(())
+    }
+    .await;
+    let _ = conn.close().await;
+    checked
+}
+
+/// Puts the staged database and uploads in place of the live ones, the open
+/// connection already closed. Renames only, and undone when one fails, so the
+/// data folder never holds half of a restore.
+fn swap_in(dir: &Path, staged: &Path, staged_uploads: Option<&Path>) -> Result<(), String> {
+    let db_path = dir.join(crate::db::DB_FILE);
+    let replaced = dir.join(format!("{}.replaced", crate::db::DB_FILE));
+    // The sidecars belong to the replaced file and would be replayed over the restored one.
+    for suffix in ["-wal", "-shm"] {
+        let sidecar = dir.join(format!("{}{suffix}", crate::db::DB_FILE));
+        if sidecar.exists() {
+            std::fs::remove_file(&sidecar).map_err(|error| format!("could not clear {}: {error}", sidecar.display()))?;
+        }
+    }
+    let _ = std::fs::remove_file(&replaced);
+    std::fs::rename(&db_path, &replaced).map_err(|error| format!("could not set the database aside: {error}"))?;
+    if let Err(error) = std::fs::rename(staged, &db_path) {
+        let _ = std::fs::rename(&replaced, &db_path);
+        return Err(format!("could not put the restored database in place: {error}"));
+    }
+    if let Some(staged_uploads) = staged_uploads {
+        let uploads = dir.join("uploads");
+        let uploads_replaced = dir.join("uploads.replaced");
+        let _ = std::fs::remove_dir_all(&uploads_replaced);
+        let moved_aside = uploads.exists();
+        let result = (|| {
+            if moved_aside {
+                std::fs::rename(&uploads, &uploads_replaced)?;
+            }
+            std::fs::rename(staged_uploads, &uploads)
+        })();
+        if let Err(error) = result {
+            // Back as it was: the database and its files belong together.
+            if moved_aside && !uploads.exists() {
+                let _ = std::fs::rename(&uploads_replaced, &uploads);
+            }
+            let _ = std::fs::remove_file(&db_path);
+            let _ = std::fs::rename(&replaced, &db_path);
+            return Err(format!("could not put the restored files in place: {error}"));
+        }
+        let _ = std::fs::remove_dir_all(&uploads_replaced);
+    }
+    let _ = std::fs::remove_file(&replaced);
+    Ok(())
+}
+
 /// Replaces the live database and uploads with the contents of a backup.
 ///
-/// The caller relaunches afterwards: the open connection has the previous file
-/// mapped, so continuing in-process would serve stale pages.
+/// In three steps (audit FND-04): the chosen file is checked to be this
+/// program's database (`check_restore_source`), nothing replaced otherwise;
+/// the copy and its files are staged beside the live ones and the note for the
+/// next start is written; then the open connection is closed and the staged
+/// files are renamed into place, the old ones put back if that fails. An error
+/// after the connection was closed starts with `RESTORE_RELAUNCH:`: the window
+/// must restart either way. The caller relaunches afterwards.
 #[tauri::command]
 #[specta::specta]
 pub async fn restore_from(
     app: tauri::AppHandle,
+    db: tauri::State<'_, crate::db::Db>,
     source: String,
     note: Option<String>,
 ) -> Result<(), CommandError> {
@@ -314,37 +427,47 @@ pub async fn restore_from(
     if !source.is_file() {
         return Err(CommandError::new("that backup file does not exist"));
     }
+    check_restore_source(&source).await?;
 
-    let db_path = dir.join(crate::db::DB_FILE);
-    std::fs::copy(&source, &db_path)
-        .map_err(|error| CommandError::new(format!("could not restore the database: {error}")))?;
-
-    // Leftover WAL/SHM sidecars belong to the replaced file and would be
-    // replayed over the restored one.
-    for suffix in ["-wal", "-shm"] {
-        let sidecar = dir.join(format!("{}{suffix}", crate::db::DB_FILE));
-        if sidecar.exists() {
-            let _ = std::fs::remove_file(sidecar);
-        }
+    // Staged beside the live files: nothing live is touched yet.
+    let staged = dir.join(format!("{}.restoring", crate::db::DB_FILE));
+    let staged_uploads = dir.join("uploads.restoring");
+    let _ = std::fs::remove_file(&staged);
+    let _ = std::fs::remove_dir_all(&staged_uploads);
+    let clean = || {
+        let _ = std::fs::remove_file(&staged);
+        let _ = std::fs::remove_dir_all(&staged_uploads);
+    };
+    if let Err(error) = std::fs::copy(&source, &staged) {
+        clean();
+        return Err(CommandError::new(format!("could not restore the database: {error}")));
     }
-
     let uploads_source = uploads_sidecar(&source);
-    if uploads_source.is_dir() {
-        let uploads_target = dir.join("uploads");
-        if uploads_target.exists() {
-            std::fs::remove_dir_all(&uploads_target)
-                .map_err(|error| CommandError::new(format!("could not clear uploads: {error}")))?;
+    let with_uploads = uploads_source.is_dir();
+    if with_uploads {
+        if let Err(error) = copy_dir_all(&uploads_source, &staged_uploads) {
+            clean();
+            return Err(CommandError::new(format!("could not restore uploads: {error}")));
         }
-        copy_dir_all(&uploads_source, &uploads_target)
-            .map_err(|error| CommandError::new(format!("could not restore uploads: {error}")))?;
     }
 
-    // For the next start: what was restored, and where the replaced database is kept.
+    // For the next start: what was restored, and where the replaced database is kept. Before the swap.
+    let note_path = dir.join(RESTORE_NOTE);
     if let Some(note) = note {
-        std::fs::write(dir.join(RESTORE_NOTE), note)
-            .map_err(|error| CommandError::new(format!("could not leave the restore note: {error}")))?;
+        if let Err(error) = std::fs::write(&note_path, note) {
+            clean();
+            return Err(CommandError::new(format!("could not leave the restore note: {error}")));
+        }
     }
 
+    // From here the open connection is closed: whatever happens, the window starts again.
+    db.0.close().await;
+    if let Err(error) = swap_in(&dir, &staged, with_uploads.then_some(staged_uploads.as_path())) {
+        clean();
+        // Nothing was restored: the note would tell the next start a restore happened.
+        let _ = std::fs::remove_file(&note_path);
+        return Err(CommandError::new(format!("{RELAUNCH}{error}")));
+    }
     Ok(())
 }
 
@@ -474,6 +597,83 @@ mod tests {
         // Wherever Windows puts OneDrive.
         let roots = [PathBuf::from("D:/Nuage")];
         assert!(refuse_synced_with(Path::new("D:/Nuage/inmaa/inmaa-auto-2026-10-14.db"), &roots).is_err());
+    }
+
+    /// A database as this program makes it: the migrations, and the id first run writes.
+    fn program_database(name: &str, with_id: bool) -> PathBuf {
+        let dir = std::env::temp_dir().join(format!("inmaa-restore-{name}-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).expect("temp dir");
+        let path = dir.join("copy.db");
+        tauri::async_runtime::block_on(async {
+            let pool = crate::db::open(&path).await.expect("the migrations apply");
+            if with_id {
+                sqlx::query(r#"INSERT INTO "Setting" ("id", "key", "value", "updatedAt") VALUES ('s1', 'system.databaseId', '"db-1"', '2026-10-12T08:00:00.000Z')"#)
+                    .execute(&pool)
+                    .await
+                    .expect("the id is written");
+            }
+            sqlx::query("PRAGMA wal_checkpoint(TRUNCATE)").execute(&pool).await.expect("checkpoint");
+            pool.close().await;
+        });
+        path
+    }
+
+    #[test]
+    fn a_restore_takes_only_this_programs_database_fnd_04() {
+        let ours = program_database("ours", true);
+        assert!(tauri::async_runtime::block_on(check_restore_source(&ours)).is_ok());
+
+        // Not SQLite at all.
+        let text = ours.with_file_name("notes.db");
+        std::fs::write(&text, "not a database").expect("write");
+        let refused = tauri::async_runtime::block_on(check_restore_source(&text)).expect_err("a text file");
+        assert_eq!(refused.message, NOT_OURS);
+
+        // This program's tables, but no database id: never through first run.
+        let no_id = program_database("no-id", false);
+        let refused = tauri::async_runtime::block_on(check_restore_source(&no_id)).expect_err("no id");
+        assert_eq!(refused.message, NOT_OURS);
+
+        // A copy from a newer build: a migration this one does not carry.
+        let newer = program_database("newer", true);
+        tauri::async_runtime::block_on(async {
+            use sqlx::Connection;
+            let options = sqlx::sqlite::SqliteConnectOptions::new().filename(&newer);
+            let mut conn = sqlx::sqlite::SqliteConnection::connect_with(&options).await.expect("open");
+            sqlx::query(r#"INSERT INTO "_sqlx_migrations" ("version", "description", "success", "checksum", "execution_time") VALUES (99990101000000, 'later', 1, x'00', 0)"#)
+                .execute(&mut conn)
+                .await
+                .expect("a later migration");
+            conn.close().await.expect("close");
+        });
+        let refused = tauri::async_runtime::block_on(check_restore_source(&newer)).expect_err("newer build");
+        assert_eq!(refused.message, NOT_HERE);
+    }
+
+    #[test]
+    fn a_restore_swaps_by_renaming_and_puts_everything_back_when_it_cannot_fnd_04() {
+        let dir = std::env::temp_dir().join(format!("inmaa-swap-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(dir.join("uploads")).expect("dirs");
+        let live = dir.join(crate::db::DB_FILE);
+        std::fs::write(&live, "live").expect("live");
+        std::fs::write(dir.join("uploads/a.png"), "live upload").expect("upload");
+        let staged = dir.join("inmaa.db.restoring");
+        std::fs::write(&staged, "restored").expect("staged");
+        let staged_uploads = dir.join("uploads.restoring");
+        std::fs::create_dir_all(&staged_uploads).expect("staged uploads");
+        std::fs::write(staged_uploads.join("b.png"), "restored upload").expect("staged upload");
+
+        swap_in(&dir, &staged, Some(&staged_uploads)).expect("the swap");
+        assert_eq!(std::fs::read_to_string(&live).unwrap(), "restored");
+        assert!(dir.join("uploads/b.png").exists() && !dir.join("uploads/a.png").exists());
+        assert!(!dir.join("inmaa.db.replaced").exists() && !dir.join("uploads.replaced").exists());
+
+        // A staged copy that is not there: the live database is put back as it was.
+        let missing = dir.join("gone.restoring");
+        assert!(swap_in(&dir, &missing, None).is_err());
+        assert_eq!(std::fs::read_to_string(&live).unwrap(), "restored");
     }
 
     #[test]

@@ -9,13 +9,12 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { answerAnchorAction } from "@/features/core/services/anchor-answer";
 import { leaveSession } from "@/features/core/services/session";
-import { recheckStartupAnchor, type StartupAnchor } from "@/features/core/services/startup";
+import { anchorAfterAnswer, recheckStartupAnchor, type StartupAnchor } from "@/features/core/services/startup";
 import { useDateText } from "@/hooks/use-date-text";
 import { useCan } from "@/hooks/use-session";
 import { useErrorMessage } from "@/i18n/errors";
 import { MANAGER_ONLY_CAPABILITY } from "@/lib/access/catalogue";
 import type { AnchorComparison } from "@/lib/chain/anchor";
-import { anchorNow } from "@/lib/service/action";
 import { clearRestoreNote, type RestoreNote } from "@/server/backup";
 
 /**
@@ -69,9 +68,8 @@ function AnswerScreen({ comparison, note }: { comparison: AnchorComparison; note
         return;
       }
       // The answer is in the database: the anchor now follows it, and the note has done its work.
-      await anchorNow();
       if (note) await clearRestoreNote().catch(() => {});
-      await recheckStartupAnchor();
+      await anchorAfterAnswer();
     } catch {
       setError(t("Failed"));
     } finally {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { dinarsToMoney, formatMoney, formatMoneyAr } from "./index";
+import { dinarsToMoney, formatHoursMinutes, formatMoney, formatMoneyAr } from "./index";
 
 describe("the one money format", () => {
   it("writes a dot between thousands, a comma before the centimes, and always two decimals", () => {
@@ -25,5 +25,14 @@ describe("the one money format", () => {
 
   it("refuses an amount that is not a whole number of centimes", () => {
     expect(() => formatMoney(12.5)).toThrow("must be a whole number");
+  });
+});
+
+describe("the one hours format (S-33)", () => {
+  it("writes minutes as hours and minutes, never a decimal", () => {
+    expect(formatHoursMinutes(19_080)).toBe("318:00");
+    expect(formatHoursMinutes(425)).toBe("7:05");
+    expect(formatHoursMinutes(0)).toBe("0:00");
+    expect(formatHoursMinutes(-30)).toBe("-0:30");
   });
 });

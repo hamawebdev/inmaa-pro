@@ -70,8 +70,13 @@ async backupTo(target: string) : Promise<Result<BackupCopy, CommandError>> {
 /**
  * Replaces the live database and uploads with the contents of a backup.
  * 
- * The caller relaunches afterwards: the open connection has the previous file
- * mapped, so continuing in-process would serve stale pages.
+ * In three steps (audit FND-04): the chosen file is checked to be this
+ * program's database (`check_restore_source`), nothing replaced otherwise;
+ * the copy and its files are staged beside the live ones and the note for the
+ * next start is written; then the open connection is closed and the staged
+ * files are renamed into place, the old ones put back if that fails. An error
+ * after the connection was closed starts with `RESTORE_RELAUNCH:`: the window
+ * must restart either way. The caller relaunches afterwards.
  */
 async restoreFrom(source: string, note: string | null) : Promise<Result<null, CommandError>> {
     try {

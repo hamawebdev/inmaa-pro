@@ -135,7 +135,7 @@ async function wrap(sqlite: DatabaseSync, options: TestDatabaseOptions, didFirst
         seeds: options.seeds !== false && options.events !== false,
       }),
     );
-    await writeAnchor(db, anchor, ctx.now);
+    await writeAnchor(db, anchor, ctx.now, { accept: "FIRST_RUN" });
   }
 
   const hasManager = options.firstRun !== false || didFirstRun;
