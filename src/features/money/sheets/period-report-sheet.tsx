@@ -9,6 +9,7 @@ import {
 import { SERVICE_TYPE_AR } from "@/lib/options";
 
 import type { IsoDate } from "../rules/dates";
+import { hoursText } from "../rules/hours";
 import type { PeriodAnalytics, ProfitGroup } from "../services/analytics";
 import type { PeriodReport } from "../services/reports";
 import { DIVISIONS } from "../validators/option-codes";
@@ -205,7 +206,7 @@ export function PeriodReportSheet({ data }: { data: PeriodReportSheetData }) {
                   <Num>{worker.visits}</Num>
                 </SheetCell>
                 <SheetCell align="center" style={ROW}>
-                  <Num>{(worker.workedMin / 60).toLocaleString("fr-FR", { maximumFractionDigits: 1 })}</Num>
+                  <Num>{hoursText(worker.workedMin)}</Num>
                 </SheetCell>
                 <SheetCell align="center" style={ROW}>
                   {worker.lateArrivals > 0 ? <Num>{worker.lateArrivals}</Num> : "—"}

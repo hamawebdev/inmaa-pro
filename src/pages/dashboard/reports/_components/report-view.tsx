@@ -8,6 +8,7 @@ import { FigureStrip } from "@/features/money/components/figure-strip";
 import { useDivisionLabel } from "@/features/money/components/labels";
 import { MoneyValue } from "@/features/money/components/money-value";
 import { useDateText, useMoneyText } from "@/features/money/components/use-money-text";
+import { hoursText } from "@/features/money/rules/hours";
 import type { PeriodReport } from "@/features/money/services/reports";
 import { DIVISIONS } from "@/features/money/validators/option-codes";
 import { intlLocaleFor } from "@/i18n/config";
@@ -33,7 +34,6 @@ export function ReportView({ report, branchId = null }: { report: PeriodReport; 
   const divisionLabel = useDivisionLabel();
   const locale = intlLocaleFor(useLocale());
   const count = new Intl.NumberFormat(locale);
-  const hours = new Intl.NumberFormat(locale, { maximumFractionDigits: 1 });
   const { result, counts, forecast } = report;
 
   const signed = (amount: number, strong = false) => (
@@ -184,7 +184,9 @@ export function ReportView({ report, branchId = null }: { report: PeriodReport; 
                     </span>
                   </TableCell>
                   <TableCell className="tabular-nums">{count.format(worker.visits)}</TableCell>
-                  <TableCell className="tabular-nums">{hours.format(worker.workedMin / 60)}</TableCell>
+                  <TableCell className="tabular-nums">
+                    <Ltr>{hoursText(worker.workedMin)}</Ltr>
+                  </TableCell>
                   <TableCell className="tabular-nums">
                     {worker.lateArrivals > 0 ? (
                       <span className="font-bold text-warning-ink">{count.format(worker.lateArrivals)}</span>

@@ -8,6 +8,7 @@ import {
 } from "@/components/print";
 
 import type { IsoDate } from "../rules/dates";
+import { hoursText } from "../rules/hours";
 import type { Division, ServiceType } from "../validators/option-codes";
 
 import { DIVISION_LABEL, SERVICE_TYPE_LABEL } from "./print-labels";
@@ -68,11 +69,6 @@ export interface VisitStatementData {
 
 /** The rows of the statement: 11 points, so that a month of daily visits stays readable on two pages. */
 const CELL = { ...TYPE.body, fontSize: "11pt" } as const;
-
-/** Minutes as hours and minutes: `69:20`. */
-function hoursText(minutes: number): string {
-  return `${Math.floor(minutes / 60)}:${String(minutes % 60).padStart(2, "0")}`;
-}
 
 /**
  * The statement without its paper, so that the invoice can carry it after a

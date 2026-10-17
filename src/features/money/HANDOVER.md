@@ -88,6 +88,7 @@ CSV, UTF-8 with a byte-order mark, `;` between columns, Windows line ends; amoun
 
 - التسليم as his page draws it: the side «المعدات · المواد» (`?kind=`), then «نوع الخدمة» «الكل · عند الطلب · عقد» (`?service=`), then the four divisions with «الكل» (`?division=`), all four under either service type; a worker's own kit shows only under «الكل». `listHandOuts` filters.
 - The reports carry «ربحية العقود» (for `cost.read`), the analytics by service type, zone and client, and the cash flow of the period (payments as received, stamp duty and tax in, like «المحصَّل»; expenses as paid, the tax handed over among them as «ضرائب»); a print page `/dashboard/reports/print` (the sheet `period-report-sheet.tsx`, client letterhead, its print a DISCLOSE).
+- Hours are written `h:mm` everywhere (S-33), by `rules/hours.ts` `hoursText()` inside `<Ltr>` / `<Num>`: the reports, their print, the profitability card, the visit statement.
 - A branch filter on the reports and their print (`?branch=`), drawn when the centre has several; the services take `branchId`. People's payroll in the forecast stays the whole centre's.
 
 ## Conventions I follow

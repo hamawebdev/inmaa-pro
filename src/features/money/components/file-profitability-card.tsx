@@ -1,13 +1,14 @@
 import { useQuery } from "@tanstack/react-query";
-import { useLocale, useTranslations } from "use-intl";
+import { useTranslations } from "use-intl";
 
+import { Ltr } from "@/components/ltr";
 import { StatusChip } from "@/components/status-chip";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useCan } from "@/hooks/use-session";
-import { intlLocaleFor } from "@/i18n/config";
 import { pathKey } from "@/lib/compat/revalidate";
 
+import { hoursText } from "../rules/hours";
 import type { CostSide } from "../rules/profitability";
 import { PAYMENTS_PATH } from "../services/paths";
 import { getFileProfitabilityAction } from "../services/profitability";
@@ -31,8 +32,7 @@ export function FileProfitabilityCard({ fileId }: { fileId: string }) {
 function ProfitabilityCard({ fileId }: { fileId: string }) {
   const t = useTranslations("Profitability");
   const dates = useDateText();
-  const number = new Intl.NumberFormat(intlLocaleFor(useLocale()), { maximumFractionDigits: 1 });
-  const hours = (minutes: number) => number.format(minutes / 60);
+  const hours = (minutes: number) => <Ltr>{hoursText(minutes)}</Ltr>;
   const { data, error } = useQuery({
     queryKey: [...pathKey(PAYMENTS_PATH), "profitability", fileId],
     queryFn: async () => {
