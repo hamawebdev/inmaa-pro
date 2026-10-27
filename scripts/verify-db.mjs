@@ -70,7 +70,8 @@ for (const [name, hash] of Object.entries(FROZEN_MIGRATIONS)) {
   const actual = existsSync(file) ? createHash("sha256").update(readFileSync(file)).digest("hex") : "missing";
   check(`${name} is the text that shipped`, actual === hash, `sha256 ${actual}; write a new migration instead`);
 }
-const known = [...Object.keys(FROZEN_MIGRATIONS), ...LATER_MIGRATIONS.map((migration) => migration.file)];
+// A later migration stays in LATER_MIGRATIONS once it ships (it says which models 0001 left out), so it is named twice.
+const known = [...new Set([...Object.keys(FROZEN_MIGRATIONS), ...LATER_MIGRATIONS.map((migration) => migration.file)])];
 const inFolder = (await listMigrations()).map((file) => basename(file));
 check(
   "the folder holds those and LATER_MIGRATIONS, in order, and nothing else",

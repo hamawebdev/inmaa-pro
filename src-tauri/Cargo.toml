@@ -1,6 +1,6 @@
 [package]
 name = "inmaa-pro"
-version = "0.1.0"
+version = "1.0.0"
 description = "Inmaa Pro — cleaning centre management, offline desktop"
 authors = ["hamawebdev"]
 edition = "2021"

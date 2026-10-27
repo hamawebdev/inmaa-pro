@@ -24,7 +24,8 @@ export const MIGRATIONS_DIR = resolve(ROOT, "src-tauri/migrations");
  * their text. sqlx refuses to start a database when the text of a migration it
  * applied has changed, so these files never change again: `npm run db:verify`
  * checks each against its hash, and nothing writes them. The first installer
- * carried 0001 and 0002 (HEAD 0c8b975; they last changed in b4426d2).
+ * (0.1.0) carried 0001 and 0002 (HEAD 0c8b975; they last changed in b4426d2);
+ * 1.0.0 carried 0003, the first forward migration.
  *
  * From then on the schema changes forward only: a new numbered migration, never
  * an edit. A change to the roles, their default grants or the communes, which
@@ -33,6 +34,7 @@ export const MIGRATIONS_DIR = resolve(ROOT, "src-tauri/migrations");
 export const FROZEN_MIGRATIONS = {
   "0001_init.sql": "0fafcec82207786466dfd7ad7cd4c2d0fd7d0a0228133a357a44c5d89047df94",
   "0002_seed.sql": "7dd15e73fb60d06fd91e32e27702ac62a39fb5c7ecaaeeb8437e5c6d510462ff",
+  "0003_service_catalogue.sql": "4c5088f113f3171e6afcd544639c61bf963e229daa6605beb73caebaa605f4be",
 };
 
 /**
