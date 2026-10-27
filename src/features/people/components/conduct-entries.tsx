@@ -162,6 +162,7 @@ export function useConductEntries() {
           kind: "date",
           name: "trialEndDate",
           label: t("Entry.TrialEnd"),
+          notBefore: "date",
           when: { field: "decision", in: ["ACCEPTED_ON_TRIAL"] },
         },
         { kind: "note", name: "note", label: t("Entry.Note") },
@@ -353,6 +354,7 @@ export function useConductEntries() {
           kind: "date",
           name: "endDate",
           label: t("Entry.SanctionEnd"),
+          notBefore: "actionDate",
           when: { field: "action", in: ["SUSPENSION", "PENALTY"] },
         },
         {
@@ -398,7 +400,14 @@ export function useConductEntries() {
       fields: [
         ...(workerId ? [] : [workerChoice()]),
         { kind: "date", name: "periodStart", label: t("Entry.PeriodStart"), required: true, defaultValue: since ?? "" },
-        { kind: "date", name: "periodEnd", label: t("Entry.PeriodEnd"), required: true, defaultValue: today },
+        {
+          kind: "date",
+          name: "periodEnd",
+          label: t("Entry.PeriodEnd"),
+          required: true,
+          defaultValue: today,
+          notBefore: "periodStart",
+        },
         ...EVALUATION_CRITERIA.map(
           (key): EntryField => ({ kind: "number", name: key, label: t(`Criteria.${key}`), required: true, min: "1" }),
         ),
@@ -445,7 +454,7 @@ export function useConductEntries() {
       fields: [
         { kind: "date", name: "deliveredDate", label: t("Entry.Delivered"), required: true, defaultValue: today },
         { kind: "date", name: "issueDate", label: t("Entry.Issued") },
-        { kind: "date", name: "expiryDate", label: t("Entry.Expiry") },
+        { kind: "date", name: "expiryDate", label: t("Entry.Expiry"), notBefore: "issueDate" },
         { kind: "note", name: "note", label: t("Entry.Note") },
       ],
     });

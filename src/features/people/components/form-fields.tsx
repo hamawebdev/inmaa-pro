@@ -1,6 +1,7 @@
 import { Controller, type Control, type FieldPath, type FieldValues } from "react-hook-form";
 import { useTranslations } from "use-intl";
 
+import { DateField as DatePicker } from "@/components/pickers";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Field, FieldDescription, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
@@ -10,11 +11,12 @@ import { useErrorMessage } from "@/i18n/errors";
 
 /**
  * The labelled fields of People's forms, bound to react-hook-form: a text or
- * number box, a native date, a choice from a list, a tick.
+ * number box, a date, a choice from a list, a tick.
  *
  * Closest academy component: the fields of the employee form (employees/
  * _components/employee-form.tsx): label above, control, hint, the error in the
- * reader's language. Native date fields stay native, as the academy has them.
+ * reader's language. A date is the program's own picker (no browser date
+ * field: the developer, 2026-10-22); it reaches the form on «تأكيد».
  */
 
 type Bound<T extends FieldValues> = {
@@ -72,7 +74,18 @@ export function TextField<T extends FieldValues>({
   );
 }
 
-export function DateField<T extends FieldValues>({ control, name, label, required, description, className }: Bound<T>) {
+/** A date. It may be emptied («مسح») unless it is `required` or `clearable={false}`. */
+export function DateField<T extends FieldValues>({
+  control,
+  name,
+  label,
+  required,
+  description,
+  className,
+  clearable = !required,
+  min,
+  max,
+}: Bound<T> & { clearable?: boolean; min?: string; max?: string }) {
   const errorMessage = useErrorMessage();
   return (
     <Controller
@@ -81,12 +94,13 @@ export function DateField<T extends FieldValues>({ control, name, label, require
       render={({ field, fieldState }) => (
         <Field className={className}>
           <FieldLabel htmlFor={`field-${name}`}>{starred(label, required)}</FieldLabel>
-          <Input
+          <DatePicker
             id={`field-${name}`}
-            type="date"
-            dir="ltr"
             {...field}
             value={(field.value as string | undefined) ?? ""}
+            clearable={clearable}
+            min={min || undefined}
+            max={max || undefined}
             aria-invalid={fieldState.invalid}
           />
           {description && <FieldDescription>{description}</FieldDescription>}

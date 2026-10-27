@@ -246,7 +246,14 @@ export function useAttendanceEntries() {
           options: LEAVE_TYPES.map((code) => ({ value: code, label: leaveLabel(code) })),
         },
         { kind: "date", name: "startDate", label: t("Entry.FromDay"), required: true, defaultValue: today },
-        { kind: "date", name: "endDate", label: t("Entry.ToDay"), required: true, defaultValue: today },
+        {
+          kind: "date",
+          name: "endDate",
+          label: t("Entry.ToDay"),
+          required: true,
+          defaultValue: today,
+          notBefore: "startDate",
+        },
         // Only whoever may approve a leave records one already approved.
         ...(decides ? [{ kind: "tick" as const, name: "approved", label: t("Entry.ApprovedNow") }] : []),
         { kind: "note", name: "reason", label: t("Entry.Note") },

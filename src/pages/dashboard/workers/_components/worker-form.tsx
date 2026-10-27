@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { useLocale, useTranslations } from "use-intl";
 
 import { Ltr } from "@/components/ltr";
+import { DateField as DatePicker } from "@/components/pickers";
 import { StatusChip } from "@/components/status-chip";
 import { PageActions } from "@/components/screen";
 import { Button } from "@/components/ui/button";
@@ -329,7 +330,12 @@ function RowField({
     case "birthDate":
     case "issuedDate":
       return (
-        <DateField control={control} name={rowKey as Name} label={rowKey === "birthDate" ? `${label} *` : label} />
+        <DateField
+          control={control}
+          name={rowKey as Name}
+          label={rowKey === "birthDate" ? `${label} *` : label}
+          clearable={rowKey === "issuedDate"}
+        />
       );
     case "fullName":
       return (
@@ -486,7 +492,18 @@ function TextField({
   );
 }
 
-function DateField({ control, name, label }: { control: FormControl; name: Name; label: string }) {
+/** A date of the form, the program's own picker; `clearable` where the form may leave it empty. */
+function DateField({
+  control,
+  name,
+  label,
+  clearable = false,
+}: {
+  control: FormControl;
+  name: Name;
+  label: string;
+  clearable?: boolean;
+}) {
   const errorMessage = useErrorMessage();
   return (
     <Controller
@@ -495,12 +512,11 @@ function DateField({ control, name, label }: { control: FormControl; name: Name;
       render={({ field, fieldState }) => (
         <Field>
           <FieldLabel htmlFor={`worker-${name}`}>{label}</FieldLabel>
-          <Input
+          <DatePicker
             id={`worker-${name}`}
-            type="date"
-            dir="ltr"
             {...field}
             value={(field.value as string | undefined) ?? ""}
+            clearable={clearable}
             aria-invalid={fieldState.invalid}
           />
           <FieldError>{errorMessage(fieldState.error?.message)}</FieldError>
@@ -732,16 +748,13 @@ function DocumentsField({ control }: { control: FormControl }) {
                   {t(`Documents.${document.type}`)}
                 </Label>
               </div>
-              <Input
-                type="date"
-                dir="ltr"
+              <DatePicker
                 aria-label={`${t(`Documents.${document.type}`)}: ${t("Fields.expiryDate")}`}
                 value={document.expiryDate}
                 disabled={!document.delivered}
-                onChange={(event) =>
-                  field.onChange(
-                    field.value.map((d, i) => (i === index ? { ...d, expiryDate: event.target.value } : d)),
-                  )
+                clearable
+                onChange={(expiryDate) =>
+                  field.onChange(field.value.map((d, i) => (i === index ? { ...d, expiryDate } : d)))
                 }
               />
             </div>
@@ -925,13 +938,7 @@ function OfficeCard({ control, zones, payFrom }: { control: FormControl; zones: 
         {payChanged && payFrom && (
           <Field>
             <FieldLabel htmlFor="worker-payTermsFrom">{t("Fields.payTermsFrom")}</FieldLabel>
-            <Input
-              id="worker-payTermsFrom"
-              type="date"
-              dir="ltr"
-              value={payFrom.value}
-              onChange={(event) => payFrom.onChange(event.target.value)}
-            />
+            <DatePicker id="worker-payTermsFrom" value={payFrom.value} onChange={payFrom.onChange} clearable />
             <FieldDescription>{t("Fields.payTermsFromHint")}</FieldDescription>
           </Field>
         )}
@@ -953,7 +960,7 @@ function OfficeCard({ control, zones, payFrom }: { control: FormControl; zones: 
         />
         {canCollect && (
           <>
-            <DateField control={control} name="collectAuthFrom" label={t("Fields.collectAuthFrom")} />
+            <DateField control={control} name="collectAuthFrom" label={t("Fields.collectAuthFrom")} clearable />
             <TextField control={control} name="collectAuthNote" label={t("Fields.collectAuthNote")} />
           </>
         )}

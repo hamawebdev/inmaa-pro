@@ -2,6 +2,7 @@ import * as React from "react";
 
 import { useTranslations } from "use-intl";
 
+import { DateField } from "@/components/pickers";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -12,7 +13,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -33,7 +33,15 @@ import { Textarea } from "@/components/ui/textarea";
  */
 
 export type ReasonField =
-  | { kind: "date"; name: string; label: string; required?: boolean; defaultValue?: string }
+  | {
+      kind: "date";
+      name: string;
+      label: string;
+      required?: boolean;
+      defaultValue?: string;
+      /** The date field this one may not precede (the end of a period): its calendar starts there. */
+      notBefore?: string;
+    }
   | {
       kind: "choice";
       name: string;
@@ -111,12 +119,12 @@ export function useReasonDialog(): [(request: ReasonRequest) => Promise<ReasonAn
             <Field key={field.name} data-invalid={tried && missing.includes(field)}>
               <FieldLabel htmlFor={`reason-field-${field.name}`}>{field.label}</FieldLabel>
               {field.kind === "date" ? (
-                <Input
+                <DateField
                   id={`reason-field-${field.name}`}
-                  type="date"
-                  dir="ltr"
                   value={values[field.name] ?? ""}
-                  onChange={(event) => setValues((current) => ({ ...current, [field.name]: event.target.value }))}
+                  min={(field.notBefore && values[field.notBefore]) || undefined}
+                  clearable={!field.required}
+                  onChange={(value) => setValues((current) => ({ ...current, [field.name]: value }))}
                 />
               ) : (
                 <Select

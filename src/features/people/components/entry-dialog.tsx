@@ -2,6 +2,7 @@ import * as React from "react";
 
 import { useTranslations } from "use-intl";
 
+import { DateField, TimeField } from "@/components/pickers";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -40,7 +41,9 @@ interface Base {
 }
 
 export type EntryField =
-  | (Base & { kind: "text" | "note" | "date" | "time" | "month" })
+  | (Base & { kind: "text" | "note" | "time" })
+  /** A day. `notBefore` names the date field it may not precede (the end of a period): its calendar starts there. */
+  | (Base & { kind: "date"; notBefore?: string })
   /** A number typed in digits: dinars, hours, minutes. `min` defaults to 0. */
   | (Base & { kind: "number"; step?: string; min?: string; suffix?: string })
   | (Base & { kind: "choice"; options: ReadonlyArray<{ value: string; label: string }> })
@@ -132,16 +135,22 @@ export function useEntryDialog(): [(request: EntryRequest) => Promise<EntryValue
         );
       case "tick":
         return null;
-      default:
+      case "date":
         return (
-          <Input
+          <DateField
             id={id}
-            type={field.kind === "text" ? "text" : field.kind}
-            dir={field.kind === "text" ? undefined : "ltr"}
             value={value}
-            onChange={(event) => set(field.name, event.target.value)}
+            min={(field.notBefore && values[field.notBefore]) || undefined}
+            clearable={!field.required}
+            onChange={(next) => set(field.name, next)}
           />
         );
+      case "time":
+        return (
+          <TimeField id={id} value={value} clearable={!field.required} onChange={(next) => set(field.name, next)} />
+        );
+      case "text":
+        return <Input id={id} value={value} onChange={(event) => set(field.name, event.target.value)} />;
     }
   };
 

@@ -6,11 +6,11 @@ import { toast } from "sonner";
 import { useLocale, useTranslations } from "use-intl";
 
 import { Ltr } from "@/components/ltr";
+import { DateField as DatePicker } from "@/components/pickers";
 import { PageActions } from "@/components/screen";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
 import { ChoiceField, DateField, TextField, TickField } from "@/features/people/components/form-fields";
 import { ResidenceField } from "@/features/people/components/residence-fields";
 import { isolate, useMay, useMayIn } from "@/features/people/components/may";
@@ -60,6 +60,8 @@ export function EmployeeForm({ mode, defaultValues }: { mode: Mode; defaultValue
   const form = useForm<EmployeeFormValues>({ resolver: zodResolver(employeeFormSchema), defaultValues });
   const { control, formState } = form;
   const declared = useWatch({ control, name: "cnasDeclared" });
+  // The contract cannot end before it starts: the end date's calendar starts at the start date.
+  const startDate = useWatch({ control, name: "startDate" });
   // The day changed pay terms take effect, asked once they are changed on a registered file: today when empty (PEO-08).
   const [payFrom, setPayFrom] = React.useState("");
   const pay = useWatch({ control, name: PAY_KEYS });
@@ -133,7 +135,12 @@ export function EmployeeForm({ mode, defaultValues }: { mode: Mode; defaultValue
                 )}
               </p>
             </Field>
-            <DateField control={control} name="registrationDate" label={tWorker("Labels.registrationDate")} />
+            <DateField
+              control={control}
+              name="registrationDate"
+              label={tWorker("Labels.registrationDate")}
+              clearable={false}
+            />
           </CardContent>
         </Card>
 
@@ -230,7 +237,7 @@ export function EmployeeForm({ mode, defaultValues }: { mode: Mode; defaultValue
               label={t("Form.EmploymentContract")}
               options={EMPLOYMENT_CONTRACTS.map((code) => ({ value: code, label: t(`Contracts.${code}`) }))}
             />
-            <DateField control={control} name="contractEndDate" label={t("Form.ContractEndDate")} />
+            <DateField control={control} name="contractEndDate" label={t("Form.ContractEndDate")} min={startDate} />
             <TextField
               control={control}
               name="leaveOpeningDays"
@@ -296,13 +303,7 @@ export function EmployeeForm({ mode, defaultValues }: { mode: Mode; defaultValue
             {payChanged && (
               <Field>
                 <FieldLabel htmlFor="employee-payTermsFrom">{tWorker("Fields.payTermsFrom")}</FieldLabel>
-                <Input
-                  id="employee-payTermsFrom"
-                  type="date"
-                  dir="ltr"
-                  value={payFrom}
-                  onChange={(event) => setPayFrom(event.target.value)}
-                />
+                <DatePicker id="employee-payTermsFrom" value={payFrom} onChange={setPayFrom} clearable />
                 <FieldDescription>{tWorker("Fields.payTermsFromHint")}</FieldDescription>
               </Field>
             )}

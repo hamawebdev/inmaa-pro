@@ -75,7 +75,7 @@ export function PayItemsCard({ staffId }: { staffId: string }) {
           required: true,
           defaultValue: `${today.slice(0, 7)}-01`,
         },
-        { kind: "date", name: "toDate", label: t("Items.To") },
+        { kind: "date", name: "toDate", label: t("Items.To"), notBefore: "fromDate" },
         { kind: "tick", name: "contributable", label: t("Items.Contributable"), defaultValue: "1" },
         { kind: "tick", name: "taxable", label: t("Items.Taxable"), defaultValue: "1" },
       ],

@@ -55,7 +55,7 @@ export function SanctionCard({ subjectKind, subjectId }: { subjectKind: Sanction
           options: SANCTION_STATES.map((state) => ({ value: state, label: t(`${states}.${state}`) })),
         },
         { kind: "date", name: "startDate", label: t("Card.From"), required: true, defaultValue: todayAtTheCentre() },
-        { kind: "date", name: "endDate", label: t("Card.Until") },
+        { kind: "date", name: "endDate", label: t("Card.Until"), notBefore: "startDate" },
       ],
       reasonLabel: t("Card.Reason"),
       confirmLabel: t("Card.Set"),
