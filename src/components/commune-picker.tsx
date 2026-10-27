@@ -7,7 +7,7 @@ import { useLocale, useTranslations } from "use-intl";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { addCommuneAction, listCommunesQuery, PLACES_PATH } from "@/features/core/services/places";
 import { useErrorMessage } from "@/i18n/errors";
 import { pathKey } from "@/lib/compat/revalidate";
@@ -27,6 +27,9 @@ import { WILAYAS } from "@/lib/geo/wilayas";
  * The value is the stored shape: `wilayaCode` and `communeId`. Changing the
  * wilaya empties the commune. Save with `ensureZoneForCommune` where a zone
  * follows from the place (a site, a worker's residence).
+ *
+ * Both lists are the program's own dropdown: a choice applies on «تأكيد», and
+ * the 69 wilayas (or a long list of communes) open with a search box.
  */
 export interface PlaceValue {
   wilayaCode: string;
@@ -49,6 +52,7 @@ export function CommunePicker({
   className?: string;
 }) {
   const t = useTranslations("Places");
+  const tPickers = useTranslations("Pickers");
   const locale = useLocale();
   const errorMessage = useErrorMessage();
   const [adding, setAdding] = React.useState(false);
@@ -83,37 +87,41 @@ export function CommunePicker({
   return (
     <div className={className} data-commune-picker>
       <div className="grid min-w-0 gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
-        <NativeSelect
-          id={`${id}-wilaya`}
-          aria-label={t("Wilaya")}
+        <Select
           value={value.wilayaCode}
           disabled={disabled}
-          onChange={(event) => {
+          onValueChange={(wilayaCode) => {
             setAdding(false);
-            onChange({ wilayaCode: event.target.value, communeId: null });
+            onChange({ wilayaCode, communeId: null });
           }}
         >
-          {WILAYAS.map((wilaya) => (
-            <NativeSelectOption key={wilaya.code} value={wilaya.code}>
-              {wilaya.code} — {locale === "ar" ? wilaya.nameAr : wilaya.nameFr}
-            </NativeSelectOption>
-          ))}
-        </NativeSelect>
-        <NativeSelect
-          id={id}
-          aria-label={t("Commune")}
-          aria-invalid={invalid}
+          <SelectTrigger id={`${id}-wilaya`} aria-label={t("Wilaya")} className="w-full">
+            <SelectValue placeholder={tPickers("Choose")} />
+          </SelectTrigger>
+          <SelectContent>
+            {WILAYAS.map((wilaya) => (
+              <SelectItem key={wilaya.code} value={wilaya.code}>
+                {wilaya.code} — {locale === "ar" ? wilaya.nameAr : wilaya.nameFr}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select
           value={value.communeId ?? ""}
           disabled={disabled || communes.isPending}
-          onChange={(event) => onChange({ wilayaCode: value.wilayaCode, communeId: event.target.value || null })}
+          onValueChange={(communeId) => onChange({ wilayaCode: value.wilayaCode, communeId: communeId || null })}
         >
-          <NativeSelectOption value="">{t("ChooseCommune")}</NativeSelectOption>
-          {(communes.data ?? []).map((commune) => (
-            <NativeSelectOption key={commune.id} value={commune.id}>
-              {locale === "ar" || !commune.nameFr ? commune.nameAr : commune.nameFr}
-            </NativeSelectOption>
-          ))}
-        </NativeSelect>
+          <SelectTrigger id={id} aria-label={t("Commune")} aria-invalid={invalid} className="w-full">
+            <SelectValue placeholder={t("ChooseCommune")} />
+          </SelectTrigger>
+          <SelectContent>
+            {(communes.data ?? []).map((commune) => (
+              <SelectItem key={commune.id} value={commune.id}>
+                {locale === "ar" || !commune.nameFr ? commune.nameAr : commune.nameFr}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         {!disabled && !adding && (
           <Button type="button" variant="outline" onClick={() => setAdding(true)} data-commune-add>
             <Plus />

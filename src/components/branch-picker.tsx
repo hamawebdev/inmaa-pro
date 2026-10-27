@@ -1,7 +1,10 @@
 import { useTranslations } from "use-intl";
 
-import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useBranches } from "@/hooks/use-branches";
+
+/** The item that stands for «كل الفروع» (null): the dropdown keeps "" for "nothing chosen yet". */
+const ALL = "__all__";
 
 /**
  * Picks a branch (feature 47): the active ones, the main one first, and the
@@ -14,7 +17,7 @@ import { useBranches } from "@/hooks/use-branches";
  *    `.$if(input.branchId != null, (qb) => qb.where("x.branchId", "=", input.branchId!))`.
  *
  * Draw it only when `useBranches().several`: with one branch there is
- * nothing to choose.
+ * nothing to choose. The program's own dropdown: the choice applies on «تأكيد».
  */
 export function BranchPicker({
   id,
@@ -30,22 +33,27 @@ export function BranchPicker({
   disabled?: boolean;
 }) {
   const t = useTranslations("Branches");
+  const tPickers = useTranslations("Pickers");
   const { branches } = useBranches();
   const shown = branches.filter((branch) => branch.isActive || branch.id === value);
   return (
-    <NativeSelect
-      id={id}
-      value={value ?? ""}
+    <Select
+      value={value ?? (allowAll ? ALL : "")}
       disabled={disabled}
-      onChange={(event) => onChange(event.target.value === "" ? null : event.target.value)}
+      onValueChange={(next) => onChange(next === ALL || next === "" ? null : next)}
     >
-      {allowAll && <NativeSelectOption value="">{t("All")}</NativeSelectOption>}
-      {shown.map((branch) => (
-        <NativeSelectOption key={branch.id} value={branch.id}>
-          {branch.name}
-          {branch.isActive ? "" : ` (${t("Off")})`}
-        </NativeSelectOption>
-      ))}
-    </NativeSelect>
+      <SelectTrigger id={id} className="w-full">
+        <SelectValue placeholder={tPickers("Choose")} />
+      </SelectTrigger>
+      <SelectContent>
+        {allowAll && <SelectItem value={ALL}>{t("All")}</SelectItem>}
+        {shown.map((branch) => (
+          <SelectItem key={branch.id} value={branch.id}>
+            {branch.name}
+            {branch.isActive ? "" : ` (${t("Off")})`}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   );
 }

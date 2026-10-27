@@ -70,6 +70,47 @@ const OFFLINE_SYNTAX = [
   },
 ];
 
+/**
+ * No browser or system picker (the developer, 2026-10-22): a date, a time, a period, a text with usual answers
+ * and a choice from a list are the program's own pickers (src/components/pickers, src/components/ui/select.tsx),
+ * each applied only when its «تأكيد» is pressed. src/components/pickers/no-native-pickers.test.ts reads the
+ * source for the same, and for an input whose type is computed. File buttons stay (CLAUDE.md).
+ */
+const PICKER_MESSAGE =
+  "No browser picker: a date is <DateField>, a time <TimeField>, a period <DateRangeField> (@/components/pickers), a choice <Select> (@/components/ui/select).";
+const NO_NATIVE_PICKER_SYNTAX = [
+  {
+    selector:
+      "JSXOpeningElement[name.name=/^(input|Input)$/] > JSXAttribute[name.name='type'][value.value=/^(date|time|datetime-local|month|week|color)$/]",
+    message: PICKER_MESSAGE,
+  },
+  {
+    selector:
+      "JSXOpeningElement[name.name=/^(input|Input)$/] > JSXAttribute[name.name='type'] Literal[value=/^(date|time|datetime-local|month|week|color)$/]",
+    message: PICKER_MESSAGE,
+  },
+  {
+    selector: "JSXOpeningElement[name.name=/^(select|datalist)$/]",
+    message: PICKER_MESSAGE,
+  },
+  {
+    selector: "JSXOpeningElement[name.name=/^(input|Input)$/] > JSXAttribute[name.name='list']",
+    message: "No browser suggestion list: a text with usual answers is <SuggestField> (@/components/pickers).",
+  },
+  {
+    selector: "CallExpression[callee.property.name='showPicker']",
+    message: PICKER_MESSAGE,
+  },
+  {
+    selector: "JSXAttribute[name.name='captionLayout'] Literal[value=/dropdown/]",
+    message: "A calendar caption with dropdowns draws native selects: the pickers draw their own.",
+  },
+  {
+    selector: "JSXAttribute[name.name='captionLayout'][value.value=/dropdown/]",
+    message: "A calendar caption with dropdowns draws native selects: the pickers draw their own.",
+  },
+];
+
 export default tseslint.config(
   {
     ignores: [
@@ -163,6 +204,14 @@ export default tseslint.config(
       "no-restricted-imports": [
         "error",
         {
+          paths: [
+            ...["@/components/ui/native-select", "@/components/ui/combobox", "@/components/date-range-picker"].map(
+              (name) => ({ name, message: PICKER_MESSAGE }),
+            ),
+            { name: "radix-ui", importNames: ["Select"], message: PICKER_MESSAGE },
+            { name: "@base-ui/react/select", message: PICKER_MESSAGE },
+            { name: "@base-ui/react/combobox", message: PICKER_MESSAGE },
+          ],
           patterns: [
             {
               regex:
@@ -172,14 +221,14 @@ export default tseslint.config(
           ],
         },
       ],
-      "no-restricted-syntax": ["error", ...WEB_ADDRESS_SYNTAX, ...OFFLINE_SYNTAX],
+      "no-restricted-syntax": ["error", ...WEB_ADDRESS_SYNTAX, ...OFFLINE_SYNTAX, ...NO_NATIVE_PICKER_SYNTAX],
     },
   },
   {
     // Tests run under Node and never ship: an address may be the input a refusal is tested with.
     files: ["src/**/*.test.ts"],
     rules: {
-      "no-restricted-syntax": ["error", ...OFFLINE_SYNTAX],
+      "no-restricted-syntax": ["error", ...OFFLINE_SYNTAX, ...NO_NATIVE_PICKER_SYNTAX],
     },
   },
   {

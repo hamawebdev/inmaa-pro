@@ -196,8 +196,9 @@ It shows the web part of the app in Chrome. These still need the real program:
 - **Paper.** `pdf.mjs` uses Chrome's print engine on A4, which is what WebView2 on Windows uses
   too. The printer, its margins and the user's choices in the print dialog are not covered.
   Backgrounds are left out unless `--backgrounds` is given, as in the dialog by default.
-- **The browser's own controls.** A native date field or file button is drawn in the browser's
-  language and date order (English here), on the client's PC in the language of Windows.
+- **The browser's own controls.** A file button is drawn in the browser's language (English
+  here), on the client's PC in the language of Windows. Dates, times and lists are the program's
+  own pickers, drawn as on the client's PC.
 - **Fonts that are not in the app.** His Word fonts (Traditional Arabic, Sakkal Majalla) are not
   on this machine, so a sheet that asks for them shows the bundled Arabic font instead.
 

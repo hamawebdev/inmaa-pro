@@ -57,6 +57,9 @@ function isTextEditable(target: EventTarget | null): boolean {
 const STEP = 80;
 
 export function handleScrollKeyDown(e: KeyboardEvent<HTMLElement>) {
+  // React carries a key from a portal up its own tree: a picker's panel, drawn in <body>, would otherwise
+  // scroll the dialog or the page behind it. Only keys pressed inside this element in the DOM are its own.
+  if (!(e.target instanceof Node) || !e.currentTarget.contains(e.target)) return;
   if (isTextEditable(e.target)) return;
 
   const el = e.currentTarget;

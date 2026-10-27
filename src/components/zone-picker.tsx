@@ -1,9 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
 import { useTranslations } from "use-intl";
 
-import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { listZonesQuery, PLACES_PATH } from "@/features/core/services/places";
 import { pathKey } from "@/lib/compat/revalidate";
+
+/** The item that stands for no zone (null), when `allowNone`: the dropdown keeps "" for "nothing chosen yet". */
+const NONE = "__none__";
 
 /**
  * A zone of the centre: the areas its workers and supervisors are spread over
@@ -13,7 +16,9 @@ import { pathKey } from "@/lib/compat/revalidate";
  *
  * A zone is made the first time a commune needs one (`ensureZoneForCommune`)
  * and named after it; Settings › قواعد العمل moves a commune to another zone.
- * `allowNone` adds the empty choice, for a filter or an optional zone.
+ * `allowNone` adds the empty choice, for a filter or an optional zone; without
+ * it an empty value shows `noneLabel` (or «اختر المنطقة») as the field's
+ * placeholder. The program's own dropdown: the choice applies on «تأكيد».
  */
 export function ZonePicker({
   id,
@@ -37,24 +42,24 @@ export function ZonePicker({
     queryKey: [...pathKey(PLACES_PATH), "zones"],
     queryFn: () => listZonesQuery(undefined),
   });
+  const none = noneLabel ?? t("ChooseZone");
   return (
-    <NativeSelect
-      id={id}
-      aria-label={t("Zone")}
-      className={className}
-      value={value ?? ""}
+    <Select
+      value={value ?? (allowNone ? NONE : "")}
       disabled={disabled || zones.isPending}
-      onChange={(event) => onChange(event.target.value || null)}
-      data-zone-picker
+      onValueChange={(next) => onChange(next === NONE || next === "" ? null : next)}
     >
-      {(allowNone || value === null) && (
-        <NativeSelectOption value="">{noneLabel ?? t("ChooseZone")}</NativeSelectOption>
-      )}
-      {(zones.data ?? []).map((zone) => (
-        <NativeSelectOption key={zone.id} value={zone.id}>
-          {zone.name}
-        </NativeSelectOption>
-      ))}
-    </NativeSelect>
+      <SelectTrigger id={id} aria-label={t("Zone")} className={className} data-zone-picker>
+        <SelectValue placeholder={none} />
+      </SelectTrigger>
+      <SelectContent>
+        {allowNone && <SelectItem value={NONE}>{none}</SelectItem>}
+        {(zones.data ?? []).map((zone) => (
+          <SelectItem key={zone.id} value={zone.id}>
+            {zone.name}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   );
 }

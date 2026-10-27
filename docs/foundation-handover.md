@@ -50,7 +50,7 @@ owners' commits since; what F4 changed is not committed yet). F3b was accepted.
 
 - Names: Latin `Inmaa Pro`, identifier `com.hamawebdev.inmaa-pro`, database `inmaa.db`; Arabic only in window titles and in the app.
 - No teammate launches the desktop app; the coordinator does. Verify the policy on the built `dist/` through the harness.
-- Stored PDFs are saved as a copy, never opened; images are shown in the app. Native date fields and file buttons stay.
+- Stored PDFs are saved as a copy, never opened; images are shown in the app. File buttons stay; dates, times, periods and dropdowns are the program's own pickers since 2026-10-22 (CLAUDE.md).
 - Direction provider mounted; charts `dir="ltr"`; one `<Ltr>` wrapper; `data:` out of `font-src`.
 - Print: do not copy the academy's print approach; nothing prints over his letterhead or footer pictures, his forms included.
 - Communes of أم البواقي checked (2026-10-12); ids carry the official codes. Wilayas 59 to 69 stay flagged (press, not the Journal officiel).
