@@ -15,6 +15,11 @@ The developer was asked six questions and answered "continue", so these defaults
 5. **Windows.** The app is built and proven on Linux here. The Windows installer is built later on a Windows machine; the configuration must already carry an offline WebView2 install mode.
 6. **Alerts** are a tile and a list on the home screen plus a desktop notification while the program is open. Nothing is sent. The payment alert is for the office and lists the payer's name and phone.
 
+Decided by the developer on 2026-10-22:
+
+7. **His two service lists are his.** «الخدمات المقدمة» and «الخدمات المبرمجة» are edited in Settings › الخدمات, without a new version of the program: a service added (its name in Arabic, French and English, all three required), renamed, removed, given its divisions, moved within a division. It then appears on those divisions' screens and printed forms, in that order. A removed service is no longer offered for new requests; requests and contracts that already have it keep it, on screen and on paper. A rename shows on every file that has the service, signed contracts included. An installed copy keeps its data: the lists arrive by a forward migration.
+8. **No browser or system picker.** Every date, time and period picker and every dropdown is the program's own, and applies a change only when its «تأكيد» is pressed. File buttons stay as the academy has them.
+
 ## 2. Navigation
 
 The academy bar holds six sections plus Lock and Settings. His five sections and the academy's home screen fill it exactly.
@@ -27,7 +32,7 @@ The academy bar holds six sections plus Lock and Settings. His five sections and
 | طلبات الخدمة | his ③ | الملفات (C) · الزيارات (O) · الجودة والشكاوى (O) · العملاء (C). On الملفات his four divisions are a switch: المنازل · المؤسسات · العمارات · التجمعات السكنية. «نوع الخدمة» (عند الطلب / عقد) filters the first two; the last two are contract only |
 | المصاريف (المصاريف والمداخيل) | his ④, name to confirm | المصاريف حسب القسم · المداخيل حسب القسم · الفواتير · التسديد والديون · التقارير والمؤشرات (all M) |
 | المخزون (إدارة المخزون) | his ⑤ | جرد المخزون · التسليم · المشتريات · الصيانة (all M). المعدات / المواد is a switch; on التسليم, «نوع الخدمة» and the division are filters, as he drew them |
-| القفل · الإعدادات | academy shell | Settings tabs: عام · قواعد العمل · المستخدمون والصلاحيات · السجل (F) |
+| القفل · الإعدادات | academy shell | Settings tabs: عام · قواعد العمل · الخدمات · المستخدمون والصلاحيات · السجل (F) |
 
 His notes name no section for daily operations. The day board goes on the home screen and the rest under «طلبات الخدمة».
 
@@ -44,7 +49,7 @@ The closest academy screen is in brackets. The academy has two visual generation
 - **طلبات الخدمة › العملاء.** One card per client: sites, contacts, last and next service, payment state, rating, sanction state [academy student overview].
 - **المصاريف.** Expenses by division and category [academy expenses]. Income by division: four tiles, period filter, chart and table [academy finance analytics]. Invoices: list, a run for all contracts with the visit statement, print, void [finance table and receipt print; the run is new]. التسديد والديون: payments, due dates, overdue list, cash receipts and daily reconciliation [academy payment ledger and debt list]. Reports: end of day, week, month, per worker, per contract, forecast, export files.
 - **المخزون.** Inventory with minimum levels; hand-outs recorded against a job, to a named worker, with equipment returns; purchases; maintenance [list with dialog throughout].
-- **الإعدادات.** عام: centre identity, tax identifiers, letterhead, language, appearance, backup, licence, system, branches. قواعد العمل: days, periods, limits, alert lead times, approval rule, tax mode, stamp duty, numbering, zones, rates. المستخدمون والصلاحيات: accounts, roles, role by section. السجل: access and change log.
+- **الإعدادات.** عام: centre identity, tax identifiers, letterhead, language, appearance, backup, licence, system, branches. قواعد العمل: days, periods, limits, alert lead times, approval rule, tax mode, stamp duty, numbering, zones, rates. الخدمات: his two service lists, by division (decision 7). المستخدمون والصلاحيات: accounts, roles, role by section. السجل: access and change log.
 - **Lock.** Signing in at start is new: the academy opens straight onto its home screen. The lock screen gains a user list, "lock now" signs out, and the section picker becomes role by section. Cost and margin are for المدير; health answers and the confidential hiring score for المدير and مسئول الموارد البشرية.
 
 Printed sheets: his six forms and a complexes copy of the building contract, in his layout with his letterhead; inspection sheet, quote, mission order (with attendance, checklist, worker's notes and sign-off slip), supervisor inspection sheet, invoice, cash receipt, payment reminder, payslip, hand-out slip, supervisor day sheet, reports, ID card. Printed forms are always Arabic.
