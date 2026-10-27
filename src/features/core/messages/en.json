@@ -53,7 +53,8 @@
     "FilePartVisits": "Visits",
     "FilePartResidents": "Residents",
     "FilePartHandouts": "Hand-outs",
-    "FilePartPayments": "Payment"
+    "FilePartPayments": "Payment",
+    "SettingsServices": "Services"
   },
   "Auth": {
     "Password": "Password",
@@ -206,7 +207,13 @@
     "RestoreNotHere": "This copy was made by another version of the program, or is damaged. It cannot be restored here. Nothing was replaced.",
     "PaperNumberRange": "Type the last number issued on paper, from 1 to 999999.",
     "PaperNumberDate": "The date of the last paper document must be this year, and not after today.",
-    "PaperNumbersTooLate": "Numbers of this kind already exist this year: the paper numbers are declared before the first one, once."
+    "PaperNumbersTooLate": "Numbers of this kind already exist this year: the paper numbers are declared before the first one, once.",
+    "ServiceNameThreeLanguages": "A service needs its name in Arabic, French and English.",
+    "ServiceNameTooLong": "A service's name is at most 80 characters.",
+    "ServiceListChanged": "This list has changed. Reload it and try again.",
+    "ServiceDivisionUnknown": "This division does not exist.",
+    "ServiceNameTwice": "Two services of this list have the same name.",
+    "ServiceNeedsDivision": "Choose at least one division for each service."
   },
   "Table": {
     "ScrollLeft": "Scroll left",
@@ -342,9 +349,6 @@
     "SizeKilobytes": "{size} KB",
     "CopySaved": "Copy saved to {path}",
     "CopyFailed": "Could not save the copy."
-  },
-  "DateRangePicker": {
-    "SelectDate": "Select date"
   },
   "AdminLogoMark": {
     "LogoAlt": "{name} logo"
@@ -542,58 +546,6 @@
       "KEEP_PASSAGES_SAFE": "Keep passages safe while cleaning",
       "WET_FLOOR_SIGNS": "Put up warning signs on wet floors",
       "REPORT_DAMAGE": "Report any damage or hazard to the supervisor at once"
-    },
-    "ProvidedService": {
-      "FLOORS": "Floors",
-      "KITCHEN": "Kitchen",
-      "CURTAINS": "Curtains",
-      "WINDOWS": "Windows",
-      "CEILINGS": "Ceilings",
-      "FRIDGE": "Fridge",
-      "BATHROOMS": "Bathrooms",
-      "GLASS": "Glass",
-      "OVEN": "Oven",
-      "CARPETS": "Carpets",
-      "CUPBOARDS": "Cupboards",
-      "CHILDREN_ROOMS": "Children's rooms",
-      "GARAGE": "Garage",
-      "FURNITURE": "Furniture",
-      "SIGNS_ADS": "Signs and advertising",
-      "TOILETS": "Toilets",
-      "WASTE_SORTING": "Waste collection and sorting",
-      "SHELVES": "Shelves",
-      "OFFICES": "Offices",
-      "CAR_PARKS": "Car parks",
-      "APPLIANCES": "Appliances",
-      "RECEPTION_HALL": "Reception hall",
-      "MEETING_ROOMS": "Meeting rooms",
-      "STORES": "Storerooms",
-      "GARDENS": "Gardens",
-      "COURTYARDS": "Courtyards",
-      "SWEEP_DUST": "Sweeping and dusting",
-      "STAINS": "Stains",
-      "DOORS": "Doors",
-      "CORRIDORS": "Corridors",
-      "WALLS": "Walls",
-      "CORNERS": "Corners",
-      "MAILBOXES": "Mailboxes",
-      "ENTRANCES": "Entrances",
-      "PAVEMENTS": "Pavements"
-    },
-    "ProgrammedService": {
-      "PERIODIC": "Periodic cleaning",
-      "AFTER_CONSTRUCTION": "After construction",
-      "AFTER_RENOVATION": "After renovation",
-      "AFTER_BANQUETS": "After banquets",
-      "COMPREHENSIVE_DEEP": "Full deep cleaning",
-      "COMPREHENSIVE": "Full cleaning",
-      "GUESTS": "Guest rooms",
-      "AFTER_TRAVEL": "After travel",
-      "RAMADAN": "Ramadan cleaning",
-      "DEBRIS_REMOVAL": "Debris removal",
-      "BEFORE_EVENTS": "Before events",
-      "AFTER_EVENTS": "After events",
-      "DEEP": "Deep cleaning"
     }
   },
   "Home": {
@@ -1296,8 +1248,7 @@
       "EveryOperation": "Every operation",
       "Entity": "Kind of record",
       "EveryEntity": "Every kind",
-      "From": "From",
-      "To": "To"
+      "Period": "Period"
     },
     "Operations": {
       "COLLECT": "Collection",
@@ -1408,7 +1359,8 @@
     "Inventory": "What is in stock, what is running low and what must be bought.",
     "Handouts": "Materials and tools handed to workers, and what came back.",
     "Purchases": "Purchase requests, purchases and what suppliers were paid.",
-    "Maintenance": "The upkeep of machines and equipment, done and due."
+    "Maintenance": "The upkeep of machines and equipment, done and due.",
+    "SettingsServices": "The two lists of services: what each division's forms offer, in their order."
   },
   "ClockScreen": {
     "Today": "Date on this PC:",
@@ -1474,5 +1426,73 @@
     "DeclaredLine": "Declared by {by} on {date}:",
     "AlreadyNumbered": "{count, plural, one {The program has already numbered # this year:} other {The program has already numbered up to # this year:}} nothing is declared now.",
     "NotDeclared": "Nothing declared. Only the manager declares paper numbers."
+  },
+  "Pickers": {
+    "Confirm": "Confirm",
+    "Cancel": "Cancel",
+    "Today": "Today",
+    "Clear": "Clear",
+    "Search": "Search",
+    "NoMatch": "Nothing matches.",
+    "UseTyped": "Use “{text}”",
+    "Choose": "Choose",
+    "ChooseDate": "Choose a date",
+    "ChooseTime": "Choose a time",
+    "ChooseRange": "Choose a period",
+    "ChooseStart": "Click the first day",
+    "ChooseEnd": "Click the last day",
+    "PreviousMonth": "Previous month",
+    "NextMonth": "Next month",
+    "PreviousYears": "Previous years",
+    "NextYears": "Next years",
+    "ChooseMonth": "Choose the month",
+    "ChooseYear": "Choose the year",
+    "TypeDate": "Type the date (day/month/year)",
+    "TypeTime": "Type the time (hours:minutes)",
+    "InvalidDate": "This is not a date. Type it as 12/10/2026.",
+    "InvalidTime": "This is not a time. Type it as 08:30.",
+    "OutOfRange": "This date cannot be chosen here.",
+    "Hours": "Hour",
+    "Minutes": "Minutes"
+  },
+  "ServiceLists": {
+    "Lists": {
+      "PROVIDED": "Services provided",
+      "PROGRAMMED": "Planned services"
+    },
+    "WhichList": "Which list",
+    "WhichDivision": "Which division",
+    "ListOfDivision": "{list}: {division}",
+    "Count": "{count, plural, =0 {No service on this division's forms} one {# service on this division's forms, in this order} other {# services on this division's forms, in this order}}",
+    "Empty": "This division's forms offer no service of this list.",
+    "AlsoIn": "Also offered by",
+    "MoveUp": "Move up",
+    "MoveDown": "Move down",
+    "Edit": "Edit",
+    "Remove": "Remove",
+    "RemoveTitle": "Remove «{name}»?",
+    "RemoveHint": "It is no longer offered for new requests. Requests and contracts that already have it keep it, on screen and on paper. It can be restored below the list.",
+    "Add": "Add a service",
+    "Others": "{count, plural, one {# service of the other divisions} other {# services of the other divisions}}",
+    "OthersHint": "Services of this list that other divisions offer and this one does not.",
+    "AddHere": "Offer it for {division}",
+    "Removed": "{count, plural, one {# removed service} other {# removed services}}",
+    "RemovedHint": "No longer offered for new requests. The files that have one keep it.",
+    "Restore": "Restore",
+    "Preview": "Preview the empty form:",
+    "PreviewSaved": "The preview shows the lists as last saved.",
+    "Unsaved": "{count, plural, one {# change not saved} other {# changes not saved}}",
+    "Discard": "Undo the changes",
+    "Saved": "The service lists are saved.",
+    "SaveFailed": "The service lists could not be saved.",
+    "ReadOnly": "Only the manager, or a role given the work rules, changes these lists.",
+    "AddTitle": "New service",
+    "EditTitle": "Edit the service",
+    "DialogHint": "Its name in the three languages, and the divisions whose forms offer it. The change is kept when you save the lists.",
+    "NameAr": "Name in Arabic (printed on the forms)",
+    "NameFr": "Name in French",
+    "NameEn": "Name in English",
+    "Divisions": "Offered on the forms of",
+    "RenameNote": "The new name shows on every file that has this service, signed contracts included. To offer a different service, add a new one and remove this one."
   }
 }

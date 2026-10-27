@@ -297,7 +297,7 @@ export const SECTIONS: readonly SectionDef[] = [
     icon: Settings,
     href: "/dashboard/settings",
     segments: ["settings"],
-    // One first segment, four tabs: the three below the first are told apart by
+    // One first segment, five tabs: the four below the first are told apart by
     // their second segment, which `resolveTab`'s longest match handles.
     tabs: [
       { id: "general", labelKey: "SettingsGeneral", href: "/dashboard/settings" },
@@ -306,6 +306,13 @@ export const SECTIONS: readonly SectionDef[] = [
         labelKey: "SettingsRules",
         href: "/dashboard/settings/rules",
         owns: ["/dashboard/settings/rules"],
+      },
+      {
+        // His two service lists, the manager's to edit (the developer, 2026-10-22).
+        id: "services",
+        labelKey: "SettingsServices",
+        href: "/dashboard/settings/services",
+        owns: ["/dashboard/settings/services"],
       },
       {
         id: "users",

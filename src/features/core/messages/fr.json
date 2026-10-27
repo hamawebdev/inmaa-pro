@@ -53,7 +53,8 @@
     "FilePartVisits": "Visites",
     "FilePartResidents": "Résidents",
     "FilePartHandouts": "Remises",
-    "FilePartPayments": "Paiement"
+    "FilePartPayments": "Paiement",
+    "SettingsServices": "Services"
   },
   "Auth": {
     "Password": "Mot de passe",
@@ -206,7 +207,13 @@
     "RestoreNotHere": "Cette copie a été faite par une autre version du programme, ou elle est endommagée. Elle ne peut pas être restaurée ici. Rien n'a été remplacé.",
     "PaperNumberRange": "Saisissez le dernier numéro émis sur papier, de 1 à 999999.",
     "PaperNumberDate": "La date du dernier document papier doit être de cette année, et pas après aujourd'hui.",
-    "PaperNumbersTooLate": "Des numéros de ce type existent déjà cette année : les numéros papier se déclarent avant le premier, une fois."
+    "PaperNumbersTooLate": "Des numéros de ce type existent déjà cette année : les numéros papier se déclarent avant le premier, une fois.",
+    "ServiceNameThreeLanguages": "Un service doit avoir son nom en arabe, en français et en anglais.",
+    "ServiceNameTooLong": "Le nom d'un service ne dépasse pas 80 caractères.",
+    "ServiceListChanged": "Cette liste a changé. Rouvrez-la et réessayez.",
+    "ServiceDivisionUnknown": "Cette division n'existe pas.",
+    "ServiceNameTwice": "Deux services de cette liste portent le même nom.",
+    "ServiceNeedsDivision": "Choisissez au moins une division pour chaque service."
   },
   "Table": {
     "ScrollLeft": "Défiler à gauche",
@@ -342,9 +349,6 @@
     "SizeKilobytes": "{size} Ko",
     "CopySaved": "Copie enregistrée dans {path}",
     "CopyFailed": "Impossible d'enregistrer la copie."
-  },
-  "DateRangePicker": {
-    "SelectDate": "Sélectionner une date"
   },
   "AdminLogoMark": {
     "LogoAlt": "Logo de {name}"
@@ -542,58 +546,6 @@
       "KEEP_PASSAGES_SAFE": "Garder les passages sûrs pendant le nettoyage",
       "WET_FLOOR_SIGNS": "Signaler les sols mouillés par des panneaux",
       "REPORT_DAMAGE": "Signaler aussitôt au superviseur tout dégât ou danger"
-    },
-    "ProvidedService": {
-      "FLOORS": "Sols",
-      "KITCHEN": "Cuisine",
-      "CURTAINS": "Rideaux",
-      "WINDOWS": "Fenêtres",
-      "CEILINGS": "Plafonds",
-      "FRIDGE": "Réfrigérateur",
-      "BATHROOMS": "Salles de bain",
-      "GLASS": "Vitres",
-      "OVEN": "Four",
-      "CARPETS": "Tapis",
-      "CUPBOARDS": "Placards",
-      "CHILDREN_ROOMS": "Chambres d'enfants",
-      "GARAGE": "Garage",
-      "FURNITURE": "Meubles",
-      "SIGNS_ADS": "Enseignes et publicités",
-      "TOILETS": "Toilettes",
-      "WASTE_SORTING": "Collecte et tri des déchets",
-      "SHELVES": "Étagères",
-      "OFFICES": "Bureaux",
-      "CAR_PARKS": "Parkings",
-      "APPLIANCES": "Appareils",
-      "RECEPTION_HALL": "Hall d'accueil",
-      "MEETING_ROOMS": "Salles de réunion",
-      "STORES": "Magasins",
-      "GARDENS": "Jardins",
-      "COURTYARDS": "Cours",
-      "SWEEP_DUST": "Balayage et dépoussiérage",
-      "STAINS": "Taches",
-      "DOORS": "Portes",
-      "CORRIDORS": "Couloirs",
-      "WALLS": "Murs",
-      "CORNERS": "Coins",
-      "MAILBOXES": "Boîtes aux lettres",
-      "ENTRANCES": "Entrées",
-      "PAVEMENTS": "Trottoirs"
-    },
-    "ProgrammedService": {
-      "PERIODIC": "Nettoyage périodique",
-      "AFTER_CONSTRUCTION": "Après construction",
-      "AFTER_RENOVATION": "Après rénovation",
-      "AFTER_BANQUETS": "Après un banquet",
-      "COMPREHENSIVE_DEEP": "Nettoyage complet en profondeur",
-      "COMPREHENSIVE": "Nettoyage complet",
-      "GUESTS": "Chambres d'amis",
-      "AFTER_TRAVEL": "Après un voyage",
-      "RAMADAN": "Nettoyage du Ramadan",
-      "DEBRIS_REMOVAL": "Évacuation des gravats",
-      "BEFORE_EVENTS": "Avant un événement",
-      "AFTER_EVENTS": "Après un événement",
-      "DEEP": "Nettoyage en profondeur"
     }
   },
   "Home": {
@@ -1296,8 +1248,7 @@
       "EveryOperation": "Toutes les opérations",
       "Entity": "Type d'enregistrement",
       "EveryEntity": "Tous les types",
-      "From": "Du",
-      "To": "Au"
+      "Period": "Période"
     },
     "Operations": {
       "COLLECT": "Collecte",
@@ -1408,7 +1359,8 @@
     "Inventory": "Ce qui est en stock, ce qui s'épuise et ce qu'il faut acheter.",
     "Handouts": "Produits et outils remis aux agents, et ce qui est revenu.",
     "Purchases": "Demandes d'achat, achats et ce qui a été payé aux fournisseurs.",
-    "Maintenance": "L'entretien des machines et du matériel, fait et à faire."
+    "Maintenance": "L'entretien des machines et du matériel, fait et à faire.",
+    "SettingsServices": "Les deux listes de services : ce que les formulaires de chaque division proposent, et dans quel ordre."
   },
   "ClockScreen": {
     "Today": "Date de ce PC :",
@@ -1474,5 +1426,73 @@
     "DeclaredLine": "Déclaré par {by} le {date} :",
     "AlreadyNumbered": "{count, plural, one {Le programme a déjà numéroté # cette année :} other {Le programme a déjà numéroté jusqu'à # cette année :}} rien n'est déclaré maintenant.",
     "NotDeclared": "Rien n'est déclaré. Seul le directeur déclare les numéros papier."
+  },
+  "Pickers": {
+    "Confirm": "Confirmer",
+    "Cancel": "Annuler",
+    "Today": "Aujourd'hui",
+    "Clear": "Effacer",
+    "Search": "Rechercher",
+    "NoMatch": "Aucun résultat.",
+    "UseTyped": "Utiliser « {text} »",
+    "Choose": "Choisir",
+    "ChooseDate": "Choisir une date",
+    "ChooseTime": "Choisir une heure",
+    "ChooseRange": "Choisir une période",
+    "ChooseStart": "Cliquez le premier jour",
+    "ChooseEnd": "Cliquez le dernier jour",
+    "PreviousMonth": "Mois précédent",
+    "NextMonth": "Mois suivant",
+    "PreviousYears": "Années précédentes",
+    "NextYears": "Années suivantes",
+    "ChooseMonth": "Choisir le mois",
+    "ChooseYear": "Choisir l'année",
+    "TypeDate": "Saisir la date (jour/mois/année)",
+    "TypeTime": "Saisir l'heure (heures:minutes)",
+    "InvalidDate": "Ce n'est pas une date. Saisissez-la ainsi : 12/10/2026.",
+    "InvalidTime": "Ce n'est pas une heure. Saisissez-la ainsi : 08:30.",
+    "OutOfRange": "Cette date ne peut pas être choisie ici.",
+    "Hours": "Heure",
+    "Minutes": "Minutes"
+  },
+  "ServiceLists": {
+    "Lists": {
+      "PROVIDED": "Services fournis",
+      "PROGRAMMED": "Services programmés"
+    },
+    "WhichList": "Quelle liste",
+    "WhichDivision": "Quelle division",
+    "ListOfDivision": "{list} : {division}",
+    "Count": "{count, plural, =0 {Aucun service sur les formulaires de cette division} one {# service sur les formulaires de cette division, dans cet ordre} other {# services sur les formulaires de cette division, dans cet ordre}}",
+    "Empty": "Les formulaires de cette division ne proposent aucun service de cette liste.",
+    "AlsoIn": "Proposé aussi par",
+    "MoveUp": "Monter",
+    "MoveDown": "Descendre",
+    "Edit": "Modifier",
+    "Remove": "Supprimer",
+    "RemoveTitle": "Supprimer « {name} » ?",
+    "RemoveHint": "Il n'est plus proposé pour les nouvelles demandes. Les demandes et les contrats qui l'ont le gardent, à l'écran et sur papier. Il peut être rétabli sous la liste.",
+    "Add": "Ajouter un service",
+    "Others": "{count, plural, one {# service des autres divisions} other {# services des autres divisions}}",
+    "OthersHint": "Les services de cette liste que d'autres divisions proposent et pas celle-ci.",
+    "AddHere": "Le proposer pour {division}",
+    "Removed": "{count, plural, one {# service supprimé} other {# services supprimés}}",
+    "RemovedHint": "Plus proposés pour les nouvelles demandes. Les dossiers qui en ont un le gardent.",
+    "Restore": "Rétablir",
+    "Preview": "Aperçu du formulaire vierge :",
+    "PreviewSaved": "L'aperçu montre les listes telles qu'enregistrées.",
+    "Unsaved": "{count, plural, one {# modification non enregistrée} other {# modifications non enregistrées}}",
+    "Discard": "Annuler les modifications",
+    "Saved": "Les listes de services sont enregistrées.",
+    "SaveFailed": "Les listes de services n'ont pas pu être enregistrées.",
+    "ReadOnly": "Seul le directeur, ou un rôle qui a les règles de travail, modifie ces listes.",
+    "AddTitle": "Nouveau service",
+    "EditTitle": "Modifier le service",
+    "DialogHint": "Son nom dans les trois langues, et les divisions dont les formulaires le proposent. La modification est gardée quand vous enregistrez les listes.",
+    "NameAr": "Nom en arabe (imprimé sur les formulaires)",
+    "NameFr": "Nom en français",
+    "NameEn": "Nom en anglais",
+    "Divisions": "Proposé sur les formulaires de",
+    "RenameNote": "Le nouveau nom apparaît sur chaque dossier qui a ce service, contrats signés compris. Pour proposer un autre service, ajoutez-en un nouveau et supprimez celui-ci."
   }
 }

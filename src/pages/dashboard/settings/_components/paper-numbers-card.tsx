@@ -7,6 +7,7 @@ import { useTranslations } from "use-intl";
 
 import { useConfirm } from "@/components/confirm-dialog";
 import { Ltr } from "@/components/ltr";
+import { DateField } from "@/components/pickers";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -131,13 +132,12 @@ function PaperKeyBlock({ row }: { row: PaperNumbersRow }) {
             </div>
             <div className="grid min-w-0 gap-2">
               <Label htmlFor={`paper_${id}_date`}>{t("LastDate")}</Label>
-              <Input
+              <DateField
                 id={`paper_${id}_date`}
-                type="date"
                 value={lastDate}
                 max={today}
                 min={`${row.year}-01-01`}
-                onChange={(event) => setLastDate(event.target.value)}
+                onChange={setLastDate}
               />
             </div>
           </div>

@@ -154,7 +154,7 @@ describe("registry integrity", () => {
       requests: ["files", "visits", "quality", "clients"],
       money: ["expenses", "income", "invoices", "payments", "reports"],
       stock: ["inventory", "handouts", "purchases", "maintenance"],
-      settings: ["general", "rules", "users", "log"],
+      settings: ["general", "rules", "services", "users", "log"],
     });
   });
 

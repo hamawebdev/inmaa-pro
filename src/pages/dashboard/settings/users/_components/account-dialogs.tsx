@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   createAccountAction,
   giveAccountPasswordAction,
@@ -65,15 +65,23 @@ function RoleSelect({ id, value, onChange }: { id: string; value: RoleCode; onCh
   const fixed = !isManager && value === MANAGER_ROLE;
   const roles = isManager || fixed ? ROLE_CODES : ROLE_CODES.filter((role) => role !== MANAGER_ROLE);
   return (
-    <NativeSelect id={id} value={value} disabled={fixed} onChange={(event) => onChange(event.target.value as RoleCode)}>
-      {roles.map((role) => (
-        <NativeSelectOption key={role} value={role}>
-          {roleLabel(role)}
-        </NativeSelectOption>
-      ))}
-    </NativeSelect>
+    <Select value={value} disabled={fixed} onValueChange={(role) => onChange(role as RoleCode)}>
+      <SelectTrigger id={id} className="w-full">
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        {roles.map((role) => (
+          <SelectItem key={role} value={role}>
+            {roleLabel(role)}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   );
 }
+
+/** The item «غير مرتبط» (no employee linked, ""): the dropdown keeps "" for "nothing chosen yet". */
+const NO_EMPLOYEE = "__none__";
 
 function EmployeeSelect({
   id,
@@ -91,19 +99,24 @@ function EmployeeSelect({
   const t = useTranslations("UsersTab");
   const employees = useEmployees(open);
   return (
-    <NativeSelect id={id} value={value} onChange={(event) => onChange(event.target.value)}>
-      <NativeSelectOption value="">{t("NoEmployee")}</NativeSelectOption>
-      {(employees.data ?? []).map((employee) => (
-        <NativeSelectOption
-          key={employee.id}
-          value={employee.id}
-          disabled={employee.account !== null && employee.account !== exceptUserName}
-        >
-          {employee.label}
-          {employee.account && employee.account !== exceptUserName ? ` (${employee.account})` : ""}
-        </NativeSelectOption>
-      ))}
-    </NativeSelect>
+    <Select value={value || NO_EMPLOYEE} onValueChange={(next) => onChange(next === NO_EMPLOYEE ? "" : next)}>
+      <SelectTrigger id={id} className="w-full">
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value={NO_EMPLOYEE}>{t("NoEmployee")}</SelectItem>
+        {(employees.data ?? []).map((employee) => (
+          <SelectItem
+            key={employee.id}
+            value={employee.id}
+            disabled={employee.account !== null && employee.account !== exceptUserName}
+          >
+            {employee.label}
+            {employee.account && employee.account !== exceptUserName ? ` (${employee.account})` : ""}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   );
 }
 

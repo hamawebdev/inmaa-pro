@@ -5,6 +5,7 @@ import SettingsLogPage from "@/pages/dashboard/settings/log/page";
 import SettingsPage from "@/pages/dashboard/settings/page";
 import PrintSamplePage from "@/pages/dashboard/settings/print-sample/page";
 import SettingsRulesPage from "@/pages/dashboard/settings/rules/page";
+import SettingsServicesPage from "@/pages/dashboard/settings/services/page";
 import SettingsUsersPage from "@/pages/dashboard/settings/users/page";
 
 /**
@@ -19,6 +20,7 @@ export const coreRoutes: RouteObject[] = [
   { path: "home", element: <HomePage /> },
   { path: "settings", element: <SettingsPage /> },
   { path: "settings/rules", element: <SettingsRulesPage /> },
+  { path: "settings/services", element: <SettingsServicesPage /> },
   { path: "settings/users", element: <SettingsUsersPage /> },
   { path: "settings/log", element: <SettingsLogPage /> },
   // Not a tab: the sample of the A4 print sheet, opened from Settings.

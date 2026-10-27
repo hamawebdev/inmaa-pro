@@ -9,13 +9,13 @@ import { useLocale, useTranslations } from "use-intl";
 import { DataTable, TablePager } from "@/components/data-table-shell";
 import { ErrorState } from "@/components/error-state";
 import { Ltr } from "@/components/ltr";
+import { DateRangeField } from "@/components/pickers";
 import { SectionScreen } from "@/components/section-screen";
 import { StatusChip, type StatusTone } from "@/components/status-chip";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   exportLogAction,
   listLogEntriesQuery,
@@ -49,6 +49,9 @@ const OPERATION_TONE: Record<string, StatusTone> = {
   SECURITY: "neutral",
 };
 const PAGE_SIZE = 25;
+/** The item «الجميع», «كل العمليات», «كل الأنواع» of a filter: no filter. The dropdown keeps "" for "nothing chosen". */
+const ALL = "__all__";
+const chosen = (value: string) => (value === ALL ? "" : value);
 
 export default function SettingsLogPage() {
   const t = useTranslations("LogTab");
@@ -247,71 +250,69 @@ export default function SettingsLogPage() {
         <p className="text-lg text-muted-foreground">{t("ManagerOnly")}</p>
       ) : (
         <div className="space-y-5">
-          <div className="grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-5" data-log-filters>
+          <div className="grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-4" data-log-filters>
             <div className="grid min-w-0 gap-1.5">
               <Label htmlFor="log_user">{t("Filters.Person")}</Label>
-              <NativeSelect
-                id="log_user"
-                value={filters.userId ?? ""}
-                onChange={(event) => change({ userId: event.target.value })}
-              >
-                <NativeSelectOption value="">{t("Filters.Everyone")}</NativeSelectOption>
-                <NativeSelectOption value="system">{t("TheProgram")}</NativeSelectOption>
-                {(choices.data?.users ?? []).map((user) => (
-                  <NativeSelectOption key={user.id} value={user.id}>
-                    {user.name}
-                  </NativeSelectOption>
-                ))}
-              </NativeSelect>
+              <Select value={filters.userId ?? ALL} onValueChange={(userId) => change({ userId: chosen(userId) })}>
+                <SelectTrigger id="log_user" className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={ALL}>{t("Filters.Everyone")}</SelectItem>
+                  <SelectItem value="system">{t("TheProgram")}</SelectItem>
+                  {(choices.data?.users ?? []).map((user) => (
+                    <SelectItem key={user.id} value={user.id}>
+                      {user.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="grid min-w-0 gap-1.5">
               <Label htmlFor="log_operation">{t("Filters.Operation")}</Label>
-              <NativeSelect
-                id="log_operation"
-                value={filters.operation ?? ""}
-                onChange={(event) => change({ operation: event.target.value })}
+              <Select
+                value={filters.operation ?? ALL}
+                onValueChange={(operation) => change({ operation: chosen(operation) })}
               >
-                <NativeSelectOption value="">{t("Filters.EveryOperation")}</NativeSelectOption>
-                {OPERATIONS.map((code) => (
-                  <NativeSelectOption key={code} value={code}>
-                    {t(`Operations.${code}`)}
-                  </NativeSelectOption>
-                ))}
-              </NativeSelect>
+                <SelectTrigger id="log_operation" className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={ALL}>{t("Filters.EveryOperation")}</SelectItem>
+                  {OPERATIONS.map((code) => (
+                    <SelectItem key={code} value={code}>
+                      {t(`Operations.${code}`)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="grid min-w-0 gap-1.5">
               <Label htmlFor="log_entity">{t("Filters.Entity")}</Label>
-              <NativeSelect
-                id="log_entity"
-                value={filters.entity ?? ""}
-                onChange={(event) => change({ entity: event.target.value })}
-              >
-                <NativeSelectOption value="">{t("Filters.EveryEntity")}</NativeSelectOption>
-                {(choices.data?.entities ?? []).map((entity) => (
-                  <NativeSelectOption key={entity} value={entity}>
-                    {entity}
-                  </NativeSelectOption>
-                ))}
-              </NativeSelect>
+              <Select value={filters.entity ?? ALL} onValueChange={(entity) => change({ entity: chosen(entity) })}>
+                <SelectTrigger id="log_entity" className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={ALL}>{t("Filters.EveryEntity")}</SelectItem>
+                  {(choices.data?.entities ?? []).map((entity) => (
+                    <SelectItem key={entity} value={entity}>
+                      {entity}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="grid min-w-0 gap-1.5">
-              <Label htmlFor="log_from">{t("Filters.From")}</Label>
-              <Input
-                id="log_from"
-                type="date"
-                dir="ltr"
-                value={filters.from ?? ""}
-                onChange={(event) => change({ from: event.target.value })}
-              />
-            </div>
-            <div className="grid min-w-0 gap-1.5">
-              <Label htmlFor="log_to">{t("Filters.To")}</Label>
-              <Input
-                id="log_to"
-                type="date"
-                dir="ltr"
-                value={filters.to ?? ""}
-                onChange={(event) => change({ to: event.target.value })}
+              {/* One period, applied on «تأكيد»; its «مسح» goes back to the whole log. */}
+              <Label htmlFor="log_period">{t("Filters.Period")}</Label>
+              <DateRangeField
+                id="log_period"
+                value={{ from: filters.from ?? "", to: filters.to ?? "" }}
+                onChange={(period) => change({ from: period.from, to: period.to })}
+                clearable
+                align="end"
+                className="w-full min-w-0 justify-start"
               />
             </div>
           </div>

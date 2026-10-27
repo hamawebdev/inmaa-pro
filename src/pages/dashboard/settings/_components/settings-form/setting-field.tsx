@@ -3,14 +3,15 @@ import * as React from "react";
 import { Plus, Trash2 } from "lucide-react";
 import { useLocale, useTranslations } from "use-intl";
 
-import { Ltr } from "@/components/ltr";
+import { DateField, TimeField } from "@/components/pickers";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import type { FieldKind } from "@/features/core/validators/settings-form";
 import { SANCTION_STATES, SANCTION_SUBJECTS } from "@/features/people/validators/staff-codes";
+import { useDateText } from "@/hooks/use-date-text";
 import { useCodeLabel } from "@/i18n/use-code-label";
 import { WILAYAS } from "@/lib/geo/wilayas";
 import { WEEKDAYS } from "@/lib/options";
@@ -144,19 +145,20 @@ function TextField({
 
 function WilayaField({ id, value, onChange, disabled }: SettingFieldProps) {
   const locale = useLocale();
+  const tPickers = useTranslations("Pickers");
   return (
-    <NativeSelect
-      id={id}
-      value={String(value ?? "")}
-      onChange={(event) => onChange(event.target.value)}
-      disabled={disabled}
-    >
-      {WILAYAS.map((wilaya) => (
-        <NativeSelectOption key={wilaya.code} value={wilaya.code}>
-          {wilaya.code} — {locale === "ar" ? wilaya.nameAr : wilaya.nameFr}
-        </NativeSelectOption>
-      ))}
-    </NativeSelect>
+    <Select value={String(value ?? "")} onValueChange={onChange} disabled={disabled}>
+      <SelectTrigger id={id}>
+        <SelectValue placeholder={tPickers("Choose")} />
+      </SelectTrigger>
+      <SelectContent>
+        {WILAYAS.map((wilaya) => (
+          <SelectItem key={wilaya.code} value={wilaya.code}>
+            {wilaya.code} — {locale === "ar" ? wilaya.nameAr : wilaya.nameFr}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   );
 }
 
@@ -240,21 +242,17 @@ function TimeRangeField({ id, value, onChange, disabled }: SettingFieldProps) {
   return (
     <div className="flex min-w-0 flex-wrap items-center gap-3">
       <span className="text-base text-muted-foreground">{t("From")}</span>
-      <Input
+      <TimeField
         id={id}
-        type="time"
-        dir="ltr"
         value={range.from}
-        onChange={(event) => onChange({ ...range, from: event.target.value })}
+        onChange={(from) => onChange({ ...range, from })}
         disabled={disabled}
         className="w-40"
       />
       <span className="text-base text-muted-foreground">{t("To")}</span>
-      <Input
-        type="time"
-        dir="ltr"
+      <TimeField
         value={range.to}
-        onChange={(event) => onChange({ ...range, to: event.target.value })}
+        onChange={(to) => onChange({ ...range, to })}
         disabled={disabled}
         className="w-40"
         aria-label={t("To")}
@@ -303,9 +301,13 @@ function LabelledChoice(props: SettingFieldProps & { field: Extract<FieldKind, {
   );
 }
 
+/** The item that stands for «غير محدد» (null) in a dropdown: the dropdown keeps "" for "nothing chosen yet". */
+const NOT_SET = "__not_set__";
+
 /**
  * One choice. A few options are a row of buttons, the chosen one filled, as
- * the academy's language and appearance cards; a longer list is a select.
+ * the academy's language and appearance cards; a longer list is the program's
+ * dropdown, which applies the choice on «تأكيد».
  */
 function ChoiceField({
   id,
@@ -357,19 +359,23 @@ function ChoiceField({
     );
   }
   return (
-    <NativeSelect
-      id={id}
-      value={current ?? ""}
-      onChange={(event) => onChange(event.target.value === "" ? null : event.target.value)}
+    <Select
+      value={current ?? (nullable ? NOT_SET : "")}
+      onValueChange={(next) => onChange(next === NOT_SET || next === "" ? null : next)}
       disabled={disabled}
     >
-      {nullable && <NativeSelectOption value="">{t("NotSet")}</NativeSelectOption>}
-      {options.map((code) => (
-        <NativeSelectOption key={code} value={code}>
-          {labelOf(code)}
-        </NativeSelectOption>
-      ))}
-    </NativeSelect>
+      <SelectTrigger id={id}>
+        <SelectValue placeholder={t("NotSet")} />
+      </SelectTrigger>
+      <SelectContent>
+        {nullable && <SelectItem value={NOT_SET}>{t("NotSet")}</SelectItem>}
+        {options.map((code) => (
+          <SelectItem key={code} value={code}>
+            {labelOf(code)}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   );
 }
 
@@ -405,20 +411,13 @@ function LabelledChoices({
 
 function DatesField({ id, value, onChange, disabled }: SettingFieldProps) {
   const t = useTranslations("SettingsForm.Editors");
+  const dateText = useDateText();
   const dates = Array.isArray(value) ? (value as string[]) : [];
   const [next, setNext] = React.useState("");
   return (
     <div className="flex min-w-0 flex-col gap-3">
       <div className="flex min-w-0 flex-wrap items-center gap-2">
-        <Input
-          id={id}
-          type="date"
-          dir="ltr"
-          value={next}
-          onChange={(event) => setNext(event.target.value)}
-          disabled={disabled}
-          className="w-44"
-        />
+        <DateField id={id} value={next} onChange={setNext} disabled={disabled} clearable className="w-60" />
         <Button
           type="button"
           size="sm"
@@ -439,7 +438,7 @@ function DatesField({ id, value, onChange, disabled }: SettingFieldProps) {
         <ul className="flex min-w-0 flex-wrap gap-2">
           {dates.map((date) => (
             <li key={date} className="flex items-center gap-1 rounded-md border border-border bg-muted/50 ps-3 pe-1">
-              <Ltr>{date}</Ltr>
+              {dateText.long(date)}
               <Button
                 type="button"
                 size="icon-sm"
@@ -465,31 +464,31 @@ function MonthDayField({ id, value, onChange, disabled }: SettingFieldProps) {
   return (
     <div className="flex min-w-0 flex-wrap items-center gap-2">
       <span className="text-base text-muted-foreground">{t("Day")}</span>
-      <NativeSelect
-        value={day}
-        onChange={(event) => onChange(`${month}-${event.target.value}`)}
-        disabled={disabled}
-        aria-label={t("Day")}
-      >
-        {Array.from({ length: 31 }, (_, index) => (
-          <NativeSelectOption key={index} value={pad(index + 1)}>
-            {index + 1}
-          </NativeSelectOption>
-        ))}
-      </NativeSelect>
+      <Select value={day} onValueChange={(next) => onChange(`${month}-${next}`)} disabled={disabled}>
+        <SelectTrigger aria-label={t("Day")} className="min-w-24">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {Array.from({ length: 31 }, (_, index) => (
+            <SelectItem key={index} value={pad(index + 1)}>
+              {index + 1}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
       <span className="text-base text-muted-foreground">{t("Month")}</span>
-      <NativeSelect
-        id={id}
-        value={month}
-        onChange={(event) => onChange(`${event.target.value}-${day}`)}
-        disabled={disabled}
-      >
-        {Array.from({ length: 12 }, (_, index) => (
-          <NativeSelectOption key={index} value={pad(index + 1)}>
-            {index + 1}
-          </NativeSelectOption>
-        ))}
-      </NativeSelect>
+      <Select value={month} onValueChange={(next) => onChange(`${next}-${day}`)} disabled={disabled}>
+        <SelectTrigger id={id} className="min-w-24">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {Array.from({ length: 12 }, (_, index) => (
+            <SelectItem key={index} value={pad(index + 1)}>
+              {index + 1}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
     </div>
   );
 }
