@@ -456,75 +456,15 @@ export const HOUSING_REQUEST: FormDefinition = {
       answer: "several",
       list: "PROVIDED_SERVICE",
       freeKey: "providedServicesCustom",
-      options: [
-        {
-          raw: "تنظيف الأرضيات",
-          side: "after",
-        },
-        {
-          raw: "تنظيف المطبخ",
-          side: "after",
-        },
-        {
-          raw: "تنظيف الستائر",
-          side: "after",
-        },
-        {
-          raw: "تنظيف النوافذ",
-          side: "after",
-        },
-        {
-          raw: "تنظيف الأسقف",
-          side: "after",
-        },
-        {
-          raw: "تنظيف الثلاجة",
-          side: "after",
-        },
-        {
-          raw: "تنظيف الحمامات",
-          side: "after",
-        },
-        {
-          raw: "",
-          free: true,
-          side: "after",
-        },
-        {
-          raw: "تنظيف الزجاج",
-          side: "after",
-        },
-        {
-          raw: "تنظيف الفرن",
-          side: "after",
-        },
-        {
-          raw: "تنظيف السجاد",
-          side: "after",
-        },
-        {
-          raw: "",
-          free: true,
-          side: "after",
-        },
-        {
-          raw: "تنظيف الخزائن",
-          side: "after",
-        },
-        {
-          raw: "تنظيف غرف الأطفال",
-          side: "after",
-        },
-        {
-          raw: "تنظيف المرآب",
-          side: "after",
-        },
-        {
-          raw: "",
-          free: true,
-          side: "after",
-        },
-      ],
+      services: {
+        side: "after",
+        columns: [
+          { blanks: [] },
+          { blanks: [{ side: "after" }] },
+          { blanks: [{ side: "after" }] },
+          { blanks: [{ side: "after" }] },
+        ],
+      },
       flags: ["options-without-label"],
     },
     {
@@ -546,56 +486,10 @@ export const HOUSING_REQUEST: FormDefinition = {
       answer: "several",
       list: "PROGRAMMED_SERVICE",
       freeKey: "programmedServicesCustom",
-      options: [
-        {
-          raw: "تنظيف دوري",
-          side: "after",
-        },
-        {
-          raw: "تنظيف بعد البناء",
-          side: "after",
-        },
-        {
-          raw: "تنظيف بعد الترميم",
-          side: "after",
-        },
-        {
-          raw: "تنظيف بعد الولائم",
-          side: "after",
-        },
-        {
-          raw: "تنظيف شامل",
-          side: "after",
-        },
-        {
-          raw: "تنظيف غ..الضيوف",
-          side: "after",
-        },
-        {
-          raw: "تنظيف بعد السفر",
-          side: "after",
-        },
-        {
-          raw: "تنظيف رمضان",
-          side: "after",
-        },
-        {
-          raw: "إزالة المخلفات",
-          side: "after",
-        },
-        {
-          raw: "تنظيف قبل المناسبات",
-          side: "after",
-        },
-        {
-          raw: "تنظيف بعد المناسبات",
-          side: "after",
-        },
-        {
-          raw: "تنظيف عميق",
-          side: "after",
-        },
-      ],
+      services: {
+        side: "after",
+        columns: [{ blanks: [] }, { blanks: [] }, { blanks: [] }, { blanks: [] }],
+      },
       flags: ["options-without-label"],
     },
     {

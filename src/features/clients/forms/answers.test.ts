@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { catalogueFromSeed } from "@/lib/options/service-catalogue";
 import { dinarsToMoney, toQty } from "@/lib/units";
 
 import {
@@ -13,12 +14,16 @@ import {
   wilayaName,
   writtenValue,
 } from "./answers";
+import { resolveDefinition } from "./catalogue";
 import { FORM_DEFINITIONS } from "./definitions";
 import type { FormRow } from "./types";
 import type { FormValues } from "./values";
 
+/** A row of a form whose service lists are his as migration 0003 seeded them. */
 const row = (kind: keyof typeof FORM_DEFINITIONS, id: string): FormRow => {
-  const found = FORM_DEFINITIONS[kind].rows.find((candidate) => candidate.id === id);
+  const found = resolveDefinition(FORM_DEFINITIONS[kind], catalogueFromSeed()).rows.find(
+    (candidate) => candidate.id === id,
+  );
   if (!found) throw new Error(id);
   return found;
 };

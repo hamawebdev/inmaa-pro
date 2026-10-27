@@ -2,8 +2,9 @@ import { isWilayaCode } from "@/lib/geo/wilayas";
 import type { Money, Qty } from "@/lib/units";
 
 import { optionCode } from "../forms/answers";
+import { blankCountOf } from "../forms/catalogue";
 import { FORM_DEFINITIONS } from "../forms/definitions";
-import type { FormRow } from "../forms/types";
+import type { FormDefinition, FormRow, ResolvedDefinition } from "../forms/types";
 import type { FieldKey, FormValues } from "../forms/values";
 
 import {
@@ -143,13 +144,12 @@ const PLACES = { number: 0, area: 3, duration: 3, money: 2 } as const;
 
 // ── A stored file on screen ──────────────────────────────────────────────────
 
-function freeSlots(row: FormRow): number {
-  return (row.options ?? []).filter((option) => option.free).length;
-}
+/** The blank lines of a row: a service row's from its spec, so the screen needs no catalogue to hold them. */
+const freeSlots = blankCountOf;
 
 /** The rows of a form that take an answer from the office (not the header the program writes). */
-function answerRows(kind: FormKind): FormRow[] {
-  return FORM_DEFINITIONS[kind].rows.filter(
+function answerRows(definition: FormDefinition): FormRow[] {
+  return definition.rows.filter(
     (row) =>
       row.key !== null && row.answer !== "computed" && row.key !== "registrationNumber" && row.key !== "dossierNumber",
   );
@@ -182,7 +182,7 @@ export function screenStateOf(
   residents: readonly (ResidentInput & { id?: string })[] = [],
 ): FileScreenState {
   const answers: Record<string, string | string[]> = {};
-  for (const row of answerRows(kind)) {
+  for (const row of answerRows(FORM_DEFINITIONS[kind])) {
     const key = row.key!;
     answers[key] = screenValueOf(row, values[key]);
     for (const extra of [row.noteKey, row.otherKey, row.labelKey]) {
@@ -234,13 +234,17 @@ const REQUIRED: readonly FieldKey[] = ["clientName", "phone", "address", "commun
 
 const text = (value: unknown) => (typeof value === "string" ? value.trim() : "");
 
-/** Turns what was typed into the data model's units, and lists what needs correcting. */
-export function parseFileScreen(kind: FormKind, state: FileScreenState): ParsedFileScreen {
+/**
+ * Turns what was typed into the data model's units, and lists what needs correcting. The form is resolved
+ * against his service lists: ticks come back in the order it lists them, and a service it no longer lists is
+ * dropped.
+ */
+export function parseFileScreen(definition: ResolvedDefinition, state: FileScreenState): ParsedFileScreen {
   const issues: ScreenIssue[] = [];
   const values: Record<string, unknown> = {};
   const answer = (key: string) => state.answers[key];
 
-  for (const row of answerRows(kind)) {
+  for (const row of answerRows(definition)) {
     const key = row.key!;
     const path = `answers.${key}`;
     const typed = answer(key);

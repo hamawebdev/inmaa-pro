@@ -12,7 +12,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useDateText } from "@/features/clients/components/use-date-text";
+import { resolveDefinition } from "@/features/clients/forms/catalogue";
+import { FORM_DEFINITIONS } from "@/features/clients/forms/definitions";
 import { formTitleOf, screenCardsOf, type ScreenCard } from "@/features/clients/forms/screen-labels";
+import type { ResolvedDefinition } from "@/features/clients/forms/types";
 import { registerFileAction, saveFileFormAction } from "@/features/clients/services/files";
 import {
   parseFileScreen,
@@ -21,6 +24,7 @@ import {
 } from "@/features/clients/validators/file-screen";
 import { FORM_KIND_OF, type FileStatusTick, type FormKind } from "@/features/clients/validators/option-lists";
 import { useSanctionGate } from "@/features/people/components/sanction-gate";
+import { useServiceCatalogue } from "@/hooks/use-service-catalogue";
 import { useCan, useSectionLevel } from "@/hooks/use-session";
 import { matchErrorMessage, useErrorMessage } from "@/i18n/errors";
 import { useRouter } from "@/lib/compat/navigation";
@@ -135,8 +139,34 @@ function SheetCard({ title, disabled, children }: { title: string; disabled: boo
   );
 }
 
-export function FileForm({
+type FileFormProps = Omit<React.ComponentProps<typeof FileFormOf>, "definition">;
+
+/**
+ * His form on screen, its two service cards filled from his lists as the manager left them (Settings ›
+ * الخدمات), keeping the services the file already ticks. Nothing is drawn until the lists are read.
+ */
+export function FileForm(props: FileFormProps) {
+  const { catalogue } = useServiceCatalogue();
+  const { formKind, initial } = props;
+  const provided = initial.answers.providedServices;
+  const programmed = initial.answers.programmedServices;
+  const definition = React.useMemo(
+    () =>
+      catalogue
+        ? resolveDefinition(FORM_DEFINITIONS[formKind], catalogue, {
+            providedServices: Array.isArray(provided) ? provided : [],
+            programmedServices: Array.isArray(programmed) ? programmed : [],
+          })
+        : null,
+    [catalogue, formKind, provided, programmed],
+  );
+  if (!definition) return null;
+  return <FileFormOf {...props} definition={definition} />;
+}
+
+function FileFormOf({
   formKind,
+  definition,
   mode,
   initial,
   statusTicks,
@@ -145,6 +175,8 @@ export function FileForm({
   stateRef,
 }: {
   formKind: FormKind;
+  /** The form resolved against his service lists. */
+  definition: ResolvedDefinition;
   mode: FileFormMode;
   initial: FileScreenState;
   /** «حالة الملف» as the program ticks it. */
@@ -169,12 +201,12 @@ export function FileForm({
 
   const resolver = React.useCallback<Resolver<FileScreenState>>(
     async (state) => {
-      const parsed = parseFileScreen(formKind, state);
+      const parsed = parseFileScreen(definition, state);
       return parsed.issues.length === 0
         ? { values: state, errors: {} }
         : { values: {}, errors: errorsOf(parsed.issues) };
     },
-    [formKind],
+    [definition],
   );
   const form = useForm<FileScreenState>({ resolver, defaultValues: initial });
   const { control, formState } = form;
@@ -193,7 +225,7 @@ export function FileForm({
   const readOnly = useSectionLevel("REQUESTS") !== "WRITE";
   const closed = edit?.closed ?? false;
   const sheetLocked = readOnly || closed || (edit !== null && edit.locked && !edit.canEditLocked);
-  const cards = screenCardsOf(formKind);
+  const cards = screenCardsOf(definition);
   const contract = FORM_KIND_OF[formKind].serviceType === "CONTRACT";
 
   async function save(parsed: ParsedFileScreen, reason: string | undefined) {
@@ -223,7 +255,7 @@ export function FileForm({
   }
 
   async function onSubmit(state: FileScreenState) {
-    const parsed = parseFileScreen(formKind, state);
+    const parsed = parseFileScreen(definition, state);
     if (edit) {
       await save(parsed, undefined);
       return;
@@ -305,7 +337,7 @@ export function FileForm({
   return (
     <form
       onSubmit={form.handleSubmit(onSubmit, () => {
-        toast.error(t("Actions.Invalid", { count: parseFileScreen(formKind, form.getValues()).issues.length }));
+        toast.error(t("Actions.Invalid", { count: parseFileScreen(definition, form.getValues()).issues.length }));
       })}
       className="space-y-6"
       noValidate

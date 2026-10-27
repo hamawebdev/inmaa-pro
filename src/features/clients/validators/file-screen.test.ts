@@ -1,10 +1,18 @@
 import { describe, expect, it } from "vitest";
 
+import { catalogueFromSeed } from "@/lib/options/service-catalogue";
+
 import { DEMO_FILES } from "../demo";
 
+import { resolveDefinition } from "../forms/catalogue";
+import { FORM_DEFINITIONS } from "../forms/definitions";
 import type { FormValues } from "../forms/values";
+import type { FormKind } from "./option-lists";
 
 import { normaliseTyped, parseFileScreen, screenStateOf, parseDegrees } from "./file-screen";
+
+/** A form with his service lists as migration 0003 seeded them. */
+const form = (kind: FormKind) => resolveDefinition(FORM_DEFINITIONS[kind], catalogueFromSeed());
 
 /** A list's blank lines with the empty ones at the end left out: the screen always holds one per line of the form. */
 function trimmed(values: FormValues): FormValues {
@@ -23,7 +31,7 @@ describe("the form screen's answers", () => {
     for (const file of DEMO_FILES) {
       const { kind, values, office, siteOffice, residents } = file.input;
       const state = screenStateOf(kind, values, office, siteOffice, residents);
-      const parsed = parseFileScreen(kind, state);
+      const parsed = parseFileScreen(form(kind), state);
       expect(parsed.issues).toEqual([]);
       expect(trimmed(parsed.values)).toEqual(trimmed(values));
       expect(parsed.office).toMatchObject(office ?? {});
@@ -41,7 +49,7 @@ describe("the form screen's answers", () => {
     state.answers.totalAmount = "16 500,5";
     state.answers.buildArea = "١٨٠٫٢٥";
     state.answers.workersCount = "٣";
-    const parsed = parseFileScreen(kind, state);
+    const parsed = parseFileScreen(form(kind), state);
     expect(parsed.issues).toEqual([]);
     expect(parsed.values).toMatchObject({ totalAmount: 1650050, buildArea: 180250, workersCount: 3 });
   });
@@ -58,7 +66,7 @@ describe("the form screen's answers", () => {
       { number: "1", name: "حداد فاطمة", phone: "", registeredDate: "" },
       { number: "1", name: "", phone: "", registeredDate: "2026-02-30" },
     ];
-    expect(parseFileScreen(kind, state).issues).toEqual([
+    expect(parseFileScreen(form(kind), state).issues).toEqual([
       { path: "answers.phone", message: "The phone number has 9 or 10 digits." },
       { path: "answers.floors", message: "Must be a whole number." },
       { path: "answers.totalAmount", message: "An amount has at most two decimals." },
@@ -74,7 +82,7 @@ describe("the form screen's answers", () => {
     const { kind, values } = DEMO_FILES.find((file) => file.name === "orgContract")!.input;
     const state = screenStateOf(kind, values);
     state.answers.executionDays = ["WED", "SAT"];
-    expect(parseFileScreen(kind, state).values.executionDays).toEqual(["SAT", "WED"]);
+    expect(parseFileScreen(form(kind), state).values.executionDays).toEqual(["SAT", "WED"]);
   });
 });
 

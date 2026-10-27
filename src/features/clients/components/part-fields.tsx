@@ -1,6 +1,7 @@
 import * as React from "react";
 
 import { Ltr } from "@/components/ltr";
+import { DateField, TimeField } from "@/components/pickers";
 import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -75,18 +76,29 @@ export function TextField({
   multiline,
   ltr,
   type = "text",
+  clearable = false,
+  min,
+  max,
   hint,
   className,
   placeholder,
 }: {
   label: string;
+  /** A date is `YYYY-MM-DD` and a time `HH:MM`, or "" for none. */
   value: string;
+  /** A date or a time arrives only when its picker's «تأكيد» is pressed. */
   onChange: (value: string) => void;
   disabled?: boolean;
   multiline?: boolean;
   /** A phone, a registration number: digits read left to right. */
   ltr?: boolean;
+  /** A date or a time is the program's own picker (no browser picker: the developer, 2026-10-22). */
   type?: "text" | "date" | "time";
+  /** A date or a time the form accepts empty: its picker offers «مسح». */
+  clearable?: boolean;
+  /** The earliest and latest date that may be chosen, `YYYY-MM-DD`. */
+  min?: string;
+  max?: string;
   hint?: string;
   className?: string;
   placeholder?: string;
@@ -103,10 +115,29 @@ export function TextField({
           placeholder={placeholder}
           onChange={(event) => onChange(event.target.value)}
         />
+      ) : type === "date" ? (
+        <DateField
+          id={id}
+          value={value}
+          onChange={onChange}
+          disabled={disabled}
+          placeholder={placeholder}
+          clearable={clearable}
+          min={min || undefined}
+          max={max || undefined}
+        />
+      ) : type === "time" ? (
+        <TimeField
+          id={id}
+          value={value}
+          onChange={onChange}
+          disabled={disabled}
+          placeholder={placeholder}
+          clearable={clearable}
+        />
       ) : (
         <Input
           id={id}
-          type={type}
           dir={ltr ? "ltr" : undefined}
           className={cn(ltr && "text-end tabular-nums")}
           value={value}
@@ -144,15 +175,16 @@ export function ChoiceField<T extends string>({
   className?: string;
   hint?: string;
 }) {
+  const id = React.useId();
   return (
     <Field className={className}>
-      <FieldLabel>{label}</FieldLabel>
+      <FieldLabel htmlFor={id}>{label}</FieldLabel>
       <Select
         value={value ?? (emptyLabel ? NONE : "")}
         disabled={disabled}
         onValueChange={(next) => onChange(next === NONE || next === "" ? null : (next as T))}
       >
-        <SelectTrigger aria-label={label}>
+        <SelectTrigger id={id} aria-label={label}>
           <SelectValue placeholder={emptyLabel ?? ""} />
         </SelectTrigger>
         <SelectContent>

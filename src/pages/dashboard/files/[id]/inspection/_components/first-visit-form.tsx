@@ -180,12 +180,14 @@ export function FirstVisitForm({
               <TextField
                 label={t("PlannedDate")}
                 type="date"
+                clearable
                 value={visit.plannedDate ?? ""}
                 onChange={(plannedDate) => set({ plannedDate: plannedDate || null })}
               />
               <TextField
                 label={t("PlannedTime")}
                 type="time"
+                clearable
                 value={visit.plannedTime ?? ""}
                 onChange={(plannedTime) => set({ plannedTime: plannedTime || null })}
               />
@@ -211,6 +213,7 @@ export function FirstVisitForm({
               <TextField
                 label={t("DoneDate")}
                 type="date"
+                clearable
                 value={visit.doneDate ?? ""}
                 onChange={(doneDate) => set({ doneDate: doneDate || null })}
               />
@@ -222,12 +225,14 @@ export function FirstVisitForm({
               <TextField
                 label={t("StartTime")}
                 type="time"
+                clearable
                 value={visit.startTime ?? ""}
                 onChange={(startTime) => set({ startTime: startTime || null })}
               />
               <TextField
                 label={t("EndTime")}
                 type="time"
+                clearable
                 value={visit.endTime ?? ""}
                 onChange={(endTime) => set({ endTime: endTime || null })}
               />

@@ -4,8 +4,7 @@ import { isWilayaCode } from "@/lib/geo/wilayas";
 import { ABILITIES, FORBIDDEN_PLACES, PPE, SITE_INSTRUCTIONS, WEEKDAYS } from "@/lib/options";
 
 import { optionCode } from "../forms/answers";
-import { FORM_DEFINITIONS } from "../forms/definitions";
-import type { FormRow } from "../forms/types";
+import type { FormRow, ResolvedDefinition } from "../forms/types";
 import type { FieldKey } from "../forms/values";
 
 import {
@@ -13,9 +12,9 @@ import {
   codesOf,
   DURATION_UNITS,
   FORM_KINDS,
+  isCatalogueList,
   PRIORITIES,
   REQUEST_SOURCES,
-  type FormKind,
   type OptionListName,
 } from "./option-lists";
 
@@ -62,12 +61,18 @@ const thousandths = z.number().int().min(0).max(1_000_000_000);
 /** Centimes. */
 const amount = z.number().int().min(0).max(100_000_000_000);
 
-/** The codes a row of this form offers: his options on this sheet, not the whole list. */
+/**
+ * The codes a row of this form offers: his options on this sheet, not the whole list. On a row of his two
+ * service lists, what the division offers today and what the file already ticks (`resolveDefinition`).
+ */
 function codeOf(row: FormRow) {
   const codes = (row.options ?? []).flatMap((option) => {
     const code = optionCode(row.list!, option);
     return code === null ? [] : [code];
   });
+  if (isCatalogueList(row.list)) {
+    return z.string().refine((code) => codes.includes(code), "This service is no longer offered.");
+  }
   return z.enum((codes.length ? codes : codesOf(row.list as OptionListName)) as [string, ...string[]]);
 }
 
@@ -103,12 +108,12 @@ function answerSchema(row: FormRow): z.ZodTypeAny | null {
   }
 }
 
-function sheetShape(kind: FormKind): Record<string, z.ZodTypeAny> {
+function sheetShape(definition: ResolvedDefinition): Record<string, z.ZodTypeAny> {
   const shape: Record<string, z.ZodTypeAny> = {};
   const add = (key: FieldKey | null | undefined, schema: z.ZodTypeAny | null) => {
     if (key && schema) shape[key] = schema.optional();
   };
-  for (const row of FORM_DEFINITIONS[kind].rows) {
+  for (const row of definition.rows) {
     // The header is the program's: its number, the client's number and «حالة الملف» are never typed.
     if (row.key === "registrationNumber" || row.key === "dossierNumber" || row.answer === "computed") continue;
     add(row.key, answerSchema(row));
@@ -125,14 +130,18 @@ function sheetShape(kind: FormKind): Record<string, z.ZodTypeAny> {
   return shape;
 }
 
-const SHEETS = new Map<FormKind, z.ZodObject<Record<string, z.ZodTypeAny>>>();
+const SHEETS = new WeakMap<ResolvedDefinition, z.ZodObject<Record<string, z.ZodTypeAny>>>();
 
-/** His sheet's answers for one form: what it prints, in the data model's units. Unknown answers are dropped. */
-export function sheetSchema(kind: FormKind) {
-  let schema = SHEETS.get(kind);
+/**
+ * His sheet's answers for one form: what it prints, in the data model's units. Unknown answers are dropped.
+ * The form is resolved against his service lists, so a service is accepted when the division offers it or the
+ * file already ticks it.
+ */
+export function sheetSchema(definition: ResolvedDefinition) {
+  let schema = SHEETS.get(definition);
   if (!schema) {
-    schema = z.object(sheetShape(kind));
-    SHEETS.set(kind, schema);
+    schema = z.object(sheetShape(definition));
+    SHEETS.set(definition, schema);
   }
   return schema;
 }

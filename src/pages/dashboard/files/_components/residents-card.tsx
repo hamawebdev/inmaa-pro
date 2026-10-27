@@ -2,6 +2,7 @@ import { Plus, Trash2 } from "lucide-react";
 import { Controller, useFieldArray, type Control, type FieldPath } from "react-hook-form";
 import { useTranslations } from "use-intl";
 
+import { DateField } from "@/components/pickers";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { FieldError } from "@/components/ui/field";
@@ -31,6 +32,7 @@ function Cell({
   control: FormControl;
   path: Path;
   label: string;
+  /** A date is the program's own picker (no browser picker: the developer, 2026-10-22). */
   type?: "text" | "date" | "tel";
   dir?: "ltr";
   inputMode?: "numeric" | "tel";
@@ -42,18 +44,32 @@ function Cell({
       name={path}
       render={({ field, fieldState }) => (
         <div className="min-w-0">
-          <Input
-            aria-label={label}
-            type={type}
-            dir={dir}
-            inputMode={inputMode}
-            name={field.name}
-            ref={field.ref}
-            onBlur={field.onBlur}
-            value={typeof field.value === "string" ? field.value : ""}
-            onChange={(event) => field.onChange(event.target.value)}
-            aria-invalid={fieldState.invalid}
-          />
+          {type === "date" ? (
+            // His column may be left empty: the date can be emptied again («مسح»).
+            <DateField
+              aria-label={label}
+              name={field.name}
+              ref={field.ref}
+              onBlur={field.onBlur}
+              value={typeof field.value === "string" ? field.value : ""}
+              onChange={field.onChange}
+              clearable
+              aria-invalid={fieldState.invalid}
+            />
+          ) : (
+            <Input
+              aria-label={label}
+              type={type === "tel" ? "tel" : "text"}
+              dir={dir}
+              inputMode={inputMode}
+              name={field.name}
+              ref={field.ref}
+              onBlur={field.onBlur}
+              value={typeof field.value === "string" ? field.value : ""}
+              onChange={(event) => field.onChange(event.target.value)}
+              aria-invalid={fieldState.invalid}
+            />
+          )}
           <FieldError className="mt-1">{errorMessage(fieldState.error?.message)}</FieldError>
         </div>
       )}
@@ -118,7 +134,6 @@ export function ResidentsCard({
                       path={`residents.${index}.registeredDate` as Path}
                       label={t("RegisteredDate")}
                       type="date"
-                      dir="ltr"
                     />
                     <Button
                       type="button"

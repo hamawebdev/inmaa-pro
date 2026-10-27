@@ -111,7 +111,8 @@
       "ExtraValue": "Valeur",
       "ExtraHint": "Une ligne sans libellé sur le formulaire : indiquez ce qu'elle compte.",
       "Choose": "Choisir",
-      "areaUnit": "m²"
+      "areaUnit": "m²",
+      "RemovedService": "{name} (supprimé)"
     },
     "Office": {
       "NotPrinted": "Non imprimé",
@@ -617,7 +618,8 @@
     "InvoiceNif": "Le numéro d'identification fiscale (NIF) de ce client est nécessaire sur la facture.",
     "InvoiceNis": "Le numéro d'identification statistique (NIS) de ce client est nécessaire sur la facture.",
     "FileJobDoneOnDemand": "Seule une prestation ponctuelle prend fin avec sa dernière visite.",
-    "ContractNotStartedOnly": "Seul un contrat qui n'a pas encore commencé s'annule."
+    "ContractNotStartedOnly": "Seul un contrat qui n'a pas encore commencé s'annule.",
+    "ServiceNoLongerOffered": "Ce service n'est plus proposé."
   },
   "Alerts": {
     "QuoteFollowUp": {

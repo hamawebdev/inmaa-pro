@@ -15,10 +15,6 @@ import {
   PAYMENT_FREQUENCY_AR,
   PAYMENT_METHOD_AR,
   PAYMENT_METHODS,
-  PROGRAMMED_SERVICE_AR,
-  PROGRAMMED_SERVICES,
-  PROVIDED_SERVICE_AR,
-  PROVIDED_SERVICES,
   SERVICE_TYPE_AR,
   SERVICE_TYPES,
   TEAM_ACCESS,
@@ -27,6 +23,7 @@ import {
   YES_NO_AR,
   type FileStage,
 } from "@/lib/options";
+import type { ServiceListCode } from "@/lib/options/service-catalogue";
 
 /**
  * Every option list of his five client forms, each written once.
@@ -40,6 +37,10 @@ import {
  * are taken from there, codes and words, and labelled on screen under
  * `Options.` (`useCodeLabel("Options.Division")`). The others are ours, and
  * labelled under `FileOptions.` in this folder's messages.
+ *
+ * His two service lists are not here: they are rows the manager edits in
+ * Settings › الخدمات (`CATALOGUE_LISTS` below), and a form's service row is
+ * filled from them (`resolveDefinition`, ../forms/catalogue.ts).
  */
 
 export interface OptionEntry {
@@ -144,14 +145,28 @@ export const OPTION_LISTS = {
   PAYMENT_METHOD: optionEntries(PAYMENT_METHODS, PAYMENT_METHOD_AR),
   PAYMENT_FREQUENCY: optionEntries(PAYMENT_FREQUENCIES, PAYMENT_FREQUENCY_AR),
   TEAM_ACCESS: optionEntries(TEAM_ACCESS, TEAM_ACCESS_AR),
-  /** «الخدمات المقدمة»: one catalogue (Foundation's); each form prints a subset in its own order. */
-  PROVIDED_SERVICE: optionEntries(PROVIDED_SERVICES, PROVIDED_SERVICE_AR),
-  /** «تنظيف غ..الضيوف» stays as he typed it until he confirms «غرف» (scope A8). */
-  PROGRAMMED_SERVICE: optionEntries(PROGRAMMED_SERVICES, PROGRAMMED_SERVICE_AR),
 } as const satisfies Record<string, readonly OptionEntry[]>;
 
 export type OptionListName = keyof typeof OPTION_LISTS;
 export type OptionCode<L extends OptionListName> = (typeof OPTION_LISTS)[L][number]["code"];
+
+/**
+ * His two service lists, «الخدمات المقدمة» and «الخدمات المبرمجة», by the name a form's row gives them and the
+ * code `FileService.list` and `CatalogueService.list` store. They are the manager's rows, not code: a form's
+ * service row lists whatever the division offers today (`resolveDefinition`).
+ */
+export const CATALOGUE_LISTS = {
+  PROVIDED_SERVICE: "PROVIDED",
+  PROGRAMMED_SERVICE: "PROGRAMMED",
+} as const satisfies Record<string, ServiceListCode>;
+export type CatalogueListName = keyof typeof CATALOGUE_LISTS;
+
+/** What a form's row ticks from: one of the lists above, or one of his two service lists. */
+export type RowListName = OptionListName | CatalogueListName;
+
+export function isCatalogueList(list: RowListName | undefined): list is CatalogueListName {
+  return list !== undefined && list in CATALOGUE_LISTS;
+}
 
 /** The codes of a list, in the list's order. */
 export function codesOf<L extends OptionListName>(list: L): OptionCode<L>[] {

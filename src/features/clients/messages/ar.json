@@ -111,7 +111,8 @@
       "ExtraValue": "القيمة",
       "ExtraHint": "سطر بلا عنوان في الاستمارة: اكتب ما يعدّه.",
       "Choose": "اختر",
-      "areaUnit": "م2"
+      "areaUnit": "م2",
+      "RemovedService": "{name} (محذوفة)"
     },
     "Office": {
       "NotPrinted": "لا يُطبع",
@@ -617,7 +618,8 @@
     "InvoiceNif": "رقم التعريف الجبائي (NIF) لهذا العميل مطلوب في الفاتورة.",
     "InvoiceNis": "رقم التعريف الإحصائي (NIS) لهذا العميل مطلوب في الفاتورة.",
     "FileJobDoneOnDemand": "لا ينتهي بانتهاء آخر زيارة إلا العمل عند الطلب.",
-    "ContractNotStartedOnly": "لا يُلغى إلا عقد لم يبدأ بعد."
+    "ContractNotStartedOnly": "لا يُلغى إلا عقد لم يبدأ بعد.",
+    "ServiceNoLongerOffered": "هذه الخدمة لم تعد مقدمة."
   },
   "Alerts": {
     "QuoteFollowUp": {

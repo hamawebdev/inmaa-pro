@@ -1,7 +1,7 @@
 import { formatMoney } from "@/features/money/rules/centimes";
 import { WILAYAS } from "@/lib/geo/wilayas";
 
-import { OPTION_LISTS, OTHER_CODE, type OptionListName } from "../validators/option-lists";
+import { isCatalogueList, OPTION_LISTS, OTHER_CODE, type RowListName } from "../validators/option-lists";
 
 import type { FormOption, FormRow } from "./types";
 import type { FormValues } from "./values";
@@ -24,12 +24,18 @@ function optionWording(option: FormOption): string {
 }
 
 /**
- * The stored code of an option: his wording looked up in the row's list.
+ * The stored code of an option: his wording looked up in the row's list, or,
+ * on a row of his two service lists, the code `resolveDefinition` gave it.
  * A blank line has none. Throws when the wording is in no list, which the
  * tests turn into a failure before a form can be shown.
  */
-export function optionCode(list: OptionListName, option: FormOption): string | null {
+export function optionCode(list: RowListName, option: FormOption): string | null {
   if (option.free) return null;
+  if (isCatalogueList(list)) {
+    if (option.code === undefined)
+      throw new Error(`clients: a service option without its code: resolve the form first`);
+    return option.code;
+  }
   const wording = optionWording(option);
   const entry = OPTION_LISTS[list].find((candidate) => candidate.ar === wording);
   if (entry) return entry.code;

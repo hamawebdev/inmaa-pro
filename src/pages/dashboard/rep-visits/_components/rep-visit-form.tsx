@@ -182,6 +182,7 @@ export function RepVisitForm({ view }: { view: RepVisitView }) {
               <TextField
                 label={t("CallBackDate")}
                 type="date"
+                clearable
                 value={visit.callBackDate ?? ""}
                 onChange={(callBackDate) => set({ callBackDate: callBackDate || null })}
               />

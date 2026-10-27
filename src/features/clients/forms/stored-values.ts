@@ -4,7 +4,8 @@ import type { DB } from "@/lib/db/schema";
 
 import { FORM_DEFINITIONS } from "./definitions";
 import { freeSlot, optionCode } from "./answers";
-import type { FormRow } from "./types";
+import { blankCountOf } from "./catalogue";
+import type { FormRow, ResolvedDefinition } from "./types";
 import type { FieldKey, FormValues, ResidentLine } from "./values";
 import type { FormKind } from "../validators/option-lists";
 
@@ -264,7 +265,7 @@ function servicesOf(kind: FormKind, list: ServiceList, rows: StoredFile["service
   const row = serviceRowOf(kind, list);
   if (!row) return {};
   const mine = rows.filter((service) => service.list === list).sort((a, b) => a.sortOrder - b.sortOrder);
-  const blanks = (row.options ?? []).filter((option) => option.free).length;
+  const blanks = blankCountOf(row);
   const custom: (string | null)[] = Array.from({ length: blanks }, () => null);
   for (const service of mine) {
     if (service.blankSlot !== null && service.blankSlot >= 1 && service.blankSlot <= blanks) {
@@ -378,7 +379,7 @@ export interface ServiceDraft {
   customLabel: string | null;
   /** Which blank line of the list, from 1; null for a printed option. */
   blankSlot: number | null;
-  /** Its place among the options of that form. */
+  /** Its place among the options of that form as the catalogue lists them today. Never a change in itself. */
   sortOrder: number;
 }
 
@@ -417,9 +418,12 @@ function serviceDrafts(row: FormRow, list: ServiceList, values: FormValues): Ser
 /**
  * The stored form of a sheet's answers: one patch per table, holding every
  * answer the form prints and nothing else. A blank answer is null (or `[]` for
- * a set), so a save empties what the office emptied.
+ * a set), so a save empties what the office emptied. The form is resolved
+ * against his service lists (`resolveDefinition`, with the file's own ticks
+ * kept): a service it does not list is not stored.
  */
-export function storedAnswersOf(kind: FormKind, values: FormValues): StoredAnswers {
+export function storedAnswersOf(definition: ResolvedDefinition, values: FormValues): StoredAnswers {
+  const kind = definition.kind;
   const printed = printedKeys(kind);
   const pick = <K extends FieldKey>(key: K) => writeValue(key, values[key]);
 
@@ -443,7 +447,7 @@ export function storedAnswersOf(kind: FormKind, values: FormValues): StoredAnswe
   const services: ServiceDraft[] = [];
   const serviceLists: ServiceList[] = [];
   for (const list of Object.keys(SERVICE_LISTS) as ServiceList[]) {
-    const row = serviceRowOf(kind, list);
+    const row = definition.rows.find((candidate) => candidate.key === SERVICE_LISTS[list].key);
     if (!row) continue;
     serviceLists.push(list);
     services.push(...serviceDrafts(row, list, values));

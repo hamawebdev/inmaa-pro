@@ -429,7 +429,7 @@ function FollowUps({
       )}
       <FieldGrid>
         <TextField label={t("FollowUpDate")} type="date" value={date} onChange={setDate} />
-        <TextField label={t("NextFollowUp")} type="date" value={next} onChange={setNext} />
+        <TextField label={t("NextFollowUp")} type="date" clearable min={date} value={next} onChange={setNext} />
         <TextField label={t("FollowUpNote")} value={note} onChange={setNote} className="sm:col-span-2" />
       </FieldGrid>
       <Button

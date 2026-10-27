@@ -161,6 +161,8 @@ export function QuoteForm({
             <TextField
               label={t("ValidUntil")}
               type="date"
+              clearable
+              min={terms.date}
               value={terms.validUntil ?? ""}
               onChange={(validUntil) => set({ validUntil: validUntil === "" ? null : validUntil })}
             />

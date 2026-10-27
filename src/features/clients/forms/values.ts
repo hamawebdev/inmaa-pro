@@ -104,10 +104,12 @@ export interface FormValues {
   hasSharedRoofs?: boolean;
 
   // الخدمات المقدمة and الخدمات المبرمجة
-  providedServices?: readonly OptionCode<"PROVIDED_SERVICE">[];
+  /** Codes of «الخدمات المقدمة» (the manager's list, Settings › الخدمات). */
+  providedServices?: readonly string[];
   /** What is written on the blank lines, in print order (blank slot 1 first); null leaves a line blank. */
   providedServicesCustom?: readonly (string | null)[];
-  programmedServices?: readonly OptionCode<"PROGRAMMED_SERVICE">[];
+  /** Codes of «الخدمات المبرمجة» (the manager's list, Settings › الخدمات). */
+  programmedServices?: readonly string[];
   programmedServicesCustom?: readonly (string | null)[];
 
   // الدراسة المالية

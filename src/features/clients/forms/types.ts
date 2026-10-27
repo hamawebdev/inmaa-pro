@@ -1,4 +1,6 @@
-import type { DescriptionFamily, FormKind, OptionListName } from "../validators/option-lists";
+import type { ServiceLabels } from "@/lib/options/service-catalogue";
+
+import type { DescriptionFamily, FormKind, RowListName } from "../validators/option-lists";
 
 import type { FieldKey } from "./values";
 
@@ -27,6 +29,27 @@ export interface FormOption {
   sameLine?: boolean;
   /** The agreed correction of a typo (scope A8): shown and printed instead of `raw`. */
   printAs?: string;
+  /** A service of his two lists (filled by `resolveDefinition`): its stored code. */
+  code?: string;
+  /** A service of his two lists: its three names; `raw` is the Arabic one. */
+  labels?: ServiceLabels;
+  /** A service of his two lists that the division no longer offers, listed because the file ticks it. */
+  removed?: boolean;
+}
+
+/**
+ * Where a row of his two service lists sits on paper. The services themselves are the manager's rows
+ * (Settings › الخدمات); `resolveDefinition` (./catalogue.ts) lists the division's in its order and lays them
+ * out: the sheet's `options` parts of the row are its columns, first column first; each column holds an even
+ * share of the services and blank lines, earlier columns taking the extra, and ends with its own blank lines.
+ */
+export interface ServiceRowSpec {
+  /** The box side of a listed service. */
+  side: BoxSide;
+  /** His slips: services whose box his file puts on the other side (K8), by code. */
+  sideOf?: Readonly<Record<string, BoxSide>>;
+  /** Each column's blank lines, at its foot, as his file prints them. One entry per `options` part of the row. */
+  columns: ReadonlyArray<{ blanks: ReadonlyArray<{ side: BoxSide; sameLine?: boolean }> }>;
 }
 
 /** The kind of row, as the Checker names it. */
@@ -61,8 +84,11 @@ export interface FormRow {
   /** Where the answer lives in `FormValues`. */
   key: FieldKey | null;
   answer: Answer | null;
-  list?: OptionListName;
+  list?: RowListName;
+  /** The options, in his order. A row of his two service lists has none until `resolveDefinition` fills them. */
   options?: FormOption[];
+  /** A row of his two service lists: where its services and blank lines go. */
+  services?: ServiceRowSpec;
   /** The dotted place in front of the options. */
   noteKey?: FieldKey;
   /** The text of the option that has a dotted place. */
@@ -90,6 +116,7 @@ export type SheetPart =
   | { t: "heading"; row: string }
   | { t: "label"; row: string; pt?: number; regular?: boolean; inline?: boolean }
   | { t: "blank"; row: string; of?: "note" | "label" }
+  /** For a row of his two service lists, `from` and `to` are his layout with his own lists; `resolveDefinition` sets them. */
   | { t: "options"; row: string; from: number; to: number; pt?: number }
   | { t: "break" }
   | { t: "signature"; row: string };
@@ -147,6 +174,12 @@ export type SheetBlock =
       headMinMm: number;
       lineMinMm: number;
     };
+
+/**
+ * A form whose service rows hold the services of his two lists as the catalogue has them (`resolveDefinition`):
+ * what the screen, the sheet and the save read. A definition straight from `FORM_DEFINITIONS` has no services.
+ */
+export type ResolvedDefinition = FormDefinition & { readonly resolved: true };
 
 export interface FormDefinition {
   kind: FormKind;

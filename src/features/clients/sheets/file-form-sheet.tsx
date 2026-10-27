@@ -21,7 +21,7 @@ import {
   type WrittenValue,
 } from "../forms/answers";
 import { rowOf } from "../forms/definitions";
-import type { FormDefinition, FormRow, SheetBlock, SheetCellDef, SheetPart } from "../forms/types";
+import type { FormDefinition, FormRow, ResolvedDefinition, SheetBlock, SheetCellDef, SheetPart } from "../forms/types";
 import type { FormValues, ResidentLine } from "../forms/values";
 import { registrationPlaces, suffixPlaceOf } from "../rules/registration-number";
 
@@ -109,6 +109,33 @@ function FixedBlank({ widthMm, children }: { widthMm: number; children?: React.R
   return (
     <span style={type(VALUE_PT)}>
       <DottedBlank widthMm={widthMm}>{children}</DottedBlank>
+    </span>
+  );
+}
+
+/**
+ * A blank line of services that shares its line with the service before it (the organisation forms): his 13 mm
+ * of dots, fewer when a longer name needs the room. The services are the manager's (Settings › الخدمات): a
+ * renamed or moved one may be longer than his, and the dots must not run out of the column.
+ */
+function SharedLineBlank({ children }: { children?: React.ReactNode }) {
+  return (
+    <span
+      style={{
+        display: "inline-block",
+        flex: "0 1 13mm",
+        width: "13mm",
+        minWidth: "4mm",
+        minHeight: "1.25em",
+        borderBottom: "1pt dotted #000",
+        textAlign: "center",
+        whiteSpace: "nowrap",
+        overflow: "hidden",
+        ...type(VALUE_PT),
+        lineHeight: 1.25,
+      }}
+    >
+      {children}
     </span>
   );
 }
@@ -238,6 +265,10 @@ function Option({
   if (!option) return null;
   const checked = isTicked(row, index, values);
 
+  // His blank beside a service, with no box of its own: it gives way to a long name rather than overflow.
+  if (option.free && option.sameLine && option.side === "none") {
+    return <SharedLineBlank>{freeText(row, index, values)}</SharedLineBlank>;
+  }
   let body: React.ReactNode = optionLabel(option);
   if (option.free) {
     // A blank that shares its line with an option has only what the option leaves.
@@ -603,7 +634,12 @@ function residentBlocks(
 }
 
 /** His form for a file. `values` left out, or `{}`, prints the empty form. */
-export function FileFormSheet({ definition, values = {} }: { definition: FormDefinition; values?: FormValues }) {
+/**
+ * His form on the A4 sheet. The form is resolved against his service lists (`resolveDefinition`): its two
+ * service blocks print what the division offers today, in its order, and the services the file ticks, a
+ * removed one included, at its place.
+ */
+export function FileFormSheet({ definition, values = {} }: { definition: ResolvedDefinition; values?: FormValues }) {
   // A flat list: a page break must be a direct child of the sheet.
   const blocks: React.ReactNode[] = [];
   definition.sheet.forEach((block, index) => {

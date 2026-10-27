@@ -9,6 +9,7 @@ import { ServiceError } from "@/lib/service/errors";
 import { localDate, type LocalDate } from "@/lib/units";
 import { FILES_PATH } from "@/navigation/file-parts";
 
+import { offeredServiceCodes } from "../forms/catalogue";
 import type { FormValues } from "../forms/values";
 import type { EndKind } from "../validators/option-lists";
 import { isDate, type FileOfficeInput } from "../validators/file-values";
@@ -16,7 +17,7 @@ import { isDate, type FileOfficeInput } from "../validators/file-values";
 import { clientSubjectOf, partHeaderOf, requireFileRecord, type FilePartHeader } from "./file-part";
 import { liveSheetValuesOf, type FileRecord } from "./file-records";
 import { siteOfficeOf } from "./file-reads";
-import { moveFileStage, registerFile } from "./files";
+import { moveFileStage, registerFile, resolvedFormOf } from "./files";
 
 /**
  * «العقد وتجديده» (plan feature 6): a contract's life after its signature. His
@@ -184,6 +185,12 @@ export async function renewFile(
   delete values.dossierNumber;
   delete values.registrationNumber;
   delete values.statusTicks;
+  // A renewal is a new contract: it carries over only the services the division still offers (Settings › الخدمات).
+  const offered = offeredServiceCodes(await resolvedFormOf(ex, record.kind));
+  if (values.providedServices) values.providedServices = values.providedServices.filter((code) => offered.has(code));
+  if (values.programmedServices) {
+    values.programmedServices = values.programmedServices.filter((code) => offered.has(code));
+  }
   const renewed = await registerFile(ex, ctx, {
     kind: record.kind,
     values,

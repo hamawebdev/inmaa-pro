@@ -1,8 +1,9 @@
+import { serviceLabels } from "@/features/core/services/service-catalogue";
 import { WILAYAS } from "@/lib/geo/wilayas";
 import type { Executor, ServiceContext } from "@/lib/service/context";
 import type { LocalDate, LocalTime } from "@/lib/units";
 
-import { OPTION_LISTS, type FormKind } from "../validators/option-lists";
+import type { FormKind } from "../validators/option-lists";
 
 import { missingIdentifiersOf, type MissingIdentifier } from "../rules/client-identifiers";
 
@@ -142,8 +143,6 @@ export interface FileForScheduling {
   closedAt: string | null;
 }
 
-const PROVIDED_AR = new Map<string, string>(OPTION_LISTS.PROVIDED_SERVICE.map((entry) => [entry.code, entry.ar]));
-const PROGRAMMED_AR = new Map<string, string>(OPTION_LISTS.PROGRAMMED_SERVICE.map((entry) => [entry.code, entry.ar]));
 const fromQty = (value: number | null) => (value === null ? null : value / 1000);
 
 /** The board's short label: the planned services, else the first three provided. */
@@ -184,7 +183,7 @@ export async function getFileForScheduling(
     .executeTakeFirst();
   if (!row) return null;
 
-  const [description, serviceRows] = await Promise.all([
+  const [description, serviceRows, PROVIDED_AR, PROGRAMMED_AR] = await Promise.all([
     ex.selectFrom("FileDescription").selectAll().where("fileId", "=", row.id).executeTakeFirst(),
     ex
       .selectFrom("FileService")
@@ -194,6 +193,9 @@ export async function getFileForScheduling(
       .orderBy("list", "desc")
       .orderBy("sortOrder")
       .execute(),
+    // His words for each service as the manager names it today (Settings › الخدمات), removed ones included.
+    serviceLabels(ex, "PROVIDED"),
+    serviceLabels(ex, "PROGRAMMED"),
   ]);
 
   const services = serviceRows.map((service): ScheduledService => {

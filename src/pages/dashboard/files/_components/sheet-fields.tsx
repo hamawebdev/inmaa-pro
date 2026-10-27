@@ -3,6 +3,7 @@ import { Controller, type Control, type FieldPath } from "react-hook-form";
 import { useLocale, useTranslations } from "use-intl";
 
 import { Ltr } from "@/components/ltr";
+import { DateField, SuggestField, TimeField } from "@/components/pickers";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Field, FieldDescription, FieldError, FieldLabel } from "@/components/ui/field";
@@ -18,14 +19,16 @@ import type { FieldKey } from "@/features/clients/forms/values";
 import type { FileScreenState } from "@/features/clients/validators/file-screen";
 import {
   codesOf,
+  isCatalogueList,
   type FileStatusTick,
   type FormKind,
-  type OptionListName,
+  type RowListName,
 } from "@/features/clients/validators/option-lists";
 import { useErrorMessage } from "@/i18n/errors";
 import { useCodeLabel } from "@/i18n/use-code-label";
 import { pathKey } from "@/lib/compat/revalidate";
 import { WILAYAS } from "@/lib/geo/wilayas";
+import { serviceLabel } from "@/lib/options/service-catalogue";
 import { cn } from "@/lib/utils";
 
 /**
@@ -34,7 +37,8 @@ import { cn } from "@/lib/utils";
  *
  * In Arabic an option reads as his form prints it (a weekday is «الاثنين» as
  * on his client forms, «مسأجر» reads «مستأجر» as agreed); in French and
- * English it is the code's label.
+ * English it is the code's label. A service of his two lists reads as the
+ * manager names it in Settings › الخدمات, in the reader's language.
  */
 
 type FormControl = Control<FileScreenState>;
@@ -47,12 +51,17 @@ const REQUIRED_KEYS: ReadonlySet<FieldKey> = new Set(["clientName", "phone", "ad
 
 const answerPath = (key: string) => `answers.${key}` as Path;
 
-/** An option's words on screen: his in Arabic, the code's label otherwise. */
-function useOptionText(list: OptionListName | undefined) {
+/** An option's words on screen: his in Arabic, the code's label otherwise; a service's name in its list. */
+function useOptionText(list: RowListName | undefined) {
   const t = useTranslations("FileForm");
   const locale = useLocale();
-  const codeLabel = useCodeLabel(list ? LIST_NAMESPACES[list] : "FileOptions");
+  const codeLabel = useCodeLabel(list && !isCatalogueList(list) ? LIST_NAMESPACES[list] : "FileOptions");
   return (option: FormOption, code: string | null) => {
+    if (option.labels) {
+      const name = serviceLabel(option.labels, locale);
+      // Listed because the file ticks it, though the division no longer offers it.
+      return option.removed ? t("Fields.RemovedService", { name }) : name;
+    }
     const his = withoutTatweel(optionLabel(option)).replace(/:$/, "").trim();
     // A bare blank line of his, ticked to write something else on it.
     if (his === "") return t("Fields.Other");
@@ -85,6 +94,7 @@ function TextInput({
   control: FormControl;
   path: Path;
   label: string;
+  /** A date or a time is the program's own picker (no browser picker: the developer, 2026-10-22). */
   type?: "text" | "date" | "time" | "tel";
   dir?: "ltr";
   inputMode?: "numeric" | "decimal" | "tel";
@@ -100,29 +110,51 @@ function TextInput({
     <Controller
       control={control}
       name={path}
-      render={({ field, fieldState }) => (
-        <Field className={className}>
-          <FieldLabel htmlFor={id} className={cn(hideLabel && "sr-only")}>
-            {label}
-          </FieldLabel>
-          <Input
-            id={id}
-            type={type}
-            dir={dir}
-            inputMode={inputMode}
-            placeholder={placeholder}
-            disabled={disabled}
-            name={field.name}
-            ref={field.ref}
-            onBlur={field.onBlur}
-            value={typeof field.value === "string" ? field.value : ""}
-            onChange={(event) => field.onChange(event.target.value)}
-            aria-invalid={fieldState.invalid}
-          />
-          {description && <FieldDescription>{description}</FieldDescription>}
-          <FieldError>{errorMessage(fieldState.error?.message)}</FieldError>
-        </Field>
-      )}
+      render={({ field, fieldState }) => {
+        const value = typeof field.value === "string" ? field.value : "";
+        // None of his dates or times is an answer the file needs: each may be emptied again («مسح»).
+        const picker = {
+          id,
+          name: field.name,
+          ref: field.ref,
+          onBlur: field.onBlur,
+          value,
+          onChange: field.onChange,
+          disabled,
+          placeholder,
+          clearable: true,
+          "aria-invalid": fieldState.invalid,
+        };
+        return (
+          <Field className={className}>
+            <FieldLabel htmlFor={id} className={cn(hideLabel && "sr-only")}>
+              {label}
+            </FieldLabel>
+            {type === "date" ? (
+              <DateField {...picker} />
+            ) : type === "time" ? (
+              <TimeField {...picker} />
+            ) : (
+              <Input
+                id={id}
+                type={type === "tel" ? "tel" : "text"}
+                dir={dir}
+                inputMode={inputMode}
+                placeholder={placeholder}
+                disabled={disabled}
+                name={field.name}
+                ref={field.ref}
+                onBlur={field.onBlur}
+                value={value}
+                onChange={(event) => field.onChange(event.target.value)}
+                aria-invalid={fieldState.invalid}
+              />
+            )}
+            {description && <FieldDescription>{description}</FieldDescription>}
+            <FieldError>{errorMessage(fieldState.error?.message)}</FieldError>
+          </Field>
+        );
+      }}
     />
   );
 }
@@ -316,7 +348,18 @@ function PlaceField({ control, label, wilayaCode }: { control: FormControl; labe
     queryFn: () => listCommunesQuery({ wilayaCode }),
     enabled: wilayaCode !== "",
   });
-  const listId = `file-communes-${wilayaCode}`;
+  // His commune as typed, or one of the wilaya's: the Arabic name is what is stored and printed.
+  const suggestions = (communes.data ?? []).map((commune) => ({
+    value: commune.nameAr,
+    label:
+      locale === "ar" || !commune.nameFr ? undefined : (
+        <span className="flex min-w-0 flex-wrap items-baseline gap-x-3">
+          <span>{commune.nameAr}</span>
+          <span className="text-muted-foreground">{commune.nameFr}</span>
+        </span>
+      ),
+    keywords: commune.nameFr ?? undefined,
+  }));
   return (
     <Field className={SPAN_BOTH}>
       <FieldLabel>{label}</FieldLabel>
@@ -329,23 +372,17 @@ function PlaceField({ control, label, wilayaCode }: { control: FormControl; labe
               <FieldLabel htmlFor="file-answers-commune" className="text-sm text-muted-foreground">
                 {t("Fields.Commune")}
               </FieldLabel>
-              <Input
+              <SuggestField
                 id="file-answers-commune"
-                list={listId}
                 name={field.name}
                 ref={field.ref}
                 onBlur={field.onBlur}
                 value={typeof field.value === "string" ? field.value : ""}
-                onChange={(event) => field.onChange(event.target.value)}
+                onChange={field.onChange}
+                suggestions={suggestions}
+                aria-label={t("Fields.Commune")}
                 aria-invalid={fieldState.invalid}
               />
-              <datalist id={listId}>
-                {(communes.data ?? []).map((commune) => (
-                  <option key={commune.id} value={commune.nameAr}>
-                    {locale === "ar" ? undefined : (commune.nameFr ?? undefined)}
-                  </option>
-                ))}
-              </datalist>
               <FieldError>{errorMessage(fieldState.error?.message)}</FieldError>
             </Field>
           )}
@@ -548,12 +585,11 @@ export function SheetRowField({
           path={path}
           label={label}
           type="date"
-          dir="ltr"
           className={cn(WIDE_KEYS.has(key) && SPAN_BOTH)}
         />
       );
     case "time":
-      return <TextInput control={control} path={path} label={label} type="time" dir="ltr" />;
+      return <TextInput control={control} path={path} label={label} type="time" />;
     case "phone":
       return <TextInput control={control} path={path} label={label} type="tel" dir="ltr" inputMode="tel" />;
     case "place":

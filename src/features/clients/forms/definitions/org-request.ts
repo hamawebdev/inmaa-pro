@@ -523,110 +523,15 @@ export const ORG_REQUEST: FormDefinition = {
       answer: "several",
       list: "PROVIDED_SERVICE",
       freeKey: "providedServicesCustom",
-      options: [
-        {
-          raw: "تنظيف الأرضيات",
-          side: "after",
-        },
-        {
-          raw: "تنظيف المطبخ",
-          side: "after",
-        },
-        {
-          raw: "تنظيف الستائر",
-          side: "after",
-        },
-        {
-          raw: "تنظيف الأثاث",
-          side: "after",
-        },
-        {
-          raw: "اللوحات والإعلانات",
-          side: "after",
-        },
-        {
-          raw: "",
-          free: true,
-          side: "none",
-        },
-        {
-          raw: "تنظيف الأسقف",
-          side: "after",
-        },
-        {
-          raw: "تنظيف دورات المياه",
-          side: "after",
-        },
-        {
-          raw: "تنظيف النوافذ",
-          side: "after",
-        },
-        {
-          raw: "جمع وفرز النفايات",
-          side: "after",
-        },
-        {
-          raw: "تنظيف الرفوف",
-          side: "after",
-        },
-        {
-          raw: "",
-          free: true,
-          side: "none",
-        },
-        {
-          raw: "تنظيف الزجاج",
-          side: "after",
-        },
-        {
-          raw: "تنظيف المكاتب",
-          side: "after",
-        },
-        {
-          raw: "تنظيف السجاد",
-          side: "after",
-        },
-        {
-          raw: "تنظيف مواقف السيارات",
-          side: "after",
-        },
-        {
-          raw: "تنظيف الأجهزة",
-          side: "after",
-        },
-        {
-          raw: "",
-          free: true,
-          side: "none",
-          sameLine: true,
-        },
-        {
-          raw: "تنظيف قاعة الاستقبال",
-          side: "after",
-        },
-        {
-          raw: "تنظيف قاعات الاجتماعات",
-          side: "after",
-        },
-        {
-          raw: "تنظيف المرآب",
-          side: "after",
-        },
-        {
-          raw: "تنظيف المخازن",
-          side: "after",
-        },
-        {
-          raw: "تنظيف الحدائق",
-          side: "after",
-        },
-        {
-          raw: "",
-          free: true,
-          side: "none",
-          sameLine: true,
-        },
-      ],
+      services: {
+        side: "after",
+        columns: [
+          { blanks: [{ side: "none" }] },
+          { blanks: [{ side: "none" }] },
+          { blanks: [{ side: "none", sameLine: true }] },
+          { blanks: [{ side: "none", sameLine: true }] },
+        ],
+      },
       flags: ["options-without-label"],
     },
     {
@@ -648,77 +553,15 @@ export const ORG_REQUEST: FormDefinition = {
       answer: "several",
       list: "PROGRAMMED_SERVICE",
       freeKey: "programmedServicesCustom",
-      options: [
-        {
-          raw: "تنظيف دوري",
-          side: "after",
-        },
-        {
-          raw: "تنظيف بعد البناء",
-          side: "after",
-        },
-        {
-          raw: "تنظيف بعد الترميم",
-          side: "after",
-        },
-        {
-          raw: "",
-          free: true,
-          side: "none",
-        },
-        {
-          raw: "تنظيف بعد الولائم",
-          side: "after",
-        },
-        {
-          raw: "تنظيف شامل وعميق",
-          side: "after",
-        },
-        {
-          raw: "تنظيف غ..الضيوف",
-          side: "after",
-        },
-        {
-          raw: "",
-          free: true,
-          side: "none",
-        },
-        {
-          raw: "تنظيف بعد السفر",
-          side: "after",
-        },
-        {
-          raw: "تنظيف رمضان",
-          side: "after",
-        },
-        {
-          raw: "إزالة المخلفات",
-          side: "after",
-        },
-        {
-          raw: "",
-          free: true,
-          side: "none",
-        },
-        {
-          raw: "تنظيف قبل المناسبات",
-          side: "after",
-        },
-        {
-          raw: "تنظيف بعد المناسبات",
-          side: "after",
-        },
-        {
-          raw: "",
-          free: true,
-          side: "none",
-        },
-        {
-          raw: "",
-          free: true,
-          side: "none",
-        },
-      ],
+      services: {
+        side: "after",
+        columns: [
+          { blanks: [{ side: "none" }] },
+          { blanks: [{ side: "none" }] },
+          { blanks: [{ side: "none" }] },
+          { blanks: [{ side: "none" }, { side: "none" }] },
+        ],
+      },
       flags: ["options-without-label"],
     },
     {

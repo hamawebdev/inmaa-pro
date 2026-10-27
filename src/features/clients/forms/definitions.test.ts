@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
 
+import { catalogueFromSeed } from "@/lib/options/service-catalogue";
+
 import { FORM_KINDS, OPTION_LISTS, type FormKind } from "../validators/option-lists";
 
 import { optionCode, optionLabel, withoutTatweel } from "./answers";
+import { resolveDefinition } from "./catalogue";
 import { FORM_DEFINITIONS, formKindFromSlug, formKindSlug, rowOf, sectionsOf } from "./definitions";
 import type { FormDefinition, FormOption, FormRow, SheetBlock } from "./types";
 
@@ -14,7 +17,15 @@ import type { FormDefinition, FormOption, FormRow, SheetBlock } from "./types";
  * Word generates cannot change in a definition without this test failing and
  * naming the row. The complexes copy is the building contract with another
  * title, so it is held against the building's data.
+ *
+ * His two service lists are the manager's rows since 2026-10-22: a form is held
+ * against his Word file with the lists migration 0003 seeded
+ * (`catalogueFromSeed`), which must give back every service, blank line, box
+ * side and column of his file.
  */
+
+/** A form with his service lists as migration 0003 seeded them. */
+const seeded = (kind: FormKind) => resolveDefinition(FORM_DEFINITIONS[kind], catalogueFromSeed());
 
 interface CheckerItem {
   text: string;
@@ -96,7 +107,7 @@ const tables = (definition: FormDefinition) =>
   definition.sheet.filter((block): block is Extract<SheetBlock, { t: "table" }> => block.t === "table");
 
 describe.each(FORM_KINDS.filter((kind) => kind !== "COMPLEX_CONTRACT"))("the form %s", (kind: FormKind) => {
-  const definition = FORM_DEFINITIONS[kind];
+  const definition = seeded(kind);
   const file = checkerFile(definition.checker.file);
 
   it("has the Checker's rows, in his order", () => {
@@ -271,12 +282,12 @@ describe("what differs between sibling forms stays with each form", () => {
 
   it("corrects «مسأجر» and nothing else (scope A8)", () => {
     const corrected = FORM_KINDS.flatMap((kind) =>
-      FORM_DEFINITIONS[kind].rows.flatMap((row) => (row.options ?? []).filter((option) => option.printAs)),
+      seeded(kind).rows.flatMap((row) => (row.options ?? []).filter((option) => option.printAs)),
     );
     expect(new Set(corrected.map((option) => `${option.raw} > ${optionLabel(option)}`))).toEqual(
       new Set(["مسأجر > مستأجر"]),
     );
-    const guests = FORM_DEFINITIONS.HOUSING_REQUEST.rows.flatMap((row) => row.options ?? []);
+    const guests = seeded("HOUSING_REQUEST").rows.flatMap((row) => row.options ?? []);
     expect(guests.map(optionLabel)).toContain("تنظيف غ..الضيوف");
   });
 });
@@ -284,6 +295,13 @@ describe("what differs between sibling forms stays with each form", () => {
 describe("the complexes copy", () => {
   const building = FORM_DEFINITIONS.BUILDING_CONTRACT;
   const complex = FORM_DEFINITIONS.COMPLEX_CONTRACT;
+
+  it("lists the same services as the building contract while the manager has not set them apart", () => {
+    const services = (kind: FormKind) =>
+      seeded(kind).rows.flatMap((row) => (row.services ? (row.options ?? []).map((option) => option.code ?? "") : []));
+    expect(services("COMPLEX_CONTRACT")).toEqual(services("BUILDING_CONTRACT"));
+    expect(seeded("COMPLEX_CONTRACT").sheet).toEqual(seeded("BUILDING_CONTRACT").sheet);
+  });
 
   it("is the building contract with another title and no suffix", () => {
     expect(complex.rows.find((row) => row.role === "title")?.raw).toBe("نوع الخدمة : عقد (تجمع سكني)");

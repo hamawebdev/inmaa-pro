@@ -111,7 +111,8 @@
       "ExtraValue": "Value",
       "ExtraHint": "A line without a label on the form: write what it counts.",
       "Choose": "Choose",
-      "areaUnit": "m²"
+      "areaUnit": "m²",
+      "RemovedService": "{name} (removed)"
     },
     "Office": {
       "NotPrinted": "Not printed",
@@ -617,7 +618,8 @@
     "InvoiceNif": "This client's tax identification number (NIF) is needed on the invoice.",
     "InvoiceNis": "This client's statistical identification number (NIS) is needed on the invoice.",
     "FileJobDoneOnDemand": "Only a job on demand ends when its last visit is done.",
-    "ContractNotStartedOnly": "Only a contract that has not started yet is cancelled."
+    "ContractNotStartedOnly": "Only a contract that has not started yet is cancelled.",
+    "ServiceNoLongerOffered": "This service is no longer offered."
   },
   "Alerts": {
     "QuoteFollowUp": {

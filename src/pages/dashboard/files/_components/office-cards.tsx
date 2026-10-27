@@ -2,6 +2,7 @@ import { EyeOff } from "lucide-react";
 import { Controller, type Control, type FieldPath } from "react-hook-form";
 import { useTranslations } from "use-intl";
 
+import { DateField, TimeField } from "@/components/pickers";
 import { StatusChip } from "@/components/status-chip";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -68,6 +69,7 @@ function OfficeText({
   label: string;
   description?: string;
   long?: boolean;
+  /** A date or a time is the program's own picker (no browser picker: the developer, 2026-10-22). */
   type?: "text" | "date" | "time" | "tel";
   dir?: "ltr";
   inputMode?: "numeric" | "tel" | "decimal";
@@ -79,37 +81,55 @@ function OfficeText({
     <Controller
       control={control}
       name={path}
-      render={({ field, fieldState }) => (
-        <Field className={cn((long || wide) && SPAN_BOTH)}>
-          <FieldLabel htmlFor={id}>{label}</FieldLabel>
-          {long ? (
-            <Textarea
-              id={id}
-              name={field.name}
-              ref={field.ref}
-              onBlur={field.onBlur}
-              value={typeof field.value === "string" ? field.value : ""}
-              onChange={(event) => field.onChange(event.target.value)}
-              aria-invalid={fieldState.invalid}
-            />
-          ) : (
-            <Input
-              id={id}
-              type={type}
-              dir={dir}
-              inputMode={inputMode}
-              name={field.name}
-              ref={field.ref}
-              onBlur={field.onBlur}
-              value={typeof field.value === "string" ? field.value : ""}
-              onChange={(event) => field.onChange(event.target.value)}
-              aria-invalid={fieldState.invalid}
-            />
-          )}
-          {description && <FieldDescription>{description}</FieldDescription>}
-          <FieldError>{errorMessage(fieldState.error?.message)}</FieldError>
-        </Field>
-      )}
+      render={({ field, fieldState }) => {
+        const value = typeof field.value === "string" ? field.value : "";
+        // Every office field may be left empty: a date or a time can be emptied again («مسح»).
+        const picker = {
+          id,
+          name: field.name,
+          ref: field.ref,
+          onBlur: field.onBlur,
+          value,
+          onChange: field.onChange,
+          clearable: true,
+          "aria-invalid": fieldState.invalid,
+        };
+        return (
+          <Field className={cn((long || wide) && SPAN_BOTH)}>
+            <FieldLabel htmlFor={id}>{label}</FieldLabel>
+            {long ? (
+              <Textarea
+                id={id}
+                name={field.name}
+                ref={field.ref}
+                onBlur={field.onBlur}
+                value={value}
+                onChange={(event) => field.onChange(event.target.value)}
+                aria-invalid={fieldState.invalid}
+              />
+            ) : type === "date" ? (
+              <DateField {...picker} />
+            ) : type === "time" ? (
+              <TimeField {...picker} />
+            ) : (
+              <Input
+                id={id}
+                type={type === "tel" ? "tel" : "text"}
+                dir={dir}
+                inputMode={inputMode}
+                name={field.name}
+                ref={field.ref}
+                onBlur={field.onBlur}
+                value={value}
+                onChange={(event) => field.onChange(event.target.value)}
+                aria-invalid={fieldState.invalid}
+              />
+            )}
+            {description && <FieldDescription>{description}</FieldDescription>}
+            <FieldError>{errorMessage(fieldState.error?.message)}</FieldError>
+          </Field>
+        );
+      }}
     />
   );
 }
@@ -299,7 +319,7 @@ export function SitePlaceCard({ control, complex }: { control: FormControl; comp
       <OfficeFlag control={control} path="site.keysHeld" label={t("keysHeld")} />
       <OfficeText control={control} path="site.keyCount" label={t("keyCount")} inputMode="numeric" />
       <OfficeText control={control} path="site.keyHolderName" label={t("keyHolderName")} />
-      <OfficeText control={control} path="site.keyReceivedDate" label={t("keyReceivedDate")} type="date" dir="ltr" />
+      <OfficeText control={control} path="site.keyReceivedDate" label={t("keyReceivedDate")} type="date" />
       <OfficeTicks
         control={control}
         path="site.allowedDays"
@@ -307,8 +327,8 @@ export function SitePlaceCard({ control, complex }: { control: FormControl; comp
         options={WEEKDAYS}
         labelOf={dayLabel}
       />
-      <OfficeText control={control} path="site.allowedFrom" label={t("allowedFrom")} type="time" dir="ltr" />
-      <OfficeText control={control} path="site.allowedTo" label={t("allowedTo")} type="time" dir="ltr" />
+      <OfficeText control={control} path="site.allowedFrom" label={t("allowedFrom")} type="time" />
+      <OfficeText control={control} path="site.allowedTo" label={t("allowedTo")} type="time" />
     </OfficeCard>
   );
 }

@@ -1,7 +1,7 @@
-import { FORM_KIND_OF, type FormKind, type OptionListName } from "../validators/option-lists";
+import { FORM_KIND_OF, type FormKind, type RowListName } from "../validators/option-lists";
 
 import { FORM_DEFINITIONS } from "./definitions";
-import type { FormRow } from "./types";
+import type { FormRow, ResolvedDefinition } from "./types";
 import type { FieldKey } from "./values";
 
 /**
@@ -63,15 +63,18 @@ export interface ScreenCard {
   rows: FormRow[];
 }
 
-const CARDS = new Map<FormKind, ScreenCard[]>();
+const CARDS = new WeakMap<ResolvedDefinition, ScreenCard[]>();
 
-/** The cards of a form, in his order. The header (number and date) and the signature are not among them. */
-export function screenCardsOf(kind: FormKind): ScreenCard[] {
-  let cards = CARDS.get(kind);
+/**
+ * The cards of a form, in his order. The header (number and date) and the signature are not among them. The
+ * form is resolved against his service lists, so the two service cards hold what the division offers today.
+ */
+export function screenCardsOf(definition: ResolvedDefinition): ScreenCard[] {
+  let cards = CARDS.get(definition);
   if (cards) return cards;
   cards = [];
   let current: ScreenCard | null = null;
-  for (const row of FORM_DEFINITIONS[kind].rows) {
+  for (const row of definition.rows) {
     if (row.role === "heading") {
       const card = HEADING_CARDS[row.label];
       if (!card) throw new Error(`clients: no card for the heading «${row.label}»`);
@@ -81,7 +84,7 @@ export function screenCardsOf(kind: FormKind): ScreenCard[] {
     }
     if (current && row.key !== null && row.role !== "signature") current.rows.push(row);
   }
-  CARDS.set(kind, cards);
+  CARDS.set(definition, cards);
   return cards;
 }
 
@@ -101,9 +104,12 @@ export function formTitleOf(kind: FormKind): string {
  * Where a list's codes are labelled on screen: Foundation's shared lists under
  * `Options.`, ours under `FileOptions.`. In Arabic a form shows his own words
  * from the definition instead, so a weekday reads «الاثنين» as his client forms
- * write it.
+ * write it. His two service lists have no namespace: a service's three names
+ * are its catalogue row's, carried on the resolved option (`option.labels`).
  */
-export const LIST_NAMESPACES: Readonly<Record<OptionListName, string>> = {
+export const LIST_NAMESPACES: Readonly<
+  Record<Exclude<RowListName, "PROVIDED_SERVICE" | "PROGRAMMED_SERVICE">, string>
+> = {
   DIVISION: "Options.Division",
   SERVICE_TYPE: "Options.ServiceType",
   FILE_STATUS_TICK: "FileOptions.StatusTick",
@@ -126,6 +132,4 @@ export const LIST_NAMESPACES: Readonly<Record<OptionListName, string>> = {
   PAYMENT_METHOD: "Options.PaymentMethod",
   PAYMENT_FREQUENCY: "Options.PaymentFrequency",
   TEAM_ACCESS: "Options.TeamAccess",
-  PROVIDED_SERVICE: "Options.ProvidedService",
-  PROGRAMMED_SERVICE: "Options.ProgrammedService",
 };

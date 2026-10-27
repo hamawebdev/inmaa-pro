@@ -1,10 +1,17 @@
 import { describe, expect, it } from "vitest";
 
+import { catalogueFromSeed } from "@/lib/options/service-catalogue";
+
 import { dinarsToMoney } from "@/lib/units";
 
-import { FORM_KINDS } from "../validators/option-lists";
+import { FORM_KINDS, type FormKind } from "../validators/option-lists";
 
+import { resolveDefinition } from "./catalogue";
+import { FORM_DEFINITIONS } from "./definitions";
 import { DESCRIPTION_KEYS, FILE_ANSWER_KEYS, PARTY_KEYS, printedKeys, storedAnswersOf } from "./stored-values";
+
+/** A form with his service lists as migration 0003 seeded them. */
+const form = (kind: FormKind) => resolveDefinition(FORM_DEFINITIONS[kind], catalogueFromSeed());
 import type { FieldKey } from "./values";
 
 describe("where his answers are kept", () => {
@@ -44,7 +51,7 @@ describe("where his answers are kept", () => {
   });
 
   it("writes only what a form prints: a housing request leaves an organisation's manager alone", () => {
-    const answers = storedAnswersOf("HOUSING_REQUEST", { clientName: "بوزيد سليم", managerName: "قاسمي نادية" });
+    const answers = storedAnswersOf(form("HOUSING_REQUEST"), { clientName: "بوزيد سليم", managerName: "قاسمي نادية" });
     expect(answers.client).toEqual({ name: "بوزيد سليم", phone1: null });
     expect(answers.file).not.toHaveProperty("contractKind");
     expect(answers.description).not.toHaveProperty("offices");
@@ -52,7 +59,7 @@ describe("where his answers are kept", () => {
   });
 
   it("keeps a set as a list of codes, nothing ticked as [], and a yes / no as 1, 0 or null", () => {
-    const answers = storedAnswersOf("ORG_CONTRACT", {
+    const answers = storedAnswersOf(form("ORG_CONTRACT"), {
       executionDays: ["SAT", "MON"],
       hasGuard: false,
       hasTradeRegister: true,
@@ -73,7 +80,7 @@ describe("where his answers are kept", () => {
   });
 
   it("turns the services into rows: ticked options, then the blank lines with their slot", () => {
-    const answers = storedAnswersOf("HOUSING_CONTRACT", {
+    const answers = storedAnswersOf(form("HOUSING_CONTRACT"), {
       providedServices: ["KITCHEN", "FLOORS"],
       providedServicesCustom: [null, "تنظيف السلم"],
       programmedServices: ["PERIODIC"],

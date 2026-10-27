@@ -2,6 +2,7 @@ import type { Insertable, Updateable } from "kysely";
 import type { z } from "zod";
 
 import { ensureCommune, ensureZoneForCommune } from "@/features/core/services/places";
+import { listServiceCatalogue } from "@/features/core/services/service-catalogue";
 import { checkSanction, consumeDecision } from "@/features/people/services/sanctions";
 import { can, requireCapability, requireSection } from "@/lib/access/session";
 import { newId } from "@/lib/db/rows";
@@ -18,6 +19,7 @@ import { normaliseName, phoneKeys } from "@/lib/text/normalise";
 import type { LocalDate } from "@/lib/units";
 import { FILES_PATH } from "@/navigation/file-parts";
 
+import { resolveDefinition } from "../forms/catalogue";
 import { FORM_DEFINITIONS } from "../forms/definitions";
 import {
   partySnapshotOf,
@@ -30,6 +32,7 @@ import {
   type ServiceRow,
   type SiteRow,
 } from "../forms/stored-values";
+import type { ResolvedDefinition } from "../forms/types";
 import type { FormValues } from "../forms/values";
 import { isBackward, stageMove, type StageFacts, type StageRefusal } from "../rules/stage-moves";
 import {
@@ -144,6 +147,22 @@ function serviceRowValues(fileId: string, draft: ServiceDraft, ctx: ServiceConte
     createdAt: ctx.now,
     updatedAt: ctx.now,
   };
+}
+
+/**
+ * A form resolved against his service lists as the manager left them (Settings › الخدمات), keeping the
+ * services a file already ticks: what a save validates and stores against.
+ */
+export async function resolvedFormOf(
+  ex: Executor,
+  kind: FormKind,
+  services: readonly Pick<ServiceRow, "list" | "code">[] = [],
+): Promise<ResolvedDefinition> {
+  const codes = (list: string) => services.flatMap((row) => (row.list === list && row.code !== null ? [row.code] : []));
+  return resolveDefinition(FORM_DEFINITIONS[kind], await listServiceCatalogue(ex), {
+    providedServices: codes("PROVIDED"),
+    programmedServices: codes("PROGRAMMED"),
+  });
 }
 
 /** The services of a list as the log shows them: codes, and the blank lines' text. */
@@ -436,7 +455,9 @@ export async function registerFile(
 ): Promise<RegisteredFile> {
   requireSection(ctx, "REQUESTS", "WRITE");
   const kind = parse(formKindSchema, input.kind);
-  const values = parse(sheetSchema(kind), input.values) as FormValues;
+  // A new file is offered what its division offers today: a removed service is not.
+  const form = await resolvedFormOf(ex, kind);
+  const values = parse(sheetSchema(form), input.values) as FormValues;
   const office = parse(fileOfficeSchema, input.office ?? {});
   const siteOffice = parse(siteOfficeSchema, input.siteOffice ?? {});
   const residents = parse(residentsSchema, input.residents ?? []);
@@ -449,7 +470,7 @@ export async function registerFile(
   if (residents.length > 0 && definition.family !== "BUILDING") {
     throw new ServiceError("Only buildings and residential complexes have a list of residents.");
   }
-  const answers = storedAnswersOf(kind, values);
+  const answers = storedAnswersOf(form, values);
   const audit = { formKind: kind };
   const paper = input.paperNumbers ?? null;
   const sourceRepVisitId = input.sourceRepVisitId ?? null;
@@ -793,10 +814,16 @@ interface ServiceDiff {
   inserts: ServiceDraft[];
   updates: Array<{ row: ServiceRow; draft: ServiceDraft }>;
   deletes: ServiceRow[];
+  /**
+   * Rows whose place alone moved, because the manager reordered his lists (Settings › الخدمات). Written so that
+   * whoever sorts by `sortOrder` reads today's order, but not a change of the sheet: a signed file is not asked
+   * for a reason, nothing is logged, nobody is told.
+   */
+  moves: Array<{ row: ServiceRow; draft: ServiceDraft }>;
 }
 
 function diffServices(before: readonly ServiceRow[], drafts: readonly ServiceDraft[], lists: readonly string[]) {
-  const diff: ServiceDiff = { inserts: [], updates: [], deletes: [] };
+  const diff: ServiceDiff = { inserts: [], updates: [], deletes: [], moves: [] };
   const mine = before.filter((row) => lists.includes(row.list));
   const keyOf = (row: { list: string; code: string | null; blankSlot: number | null }) =>
     row.code !== null ? `${row.list}:code:${row.code}` : `${row.list}:slot:${row.blankSlot}`;
@@ -807,8 +834,8 @@ function diffServices(before: readonly ServiceRow[], drafts: readonly ServiceDra
     wanted.add(key);
     const row = byKey.get(key);
     if (!row) diff.inserts.push(draft);
-    else if (row.customLabel !== draft.customLabel || row.sortOrder !== draft.sortOrder)
-      diff.updates.push({ row, draft });
+    else if (row.customLabel !== draft.customLabel) diff.updates.push({ row, draft });
+    else if (row.sortOrder !== draft.sortOrder) diff.moves.push({ row, draft });
   }
   diff.deletes = mine.filter((row) => !wanted.has(keyOf(row)));
   return diff;
@@ -836,7 +863,9 @@ export async function saveFileForm(
   const { kind, file, client, site } = record;
   if (file.closedAt !== null) throw new ServiceError("This file is closed and can no longer be changed.");
 
-  const values = parse(sheetSchema(kind), input.values) as FormValues;
+  // The file keeps the services it ticks, even one the manager has removed since.
+  const form = await resolvedFormOf(ex, kind, record.services);
+  const values = parse(sheetSchema(form), input.values) as FormValues;
   const office = parse(fileOfficeSchema, input.office ?? {});
   const siteOffice = parse(siteOfficeSchema, input.siteOffice ?? {});
   const residents = input.residents === undefined ? undefined : parse(residentsSchema, input.residents);
@@ -850,7 +879,7 @@ export async function saveFileForm(
   }
 
   const locked = file.lockedAt !== null;
-  const answers = storedAnswersOf(kind, values);
+  const answers = storedAnswersOf(form, values);
   const context = { formKind: kind, fileNumber: file.number };
 
   // ── What would change ──
@@ -936,6 +965,9 @@ export async function saveFileForm(
       .insertInto("FileService")
       .values(serviceRowValues(file.id, draft, ctx))
       .execute();
+  }
+  for (const { row, draft } of services.moves) {
+    await ex.updateTable("FileService").set({ sortOrder: draft.sortOrder }).where("id", "=", row.id).execute();
   }
   if (hasDiff(services)) changed = true;
 
