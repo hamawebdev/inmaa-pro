@@ -1,12 +1,9 @@
 import * as React from "react";
 
-import { format, parseISO } from "date-fns";
-import type { DateRange } from "react-day-picker";
-import { useLocale, useTranslations } from "use-intl";
+import { useTranslations } from "use-intl";
 
-import { DateRangePicker } from "@/components/date-range-picker";
+import { DateRangeField, type DateRangeValue } from "@/components/pickers";
 import { Button } from "@/components/ui/button";
-import { dateFnsLocaleFor } from "@/i18n/config";
 import { useRouter, useSearchParams } from "@/lib/compat/navigation";
 
 import type { IsoDate } from "../rules/dates";
@@ -21,12 +18,12 @@ import { useDateText } from "./use-money-text";
  *
  * The academy's finance date filter (finance/_components/finance-date-filter.tsx),
  * with one change: the period is read from the address by `readPeriod`, so a
- * named preset always counts from today.
+ * named preset always counts from today. A range of one's own is the program's
+ * period picker: the address changes only when its «تأكيد» is pressed.
  */
 export function PeriodFilter({ period, today }: { period: Period; today: IsoDate }) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const locale = useLocale();
   const t = useTranslations("MoneyPeriod");
   const dates = useDateText();
   const [showCustom, setShowCustom] = React.useState(false);
@@ -44,10 +41,8 @@ export function PeriodFilter({ period, today }: { period: Period; today: IsoDate
     go(presetPeriod(preset, today));
   }
 
-  function chooseRange(range: DateRange | undefined) {
-    if (range?.from && range.to) {
-      go({ from: format(range.from, "yyyy-MM-dd"), to: format(range.to, "yyyy-MM-dd"), preset: "custom" });
-    }
+  function chooseRange(range: DateRangeValue) {
+    if (range.from && range.to) go({ from: range.from, to: range.to, preset: "custom" });
   }
 
   const customOpen = showCustom || period.preset === "custom";
@@ -72,10 +67,10 @@ export function PeriodFilter({ period, today }: { period: Period; today: IsoDate
         })}
       </div>
       {customOpen && (
-        <DateRangePicker
-          value={{ from: parseISO(period.from), to: parseISO(period.to) }}
+        <DateRangeField
+          id="money-period-range"
+          value={{ from: period.from, to: period.to }}
           onChange={chooseRange}
-          locale={dateFnsLocaleFor(locale)}
           placeholder={t("ChooseDates")}
         />
       )}

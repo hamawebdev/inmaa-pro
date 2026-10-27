@@ -8,6 +8,7 @@ import { useTranslations } from "use-intl";
 
 import { Ltr } from "@/components/ltr";
 import { PageActions } from "@/components/screen";
+import { DateField } from "@/components/pickers";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -178,13 +179,7 @@ export function HandoutForm({
           </Field>
           <Field>
             <FieldLabel htmlFor="handout-date">{t("Date")}</FieldLabel>
-            <Input
-              id="handout-date"
-              type="date"
-              max={today}
-              value={date}
-              onChange={(event) => setDate(event.target.value)}
-            />
+            <DateField id="handout-date" max={today} value={date} onChange={setDate} />
           </Field>
           {purpose === "JOB" && (
             <>

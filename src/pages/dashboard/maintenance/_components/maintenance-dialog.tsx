@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { useTranslations } from "use-intl";
 
 import { StatusChip } from "@/components/status-chip";
+import { DateField } from "@/components/pickers";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -126,7 +127,7 @@ function PlanForm({ unit, onClose }: { unit: EquipmentUnitRow; onClose: () => vo
         </Field>
         <Field>
           <FieldLabel htmlFor="plan-next">{t("NextDate")}</FieldLabel>
-          <Input id="plan-next" type="date" value={nextDate} onChange={(event) => setNextDate(event.target.value)} />
+          <DateField id="plan-next" clearable value={nextDate} onChange={setNextDate} />
           <FieldDescription>{t("NextDateHint")}</FieldDescription>
         </Field>
       </div>
@@ -201,13 +202,7 @@ function RecordForm({ unit, onClose }: { unit: EquipmentUnitRow; onClose: () => 
         </Field>
         <Field>
           <FieldLabel htmlFor="maintenance-date">{t("Date")}</FieldLabel>
-          <Input
-            id="maintenance-date"
-            type="date"
-            max={today}
-            value={date}
-            onChange={(event) => setDate(event.target.value)}
-          />
+          <DateField id="maintenance-date" max={today} value={date} onChange={setDate} />
         </Field>
         <Field className="sm:col-span-2">
           <FieldLabel htmlFor="maintenance-description">{t("What")}</FieldLabel>

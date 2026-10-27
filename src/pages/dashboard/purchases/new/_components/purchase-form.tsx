@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { useTranslations } from "use-intl";
 
 import { PageActions } from "@/components/screen";
+import { DateField } from "@/components/pickers";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Field, FieldLabel } from "@/components/ui/field";
@@ -155,13 +156,7 @@ export function PurchaseForm({
           )}
           <Field>
             <FieldLabel htmlFor="purchase-date">{t("Date")}</FieldLabel>
-            <Input
-              id="purchase-date"
-              type="date"
-              max={today}
-              value={date}
-              onChange={(event) => setDate(event.target.value)}
-            />
+            <DateField id="purchase-date" max={today} value={date} onChange={setDate} />
           </Field>
           <Field>
             <FieldLabel htmlFor="purchase-invoice">{t("InvoiceNo")}</FieldLabel>

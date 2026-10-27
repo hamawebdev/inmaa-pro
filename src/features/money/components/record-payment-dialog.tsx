@@ -9,6 +9,7 @@ import { useTranslations } from "use-intl";
 
 import { useConfirm } from "@/components/confirm-dialog";
 import { Ltr } from "@/components/ltr";
+import { DateField } from "@/components/pickers";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -325,12 +326,11 @@ function PaymentForm({
           render={({ field, fieldState }) => (
             <Field data-invalid={fieldState.invalid}>
               <FieldLabel htmlFor="payment-date">{t("Date")}</FieldLabel>
-              <Input
+              <DateField
                 id="payment-date"
-                type="date"
                 max={today}
                 value={field.value ?? ""}
-                onChange={(event) => field.onChange(event.target.value)}
+                onChange={field.onChange}
                 onBlur={field.onBlur}
                 aria-invalid={fieldState.invalid}
               />

@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { useTranslations } from "use-intl";
 
 import { MediaUploadField, createEmptyUploadSelection } from "@/components/media-upload-field";
+import { DateField } from "@/components/pickers";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -283,12 +284,11 @@ function ExpenseForm({ today, expense, defaultDivision, onSaved, onDone }: Dialo
           render={({ field, fieldState }) => (
             <Field data-invalid={fieldState.invalid}>
               <FieldLabel htmlFor="expense-date">{t("Date")}</FieldLabel>
-              <Input
+              <DateField
                 id="expense-date"
-                type="date"
                 max={today}
                 value={field.value ?? ""}
-                onChange={(event) => field.onChange(event.target.value)}
+                onChange={field.onChange}
                 onBlur={field.onBlur}
                 aria-invalid={fieldState.invalid}
               />
