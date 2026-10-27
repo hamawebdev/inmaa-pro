@@ -606,3 +606,26 @@ describe("getFileTasks", () => {
     );
   });
 });
+
+describe("tasks seeded from his service lists", () => {
+  it("name a service as the manager names it today (Settings › الخدمات)", async () => {
+    const file = await organisationFile();
+    await test.rows.insert("FileService", {
+      fileId: file.id,
+      list: "PROVIDED",
+      code: "OFFICES",
+      sortOrder: 0,
+    } as never);
+    await test.raw.exec(
+      `UPDATE "CatalogueService" SET "labelAr" = 'تنظيف المكاتب والممرات' WHERE "id" = 'svc-PROVIDED-OFFICES'`,
+    );
+    const { seedTasksFromServices } = await import("./tasks");
+    await test.transact((ex, ctx) => seedTasksFromServices(ex, ctx, file.id));
+    const tasks = await test.db
+      .selectFrom("FileTask")
+      .select(["serviceCode", "label"])
+      .where("fileId", "=", file.id)
+      .execute();
+    expect(tasks).toEqual([{ serviceCode: "OFFICES", label: "تنظيف المكاتب والممرات" }]);
+  });
+});

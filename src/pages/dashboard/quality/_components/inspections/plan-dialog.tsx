@@ -4,6 +4,7 @@ import { CalendarPlus } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslations } from "use-intl";
 
+import { DateField } from "@/components/pickers";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -14,7 +15,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Field, FieldDescription, FieldError, FieldLabel } from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
 import { useCentreClock } from "@/features/operations/components/use-centre-clock";
 import { addDays, isIsoDate } from "@/features/operations/rules/calendar";
 import { planInspectionsAction } from "@/features/operations/services/inspections";
@@ -88,14 +88,12 @@ function PlanForm({ onClose }: { onClose: () => void }) {
       <form onSubmit={plan} className="space-y-5" noValidate>
         <Field data-invalid={(tried && invalid) || undefined}>
           <FieldLabel htmlFor="plan-up-to">{t("UpTo")}</FieldLabel>
-          <Input
+          <DateField
             id="plan-up-to"
-            type="date"
-            dir="ltr"
             className="max-w-60"
             min={today}
             value={upTo}
-            onChange={(event) => setUpTo(event.target.value)}
+            onChange={setUpTo}
             aria-invalid={(tried && invalid) || undefined}
           />
           <FieldDescription>{t("Hint")}</FieldDescription>

@@ -11,6 +11,7 @@ import { useLocale, useTranslations } from "use-intl";
 import { Ltr } from "@/components/ltr";
 import { PageActions } from "@/components/screen";
 import { StatusChip } from "@/components/status-chip";
+import { DateField, TimeField } from "@/components/pickers";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -303,10 +304,8 @@ function DetailsCard({
             render={({ field, fieldState }) => (
               <Field data-invalid={fieldState.invalid || undefined}>
                 <FieldLabel htmlFor="inspection-done-date">{t("Fields.DoneDate")}</FieldLabel>
-                <Input
+                <DateField
                   id="inspection-done-date"
-                  type="date"
-                  dir="ltr"
                   max={today}
                   {...field}
                   aria-invalid={fieldState.invalid || undefined}
@@ -321,10 +320,9 @@ function DetailsCard({
             render={({ field, fieldState }) => (
               <Field data-invalid={fieldState.invalid || undefined}>
                 <FieldLabel htmlFor="inspection-done-time">{t("Fields.DoneTime")}</FieldLabel>
-                <Input
+                <TimeField
                   id="inspection-done-time"
-                  type="time"
-                  dir="ltr"
+                  clearable
                   {...field}
                   aria-invalid={fieldState.invalid || undefined}
                 />

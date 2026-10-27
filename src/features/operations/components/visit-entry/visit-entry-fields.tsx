@@ -1,5 +1,6 @@
 import { Controller, type Control, type FieldPath } from "react-hook-form";
 
+import { DateField, TimeField } from "@/components/pickers";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
@@ -45,7 +46,10 @@ type BooleanPath = Extract<
   | `checklist.${number}.done`
 >;
 
-/** A line of text, a date or a clock time. Dates and times are read left to right, as the academy writes them. */
+/**
+ * A line of text, a date or a clock time. A date or a time is the program's own picker (nothing changes until its
+ * «تأكيد»), with «مسح»: each may be left empty on the order sheet.
+ */
 export function TextField({
   control,
   name,
@@ -85,16 +89,33 @@ export function TextField({
               disabled={disabled}
               aria-invalid={fieldState.invalid || undefined}
             />
+          ) : kind === "date" ? (
+            <DateField
+              id={name}
+              {...field}
+              value={field.value ?? ""}
+              clearable
+              disabled={disabled}
+              aria-invalid={fieldState.invalid || undefined}
+              className="max-w-60"
+            />
+          ) : kind === "time" ? (
+            <TimeField
+              id={name}
+              {...field}
+              value={field.value ?? ""}
+              clearable
+              disabled={disabled}
+              aria-invalid={fieldState.invalid || undefined}
+              className="max-w-60"
+            />
           ) : (
             <Input
               id={name}
               {...field}
               value={field.value ?? ""}
-              type={kind}
-              dir={kind === "text" ? undefined : "ltr"}
               disabled={disabled}
               aria-invalid={fieldState.invalid || undefined}
-              className={cn(kind !== "text" && "max-w-60")}
             />
           )}
           {children}

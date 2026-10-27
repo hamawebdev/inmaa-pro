@@ -9,6 +9,7 @@ import { useTranslations } from "use-intl";
 import { DataTable } from "@/components/data-table-shell";
 import { Ltr } from "@/components/ltr";
 import { SectionHeading } from "@/components/screen";
+import { DateField } from "@/components/pickers";
 import { StatusChip } from "@/components/status-chip";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -22,7 +23,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ZonePicker } from "@/components/zone-picker";
 import {
   listTeamCandidatesQuery,
@@ -41,6 +42,8 @@ import { useCodeLabel } from "@/i18n/use-code-label";
 import { pathKey } from "@/lib/compat/revalidate";
 
 const NEW = "new";
+/** «بلا مركبة» in the vehicle list: the dropdown keeps "" for a field left empty. */
+const NO_VEHICLE = "__none__";
 
 /**
  * The centre's teams, each with its zone, leader, workers and default vehicle, and the register of its vehicles
@@ -319,21 +322,24 @@ function TeamForm({
         </div>
         <div className="grid min-w-0 gap-2 sm:col-span-2">
           <Label htmlFor="team-vehicle">{t("DefaultVehicle")}</Label>
-          <NativeSelect
-            id="team-vehicle"
-            className="w-full"
-            value={vehicleId}
-            onChange={(event) => setVehicleId(event.target.value)}
+          <Select
+            value={vehicleId || NO_VEHICLE}
+            onValueChange={(value) => setVehicleId(value === NO_VEHICLE ? "" : value)}
           >
-            <NativeSelectOption value="">{t("NoVehicle")}</NativeSelectOption>
-            {vehicles
-              .filter((each) => each.status !== "RETIRED" || each.id === vehicleId)
-              .map((each) => (
-                <NativeSelectOption key={each.id} value={each.id}>
-                  {`${each.label} · \u2066${each.plateNumber}\u2069`}
-                </NativeSelectOption>
-              ))}
-          </NativeSelect>
+            <SelectTrigger id="team-vehicle" className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={NO_VEHICLE}>{t("NoVehicle")}</SelectItem>
+              {vehicles
+                .filter((each) => each.status !== "RETIRED" || each.id === vehicleId)
+                .map((each) => (
+                  <SelectItem key={each.id} value={each.id}>
+                    {`${each.label} · \u2066${each.plateNumber}\u2069`}
+                  </SelectItem>
+                ))}
+            </SelectContent>
+          </Select>
         </div>
       </div>
       <div className="space-y-2">
@@ -448,18 +454,18 @@ function VehicleForm({ vehicle, onClose }: { vehicle: VehicleLine | null; onClos
         </div>
         <div className="grid min-w-0 gap-2">
           <Label htmlFor="vehicle-status">{t("Columns.Status")}</Label>
-          <NativeSelect
-            id="vehicle-status"
-            className="w-full"
-            value={status}
-            onChange={(event) => setStatus(event.target.value as VehicleStatus)}
-          >
-            {VEHICLE_STATUSES.map((code) => (
-              <NativeSelectOption key={code} value={code}>
-                {statusLabel(code)}
-              </NativeSelectOption>
-            ))}
-          </NativeSelect>
+          <Select value={status} onValueChange={(value) => setStatus(value as VehicleStatus)}>
+            <SelectTrigger id="vehicle-status" className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {VEHICLE_STATUSES.map((code) => (
+                <SelectItem key={code} value={code}>
+                  {statusLabel(code)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
         <div className="grid min-w-0 gap-2">
           <Label htmlFor="vehicle-seats">{t("Seats")}</Label>
@@ -474,23 +480,11 @@ function VehicleForm({ vehicle, onClose }: { vehicle: VehicleLine | null; onClos
         </div>
         <div className="grid min-w-0 gap-2">
           <Label htmlFor="vehicle-insurance">{t("Columns.Insurance")}</Label>
-          <Input
-            id="vehicle-insurance"
-            type="date"
-            dir="ltr"
-            value={insurance}
-            onChange={(event) => setInsurance(event.target.value)}
-          />
+          <DateField id="vehicle-insurance" clearable value={insurance} onChange={setInsurance} />
         </div>
         <div className="grid min-w-0 gap-2">
           <Label htmlFor="vehicle-inspection">{t("Inspection")}</Label>
-          <Input
-            id="vehicle-inspection"
-            type="date"
-            dir="ltr"
-            value={inspection}
-            onChange={(event) => setInspection(event.target.value)}
-          />
+          <DateField id="vehicle-inspection" clearable value={inspection} onChange={setInspection} />
         </div>
       </div>
       <DialogFooter>

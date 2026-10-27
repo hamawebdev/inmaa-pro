@@ -4,6 +4,7 @@ import { CalendarClock, CalendarX, ChevronDown, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslations } from "use-intl";
 
+import { DateField, TimeField } from "@/components/pickers";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -19,9 +20,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useCan } from "@/hooks/use-session";
 import { useErrorMessage } from "@/i18n/errors";
@@ -148,18 +148,18 @@ function StatusDialog({
           {act !== "reopen" && (
             <div className="grid min-w-0 gap-2">
               <Label htmlFor="visit-status-reason">{t("Reason")}</Label>
-              <NativeSelect
-                id="visit-status-reason"
-                className="w-full"
-                value={reason}
-                onChange={(event) => setReason(event.target.value as VisitStatusReason)}
-              >
-                {VISIT_STATUS_REASONS.map((code) => (
-                  <NativeSelectOption key={code} value={code}>
-                    {reasonLabel(code)}
-                  </NativeSelectOption>
-                ))}
-              </NativeSelect>
+              <Select value={reason} onValueChange={(value) => setReason(value as VisitStatusReason)}>
+                <SelectTrigger id="visit-status-reason" className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {VISIT_STATUS_REASONS.map((code) => (
+                    <SelectItem key={code} value={code}>
+                      {reasonLabel(code)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           )}
           <div className="grid min-w-0 gap-2">
@@ -170,24 +170,11 @@ function StatusDialog({
             <div className="grid min-w-0 gap-4 sm:grid-cols-2">
               <div className="grid min-w-0 gap-2">
                 <Label htmlFor="visit-status-date">{t("NewDate")}</Label>
-                <Input
-                  id="visit-status-date"
-                  type="date"
-                  dir="ltr"
-                  value={newDate}
-                  onChange={(event) => setNewDate(event.target.value)}
-                />
+                <DateField id="visit-status-date" clearable value={newDate} onChange={setNewDate} />
               </div>
               <div className="grid min-w-0 gap-2">
                 <Label htmlFor="visit-status-time">{t("NewTime")}</Label>
-                <Input
-                  id="visit-status-time"
-                  type="time"
-                  dir="ltr"
-                  value={newTime}
-                  disabled={!newDate}
-                  onChange={(event) => setNewTime(event.target.value)}
-                />
+                <TimeField id="visit-status-time" clearable value={newTime} disabled={!newDate} onChange={setNewTime} />
               </div>
             </div>
           )}

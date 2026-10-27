@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { useTranslations } from "use-intl";
 
 import { Ltr } from "@/components/ltr";
+import { DateField, TimeField } from "@/components/pickers";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -311,25 +312,11 @@ function LogProblemForm({ today, onClose }: { today: string; onClose: () => void
           </Field>
           <Field data-invalid={shows("date")}>
             <FieldLabel htmlFor="problem-date">{t("Fields.Date")}</FieldLabel>
-            <Input
-              id="problem-date"
-              type="date"
-              dir="ltr"
-              max={today}
-              value={date}
-              onChange={(event) => setDate(event.target.value)}
-              aria-invalid={shows("date")}
-            />
+            <DateField id="problem-date" max={today} value={date} onChange={setDate} aria-invalid={shows("date")} />
           </Field>
           <Field>
             <FieldLabel htmlFor="problem-time">{t("Fields.Time")}</FieldLabel>
-            <Input
-              id="problem-time"
-              type="time"
-              dir="ltr"
-              value={time}
-              onChange={(event) => setTime(event.target.value)}
-            />
+            <TimeField id="problem-time" clearable value={time} onChange={setTime} />
           </Field>
           {shows("date") && <FieldError className="sm:col-span-3">{t("Log.DateHint")}</FieldError>}
         </div>

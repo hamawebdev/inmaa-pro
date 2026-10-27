@@ -22,7 +22,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { intlLocaleFor } from "@/i18n/config";
-import { useCodeLabel } from "@/i18n/use-code-label";
+import { useServiceCatalogue } from "@/hooks/use-service-catalogue";
 import { staffName } from "@/lib/text/names";
 
 import { addDays } from "../../rules/calendar";
@@ -85,14 +85,14 @@ export function DayBoard({
   const [search, setSearch] = React.useState("");
   const [pagination, setPagination] = React.useState<PaginationState>({ pageIndex: 0, pageSize: 25 });
 
-  const providedLabel = useCodeLabel("Options.ProvidedService");
-  const programmedLabel = useCodeLabel("Options.ProgrammedService");
+  // His two service lists as the manager names them today (Settings › الخدمات), removed services included.
+  const { label: serviceLabel } = useServiceCatalogue();
   const serviceText = React.useCallback(
     (service: BoardService) =>
       service.code
-        ? (service.list === "PROGRAMMED" ? programmedLabel : providedLabel)(service.code)
+        ? serviceLabel(service.list === "PROGRAMMED" ? "PROGRAMMED" : "PROVIDED", service.code)
         : service.customLabel,
-    [providedLabel, programmedLabel],
+    [serviceLabel],
   );
 
   const rows = React.useMemo(() => boardRows(visits, clock, graceMin), [visits, clock, graceMin]);

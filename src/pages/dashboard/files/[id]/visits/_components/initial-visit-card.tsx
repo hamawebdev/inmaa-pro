@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { useLocale, useTranslations } from "use-intl";
 
 import { Ltr } from "@/components/ltr";
+import { DateField, TimeField } from "@/components/pickers";
 import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -143,18 +144,11 @@ function PlanForm({
       <div className="grid min-w-0 gap-4 sm:grid-cols-2">
         <div className="grid min-w-0 gap-2">
           <Label htmlFor="initial-date">{t("Date")}</Label>
-          <Input
-            id="initial-date"
-            type="date"
-            dir="ltr"
-            min={today}
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-          />
+          <DateField id="initial-date" min={today} value={date} onChange={setDate} />
         </div>
         <div className="grid min-w-0 gap-2">
           <Label htmlFor="initial-time">{t("Time")}</Label>
-          <Input id="initial-time" type="time" dir="ltr" value={time} onChange={(e) => setTime(e.target.value)} />
+          <TimeField id="initial-time" value={time} onChange={setTime} />
         </div>
         <div className="grid min-w-0 gap-2">
           <Label htmlFor="initial-hours">{t("Hours")}</Label>

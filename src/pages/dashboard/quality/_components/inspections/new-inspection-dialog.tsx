@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { useTranslations } from "use-intl";
 
 import { Ltr } from "@/components/ltr";
+import { DateField } from "@/components/pickers";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -17,7 +18,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Field, FieldDescription, FieldError, FieldLabel } from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useCentreClock } from "@/features/operations/components/use-centre-clock";
 import { isIsoDate } from "@/features/operations/rules/calendar";
@@ -174,12 +174,10 @@ function NewInspectionForm({ onClose }: { onClose: () => void }) {
         <div className="grid gap-4 sm:grid-cols-2">
           <Field data-invalid={shows("date") || undefined}>
             <FieldLabel htmlFor="inspection-date">{t("PlannedDate")}</FieldLabel>
-            <Input
+            <DateField
               id="inspection-date"
-              type="date"
-              dir="ltr"
               value={plannedDate}
-              onChange={(event) => setPlannedDate(event.target.value)}
+              onChange={setPlannedDate}
               aria-invalid={shows("date") || undefined}
             />
             {shows("date") && <FieldError>{t("Required")}</FieldError>}

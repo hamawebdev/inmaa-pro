@@ -26,7 +26,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ZonePicker } from "@/components/zone-picker";
 import {
   listWorkerZonesQuery,
@@ -190,20 +190,20 @@ export function WorkersByZone({ tabs }: { tabs: React.ReactNode }) {
             firstPage();
           }}
         />
-        <NativeSelect
-          aria-label={t("Columns.Zone")}
-          className="w-52"
-          value={zoneFilter}
-          onChange={(event) => setZoneFilter(event.target.value)}
-        >
-          <NativeSelectOption value={ALL}>{t("AllZones")}</NativeSelectOption>
-          {(zones.data ?? []).map((zone) => (
-            <NativeSelectOption key={zone.id} value={zone.id}>
-              {zone.name}
-            </NativeSelectOption>
-          ))}
-          <NativeSelectOption value={NONE}>{t("NoZone")}</NativeSelectOption>
-        </NativeSelect>
+        <Select value={zoneFilter} onValueChange={setZoneFilter}>
+          <SelectTrigger aria-label={t("Columns.Zone")} className="w-52">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={ALL}>{t("AllZones")}</SelectItem>
+            {(zones.data ?? []).map((zone) => (
+              <SelectItem key={zone.id} value={zone.id}>
+                {zone.name}
+              </SelectItem>
+            ))}
+            <SelectItem value={NONE}>{t("NoZone")}</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
       {workers.isError ? (
         <ErrorState onRetry={() => void workers.refetch()} />

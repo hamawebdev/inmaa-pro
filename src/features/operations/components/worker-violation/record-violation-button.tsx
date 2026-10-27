@@ -16,7 +16,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useSectionLevel } from "@/hooks/use-session";
 import { useErrorMessage } from "@/i18n/errors";
@@ -122,18 +122,18 @@ function RecordViolationForm({
       </DialogHeader>
       <div className="grid min-w-0 gap-2">
         <Label htmlFor="violation-worker">{t("Worker")}</Label>
-        <NativeSelect
-          id="violation-worker"
-          className="w-full"
-          value={workerId}
-          onChange={(event) => choose(event.target.value)}
-        >
-          {candidates.map((each) => (
-            <NativeSelectOption key={each.workerId} value={each.workerId}>
-              {each.name}
-            </NativeSelectOption>
-          ))}
-        </NativeSelect>
+        <Select value={workerId} onValueChange={choose}>
+          <SelectTrigger id="violation-worker" className="w-full">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {candidates.map((each) => (
+              <SelectItem key={each.workerId} value={each.workerId}>
+                {each.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
       <div className="grid min-w-0 gap-2">
         <Label htmlFor="violation-description">{t("What")}</Label>

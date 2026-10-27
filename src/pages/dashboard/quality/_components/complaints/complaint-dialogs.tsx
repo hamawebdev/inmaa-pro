@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { useTranslations } from "use-intl";
 
 import { Ltr } from "@/components/ltr";
+import { DateField, TimeField } from "@/components/pickers";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -261,26 +262,18 @@ function SettleForm({ complaint, today, onClose }: { complaint: ComplaintDetail;
             <div className="grid gap-4 sm:grid-cols-2">
               <Field data-invalid={shows("date")}>
                 <FieldLabel htmlFor="settle-redo-date">{t("Settle.RedoDate")}</FieldLabel>
-                <Input
+                <DateField
                   id="settle-redo-date"
-                  type="date"
-                  dir="ltr"
                   min={today}
                   value={redoDate}
-                  onChange={(event) => setRedoDate(event.target.value)}
+                  onChange={setRedoDate}
                   aria-invalid={shows("date")}
                 />
                 {shows("date") && <FieldError>{t("New.Required")}</FieldError>}
               </Field>
               <Field>
                 <FieldLabel htmlFor="settle-redo-time">{t("Settle.RedoTime")}</FieldLabel>
-                <Input
-                  id="settle-redo-time"
-                  type="time"
-                  dir="ltr"
-                  value={redoTime}
-                  onChange={(event) => setRedoTime(event.target.value)}
-                />
+                <TimeField id="settle-redo-time" clearable value={redoTime} onChange={setRedoTime} />
               </Field>
             </div>
             {complaint.repeatableVisits.length > 1 ? (

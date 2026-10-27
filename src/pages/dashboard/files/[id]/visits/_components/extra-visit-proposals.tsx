@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { useLocale, useTranslations } from "use-intl";
 
 import { Ltr } from "@/components/ltr";
+import { DateField, TimeField } from "@/components/pickers";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -133,23 +134,11 @@ function PlanDialog({ proposal, onClose }: { proposal: ExtraVisitProposal | null
           <div className="grid min-w-0 gap-4 sm:grid-cols-3">
             <div className="grid min-w-0 gap-2">
               <Label htmlFor="extra-date">{t("Date")}</Label>
-              <Input
-                id="extra-date"
-                type="date"
-                dir="ltr"
-                value={date}
-                onChange={(event) => setDate(event.target.value)}
-              />
+              <DateField id="extra-date" value={date} onChange={setDate} />
             </div>
             <div className="grid min-w-0 gap-2">
               <Label htmlFor="extra-time">{t("Time")}</Label>
-              <Input
-                id="extra-time"
-                type="time"
-                dir="ltr"
-                value={time || proposal?.plannedStartTime || ""}
-                onChange={(event) => setTime(event.target.value)}
-              />
+              <TimeField id="extra-time" value={time || proposal?.plannedStartTime || ""} onChange={setTime} />
             </div>
             <div className="grid min-w-0 gap-2">
               <Label htmlFor="extra-workers">{t("Workers")}</Label>

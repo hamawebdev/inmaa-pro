@@ -18,8 +18,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useErrorMessage } from "@/i18n/errors";
 import { useCodeLabel } from "@/i18n/use-code-label";
@@ -127,18 +127,18 @@ export function ReplacementDialog({
         <form onSubmit={submit} className="space-y-5">
           <div className="grid min-w-0 gap-2">
             <Label htmlFor="replacement-reason">{t("ReplaceReason")}</Label>
-            <NativeSelect
-              id="replacement-reason"
-              className="w-full"
-              value={reason}
-              onChange={(event) => setReason(event.target.value as ReplacementReason)}
-            >
-              {REPLACEMENT_REASONS.map((code) => (
-                <NativeSelectOption key={code} value={code}>
-                  {reasonLabel(code)}
-                </NativeSelectOption>
-              ))}
-            </NativeSelect>
+            <Select value={reason} onValueChange={(value) => setReason(value as ReplacementReason)}>
+              <SelectTrigger id="replacement-reason" className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {REPLACEMENT_REASONS.map((code) => (
+                  <SelectItem key={code} value={code}>
+                    {reasonLabel(code)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           {suggestions.isPending ? (
             <Skeleton className="h-48 w-full" />

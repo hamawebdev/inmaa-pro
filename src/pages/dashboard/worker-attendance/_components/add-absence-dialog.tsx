@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { useTranslations } from "use-intl";
 
 import { Ltr } from "@/components/ltr";
+import { DateField, TimeField } from "@/components/pickers";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -223,24 +224,24 @@ function AbsenceForm({
         <div className="grid gap-4 sm:grid-cols-2">
           <Field data-invalid={shows("dates")}>
             <FieldLabel htmlFor="absence-from">{t("From")}</FieldLabel>
-            <Input
+            <DateField
               id="absence-from"
-              type="date"
-              dir="ltr"
               value={startDate}
-              onChange={(event) => setStartDate(event.target.value)}
+              onChange={(value) => {
+                setStartDate(value);
+                // The last day follows a first day moved past it, as its `min` asks.
+                if (isIsoDate(value) && endDate < value) setEndDate(value);
+              }}
               aria-invalid={shows("dates")}
             />
           </Field>
           <Field data-invalid={shows("dates")}>
             <FieldLabel htmlFor="absence-to">{t("To")}</FieldLabel>
-            <Input
+            <DateField
               id="absence-to"
-              type="date"
-              dir="ltr"
               value={endDate}
-              min={startDate}
-              onChange={(event) => setEndDate(event.target.value)}
+              min={startDate || undefined}
+              onChange={setEndDate}
               aria-invalid={shows("dates")}
             />
           </Field>
@@ -291,25 +292,11 @@ function AbsenceForm({
           <div className="grid gap-4 sm:grid-cols-2">
             <Field data-invalid={shows("times")}>
               <FieldLabel htmlFor="absence-start">{t("StartTime")}</FieldLabel>
-              <Input
-                id="absence-start"
-                type="time"
-                dir="ltr"
-                value={startTime}
-                onChange={(event) => setStartTime(event.target.value)}
-                aria-invalid={shows("times")}
-              />
+              <TimeField id="absence-start" value={startTime} onChange={setStartTime} aria-invalid={shows("times")} />
             </Field>
             <Field data-invalid={shows("times")}>
               <FieldLabel htmlFor="absence-end">{t("EndTime")}</FieldLabel>
-              <Input
-                id="absence-end"
-                type="time"
-                dir="ltr"
-                value={endTime}
-                onChange={(event) => setEndTime(event.target.value)}
-                aria-invalid={shows("times")}
-              />
+              <TimeField id="absence-end" value={endTime} onChange={setEndTime} aria-invalid={shows("times")} />
             </Field>
             {shows("times") && <FieldError className="sm:col-span-2">{t("Required")}</FieldError>}
           </div>

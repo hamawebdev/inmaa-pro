@@ -16,7 +16,7 @@ import { toast } from "sonner";
 import { useTranslations } from "use-intl";
 
 import { StatCard } from "@/components/stat-card";
-import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useCentreClock } from "@/hooks/use-centre-clock";
 import { useSectionLevel } from "@/hooks/use-session";
 import { useErrorMessage } from "@/i18n/errors";
@@ -92,6 +92,9 @@ export function TodayTiles() {
   );
 }
 
+/** The supervisor filter's «all supervisors»: our dropdown keeps "" for a field left empty. */
+const ALL_SUPERVISORS = "__all__";
+
 export function HomeDayBoard() {
   const t = useTranslations("DayBoard");
   const errorMessage = useErrorMessage();
@@ -127,22 +130,25 @@ export function HomeDayBoard() {
       clock={clock}
       onReportArrival={mayWrite ? reportArrival : undefined}
       controls={
-        <NativeSelect
-          aria-label={t("Supervisor")}
-          className="w-56"
-          value={supervisorId ?? ""}
-          onChange={(event) => setPicked(event.target.value || null)}
+        <Select
+          value={supervisorId ?? ALL_SUPERVISORS}
+          onValueChange={(value) => setPicked(value === ALL_SUPERVISORS ? null : value)}
         >
-          <NativeSelectOption value="">{t("AllSupervisors")}</NativeSelectOption>
-          {supervisorId && !supervisors.some(([id]) => id === supervisorId) && (
-            <NativeSelectOption value={supervisorId}>{t("MyVisits")}</NativeSelectOption>
-          )}
-          {supervisors.map(([id, name]) => (
-            <NativeSelectOption key={id} value={id}>
-              {name}
-            </NativeSelectOption>
-          ))}
-        </NativeSelect>
+          <SelectTrigger aria-label={t("Supervisor")} className="w-56">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={ALL_SUPERVISORS}>{t("AllSupervisors")}</SelectItem>
+            {supervisorId && !supervisors.some(([id]) => id === supervisorId) && (
+              <SelectItem value={supervisorId}>{t("MyVisits")}</SelectItem>
+            )}
+            {supervisors.map(([id, name]) => (
+              <SelectItem key={id} value={id}>
+                {name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       }
     />
   );

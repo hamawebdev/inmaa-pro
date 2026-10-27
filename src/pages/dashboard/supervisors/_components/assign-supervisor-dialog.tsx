@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useTranslations } from "use-intl";
 
+import { DateField } from "@/components/pickers";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -13,9 +14,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   assignZoneSupervisorAction,
   listSupervisorCandidatesQuery,
@@ -92,31 +92,27 @@ function AssignForm({ zone, today, onClose }: { zone: ZoneLine; today: string; o
       </DialogHeader>
       <div className="grid min-w-0 gap-2">
         <Label htmlFor="zone-supervisor">{t("AssignDialog.Supervisor")}</Label>
-        <NativeSelect
-          id="zone-supervisor"
-          className="w-full"
-          value={supervisorId}
-          disabled={candidates.isPending}
-          onChange={(event) => setSupervisorId(event.target.value)}
-        >
-          <NativeSelectOption value="">{t("AssignDialog.Choose")}</NativeSelectOption>
-          {(candidates.data ?? []).map((each) => (
-            <NativeSelectOption key={each.id} value={each.id}>
-              {each.jobPosition === "SUPERVISOR" ? `${each.name} · ${t("AssignDialog.Post")}` : each.name}
-            </NativeSelectOption>
-          ))}
-        </NativeSelect>
+        <Select value={supervisorId} disabled={candidates.isPending} onValueChange={setSupervisorId}>
+          <SelectTrigger id="zone-supervisor" className="w-full">
+            <SelectValue placeholder={t("AssignDialog.Choose")} />
+          </SelectTrigger>
+          <SelectContent>
+            {(candidates.data ?? []).map((each) => (
+              <SelectItem key={each.id} value={each.id}>
+                {each.jobPosition === "SUPERVISOR" ? `${each.name} · ${t("AssignDialog.Post")}` : each.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
       <div className="grid min-w-0 gap-2">
         <Label htmlFor="zone-supervisor-from">{t("AssignDialog.FromDate")}</Label>
-        <Input
+        <DateField
           id="zone-supervisor-from"
-          type="date"
-          dir="ltr"
           className="w-full sm:w-56"
           min={today}
           value={fromDate}
-          onChange={(event) => setFromDate(event.target.value)}
+          onChange={setFromDate}
         />
       </div>
       <DialogFooter>

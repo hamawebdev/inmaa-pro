@@ -9,7 +9,7 @@ import { ErrorState } from "@/components/error-state";
 import { Ltr } from "@/components/ltr";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ZonePicker } from "@/components/zone-picker";
 import { addDays } from "@/features/operations/rules/calendar";
@@ -29,6 +29,9 @@ import { intlLocaleFor } from "@/i18n/config";
 import { useErrorMessage } from "@/i18n/errors";
 import { useSearchParams } from "react-router-dom";
 import { pathKey } from "@/lib/compat/revalidate";
+
+/** «بلا مركبة» in the vehicle list: the dropdown keeps "" for a field left empty. */
+const NO_VEHICLE = "__none__";
 
 /**
  * A team's day in order, by zone (#46): each team's visits of the day in the order it goes, with its vehicle;
@@ -138,22 +141,25 @@ export function TeamDayView({ tabs }: { tabs: React.ReactNode }) {
                 <CardContent className="space-y-3">
                   <div className="flex min-w-0 items-center gap-3">
                     <span className="text-sm font-bold">{t("Vehicle")}</span>
-                    <NativeSelect
-                      aria-label={t("Vehicle")}
-                      className="min-w-0 flex-1"
-                      value={vehicleOf(team) ?? ""}
+                    <Select
+                      value={vehicleOf(team) ?? NO_VEHICLE}
                       disabled={!writes || busy || own.length === 0}
-                      onChange={(event) => void save(team, ids, event.target.value || null)}
+                      onValueChange={(value) => void save(team, ids, value === NO_VEHICLE ? null : value)}
                     >
-                      <NativeSelectOption value="">{t("NoVehicle")}</NativeSelectOption>
-                      {(vehicles.data ?? [])
-                        .filter((vehicle) => vehicle.status === "ACTIVE")
-                        .map((vehicle) => (
-                          <NativeSelectOption key={vehicle.id} value={vehicle.id}>
-                            {`${vehicle.label} · \u2066${vehicle.plateNumber}\u2069`}
-                          </NativeSelectOption>
-                        ))}
-                    </NativeSelect>
+                      <SelectTrigger aria-label={t("Vehicle")} className="min-w-0 flex-1">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={NO_VEHICLE}>{t("NoVehicle")}</SelectItem>
+                        {(vehicles.data ?? [])
+                          .filter((vehicle) => vehicle.status === "ACTIVE")
+                          .map((vehicle) => (
+                            <SelectItem key={vehicle.id} value={vehicle.id}>
+                              {`${vehicle.label} · \u2066${vehicle.plateNumber}\u2069`}
+                            </SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   {own.length === 0 ? (
                     <p className="text-sm text-muted-foreground">{t("NoVisitYet")}</p>
@@ -225,24 +231,26 @@ export function TeamDayView({ tabs }: { tabs: React.ReactNode }) {
                 <li key={visit.id} className="flex min-w-0 flex-wrap items-center gap-3 px-3 py-2">
                   <VisitText visit={visit} />
                   {writes && shownTeams.length > 0 && (
-                    <NativeSelect
-                      aria-label={t("GiveTo")}
-                      className="w-52"
+                    <Select
                       value=""
                       disabled={busy}
-                      onChange={(event) => {
-                        const team = shownTeams.find((each) => each.id === event.target.value);
+                      onValueChange={(value) => {
+                        const team = shownTeams.find((each) => each.id === value);
                         if (team)
                           void save(team, [...ofTeam(team.id).map((each) => each.id), visit.id], vehicleOf(team));
                       }}
                     >
-                      <NativeSelectOption value="">{t("GiveTo")}</NativeSelectOption>
-                      {shownTeams.map((team) => (
-                        <NativeSelectOption key={team.id} value={team.id}>
-                          {team.name}
-                        </NativeSelectOption>
-                      ))}
-                    </NativeSelect>
+                      <SelectTrigger aria-label={t("GiveTo")} className="w-52">
+                        <SelectValue placeholder={t("GiveTo")} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {shownTeams.map((team) => (
+                          <SelectItem key={team.id} value={team.id}>
+                            {team.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   )}
                 </li>
               ))}

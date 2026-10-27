@@ -1,5 +1,5 @@
+import { serviceLabels } from "@/features/core/services/service-catalogue";
 import { newId } from "@/lib/db/rows";
-import { PROVIDED_SERVICE_AR, type ProvidedService } from "@/lib/options";
 import type { Executor, ServiceContext } from "@/lib/service/context";
 
 import { tasksForVisit, tasksToCarryOver, type FileTaskRule } from "../rules/visit-tasks";
@@ -10,7 +10,8 @@ import type { ChecklistKind, TaskFrequency } from "../validators/option-codes";
  * A file's task list (#13) and the tick lines of each visit.
  *
  * The office edits the list on File › المهام; a tick of «الخدمات المقدمة»
- * seeds one daily task with the form's own words. A visit's lines are computed
+ * seeds one daily task with the service's Arabic name as the manager names it
+ * today (Settings › الخدمات). A visit's lines are computed
  * from the list (daily, weekly, monthly, special, and what the visit before
  * left undone), then frozen on the visit when its order is first printed, or
  * when its returned order is first typed in. From then on the visit keeps its
@@ -36,8 +37,9 @@ export async function seedTasksFromServices(ex: Executor, ctx: ServiceContext, f
   const labels = new Set(existing.map((task) => task.label));
   let sortOrder = existing.reduce((max, task) => Math.max(max, task.sortOrder), 0);
   let written = 0;
+  const words = await serviceLabels(ex, "PROVIDED");
   for (const tick of ticks) {
-    const word = tick.code ? PROVIDED_SERVICE_AR[tick.code as ProvidedService] : null;
+    const word = tick.code ? (words.get(tick.code) ?? null) : null;
     const label = word && tick.customLabel ? `${word}: ${tick.customLabel}` : (word ?? tick.customLabel);
     if (!label) continue;
     if (tick.code ? seededCodes.has(tick.code) : labels.has(label)) continue;

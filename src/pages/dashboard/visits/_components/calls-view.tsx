@@ -21,7 +21,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { addDays } from "@/features/operations/rules/calendar";
 import { listCallsForDayQuery, recordVisitCallAction, type CallLine } from "@/features/operations/services/calls";
@@ -240,18 +240,18 @@ function CallForm({ line, onClose }: { line: CallLine; onClose: () => void }) {
       </DialogHeader>
       <div className="grid min-w-0 gap-2">
         <Label htmlFor="call-result">{t("Columns.Result")}</Label>
-        <NativeSelect
-          id="call-result"
-          className="w-full"
-          value={result}
-          onChange={(event) => setResult(event.target.value as CallResult)}
-        >
-          {CALL_RESULTS.map((code) => (
-            <NativeSelectOption key={code} value={code}>
-              {resultLabel(code)}
-            </NativeSelectOption>
-          ))}
-        </NativeSelect>
+        <Select value={result} onValueChange={(value) => setResult(value as CallResult)}>
+          <SelectTrigger id="call-result" className="w-full">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {CALL_RESULTS.map((code) => (
+              <SelectItem key={code} value={code}>
+                {resultLabel(code)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         {(result === "POSTPONE_REQUESTED" || result === "CANCEL_REQUESTED") && (
           <p className="text-sm text-muted-foreground">{t("ChangeOnVisit")}</p>
         )}

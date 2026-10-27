@@ -7,8 +7,9 @@ import { toast } from "sonner";
 import { useTranslations } from "use-intl";
 import type { z } from "zod";
 
-import { Button } from "@/components/ui/button";
 import { TableSearch } from "@/components/data-table-shell";
+import { DateField } from "@/components/pickers";
+import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
@@ -439,11 +440,15 @@ function TypedTaskFields({ form }: { form: UseFormReturn<TypedValues> }) {
           render={({ field, fieldState }) => (
             <Field data-invalid={fieldState.invalid}>
               <FieldLabel htmlFor="task-date">{t("SpecialDate")}</FieldLabel>
-              <Input
+              {/* Empty is allowed: the task waits until it is given its date. */}
+              <DateField
                 id="task-date"
-                type="date"
+                name={field.name}
+                ref={field.ref}
+                onBlur={field.onBlur}
                 value={field.value ?? ""}
-                onChange={(event) => field.onChange(event.target.value === "" ? null : event.target.value)}
+                onChange={(value) => field.onChange(value === "" ? null : value)}
+                clearable
                 aria-invalid={fieldState.invalid}
               />
               <FieldError>{errorMessage(fieldState.error?.message)}</FieldError>
