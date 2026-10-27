@@ -32,7 +32,7 @@ On the eleven routes of the second pass (every screen above but the suspended an
 - page and surface colours, identical token for token to the academy's in light and in dark;
 - `dir` and `lang` (`rtl`/`ar`, `ltr`/`fr`), with French headings on every route and French labels on the shots looked at (the day board and the workers list).
 
-Intended differences, not listed below: the lists follow the academy's newer table and chips where its own employees list is of the older generation (rule 2); native date fields and file buttons are left as the academy has them (CLAUDE.md), so «Choose File» and `mm/dd/yyyy` show in an Arabic window there too.
+Intended differences, not listed below: the lists follow the academy's newer table and chips where its own employees list is of the older generation (rule 2); file buttons are left as the academy has them (CLAUDE.md), so «Choose File» shows in an Arabic window there too. Since 2026-10-22 dates, times, periods and dropdowns are the program's own pickers, applied on «تأكيد» (the developer's decision 8 in docs/scope.md), where the academy has native date fields and lists that apply on the click.
 
 ## Rulings
 
