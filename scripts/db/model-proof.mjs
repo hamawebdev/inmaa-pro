@@ -19,12 +19,13 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 
-import { MIGRATIONS_DIR, parseSchema, ROOT } from "./schema-tools.mjs";
+import { MIGRATIONS_DIR, modelsOfInit, ROOT } from "./schema-tools.mjs";
 
 const TAPE_FILE = resolve(ROOT, "src-tauri/proof/model-proof.tape.json");
 const LOG_FILE = resolve(ROOT, "src-tauri/proof/model-proof.txt");
 
-const models = parseSchema();
+// The proof runs on 0001 alone: the tables of later migrations are proven by their owners' tests.
+const models = modelsOfInit();
 const db = new DatabaseSync(":memory:");
 db.exec("PRAGMA foreign_keys = ON; PRAGMA recursive_triggers = ON;");
 // The schema only. The seed migration is data, and the proof writes its own rows.

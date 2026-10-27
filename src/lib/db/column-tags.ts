@@ -16,6 +16,8 @@ export const COLUMN_TAGS: Record<string, Record<string, string>> = {
   Upload: { kind: "code:PHOTO_KIND" },
   Commune: { wilayaCode: "code:WILAYA", nameKey: "key" },
   BackupRun: { kind: "code:BACKUP_KIND", heads: "json", lastInvoiceDate: "date" },
+  CatalogueService: { list: "code:SERVICE_LIST", code: "code:PROVIDED_SERVICE" },
+  CatalogueServiceDivision: { division: "code:DIVISION" },
   StaffMember: { kind: "code:STAFF_KIND", numberSuffix: "code:REG_SUFFIX", registrationDate: "date", sex: "code:SEX", birthDate: "date", birthWilayaCode: "code:WILAYA", maritalStatus: "code:MARITAL_STATUS", abilities: "codes:ABILITY", availableDays: "codes:WEEKDAY", pledgeSignedDate: "date", regulationsAckDate: "date", issuedDate: "date", nameKey: "key", nameLatinKey: "key", phoneKeys: "key", photoUrl: "url", engagementStatus: "code:ENGAGEMENT_STATUS", leftDate: "date", role: "code:WORKER_ROLE", skillCodes: "codes:SKILL", collectAuthFrom: "date", trainingCompletedDate: "date", jobPosition: "code:JOB_POSITION", cvUrl: "url", employmentContract: "code:EMPLOYMENT_CONTRACT", workTimeKind: "code:WORK_TIME", startDate: "date", contractEndDate: "date", weeklyCapacityMin: "min", payBasis: "code:PAY_BASIS", payRate: "money", payPeriod: "code:PAY_PERIOD", wageMethod: "code:PAYMENT_METHOD", leaveOpeningDays: "qty", leaveOpeningDate: "date" },
   StaffConfidential: { conditions: "codes:HEALTH_CONDITION", evaluatedDate: "date", signedFormScanUrl: "url" },
   StaffEvent: { kind: "code:STAFF_EVENT_KIND", date: "date", fromStatus: "code:ENGAGEMENT_STATUS", toStatus: "code:ENGAGEMENT_STATUS", payBasis: "code:PAY_BASIS", payRate: "money", payPeriod: "code:PAY_PERIOD", weeklyCapacityMin: "min" },

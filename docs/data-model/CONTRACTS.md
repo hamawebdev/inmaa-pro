@@ -29,6 +29,7 @@ F Foundation, P People, C Clients and contracts, O Operations, M Money and stock
 | `Commune` | F (`ensureCommune`, `ensureZoneForCommune`, `remapCommune`, called by C and P) | P, C (address pickers); O, M (zone of a place) |
 | `Zone` | F | P (worker's zone), C (site's zone), O (supervisors, teams, vehicles, visits), M (analytics by zone) |
 | `BackupRun` | F | F |
+| `CatalogueService`, `CatalogueServiceDivision` | F (Settings › الخدمات, `saveServiceCatalogue`) | C (the service rows of his forms, through `listServiceCatalogue`), O (task and board labels, through `serviceLabels`) |
 
 ### People
 
@@ -124,9 +125,12 @@ Names are proposals; the plain-words column is the contract. Every function take
 | `<CommunePicker>`, `<ZonePicker>` (`src/components/`) | a place on a screen: `{ wilayaCode, communeId }`; a zone id | the wilaya of 69 then its commune, with an add action; the active zones |
 | `ensureZoneForCommune(communeId)` | called by C when a site is saved and by P when a worker's residence is saved | the zone id of that commune, creating a zone named after it when none exists (A9) |
 | `remapCommune(communeId, zoneId)` | Settings › قواعد العمل | changes the commune's zone and emits `zone.remapped` |
+| `listServiceCatalogue()`, `useServiceCatalogue()` | | his two service lists: every service, removed ones included, with its three names and its place in each division. C resolves its forms' service rows from it (`resolveDefinition`) |
+| `serviceLabels(list)` | PROVIDED or PROGRAMMED | each code's Arabic name, removed services included: O's task labels, C's scheduling export |
+| `saveServiceCatalogue({ list, services })` | Settings › الخدمات | the whole edited list: services added, renamed, removed or restored, their divisions and places. SETTINGS WRITE and `settings.rules`; one CHANGE entry per change |
 | `normaliseName(text)`, `phoneKey(text)` | | the search keys used by «قديم», list search and the sanction check |
 | Settings slots | `registerSettingsPanel({ tab, title, component })` | each owner mounts its own editor on Foundation's settings pages: P training days and skills; O inspection criteria; C clause text. Foundation never writes those tables |
-| Pickers and fields | | `<BranchSelect>`, `<ZonePicker>`, `<WilayaPicker>`, `<CommunePicker>` (with "add"), the code-list tick group, yes/no, date, time, phone, money and period fields |
+| Pickers and fields | | `<BranchSelect>`, `<ZonePicker>`, `<WilayaPicker>`, `<CommunePicker>` (with "add"), the code-list tick group, yes/no, date, time, phone, money and period fields. Dates, times, periods and every choice from a list are the program's own pickers (`src/components/pickers/`, `ui/select.tsx`): a change applies only when its «تأكيد» is pressed, and no browser or system picker opens (the developer, 2026-10-22) |
 | Units and words | | centimes, minutes, thousandths and basis-point helpers; Saturday-week helpers; amount in words in Arabic and French |
 | Home and hub slots | | the home page mounts O's tiles and day board and every owner's alert tiles |
 

@@ -63,19 +63,32 @@ describe("the shared option lists", () => {
   });
 });
 
-describe("the service catalogues of his forms", () => {
+describe("his service lists as migration 0003 seeded them", () => {
   it("offer each division its own subset, in print order", async () => {
-    const { PROVIDED_SERVICES_OF, PROGRAMMED_SERVICES_OF, PROVIDED_SERVICE_AR, PROGRAMMED_SERVICE_HEADING_AR } =
-      await import("./index");
+    const { SEED_PROVIDED_SERVICES, SEED_PROVIDED_SERVICES_OF, SEED_PROGRAMMED_SERVICES, SEED_PROGRAMMED_SERVICES_OF } =
+      await import("./service-catalogue-seed");
 
+    expect([SEED_PROVIDED_SERVICES.length, SEED_PROGRAMMED_SERVICES.length]).toEqual([35, 13]);
     expect([
-      PROVIDED_SERVICES_OF.HOUSING.length,
-      PROVIDED_SERVICES_OF.ORGANISATION.length,
-      PROVIDED_SERVICES_OF.BUILDING.length,
+      SEED_PROVIDED_SERVICES_OF.HOUSING.length,
+      SEED_PROVIDED_SERVICES_OF.ORGANISATION.length,
+      SEED_PROVIDED_SERVICES_OF.BUILDING.length,
     ]).toEqual([13, 20, 20]);
-    expect(PROVIDED_SERVICES_OF.COMPLEX).toEqual(PROVIDED_SERVICES_OF.BUILDING);
-    expect([PROGRAMMED_SERVICES_OF.HOUSING.length, PROGRAMMED_SERVICES_OF.ORGANISATION.length]).toEqual([12, 11]);
-    expect(PROVIDED_SERVICE_AR[PROVIDED_SERVICES_OF.BUILDING[1]]).toBe("الساحات");
-    expect(PROGRAMMED_SERVICE_HEADING_AR.HOUSING).toBe("نوع الخدمة المبرمجة");
+    expect(SEED_PROVIDED_SERVICES_OF.COMPLEX).toEqual(SEED_PROVIDED_SERVICES_OF.BUILDING);
+    expect([SEED_PROGRAMMED_SERVICES_OF.HOUSING.length, SEED_PROGRAMMED_SERVICES_OF.ORGANISATION.length]).toEqual([
+      12, 11,
+    ]);
+    const words = new Map(SEED_PROVIDED_SERVICES.map((service) => [service.code, service.ar]));
+    expect(words.get(SEED_PROVIDED_SERVICES_OF.BUILDING[1])).toBe("الساحات");
+    // Every service of a division is one of his, and each has its three names.
+    for (const [list, of] of [
+      [SEED_PROVIDED_SERVICES, SEED_PROVIDED_SERVICES_OF],
+      [SEED_PROGRAMMED_SERVICES, SEED_PROGRAMMED_SERVICES_OF],
+    ] as const) {
+      const codes = new Set(list.map((service) => service.code));
+      expect(codes.size).toBe(list.length);
+      for (const division of Object.values(of)) for (const code of division) expect(codes.has(code), code).toBe(true);
+      for (const service of list) expect([service.ar, service.fr, service.en].every(Boolean), service.code).toBe(true);
+    }
   });
 });

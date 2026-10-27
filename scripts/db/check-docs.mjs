@@ -355,8 +355,27 @@ for (const f of ["DESIGN.md", "CONTRACTS.md", "OPTION-CODES.md", "BUILD-NOTES.md
     else differ(`shared list ${listName} (OPTION-CODES / src/lib/options)`, documented, new Set(listCodes));
     sharedChecked += 1;
   }
-  // Each division's subset of the two service catalogues, in print order, against the table's "col, row" cells.
-  const { PROVIDED_SERVICES_OF, PROGRAMMED_SERVICES_OF } = await import(resolve(ROOT, "src/lib/options/index.ts"));
+  // His two service lists as migration 0003 seeded them (the manager edits them since, in Settings › الخدمات):
+  // the codes, and each division's subset in print order, against the tables and their "col, row" cells.
+  const {
+    SEED_PROVIDED_SERVICES,
+    SEED_PROGRAMMED_SERVICES,
+    SEED_PROVIDED_SERVICES_OF: PROVIDED_SERVICES_OF,
+    SEED_PROGRAMMED_SERVICES_OF: PROGRAMMED_SERVICES_OF,
+  } = await import(resolve(ROOT, "src/lib/options/service-catalogue-seed.ts"));
+  for (const [listName, seeded] of [
+    ["PROVIDED_SERVICE", SEED_PROVIDED_SERVICES],
+    ["PROGRAMMED_SERVICE", SEED_PROGRAMMED_SERVICES],
+  ]) {
+    const documented = sharedListCodes(listName);
+    if (!documented.size) say(`${listName} is not a list of OPTION-CODES.md`);
+    else
+      differ(
+        `seeded list ${listName} (OPTION-CODES / service-catalogue-seed)`,
+        documented,
+        new Set(seeded.map((service) => service.code)),
+      );
+  }
   const subsets = (name, column) => {
     const section = codes.split(new RegExp(`^### ${name}\\b.*$`, "m"))[1]?.split(/^### /m)[0] ?? "";
     return [...section.matchAll(/^\| `([A-Z][A-Z0-9_]*)` \|.*$/gm)]

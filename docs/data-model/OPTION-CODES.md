@@ -216,6 +216,8 @@ Labels that differ between sibling forms and are properties of the form definiti
 
 ### PROVIDED_SERVICE «الخدمات المقدمة»: one catalogue, each form a subset in its own order
 
+**The manager's since 2026-10-22.** This list and PROGRAMMED_SERVICE are rows (`CatalogueService`, `CatalogueServiceDivision`) edited in Settings › الخدمات: services added (coded `ADDED_1`, `ADDED_2`… in each list, never reused), renamed in three languages, removed (no longer offered; the files that tick one keep it), given divisions, moved within a division. The two tables below are what migration 0003 seeded, from his six forms (`src/lib/options/service-catalogue-seed.ts`; `scripts/db/check-docs.mjs` holds them against it). On paper each division's services fill the columns of its form in its order, each column ending with his blank lines (`resolveDefinition`); with these seeded lists that is exactly the layout below.
+
 Print order is column by column, first column on the right.
 
 | Code | Label | Housing F5, F6 (13 + 3 blank boxes) | Organisation F3, F4 (20 + 4 blank lines) | Building F2 (20, no blank) |

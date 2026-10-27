@@ -206,6 +206,30 @@ export interface BackupRunTable {
   userId: string | null;
 }
 
+export interface CatalogueServiceTable {
+  id: string;
+  list: string;
+  code: string;
+  labelAr: string;
+  labelFr: string;
+  labelEn: string;
+  isActive: Generated<number>;
+  createdAt: string;
+  updatedAt: string;
+  createdByUserId: string | null;
+  updatedByUserId: string | null;
+}
+
+export interface CatalogueServiceDivisionTable {
+  id: string;
+  serviceId: string;
+  division: string;
+  sortOrder: number;
+  isActive: Generated<number>;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface StaffMemberTable {
   id: string;
   kind: string;
@@ -2304,6 +2328,8 @@ export interface DB {
   Commune: CommuneTable;
   Zone: ZoneTable;
   BackupRun: BackupRunTable;
+  CatalogueService: CatalogueServiceTable;
+  CatalogueServiceDivision: CatalogueServiceDivisionTable;
   StaffMember: StaffMemberTable;
   StaffConfidential: StaffConfidentialTable;
   StaffEvent: StaffEventTable;

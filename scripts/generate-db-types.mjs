@@ -1,8 +1,8 @@
 /**
  * Generates everything that is derived from the data model, in one run:
  *
- *   src-tauri/migrations/0001_init.sql   every table, check, index and trigger
- *   src-tauri/migrations/0002_seed.sql   the rows every installation needs
+ *   src-tauri/migrations/0003_…sql       each migration after the first installer that
+ *                                        has not shipped yet (LATER_MIGRATIONS)
  *   src/lib/db/schema.ts                 Kysely `DB` interface, in storage types
  *   src/lib/db/models.ts                 the row shapes the screens work with
  *   src/lib/db/column-meta.ts            which columns are instants / booleans
@@ -10,9 +10,15 @@
  *   src/lib/db/chain-columns.ts          what each hash-chained row commits to
  *   src/testing/table-shapes.ts          what a test needs to fill a row
  *
- * Sources: prisma/schema.prisma and prisma/triggers.sql (the model), and the
- * data modules under src/lib (roles and grants, communes). Prisma is not a
- * dependency: the schema is parsed as text.
+ * Sources: prisma/schema.prisma (the model), and the data modules under
+ * src/lib (the seed of the service lists). Prisma is not a dependency: the
+ * schema is parsed as text.
+ *
+ * 0001_init.sql and 0002_seed.sql are no longer written: an installed copy has
+ * applied them, so their text is frozen (FROZEN_MIGRATIONS in
+ * scripts/db/schema-tools.mjs, checked by db:verify). They were generated from
+ * the same schema, prisma/triggers.sql, src/lib/access/catalogue.ts and
+ * src/lib/geo/communes-oum-el-bouaghi.ts; git history has the code.
  *
  *   npm run db:types
  *
@@ -23,24 +29,24 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 
 import {
+  buildDdl,
   CHAINED_TABLES,
   foreignKeysOf,
-  initMigrationSql,
+  FROZEN_MIGRATIONS,
+  LATER_MIGRATIONS,
   MIGRATIONS_DIR,
+  modelsOfLaterMigration,
   parseSchema,
   ROOT,
   SQLTYPE,
 } from "./db/schema-tools.mjs";
+import { DIVISIONS } from "../src/lib/options/index.ts";
 import {
-  CAPABILITIES,
-  DEFAULT_SECTION_LEVELS,
-  MANAGER_ROLE,
-  ROLE_CODES,
-  ROLE_LABELS,
-  SECTION_CODES,
-} from "../src/lib/access/catalogue.ts";
-import { COMMUNES_OUM_EL_BOUAGHI } from "../src/lib/geo/communes-oum-el-bouaghi.ts";
-import { normaliseName } from "../src/lib/text/normalise.ts";
+  SEED_CATALOGUE,
+  SERVICE_LIST_CODES,
+  seedMembershipId,
+  seedServiceId,
+} from "../src/lib/options/service-catalogue-seed.ts";
 
 const HEADER =
   "// GENERATED FILE — do not edit by hand.\n// Produced by scripts/generate-db-types.mjs from prisma/schema.prisma.\n";
@@ -248,7 +254,7 @@ ${body}
 `;
 }
 
-// ── The seed migration ─────────────────────────────────────────────────────
+// ── Later migrations ───────────────────────────────────────────────────────
 
 const q = (value) =>
   value === null ? "NULL" : typeof value === "number" ? String(value) : `'${String(value).replace(/'/g, "''")}'`;
@@ -257,91 +263,102 @@ function insert(table, columns, rows) {
   return `INSERT INTO "${table}" (${columns.map((c) => `"${c}"`).join(", ")}) VALUES\n${rows.map((row) => `  (${row.map(q).join(", ")})`).join(",\n")};`;
 }
 
-function seedSql() {
-  const roles = ROLE_CODES.map((code, index) => [
-    code,
-    ROLE_LABELS[code].ar,
-    ROLE_LABELS[code].fr,
-    ROLE_LABELS[code].en,
-    code === MANAGER_ROLE ? 1 : 0,
-    1,
-    index,
-    SEED_AT,
-    SEED_AT,
-  ]);
+/** The tables a later migration creates, with their indexes and template triggers. */
+function laterDdl(file, models) {
+  const { tables, templated, namedWanted } = buildDdl(modelsOfLaterMigration(file, models));
+  // A named trigger lives in prisma/triggers.sql, which 0001 holds whole: a later table cannot have one.
+  if (namedWanted.length) throw new Error(`${file}: a named trigger (${namedWanted.join(", ")}) in a later migration`);
+  return `${tables}\n${templated}\n`;
+}
 
-  const grants = [];
-  for (const role of ROLE_CODES) {
-    if (role === MANAGER_ROLE) continue;
-    for (const section of SECTION_CODES) {
-      const level = DEFAULT_SECTION_LEVELS[role][section];
-      if (level) grants.push([`grant-${role}-section-${section}`, role, "SECTION", section, level, SEED_AT, SEED_AT]);
+/** The rows of the two service lists, as src/lib/options/service-catalogue-seed.ts holds them. */
+function serviceCatalogueRows() {
+  const services = [];
+  const memberships = [];
+  for (const list of SERVICE_LIST_CODES) {
+    const { services: listed, of } = SEED_CATALOGUE[list];
+    for (const service of listed) {
+      services.push([
+        seedServiceId(list, service.code),
+        list,
+        service.code,
+        service.ar,
+        service.fr,
+        service.en,
+        1,
+        SEED_AT,
+        SEED_AT,
+        null,
+        null,
+      ]);
     }
-    for (const [capability, holders] of Object.entries(CAPABILITIES)) {
-      if (holders.includes(role))
-        grants.push([
-          `grant-${role}-capability-${capability}`,
-          role,
-          "CAPABILITY",
-          capability,
-          "GRANTED",
+    for (const division of DIVISIONS) {
+      of[division].forEach((code, index) => {
+        if (!listed.some((service) => service.code === code))
+          throw new Error(`seed: ${list} ${division} names ${code}`);
+        memberships.push([
+          seedMembershipId(list, code, division),
+          seedServiceId(list, code),
+          division,
+          index,
+          1,
           SEED_AT,
           SEED_AT,
         ]);
+      });
     }
   }
+  return { services, memberships };
+}
 
-  const communes = COMMUNES_OUM_EL_BOUAGHI.map((commune) => [
-    `commune-${commune.code}`,
-    "04",
-    commune.nameAr,
-    commune.nameFr,
-    normaliseName(commune.nameAr),
-    null,
-    1,
-    1,
-    SEED_AT,
-    SEED_AT,
-  ]);
-
-  return `-- مركز إنماء برو: the rows every installation needs.
+function serviceCatalogueSql(models) {
+  const file = "0003_service_catalogue.sql";
+  const { services, memberships } = serviceCatalogueRows();
+  return `-- مركز إنماء برو: the client's two service lists, «الخدمات المقدمة» and «الخدمات المبرمجة».
 --
--- GENERATED by scripts/generate-db-types.mjs. Do not edit: change the data
--- modules named below and run \`npm run db:types\`.
+-- GENERATED by scripts/generate-db-types.mjs from prisma/schema.prisma (the models
+-- LATER_MIGRATIONS gives this file in scripts/db/schema-tools.mjs) and
+-- src/lib/options/service-catalogue-seed.ts. Do not edit: change the sources and
+-- run \`npm run db:types\`. Once an installer carries it, its text never changes again.
 --
--- Nothing here is a secret and nothing here is asked on the machine. What is
--- only known on the machine (the database id, the chain heads, the first
--- manager account, the centre's tax numbers) is written at first run, by
--- src/features/core/services/first-run.ts.
+-- The first migration after the first installer. An installed copy applies it at
+-- its next start: the services his six forms printed, each division's in his print
+-- order, until the manager edits them in Settings › الخدمات.
 
--- Roles (src/lib/access/catalogue.ts). MANAGER is the system role: it holds
--- everything and has no grant row.
-${insert("Role", ["id", "labelAr", "labelFr", "labelEn", "isSystem", "isActive", "sortOrder", "createdAt", "updatedAt"], roles)}
-
--- What each other role may do by default: its level on a bar section, and its
--- capabilities (docs/data-model/DESIGN.md section 12). Editable afterwards.
-${insert("RoleGrant", ["id", "roleId", "kind", "key", "access", "createdAt", "updatedAt"], grants)}
-
--- One branch. A second one is a label on documents, not a second database.
+${laterDdl(file, models)}
+-- His ${services.length} services: «الخدمات المقدمة» (PROVIDED), then «الخدمات المبرمجة» (PROGRAMMED).
 ${insert(
-  "Branch",
-  ["id", "code", "name", "isDefault", "isActive", "createdAt", "updatedAt"],
-  [["branch-main", "MAIN", "المركز الرئيسي", 1, 1, SEED_AT, SEED_AT]],
+  "CatalogueService",
+  [
+    "id",
+    "list",
+    "code",
+    "labelAr",
+    "labelFr",
+    "labelEn",
+    "isActive",
+    "createdAt",
+    "updatedAt",
+    "createdByUserId",
+    "updatedByUserId",
+  ],
+  services,
 )}
 
--- The communes of the wilaya of أم البواقي (src/lib/geo/communes-oum-el-bouaghi.ts),
--- checked on 2026-10-12 against the 2008 census list with its official codes
--- (citypopulation.de) and the French and Arabic Wikipedia pages of the wilaya.
--- A seeded commune's id is "commune-" and its official code:
-${COMMUNES_OUM_EL_BOUAGHI.map((commune) => `--   ${commune.code} ${commune.nameAr} (${commune.nameFr})`).join("\n")}
--- The office can add a commune from any address field, or correct one.
+-- Which divisions' forms list each service, and where: sortOrder is the print order
+-- on that division's forms, column by column, the first column on the right.
 ${insert(
-  "Commune",
-  ["id", "wilayaCode", "nameAr", "nameFr", "nameKey", "zoneId", "isSeeded", "isActive", "createdAt", "updatedAt"],
-  communes,
+  "CatalogueServiceDivision",
+  ["id", "serviceId", "division", "sortOrder", "isActive", "createdAt", "updatedAt"],
+  memberships,
 )}
 `;
 }
+
+/** Each later migration's text, by file name, while it has not shipped. */
+const LATER_MIGRATION_SQL = {
+  "0003_service_catalogue.sql": serviceCatalogueSql,
+};
 
 // ── Write ──────────────────────────────────────────────────────────────────
 
@@ -350,8 +367,13 @@ export function generatedFiles() {
   return {
     models,
     files: {
-      [resolve(MIGRATIONS_DIR, "0001_init.sql")]: initMigrationSql(),
-      [resolve(MIGRATIONS_DIR, "0002_seed.sql")]: seedSql(),
+      ...Object.fromEntries(
+        LATER_MIGRATIONS.filter((migration) => !(migration.file in FROZEN_MIGRATIONS)).map((migration) => {
+          const write = LATER_MIGRATION_SQL[migration.file];
+          if (!write) throw new Error(`${migration.file}: no generator for this migration`);
+          return [resolve(MIGRATIONS_DIR, migration.file), write(models)];
+        }),
+      ),
       [resolve(ROOT, "src/lib/db/schema.ts")]: schemaTs(models),
       [resolve(ROOT, "src/lib/db/models.ts")]: modelsTs(models),
       [resolve(ROOT, "src/lib/db/column-meta.ts")]: columnMetaTs(models),

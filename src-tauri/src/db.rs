@@ -385,9 +385,10 @@ mod tests {
                     .expect("the schema can be read")
                 }
             };
-            // The data model: 107 tables and 120 triggers.
-            assert_eq!(count("table").await, 107, "tables");
-            assert_eq!(count("trigger").await, 120, "triggers");
+            // The data model: 109 tables and 122 triggers (0001 made 107 and 120;
+            // 0003 adds the two service lists, each with its no-delete trigger).
+            assert_eq!(count("table").await, 109, "tables");
+            assert_eq!(count("trigger").await, 122, "triggers");
 
             let not_strict: i64 = sqlx::query_scalar(
                 "SELECT COUNT(*) FROM pragma_table_list WHERE schema = 'main' AND type = 'table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '\\_sqlx%' ESCAPE '\\' AND strict = 0",
@@ -416,6 +417,55 @@ mod tests {
             pool.close().await;
             let again = open(&path).await.expect("an up-to-date file opens again");
             again.close().await;
+        });
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// An installed copy upgrades in place. The first installer carried 0001
+    /// and 0002; a database it made opens with this program, which applies the
+    /// later migrations at start and keeps every row that was there.
+    #[test]
+    fn a_database_of_the_first_installer_upgrades_in_place() {
+        let dir = temp_dir("db-upgrade");
+        let path = dir.join(DB_FILE);
+        let shipped = dir.join("shipped");
+        std::fs::create_dir_all(&shipped).expect("dir");
+        std::fs::write(shipped.join("0001_init.sql"), include_str!("../migrations/0001_init.sql")).expect("0001");
+        std::fs::write(shipped.join("0002_seed.sql"), include_str!("../migrations/0002_seed.sql")).expect("0002");
+
+        tauri::async_runtime::block_on(async {
+            let options = SqliteConnectOptions::from_str(&format!("sqlite:{}", path.to_string_lossy()))
+                .expect("path")
+                .create_if_missing(true)
+                .foreign_keys(true)
+                .pragma("recursive_triggers", "ON");
+            let pool = SqlitePoolOptions::new().max_connections(1).connect_with(options).await.expect("connect");
+            sqlx::migrate::Migrator::new(shipped.as_path())
+                .await
+                .expect("the first installer's migrations")
+                .run(&pool)
+                .await
+                .expect("the first installer's database");
+            sqlx::query("INSERT INTO \"Zone\" (\"id\", \"name\", \"createdAt\", \"updatedAt\") VALUES ('zone-kept', 'عين البيضاء', '2026-10-20T08:00:00.000Z', '2026-10-20T08:00:00.000Z')")
+                .execute(&pool)
+                .await
+                .expect("a row of the office's");
+            pool.close().await;
+
+            let pool = open(&path).await.expect("the installed database upgrades");
+            let scalar = |sql: &'static str| {
+                let pool = pool.clone();
+                async move { sqlx::query_scalar::<_, i64>(sql).fetch_one(&pool).await.expect(sql) }
+            };
+            assert_eq!(scalar("SELECT COUNT(*) FROM \"Zone\" WHERE \"id\" = 'zone-kept'").await, 1, "the office's rows stay");
+            assert_eq!(scalar("SELECT COUNT(*) FROM \"CatalogueService\"").await, 48, "his 48 services");
+            assert_eq!(
+                scalar("SELECT COUNT(*) FROM \"_sqlx_migrations\" WHERE \"success\" = 1").await,
+                sqlx::migrate!("./migrations").iter().count() as i64,
+                "every embedded migration applied"
+            );
+            pool.close().await;
         });
 
         let _ = std::fs::remove_dir_all(&dir);

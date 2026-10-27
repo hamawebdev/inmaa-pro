@@ -88,9 +88,10 @@ datasource db {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// OWNER: FOUNDATION (13 models)
+// OWNER: FOUNDATION (15 models)
 // Branch, Role, RoleGrant, User, Setting, Sequence, SequenceGap, ChainHead,
-// AuditLog, Upload, Commune, Zone, BackupRun
+// AuditLog, Upload, Commune, Zone, BackupRun, CatalogueService,
+// CatalogueServiceDivision
 // ═══════════════════════════════════════════════════════════════════════════
 
 /// One PC, one database; a branch is a label on documents (#47).
@@ -366,6 +367,49 @@ model BackupRun {
   userId            String?   // null for the automatic copy
 
   @@index([startedAt])
+}
+
+/// «الخدمات المقدمة» and «الخدمات المبرمجة»: the services his forms list, one row per service of a list.
+/// The manager edits them in Settings › الخدمات (the developer, 2026-10-22): a service added, renamed, removed, its divisions, its place.
+/// Added by migration 0003 and seeded there with the 48 of his forms (src/lib/options/service-catalogue-seed.ts); a service added later is coded ADDED_<n>, never reused.
+/// A rename shows on every file that ticks the service, signed ones included. A removed service (isActive 0) is no longer offered; a file that ticks it keeps it.
+/// @check list IN ('PROVIDED','PROGRAMMED')
+/// @check length(trim(labelAr)) > 0 AND length(trim(labelFr)) > 0 AND length(trim(labelEn)) > 0
+/// @trigger noDelete
+model CatalogueService {
+  id              String   @id // seeded: svc-<list>-<code>
+  list            String   // @code SERVICE_LIST (PROVIDED, PROGRAMMED)
+  code            String   // @code PROVIDED_SERVICE or PROGRAMMED_SERVICE; what FileService.code stores; never changes
+  labelAr         String   // his wording, printed on his forms
+  labelFr         String
+  labelEn         String
+  isActive        Boolean  @default(true)
+  createdAt       DateTime
+  updatedAt       DateTime
+  createdByUserId String?
+  updatedByUserId String?
+
+  @@unique([list, code])
+}
+
+/// A service's place on one division's forms: which divisions offer it, in which order. His forms order the same services differently, so the order is per division.
+/// A row whose isActive is 0 keeps its place, for that division's files that tick the service.
+/// @check division IN ('HOUSING','ORGANISATION','BUILDING','COMPLEX')
+/// @check sortOrder >= 0
+/// @trigger noDelete
+model CatalogueServiceDivision {
+  id        String   @id // seeded: svc-<list>-<code>-<division>
+  serviceId String
+  division  String   // @code DIVISION (HOUSING, ORGANISATION, BUILDING, COMPLEX)
+  sortOrder Int      // print order on that division's forms, 0 first
+  isActive  Boolean  @default(true)
+  createdAt DateTime
+  updatedAt DateTime
+
+  service CatalogueService @relation(fields: [serviceId], references: [id], onDelete: Restrict)
+
+  @@unique([serviceId, division])
+  @@index([division, sortOrder])
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

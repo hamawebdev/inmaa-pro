@@ -4,8 +4,11 @@
  *
  *   npm run db:verify
  *
- * 1. Every generated file (the two migrations, the types of src/lib/db, the
- *    test shapes) is what `npm run db:types` would write now.
+ * 1. Every migration an installed copy has applied is unchanged (its sha256,
+ *    FROZEN_MIGRATIONS), the folder holds no other migration than those and
+ *    LATER_MIGRATIONS, and every generated file (the later migrations not yet
+ *    shipped, the types of src/lib/db, the test shapes) is what
+ *    `npm run db:types` would write now.
  * 2. The migrations FOLDER (not a list written here) is applied to a temporary
  *    database file with the program's two connect-time settings, each file in a
  *    transaction as sqlx does, and the result is read back from SQLite itself:
@@ -20,6 +23,7 @@
  * `migrations_apply_on_the_shipped_engine` (cargo test --lib).
  */
 import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, join, relative, resolve } from "node:path";
@@ -28,6 +32,8 @@ import {
   buildDdl,
   CHAINED_TABLES,
   foreignKeysOf,
+  FROZEN_MIGRATIONS,
+  LATER_MIGRATIONS,
   listMigrations,
   parseSchema,
   ROOT,
@@ -39,6 +45,9 @@ import { generatedFiles } from "./generate-db-types.mjs";
 const { CAPABILITIES, DEFAULT_SECTION_LEVELS, ROLE_CODES, ROLE_LABELS } =
   await import("../src/lib/access/catalogue.ts");
 const { COMMUNES_OUM_EL_BOUAGHI } = await import("../src/lib/geo/communes-oum-el-bouaghi.ts");
+const { DIVISIONS } = await import("../src/lib/options/index.ts");
+const { SEED_CATALOGUE, SERVICE_LIST_CODES, seedServiceId } =
+  await import("../src/lib/options/service-catalogue-seed.ts");
 
 let failures = 0;
 function check(label, condition, detail) {
@@ -54,8 +63,22 @@ const sorted = (list) => [...list].sort();
 const list = (items, max = 8) =>
   items.length > max ? `${items.slice(0, max).join(", ")} … (${items.length})` : items.join(", ");
 
-// ── 1. Generated files ───────────────────────────────────────────────────────
-console.log("\ngenerated files against prisma/schema.prisma and prisma/triggers.sql");
+// ── 1. Frozen migrations, generated files ───────────────────────────────────
+console.log("\nmigrations an installed copy has applied (they never change again)");
+for (const [name, hash] of Object.entries(FROZEN_MIGRATIONS)) {
+  const file = join(resolve(ROOT, "src-tauri/migrations"), name);
+  const actual = existsSync(file) ? createHash("sha256").update(readFileSync(file)).digest("hex") : "missing";
+  check(`${name} is the text that shipped`, actual === hash, `sha256 ${actual}; write a new migration instead`);
+}
+const known = [...Object.keys(FROZEN_MIGRATIONS), ...LATER_MIGRATIONS.map((migration) => migration.file)];
+const inFolder = (await listMigrations()).map((file) => basename(file));
+check(
+  "the folder holds those and LATER_MIGRATIONS, in order, and nothing else",
+  same(inFolder, sorted(known)) && same(sorted(known), known),
+  `folder: ${list(inFolder)}; known: ${list(known)}`,
+);
+
+console.log("\ngenerated files against prisma/schema.prisma and the data modules");
 const { files } = generatedFiles();
 for (const [file, text] of Object.entries(files)) {
   const name = relative(ROOT, file);
@@ -263,6 +286,41 @@ check(
     COMMUNES_OUM_EL_BOUAGHI.map((commune) => [`commune-${commune.code}`, commune.nameAr]),
   ),
 );
+const services = sqlite
+  .prepare(
+    `SELECT "id", "list", "code", "labelAr", "labelFr", "labelEn", "isActive" FROM "CatalogueService" ORDER BY "rowid"`,
+  )
+  .all()
+  .map((row) => [row.id, row.list, row.code, row.labelAr, row.labelFr, row.labelEn, row.isActive]);
+const wantedServices = SERVICE_LIST_CODES.flatMap((list) =>
+  SEED_CATALOGUE[list].services.map((service) => [
+    seedServiceId(list, service.code),
+    list,
+    service.code,
+    service.ar,
+    service.fr,
+    service.en,
+    1,
+  ]),
+);
+check(
+  `his ${wantedServices.length} services, in three languages (src/lib/options/service-catalogue-seed.ts)`,
+  same(services, wantedServices),
+);
+const places = sqlite
+  .prepare(
+    `SELECT s."list", d."division", s."code" FROM "CatalogueServiceDivision" d JOIN "CatalogueService" s ON s."id" = d."serviceId" WHERE d."isActive" = 1 ORDER BY s."list", d."division", d."sortOrder"`,
+  )
+  .all()
+  .map((row) => `${row.list} ${row.division} ${row.code}`);
+const wantedPlaces = [...SERVICE_LIST_CODES]
+  .sort()
+  .flatMap((list) =>
+    [...DIVISIONS]
+      .sort()
+      .flatMap((division) => SEED_CATALOGUE[list].of[division].map((code) => `${list} ${division} ${code}`)),
+  );
+check("each division's services, in his print order", same(places, wantedPlaces));
 const empty = ["User", "Setting", "Sequence", "ChainHead", "AuditLog"].filter(
   (table) => sqlite.prepare(`SELECT COUNT(*) AS n FROM "${table}"`).get().n !== 0,
 );

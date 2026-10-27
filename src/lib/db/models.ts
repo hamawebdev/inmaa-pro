@@ -200,6 +200,30 @@ export interface BackupRunRow {
   userId: string | null;
 }
 
+export interface CatalogueServiceRow {
+  id: string;
+  list: string;
+  code: string;
+  labelAr: string;
+  labelFr: string;
+  labelEn: string;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+  createdByUserId: string | null;
+  updatedByUserId: string | null;
+}
+
+export interface CatalogueServiceDivisionRow {
+  id: string;
+  serviceId: string;
+  division: string;
+  sortOrder: number;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 export interface StaffMemberRow {
   id: string;
   kind: string;
