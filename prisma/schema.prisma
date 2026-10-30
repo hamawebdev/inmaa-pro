@@ -496,7 +496,9 @@ model StaffMember {
   workTimeKind           String?   // @code WORK_TIME; ACAD contractType; LAW (part time at least half)
   startDate              String?   // @date; #25 «تاريخ البدء»
   contractEndDate        String?   // @date
-  weeklyCapacityMin      Int       @default(2400) // @min; #25 «الطاقة الأسبوعية»; LAW 40 h
+  trialEndDate           String?   // @date; employees: end of the trial period (Law 90-11 art. 18–20); null = no trial; migration 0004
+  fixedTermReason        String?   // employees: why a fixed-term contract (CDD), Law 90-11 art. 12 / 12 bis; free text; migration 0004
+  weeklyCapacityMin     Int       @default(2400) // @min; #25 «الطاقة الأسبوعية»; LAW 40 h
   payBasis               String?   // @code PAY_BASIS; #38; س11; required before the first pay run
   payRate                Int?      // @money per month, day, hour or task, by payBasis
   payPeriod              String?   // @code PAY_PERIOD

@@ -31,6 +31,7 @@ import { basename, join, relative, resolve } from "node:path";
 import {
   buildDdl,
   CHAINED_TABLES,
+  columnsInTableOrder,
   foreignKeysOf,
   FROZEN_MIGRATIONS,
   LATER_MIGRATIONS,
@@ -134,7 +135,8 @@ const checkProblems = [];
 for (const model of models) {
   if (!present.includes(model.name)) continue;
   const info = sqlite.prepare(`PRAGMA table_info("${model.name}")`).all();
-  const expected = model.cols.map((column) => ({
+  // A column a later migration added stands last in its table (ALTER TABLE … ADD COLUMN), whatever its place in the schema.
+  const expected = columnsInTableOrder(model).map((column) => ({
     name: column.name,
     type: SQLTYPE[column.type],
     notnull: column.optional ? 0 : 1,

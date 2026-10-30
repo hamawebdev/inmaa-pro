@@ -429,7 +429,12 @@
       "PayTitle": "الأجر",
       "PayDescription": "مطلوب قبل أول كشف أجور.",
       "LeaveOpeningDays": "رصيد العطلة المنقول (يوم)",
-      "LeaveOpeningDate": "بتاريخ"
+      "LeaveOpeningDate": "بتاريخ",
+      "TrialEndDate": "نهاية المدة التجريبية",
+      "TrialEndHint": "فارغ: بدون مدة تجريبية.",
+      "TrialEndLong": "أكثر من ستة أشهر: لا يجوز إلا للمناصب ذات التأهيل العالي.",
+      "FixedTermReason": "سبب اللجوء إلى عقد محدد المدة",
+      "FixedTermReasonHint": "الحالات الواردة في المادة 12 من القانون 90-11. يُطبع في وثيقة التوظيف."
     },
     "File": {
       "Title": "ملف الموظف",
@@ -1152,6 +1157,8 @@
     "EmployeeSexRequired": "حدد هل الموظف رجل أم امرأة.",
     "JobPositionRequired": "اختر الوظيفة.",
     "ContractEndBeforeStart": "لا يمكن أن تسبق نهاية العقد بدايته.",
+    "TrialEndBeforeStart": "لا يمكن أن تسبق نهاية المدة التجريبية بداية العمل.",
+    "TrialTooLong": "لا تتجاوز المدة التجريبية اثني عشر شهرًا.",
     "CnasNumberDigits": "رقم الضمان الاجتماعي من 6 إلى 20 رقماً.",
     "ReasonForChangeRequired": "اكتب سبب التعديل.",
     "CheckTypeRequired": "اختر دخول أو خروج.",
@@ -1242,6 +1249,8 @@
     "PayTermsBeforeStart": "لا يمكن أن يسري الأجر الجديد قبل التحاق المعني بالعمل.",
     "PayTermsInClosedMonth": "لا يمكن أن يسري الأجر الجديد في شهر أُغلقت أجوره.",
     "PersonNotInPostNoCard": "المعني ليس في منصبه: لا تُطبع له بطاقة.",
+    "HiringSheetEmployeeOnly": "لا تُطبع استمارة التسجيل والتعهد إلا لموظفي المركز.",
+    "HiringSheetLeft": "هذا الموظف غادر المركز: لا تُطبع له استمارة التسجيل والتعهد.",
     "PayTermsBeforeLastChange": "لا يمكن أن يسري الأجر الجديد قبل آخر تغيير للأجر."
   },
   "Cards": {
@@ -1255,6 +1264,16 @@
     "PrintSelected": "طباعة {count} بطاقات تعريف",
     "Select": "اختيار",
     "SelectAll": "اختيار كل الصفحة"
+  },
+  "HiringSheet": {
+    "Title": "استمارة التسجيل والتعهد",
+    "Open": "استمارة التسجيل والتعهد",
+    "BackToFile": "الملف",
+    "Loading": "جارٍ التحميل…",
+    "Failed": "تعذر تحضير استمارة التسجيل والتعهد.",
+    "Registered": "{sex, select, FEMALE {سُجّلت الموظفة. اطبع استمارة التسجيل والتعهد لتسليمها لها للإمضاء.} other {سُجّل الموظف. اطبع استمارة التسجيل والتعهد لتسليمها له للإمضاء.}}",
+    "RegisteredPrint": "طباعة استمارة التسجيل والتعهد",
+    "Dismiss": "إغلاق"
   },
   "WorkerEquipment": {
     "IncidentsTitle": "العتاد الضائع أو التالف",

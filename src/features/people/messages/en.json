@@ -429,7 +429,12 @@
       "PayTitle": "Pay",
       "PayDescription": "Needed before the first pay run.",
       "LeaveOpeningDays": "Leave brought in (days)",
-      "LeaveOpeningDate": "Counted on"
+      "LeaveOpeningDate": "Counted on",
+      "TrialEndDate": "End of trial period",
+      "TrialEndHint": "Empty: no trial period.",
+      "TrialEndLong": "More than six months: allowed only for highly qualified posts.",
+      "FixedTermReason": "Reason for the fixed-term contract",
+      "FixedTermReasonHint": "The cases of Law 90-11, article 12. Printed on the hiring sheet."
     },
     "File": {
       "Title": "Employee's file",
@@ -1152,6 +1157,8 @@
     "EmployeeSexRequired": "Choose whether the employee is a man or a woman.",
     "JobPositionRequired": "Choose the job position.",
     "ContractEndBeforeStart": "The end of the contract cannot be before its start.",
+    "TrialEndBeforeStart": "The end of the trial period cannot be before the start of the post.",
+    "TrialTooLong": "A trial period lasts at most twelve months.",
     "CnasNumberDigits": "A social security number is 6 to 20 digits.",
     "ReasonForChangeRequired": "Write the reason for the change.",
     "CheckTypeRequired": "Choose in or out.",
@@ -1242,6 +1249,8 @@
     "PayTermsBeforeStart": "New pay terms cannot take effect before the person started.",
     "PayTermsInClosedMonth": "New pay terms cannot take effect in a month whose pay is closed.",
     "PersonNotInPostNoCard": "This person is not in post: no card is printed.",
+    "HiringSheetEmployeeOnly": "The registration and commitment form is printed for a centre employee only.",
+    "HiringSheetLeft": "This employee has left: no registration and commitment form is printed.",
     "PayTermsBeforeLastChange": "New pay terms cannot take effect before the last change of pay terms."
   },
   "Cards": {
@@ -1255,6 +1264,16 @@
     "PrintSelected": "Print {count} ID cards",
     "Select": "Choose",
     "SelectAll": "Choose all on this page"
+  },
+  "HiringSheet": {
+    "Title": "Registration and commitment form",
+    "Open": "Registration and commitment form",
+    "BackToFile": "The file",
+    "Loading": "Loading…",
+    "Failed": "The registration and commitment form could not be prepared.",
+    "Registered": "{sex, select, FEMALE {The employee is registered. Print the registration and commitment form and hand it to her to sign.} other {The employee is registered. Print the registration and commitment form and hand it to him to sign.}}",
+    "RegisteredPrint": "Print the registration and commitment form",
+    "Dismiss": "Close"
   },
   "WorkerEquipment": {
     "IncidentsTitle": "Equipment lost or damaged",

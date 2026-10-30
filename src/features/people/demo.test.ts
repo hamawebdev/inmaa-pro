@@ -56,6 +56,22 @@ it("makes eight workers of both sexes in two zones and the three roles, one susp
     [names.employeeSupervisor, "SUPERVISOR"],
     [names.employeeHr, "HR_OFFICER"],
   ]);
+  // What the hiring sheet prints: the trial for both, the reason for the supervisor's fixed-term contract.
+  const terms = await test.db
+    .selectFrom("StaffMember")
+    .select(["id", "employmentContract", "trialEndDate", "fixedTermReason"])
+    .where("id", "in", [names.employeeSupervisor, names.employeeHr])
+    .orderBy("numberSeq")
+    .execute();
+  expect(terms).toEqual([
+    { id: names.employeeHr, employmentContract: "CDI", trialEndDate: "2026-03-04", fixedTermReason: null },
+    {
+      id: names.employeeSupervisor,
+      employmentContract: "CDD",
+      trialEndDate: "2026-04-30",
+      fixedTermReason: "تزايد العمل أو أسباب موسمية",
+    },
+  ]);
 });
 
 it("prints his form from the stored sample worker", async () => {

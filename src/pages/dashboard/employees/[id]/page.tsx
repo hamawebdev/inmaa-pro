@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import { CalendarCheck, IdCard, LogOut, RotateCcw, Wallet } from "lucide-react";
-import { Link, useParams } from "react-router-dom";
+import { CalendarCheck, FileSignature, IdCard, LogOut, RotateCcw, Wallet, X } from "lucide-react";
+import { Link, useParams, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { useTranslations } from "use-intl";
 
@@ -68,6 +68,19 @@ export default function EmployeePage() {
   const writesEmployees = useMayIn("EMPLOYEES", "WRITE");
   const keepsFiles = holdsFiles && writesEmployees;
   const tCards = useTranslations("Cards");
+  const tHiring = useTranslations("HiringSheet");
+  // `?registered=1`: the form has just registered the employee; the file offers the hiring sheet at its top.
+  const [params, setParams] = useSearchParams();
+  const justRegistered = params.get("registered") === "1";
+  const dismissRegistered = () =>
+    setParams(
+      (current) => {
+        const next = new URLSearchParams(current);
+        next.delete("registered");
+        return next;
+      },
+      { replace: true },
+    );
   // Pay is a tab of the workers' section: an account that does not reach it is not sent there.
   const holdsPay = useMay("pay.read");
   const reachesPay = useMayIn("WORKERS", "READ");
@@ -141,6 +154,12 @@ export default function EmployeePage() {
                 {tCards("Print")}
               </Link>
             </Button>
+            <Button asChild variant="outline">
+              <Link to={`/dashboard/employees/${id}/print-hiring`}>
+                <FileSignature />
+                {tHiring("Open")}
+              </Link>
+            </Button>
           </div>
         ))
       }
@@ -181,6 +200,25 @@ export default function EmployeePage() {
       </div>
 
       <div className="space-y-6">
+        {justRegistered && keepsFiles && file.status !== "LEFT" && (
+          <Card id="employee-card-registered" className="border-success/50 bg-success/5">
+            <CardContent className="flex flex-wrap items-center gap-x-6 gap-y-3 text-base">
+              <span className="min-w-0 flex-1 font-semibold">{tHiring("Registered", { sex: file.values.sex })}</span>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button asChild variant="info">
+                  <Link to={`/dashboard/employees/${id}/print-hiring`}>
+                    <FileSignature />
+                    {tHiring("RegisteredPrint")}
+                  </Link>
+                </Button>
+                <Button type="button" variant="ghost" onClick={dismissRegistered}>
+                  <X />
+                  {tHiring("Dismiss")}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
         <SanctionCard subjectKind="EMPLOYEE" subjectId={id} />
         <Card id="employee-card-account">
           <CardHeader>

@@ -1,22 +1,29 @@
 import * as React from "react";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm, useWatch } from "react-hook-form";
+import { Controller, useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 import { useLocale, useTranslations } from "use-intl";
 
 import { Ltr } from "@/components/ltr";
-import { DateField as DatePicker } from "@/components/pickers";
+import { DateField as DatePicker, SuggestField } from "@/components/pickers";
 import { PageActions } from "@/components/screen";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
+import { Field, FieldDescription, FieldError, FieldLabel } from "@/components/ui/field";
 import { ChoiceField, DateField, TextField, TickField } from "@/features/people/components/form-fields";
 import { ResidenceField } from "@/features/people/components/residence-fields";
 import { isolate, useMay, useMayIn } from "@/features/people/components/may";
 import { useSanctionGate } from "@/features/people/components/sanction-gate";
 import { employeeIdentity, registerEmployeeAction, updateEmployeeAction } from "@/features/people/services/employees";
-import { employeeFormSchema, type EmployeeFormValues } from "@/features/people/validators/employee";
+import {
+  employeeFormSchema,
+  FIXED_TERM_REASONS_AR,
+  TRIAL_MONTHS,
+  trialLongerThan,
+  trialStart,
+  type EmployeeFormValues,
+} from "@/features/people/validators/employee";
 import {
   EMPLOYMENT_CONTRACTS,
   JOB_POSITIONS,
@@ -49,6 +56,9 @@ const identityKey = (values: EmployeeFormValues) => JSON.stringify(employeeIdent
 
 const PAY_KEYS = ["payBasis", "payRate", "payPeriod"] as const;
 
+// The five cases of Law 90-11 art. 12: legal wording, offered in Arabic in every language.
+const FIXED_TERM_SUGGESTIONS = FIXED_TERM_REASONS_AR.map((value) => ({ value }));
+
 export function EmployeeForm({ mode, defaultValues }: { mode: Mode; defaultValues: EmployeeFormValues }) {
   const t = useTranslations("Employees");
   const tWorker = useTranslations("WorkerForm");
@@ -62,6 +72,12 @@ export function EmployeeForm({ mode, defaultValues }: { mode: Mode; defaultValue
   const declared = useWatch({ control, name: "cnasDeclared" });
   // The contract cannot end before it starts: the end date's calendar starts at the start date.
   const startDate = useWatch({ control, name: "startDate" });
+  const registrationDate = useWatch({ control, name: "registrationDate" });
+  const trialEndDate = useWatch({ control, name: "trialEndDate" });
+  const contract = useWatch({ control, name: "employmentContract" });
+  const trialFrom = trialStart({ startDate, registrationDate });
+  // Past six months the law allows a trial only for a highly qualified post (90-11 art. 18): said, not refused.
+  const trialLong = trialEndDate !== "" && trialLongerThan(trialFrom, trialEndDate, TRIAL_MONTHS);
   // The day changed pay terms take effect, asked once they are changed on a registered file: today when empty (PEO-08).
   const [payFrom, setPayFrom] = React.useState("");
   const pay = useWatch({ control, name: PAY_KEYS });
@@ -111,7 +127,8 @@ export function EmployeeForm({ mode, defaultValues }: { mode: Mode; defaultValue
       return;
     }
     toast.success(t("Form.Registered", { number: isolate(result.data.number) }));
-    router.push(`/dashboard/employees/${result.data.id}`);
+    // `registered=1`: the file offers to print the hiring sheet at its top.
+    router.push(`/dashboard/employees/${result.data.id}?registered=1`);
   };
 
   // Somebody who reads the section without keeping the files sees the form, and changes nothing.
@@ -230,14 +247,49 @@ export function EmployeeForm({ mode, defaultValues }: { mode: Mode; defaultValue
               required
               options={JOB_POSITIONS.map((code) => ({ value: code, label: t(`Positions.${code}`) }))}
             />
-            <DateField control={control} name="startDate" label={t("Form.StartDate")} />
+            {/* In pairs: the contract beside the post, the trial beside the start, the reason for a CDD beside its end. */}
             <ChoiceField
               control={control}
               name="employmentContract"
               label={t("Form.EmploymentContract")}
               options={EMPLOYMENT_CONTRACTS.map((code) => ({ value: code, label: t(`Contracts.${code}`) }))}
             />
+            <DateField control={control} name="startDate" label={t("Form.StartDate")} />
+            <DateField
+              control={control}
+              name="trialEndDate"
+              label={t("Form.TrialEndDate")}
+              description={trialLong ? t("Form.TrialEndLong") : t("Form.TrialEndHint")}
+              min={trialFrom}
+            />
             <DateField control={control} name="contractEndDate" label={t("Form.ContractEndDate")} min={startDate} />
+            {contract === "CDD" ? (
+              <Controller
+                control={control}
+                name="fixedTermReason"
+                render={({ field, fieldState }) => (
+                  <Field>
+                    <FieldLabel htmlFor="field-fixedTermReason">{t("Form.FixedTermReason")}</FieldLabel>
+                    <SuggestField
+                      id="field-fixedTermReason"
+                      name={field.name}
+                      ref={field.ref}
+                      onBlur={field.onBlur}
+                      value={field.value ?? ""}
+                      onChange={field.onChange}
+                      suggestions={FIXED_TERM_SUGGESTIONS}
+                      aria-label={t("Form.FixedTermReason")}
+                      aria-invalid={fieldState.invalid}
+                    />
+                    <FieldDescription>{t("Form.FixedTermReasonHint")}</FieldDescription>
+                    <FieldError>{errorMessage(fieldState.error?.message)}</FieldError>
+                  </Field>
+                )}
+              />
+            ) : (
+              // Keeps the pairs below aligned when there is no reason to give.
+              <div aria-hidden className="hidden sm:block" />
+            )}
             <TextField
               control={control}
               name="leaveOpeningDays"
@@ -256,7 +308,6 @@ export function EmployeeForm({ mode, defaultValues }: { mode: Mode; defaultValue
               control={control}
               name="weeklyCapacityHours"
               label={tWorker("Fields.weeklyCapacity")}
-              required
               dir="ltr"
               inputMode="decimal"
             />

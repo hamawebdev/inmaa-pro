@@ -119,6 +119,9 @@ function memberColumns(values: EmployeeFormValues) {
     employmentContract: values.employmentContract ?? null,
     workTimeKind: values.workTimeKind ?? null,
     contractEndDate: dateOrNull(values.contractEndDate),
+    trialEndDate: dateOrNull(values.trialEndDate),
+    // A permanent contract never carries the reason for a fixed-term one.
+    fixedTermReason: values.employmentContract === "CDD" ? orNull(values.fixedTermReason) : null,
     leaveOpeningDays: values.leaveOpeningDays === "" ? null : qty(Math.round(decimal(values.leaveOpeningDays) * 1000)),
     leaveOpeningDate: dateOrNull(values.leaveOpeningDate),
     cnasDeclared: values.cnasDeclared ? 1 : 0,
@@ -450,6 +453,8 @@ export async function openEmployeeFile(
       employmentContract: oneOf(employee.employmentContract, EMPLOYMENT_CONTRACTS),
       workTimeKind: oneOf(employee.workTimeKind, WORK_TIMES),
       contractEndDate: text(employee.contractEndDate),
+      trialEndDate: text(employee.trialEndDate),
+      fixedTermReason: text(employee.fixedTermReason),
       leaveOpeningDays: employee.leaveOpeningDays === null ? "" : String(employee.leaveOpeningDays / 1000),
       leaveOpeningDate: text(employee.leaveOpeningDate),
       cnasDeclared: employee.cnasDeclared === 1,

@@ -429,7 +429,12 @@
       "PayTitle": "Paie",
       "PayDescription": "Nécessaire avant la première paie.",
       "LeaveOpeningDays": "Congé reporté (jours)",
-      "LeaveOpeningDate": "Arrêté au"
+      "LeaveOpeningDate": "Arrêté au",
+      "TrialEndDate": "Fin de la période d'essai",
+      "TrialEndHint": "Vide : pas de période d'essai.",
+      "TrialEndLong": "Plus de six mois : permis seulement pour les postes hautement qualifiés.",
+      "FixedTermReason": "Motif du contrat à durée déterminée",
+      "FixedTermReasonHint": "Les cas de l'article 12 de la loi 90-11. Imprimé sur la fiche d'embauche."
     },
     "File": {
       "Title": "Dossier de l'employé",
@@ -1152,6 +1157,8 @@
     "EmployeeSexRequired": "Indiquez s'il s'agit d'un homme ou d'une femme (employé).",
     "JobPositionRequired": "Choisissez le poste occupé.",
     "ContractEndBeforeStart": "La fin du contrat ne peut pas précéder son début.",
+    "TrialEndBeforeStart": "La fin de la période d'essai ne peut pas précéder le début du poste.",
+    "TrialTooLong": "Une période d'essai dure au plus douze mois.",
     "CnasNumberDigits": "Un numéro de sécurité sociale compte de 6 à 20 chiffres.",
     "ReasonForChangeRequired": "Écrivez le motif de la modification.",
     "CheckTypeRequired": "Choisissez entrée ou sortie.",
@@ -1242,6 +1249,8 @@
     "PayTermsBeforeStart": "La nouvelle rémunération ne peut pas prendre effet avant l'entrée de la personne.",
     "PayTermsInClosedMonth": "La nouvelle rémunération ne peut pas prendre effet dans un mois dont la paie est clôturée.",
     "PersonNotInPostNoCard": "Cette personne n'est pas en poste : aucune carte n'est imprimée.",
+    "HiringSheetEmployeeOnly": "La fiche d'inscription et d'engagement ne s'imprime que pour un employé du centre.",
+    "HiringSheetLeft": "Cet employé est parti : aucune fiche d'inscription et d'engagement n'est imprimée.",
     "PayTermsBeforeLastChange": "La nouvelle rémunération ne peut pas prendre effet avant le dernier changement de rémunération."
   },
   "Cards": {
@@ -1255,6 +1264,16 @@
     "PrintSelected": "Imprimer {count} cartes",
     "Select": "Choisir",
     "SelectAll": "Tout choisir sur la page"
+  },
+  "HiringSheet": {
+    "Title": "Fiche d'inscription et d'engagement",
+    "Open": "Fiche d'inscription et d'engagement",
+    "BackToFile": "Le dossier",
+    "Loading": "Chargement…",
+    "Failed": "La fiche d'inscription et d'engagement n'a pas pu être préparée.",
+    "Registered": "{sex, select, FEMALE {L'employée est enregistrée. Imprimez la fiche d'inscription et d'engagement et remettez-la-lui pour signature.} other {L'employé est enregistré. Imprimez la fiche d'inscription et d'engagement et remettez-la-lui pour signature.}}",
+    "RegisteredPrint": "Imprimer la fiche d'inscription et d'engagement",
+    "Dismiss": "Fermer"
   },
   "WorkerEquipment": {
     "IncidentsTitle": "Matériel perdu ou endommagé",

@@ -218,6 +218,77 @@ describe("updateEmployee", () => {
   });
 });
 
+describe("the trial period and the reason for a fixed-term contract", () => {
+  const lastChange = () =>
+    test.db
+      .selectFrom("AuditLog")
+      .selectAll()
+      .where("operation", "=", "CHANGE")
+      .orderBy("chainSeq", "desc")
+      .executeTakeFirst();
+
+  it("stores both on registration, gives them back to the form, and logs a change of either", async () => {
+    const values: RegisterEmployeeInput = {
+      ...SUPERVISOR,
+      employmentContract: "CDD",
+      contractEndDate: "2027-08-31",
+      trialEndDate: "2026-11-30",
+      fixedTermReason: "تزايد العمل أو أسباب موسمية",
+    };
+    const { id } = await register(values);
+    const row = await test.db
+      .selectFrom("StaffMember")
+      .select(["trialEndDate", "fixedTermReason"])
+      .where("id", "=", id)
+      .executeTakeFirstOrThrow();
+    expect(row).toEqual({ trialEndDate: "2026-11-30", fixedTermReason: "تزايد العمل أو أسباب موسمية" });
+    const file = await test.transact((ex, ctx) => openEmployeeFile(ex, ctx, { id }));
+    expect(file.values).toMatchObject({ trialEndDate: "2026-11-30", fixedTermReason: "تزايد العمل أو أسباب موسمية" });
+
+    // An unchanged save sends nothing and logs nothing.
+    const before = await lastChange();
+    await test.transact((ex, ctx) => updateEmployee(ex, ctx, { id, values: file.values }));
+    expect((await lastChange())?.id).toBe(before?.id);
+
+    await test.transact((ex, ctx) =>
+      updateEmployee(ex, ctx, {
+        id,
+        values: { ...file.values, trialEndDate: "2026-10-31", fixedTermReason: "أشغال دورية ذات طابع متقطع" },
+      }),
+    );
+    expect(JSON.parse((await lastChange())?.changes ?? "{}")).toEqual({
+      trialEndDate: ["2026-11-30", "2026-10-31"],
+      fixedTermReason: ["تزايد العمل أو أسباب موسمية", "أشغال دورية ذات طابع متقطع"],
+    });
+
+    // Made permanent: the reason goes, the trial stays.
+    await test.transact((ex, ctx) =>
+      updateEmployee(ex, ctx, {
+        id,
+        values: { ...file.values, employmentContract: "CDI", contractEndDate: "", trialEndDate: "2026-10-31" },
+      }),
+    );
+    const after = await test.db
+      .selectFrom("StaffMember")
+      .select(["trialEndDate", "fixedTermReason"])
+      .where("id", "=", id)
+      .executeTakeFirstOrThrow();
+    expect(after).toEqual({ trialEndDate: "2026-10-31", fixedTermReason: null });
+    expect(JSON.parse((await lastChange())?.changes ?? "{}")).toMatchObject({
+      fixedTermReason: ["أشغال دورية ذات طابع متقطع", null],
+    });
+  });
+
+  it("refuses a trial longer than twelve months or ending before the post starts", async () => {
+    await expect(register({ ...SUPERVISOR, trialEndDate: "2027-09-01" })).rejects.toThrow(
+      "A trial period lasts at most twelve months.",
+    );
+    await expect(register({ ...SUPERVISOR, trialEndDate: "2026-08-31" })).rejects.toThrow(
+      "The end of the trial period cannot be before the start of the post.",
+    );
+  });
+});
+
 describe("reading employees", () => {
   it("lists them with their post, state and login account, and filters by post for the pickers", async () => {
     const supervisor = await register(SUPERVISOR);

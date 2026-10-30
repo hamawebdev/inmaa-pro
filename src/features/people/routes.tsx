@@ -4,6 +4,7 @@ import EmployeeAttendanceDetailPage from "@/pages/dashboard/employee-attendance/
 import EmployeeAttendancePage from "@/pages/dashboard/employee-attendance/page";
 import EmployeePage from "@/pages/dashboard/employees/[id]/page";
 import EmployeeCardPrintPage from "@/pages/dashboard/employees/[id]/print-card/page";
+import EmployeeHiringPrintPage from "@/pages/dashboard/employees/[id]/print-hiring/page";
 import NewEmployeePage from "@/pages/dashboard/employees/new/page";
 import EmployeesPage from "@/pages/dashboard/employees/page";
 import HiringPage from "@/pages/dashboard/hiring/page";
@@ -40,6 +41,8 @@ export const peopleRoutes: RouteObject[] = [
   { path: "employees/:id", element: <EmployeePage /> },
   // An employee's ID card (scope R9).
   { path: "employees/:id/print-card", element: <EmployeeCardPrintPage /> },
+  // «استمارة التسجيل والتعهد»: the one page an employee signs at registration.
+  { path: "employees/:id/print-hiring", element: <EmployeeHiringPrintPage /> },
   { path: "employee-attendance", element: <EmployeeAttendancePage /> },
   // One employee's month: times in and out, absences, leave.
   { path: "employee-attendance/:id", element: <EmployeeAttendanceDetailPage /> },

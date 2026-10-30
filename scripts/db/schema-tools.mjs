@@ -39,20 +39,94 @@ export const FROZEN_MIGRATIONS = {
 
 /**
  * The migrations written after the first installer, in order, each with the
- * models whose tables it creates. Every other model's table was created by
- * 0001. `npm run db:types` writes each one not yet in `FROZEN_MIGRATIONS`;
+ * models whose tables it creates and the columns it adds to a table an earlier
+ * migration created (`columns`: `{ model, names }`, each an `ALTER TABLE …
+ * ADD COLUMN`). Every other model's table, and every other column, was created
+ * by 0001. `npm run db:types` writes each one not yet in `FROZEN_MIGRATIONS`;
  * once an installer carries it, its hash goes there and it is never written
  * again.
  */
 export const LATER_MIGRATIONS = [
   // The client's two service lists, his to edit in Settings › الخدمات (the developer, 2026-10-22).
   { file: "0003_service_catalogue.sql", models: ["CatalogueService", "CatalogueServiceDivision"] },
+  // The employee hiring sheet: the trial period and the reason for a fixed-term contract (the developer, 2026-10-30).
+  {
+    file: "0004_staff_trial_and_fixed_term.sql",
+    models: [],
+    columns: [{ model: "StaffMember", names: ["trialEndDate", "fixedTermReason"] }],
+  },
 ];
 
-/** The models whose tables 0001 created: every model a later migration does not add. */
+/** The columns a later migration adds, as `[model, column]` names, in its order. */
+function addedColumnNames(migration) {
+  return (migration.columns ?? []).flatMap(({ model, names }) => names.map((name) => [model, name]));
+}
+
+/** Every column some later migration adds, as `Model.column`. */
+const laterColumns = () =>
+  new Set(LATER_MIGRATIONS.flatMap((migration) => addedColumnNames(migration).map(([m, c]) => `${m}.${c}`)));
+
+/**
+ * The models whose tables 0001 created, as 0001 created them: every model a
+ * later migration does not add, without the columns a later migration adds.
+ */
 export function modelsOfInit(models = parseSchema()) {
   const later = new Set(LATER_MIGRATIONS.flatMap((migration) => migration.models));
-  return models.filter((model) => !later.has(model.name));
+  const added = laterColumns();
+  return models
+    .filter((model) => !later.has(model.name))
+    .map((model) =>
+      model.cols.some((column) => added.has(`${model.name}.${column.name}`))
+        ? { ...model, cols: model.cols.filter((column) => !added.has(`${model.name}.${column.name}`)) }
+        : model,
+    );
+}
+
+/**
+ * A model's columns in the order the database holds them: those its table was
+ * created with, in schema order, then each one a later migration added, in
+ * migration order (`ALTER TABLE … ADD COLUMN` puts a column last).
+ */
+export function columnsInTableOrder(model) {
+  const added = LATER_MIGRATIONS.flatMap((migration) =>
+    addedColumnNames(migration)
+      .filter(([name]) => name === model.name)
+      .map(([, column]) => column),
+  );
+  const created = model.cols.filter((column) => !added.includes(column.name));
+  return [...created, ...added.map((name) => model.cols.find((column) => column.name === name)).filter(Boolean)];
+}
+
+/**
+ * The columns a later migration adds to existing tables, each with its model.
+ * Only what `ALTER TABLE … ADD COLUMN` can give an existing table, with nothing
+ * else of the schema naming it, so the new column is the whole change: optional
+ * or with a default, not a key, not unique, in no index, check or relation.
+ */
+export function columnsOfLaterMigration(file, models = parseSchema()) {
+  const migration = LATER_MIGRATIONS.find((candidate) => candidate.file === file);
+  if (!migration) throw new Error(`${file} is not in LATER_MIGRATIONS`);
+  return addedColumnNames(migration).map(([modelName, name]) => {
+    const model = models.find((candidate) => candidate.name === modelName);
+    if (!model) throw new Error(`${file}: the schema has no model ${modelName}`);
+    if (migration.models.includes(modelName)) throw new Error(`${file}: ${modelName} is created here, not altered`);
+    const column = model.cols.find((candidate) => candidate.name === name);
+    if (!column) throw new Error(`${file}: the schema has no column ${modelName}.${name}`);
+    const named = (text) => new RegExp(`\\b${name}\\b`).test(text);
+    if (column.id || column.unique || (!column.optional && column.def === null))
+      throw new Error(`${file}: ${modelName}.${name} must be optional or have a default, and be no key`);
+    if (
+      model.rels.some((rel) => rel.col === name) ||
+      foreignKeysOf(model).some((key) => key.col === name) ||
+      model.uniques.some((cols) => cols.includes(name)) ||
+      model.indexes.some((cols) => cols.includes(name)) ||
+      model.directives.some(named) ||
+      // A trigger whose UPDATE OF list 0001 wrote would not cover the new column.
+      model.directives.some((directive) => /frozenWithRun\(.*\)\s+except/.test(directive))
+    )
+      throw new Error(`${file}: ${modelName}.${name} is named by a relation, index, check or trigger: not a plain ADD`);
+    return { model, column };
+  });
 }
 
 /** The models a later migration adds, in the order it names them. */
@@ -187,6 +261,25 @@ export function sqlDefault(def) {
   return def.replace(/^"(.*)"$/, "'$1'");
 }
 
+/** A column as CREATE TABLE and ALTER TABLE … ADD COLUMN write it: name, type, key, NOT NULL, default, format check. */
+export function columnDdl(c) {
+  let s = `"${c.name}" ${SQLTYPE[c.type]}`;
+  if (c.id) s += " PRIMARY KEY";
+  if (!c.optional) s += " NOT NULL";
+  if (c.unique) s += " UNIQUE";
+  if (c.def !== null) s += ` DEFAULT ${sqlDefault(c.def)}`;
+  if (c.isDate) s += ` CHECK ("${c.name}" IS NULL OR "${c.name}" GLOB '${DATE_GLOB}')`;
+  if (c.isTime) s += ` CHECK ("${c.name}" IS NULL OR "${c.name}" GLOB '${TIME_GLOB}')`;
+  return s;
+}
+
+/** The `ALTER TABLE … ADD COLUMN` statements of a later migration, one a column, in its order. */
+export function buildAddColumns(file, models = parseSchema()) {
+  return columnsOfLaterMigration(file, models)
+    .map(({ model, column }) => `ALTER TABLE "${model.name}" ADD COLUMN ${columnDdl(column)};`)
+    .join("\n");
+}
+
 export function buildDdl(models = parseSchema()) {
   const out = [];
   const templated = [];
@@ -195,16 +288,7 @@ export function buildDdl(models = parseSchema()) {
   const triggerNames = new Map();
   for (const m of models) {
     const cols = new Set(m.cols.map((c) => c.name));
-    const defs = m.cols.map((c) => {
-      let s = `  "${c.name}" ${SQLTYPE[c.type]}`;
-      if (c.id) s += " PRIMARY KEY";
-      if (!c.optional) s += " NOT NULL";
-      if (c.unique) s += " UNIQUE";
-      if (c.def !== null) s += ` DEFAULT ${sqlDefault(c.def)}`;
-      if (c.isDate) s += ` CHECK ("${c.name}" IS NULL OR "${c.name}" GLOB '${DATE_GLOB}')`;
-      if (c.isTime) s += ` CHECK ("${c.name}" IS NULL OR "${c.name}" GLOB '${TIME_GLOB}')`;
-      return s;
-    });
+    const defs = m.cols.map((c) => `  ${columnDdl(c)}`);
     for (const r of foreignKeysOf(m)) {
       defs.push(`  FOREIGN KEY ("${r.col}") REFERENCES "${r.target}" ("${r.ref}") ON DELETE ${r.onDelete}`);
     }

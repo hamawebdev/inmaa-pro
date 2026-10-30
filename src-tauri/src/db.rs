@@ -386,9 +386,17 @@ mod tests {
                 }
             };
             // The data model: 109 tables and 122 triggers (0001 made 107 and 120;
-            // 0003 adds the two service lists, each with its no-delete trigger).
+            // 0003 adds the two service lists, each with its no-delete trigger;
+            // 0004 adds two columns to StaffMember).
             assert_eq!(count("table").await, 109, "tables");
             assert_eq!(count("trigger").await, 122, "triggers");
+            let added: i64 = sqlx::query_scalar(
+                "SELECT COUNT(*) FROM pragma_table_info('StaffMember') WHERE name IN ('trialEndDate', 'fixedTermReason') AND type = 'TEXT' AND \"notnull\" = 0",
+            )
+            .fetch_one(&pool)
+            .await
+            .expect("StaffMember's columns");
+            assert_eq!(added, 2, "0004: trialEndDate and fixedTermReason");
 
             let not_strict: i64 = sqlx::query_scalar(
                 "SELECT COUNT(*) FROM pragma_table_list WHERE schema = 'main' AND type = 'table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '\\_sqlx%' ESCAPE '\\' AND strict = 0",
@@ -424,7 +432,8 @@ mod tests {
 
     /// An installed copy upgrades in place. The first installer carried 0001
     /// and 0002; a database it made opens with this program, which applies the
-    /// later migrations at start and keeps every row that was there.
+    /// later migrations at start (0003 creates tables, 0004 adds columns to one
+    /// 0001 created) and keeps every row that was there.
     #[test]
     fn a_database_of_the_first_installer_upgrades_in_place() {
         let dir = temp_dir("db-upgrade");
@@ -451,6 +460,11 @@ mod tests {
                 .execute(&pool)
                 .await
                 .expect("a row of the office's");
+            // An employee the first installer's database holds: 0004 adds two columns to her table.
+            sqlx::query("INSERT INTO \"StaffMember\" (\"id\", \"kind\", \"numberSeq\", \"number\", \"registrationDate\", \"lastName\", \"firstName\", \"sex\", \"phone\", \"nameKey\", \"phoneKeys\", \"engagementStatus\", \"branchId\", \"createdAt\", \"updatedAt\") VALUES ('staff-kept', 'EMPLOYEE', 1, '1', '2026-10-20', 'حمدي', 'رضا', 'MALE', '0661203142', 'حمدي رضا', '|0661203142|', 'ACCEPTED', 'branch-main', '2026-10-20T08:00:00.000Z', '2026-10-20T08:00:00.000Z')")
+                .execute(&pool)
+                .await
+                .expect("an employee of the office's");
             pool.close().await;
 
             let pool = open(&path).await.expect("the installed database upgrades");
@@ -460,6 +474,22 @@ mod tests {
             };
             assert_eq!(scalar("SELECT COUNT(*) FROM \"Zone\" WHERE \"id\" = 'zone-kept'").await, 1, "the office's rows stay");
             assert_eq!(scalar("SELECT COUNT(*) FROM \"CatalogueService\"").await, 48, "his 48 services");
+            assert_eq!(
+                scalar("SELECT COUNT(*) FROM \"StaffMember\" WHERE \"id\" = 'staff-kept' AND \"trialEndDate\" IS NULL AND \"fixedTermReason\" IS NULL").await,
+                1,
+                "0004: the employee stays, with no trial period and no fixed-term reason"
+            );
+            sqlx::query("UPDATE \"StaffMember\" SET \"trialEndDate\" = '2027-01-20', \"fixedTermReason\" = 'remplacement' WHERE \"id\" = 'staff-kept'")
+                .execute(&pool)
+                .await
+                .expect("0004: a trial end date and a reason are kept");
+            assert!(
+                sqlx::query("UPDATE \"StaffMember\" SET \"trialEndDate\" = '20/01/2027' WHERE \"id\" = 'staff-kept'")
+                    .execute(&pool)
+                    .await
+                    .is_err(),
+                "0004: trialEndDate is a calendar date, YYYY-MM-DD"
+            );
             assert_eq!(
                 scalar("SELECT COUNT(*) FROM \"_sqlx_migrations\" WHERE \"success\" = 1").await,
                 sqlx::migrate!("./migrations").iter().count() as i64,

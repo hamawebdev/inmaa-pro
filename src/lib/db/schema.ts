@@ -292,6 +292,8 @@ export interface StaffMemberTable {
   workTimeKind: string | null;
   startDate: LocalDate | null;
   contractEndDate: LocalDate | null;
+  trialEndDate: LocalDate | null;
+  fixedTermReason: string | null;
   weeklyCapacityMin: Generated<Minutes>;
   payBasis: string | null;
   payRate: Money | null;

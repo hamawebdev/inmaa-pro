@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { isDate } from "@/features/people/rules/dates";
+import { addDays, completedMonths, isDate } from "@/features/people/rules/dates";
 import { isWilayaCode } from "@/lib/geo/wilayas";
 
 import {
@@ -31,6 +31,36 @@ const phoneOk = (value: string) => /^\d{9,10}$/.test(phoneDigits(value));
 const optionalPhone = z
   .string()
   .refine((value) => value.trim() === "" || phoneOk(value), "The phone number has 9 or 10 digits.");
+
+/**
+ * The five cases of Law 90-11, article 12, in which a fixed-term contract (CDD) may be made: offered as the
+ * usual answers of «سبب اللجوء إلى عقد محدد المدة». They are legal wording, so they are offered, stored and
+ * printed in Arabic whatever the reader's language.
+ */
+export const FIXED_TERM_REASONS_AR = [
+  "تنفيذ عمل مرتبط بعقود أشغال أو خدمات غير متجددة",
+  "استخلاف عامل مثبت في منصب تغيب عنه مؤقتًا",
+  "أشغال دورية ذات طابع متقطع",
+  "تزايد العمل أو أسباب موسمية",
+  "نشاطات أو أشغال ذات مدة محدودة أو مؤقتة بحكم طبيعتها",
+] as const;
+
+/** Law 90-11, article 18: a trial period lasts at most six months, twelve for a highly qualified post. */
+export const TRIAL_MONTHS = 6;
+export const TRIAL_MONTHS_QUALIFIED = 12;
+
+/** The day a trial period is counted from: the start of the post, or the registration when no start is given. */
+export const trialStart = (values: { startDate: string; registrationDate: string }) =>
+  values.startDate || values.registrationDate;
+
+/**
+ * True when a trial from `start` to `end` (both days included) lasts more than `months` months: six months
+ * from 1 February run to 31 July, so an end on 1 August is longer.
+ */
+export function trialLongerThan(start: string, end: string, months: number): boolean {
+  if (!isDate(start) || !isDate(end) || end <= start) return false;
+  return completedMonths(start, addDays(end, -1)) >= months;
+}
 
 export const employeeFormSchema = z
   .object({
@@ -82,6 +112,10 @@ export const employeeFormSchema = z
     employmentContract: z.enum(EMPLOYMENT_CONTRACTS).optional(),
     workTimeKind: z.enum(WORK_TIMES).optional(),
     contractEndDate: date,
+    // N1: the last day of the trial period; empty when there is none (Law 90-11, art. 18).
+    trialEndDate: date,
+    // N2: why the contract is fixed-term (Law 90-11, art. 12); kept for a CDD only.
+    fixedTermReason: z.string().trim().max(300, "Must be at most 300 characters."),
     // Annual leave brought in from paper: the days left on that date (LAB-6; the count goes on from the day after).
     leaveOpeningDays: z
       .string()
@@ -131,10 +165,26 @@ export const employeeFormSchema = z
         message: "The end of the contract cannot be before its start.",
       });
     }
+    const from = trialStart(data);
+    if (data.trialEndDate !== "" && from !== "" && isDate(from) && data.trialEndDate < from) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["trialEndDate"],
+        message: "The end of the trial period cannot be before the start of the post.",
+      });
+    } else if (data.trialEndDate !== "" && trialLongerThan(from, data.trialEndDate, TRIAL_MONTHS_QUALIFIED)) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["trialEndDate"],
+        message: "A trial period lasts at most twelve months.",
+      });
+    }
     if (data.payRate !== "" && !data.payBasis) {
       ctx.addIssue({ code: "custom", path: ["payBasis"], message: "Choose how this rate is paid." });
     }
-  });
+  })
+  // A permanent contract never carries the reason for a fixed-term one.
+  .transform((data) => (data.employmentContract === "CDD" ? data : { ...data, fixedTermReason: "" }));
 
 export type EmployeeFormValues = z.infer<typeof employeeFormSchema>;
 
@@ -167,6 +217,8 @@ export function emptyEmployeeValues(today: string): EmployeeFormValues {
     employmentContract: undefined,
     workTimeKind: undefined,
     contractEndDate: "",
+    trialEndDate: "",
+    fixedTermReason: "",
     leaveOpeningDays: "",
     leaveOpeningDate: "",
     cnasDeclared: false,
