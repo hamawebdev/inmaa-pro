@@ -8,8 +8,8 @@ export type Locale = (typeof LOCALES)[number];
 
 /**
  * The language the program opens in until the centre chooses another: Arabic,
- * worded as in the client's own forms. Also set in the boot scripts of
- * index.html and lock.html, which run before this module loads.
+ * worded as in the client's own forms. Also set in the boot script of
+ * index.html, which runs before this module loads.
  *
  * English stays the *reference catalogue*: keys are written in English first,
  * the tests compare the other two against it, and the error lookup matches on

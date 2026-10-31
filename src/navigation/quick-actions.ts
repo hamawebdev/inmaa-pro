@@ -6,6 +6,7 @@ import { quickActions as money } from "@/features/money/quick-actions";
 import { quickActions as operations } from "@/features/operations/quick-actions";
 import { quickActions as people } from "@/features/people/quick-actions";
 import { quickActions as stock } from "@/features/stock/quick-actions";
+import { quickActions as sync } from "@/features/sync/quick-actions";
 
 /**
  * A "create" destination offered by the Ctrl+K palette: a new worker, a new
@@ -27,4 +28,5 @@ export const QUICK_ACTIONS: readonly QuickAction[] = [
   ...operations,
   ...money,
   ...stock,
+  ...sync,
 ];

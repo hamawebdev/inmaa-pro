@@ -1,10 +1,11 @@
 import * as React from "react";
 
 import { useQuery } from "@tanstack/react-query";
-import { Check, Copy, KeyRound, LockKeyhole, UserRound } from "lucide-react";
+import { Check, Copy, KeyRound, LockKeyhole, MonitorSmartphone, UserRound } from "lucide-react";
 import { useLocale, useTranslations } from "use-intl";
 
 import { ErrorState } from "@/components/error-state";
+import { JoinCentrePanel } from "@/components/security/sync-screens";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -19,6 +20,7 @@ import {
   signInAction,
   type SignInAccount,
 } from "@/features/core/services/sign-in";
+import { mayJoin, useSyncStartup } from "@/features/sync/api";
 import { useErrorMessage } from "@/i18n/errors";
 import { formatRecoveryCode, isPasswordLongEnough, MIN_PASSWORD_LENGTH } from "@/lib/auth";
 import type { Session } from "@/lib/service/context";
@@ -27,7 +29,8 @@ import { cn } from "@/lib/utils";
 /**
  * The sign-in window: what the program shows when nobody is signed in.
  *
- * Closest academy screen: the licence lock window (src/lock/lock-app.tsx). The
+ * Closest academy screen: the academy's licence lock window
+ * (academy-system-desktop: src/lock/lock-app.tsx). The
  * same frame, the same round mark over a heading, the same card and the same
  * form, with a field-level message under the field instead of a toast (the
  * Toaster lives in the dashboard shell, which does not exist here).
@@ -59,9 +62,11 @@ type Step =
   | { kind: "code"; session: Session; code: string; first: boolean };
 
 const SIGN_IN_ACCOUNTS_KEY = ["sign-in", "accounts"] as const;
+const SIGN_IN_JOIN_KEY = ["sign-in", "may-join"] as const;
 
 export function SignInScreen() {
   const t = useTranslations("Auth");
+  const tSync = useTranslations("SyncJoin");
   const locale = useLocale();
   const errorMessage = useErrorMessage();
   const accounts = useQuery({
@@ -79,6 +84,12 @@ export function SignInScreen() {
   const [busy, setBusy] = React.useState(false);
   // Said once, the first time the window shows after an idle lock.
   const [idleLock] = React.useState(() => takeLastLock());
+  // A new laptop for a centre that works on another one (two-laptop sync), or
+  // a copy from before sync that must join again: «الانضمام إلى مركز موجود».
+  const joinable = useQuery({ queryKey: SIGN_IN_JOIN_KEY, queryFn: () => mayJoin() });
+  const syncStartup = useSyncStartup();
+  const rejoin = syncStartup?.rejoin ?? false;
+  const [joining, setJoining] = React.useState(false);
 
   const list = accounts.data ?? [];
   // One account (a new installation has only the manager): there is nothing to choose.
@@ -173,6 +184,29 @@ export function SignInScreen() {
     }
   }
 
+  if (joining) {
+    return (
+      <Shell step="join">
+        <JoinCentrePanel rejoin={rejoin} onBack={() => setJoining(false)} />
+      </Shell>
+    );
+  }
+
+  const joinOffer = (joinable.data === true || rejoin) && (
+    <div
+      data-signin-join
+      className="flex shrink-0 flex-col items-center gap-2 rounded-xl border-2 border-dashed border-border-strong p-4 text-center"
+    >
+      <p className="text-base leading-relaxed text-muted-foreground">
+        {rejoin ? tSync("Rejoin.Title") : tSync("OfferHint")}
+      </p>
+      <Button type="button" variant="outline" onClick={() => setJoining(true)}>
+        <MonitorSmartphone />
+        {tSync("Offer")}
+      </Button>
+    </div>
+  );
+
   if (step.kind === "code") {
     return (
       <Shell step="code">
@@ -218,7 +252,9 @@ export function SignInScreen() {
 
       {idleLock && (
         <p role="status" className="rounded-lg border-2 border-border-strong bg-card px-5 py-3 text-center text-base">
-          {t("LockedIdle", { minutes: idleLock.minutes })}
+          {idleLock.cause === "ACCOUNT_OFF"
+            ? tSync("Access.SignedOut")
+            : t("LockedIdle", { minutes: idleLock.minutes })}
         </p>
       )}
 
@@ -350,6 +386,7 @@ export function SignInScreen() {
           </form>
         </>
       )}
+      {joinOffer}
     </Shell>
   );
 }

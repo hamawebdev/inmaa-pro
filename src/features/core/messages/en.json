@@ -54,7 +54,8 @@
     "FilePartResidents": "Residents",
     "FilePartHandouts": "Hand-outs",
     "FilePartPayments": "Payment",
-    "SettingsServices": "Services"
+    "SettingsServices": "Services",
+    "SettingsSync": "Sync"
   },
   "Auth": {
     "Password": "Password",
@@ -313,29 +314,6 @@
     "RulesDescription": "The rules the program follows when it plans, bills and pays. Each card saves on its own.",
     "UsersDescription": "Who signs in on this PC, and what each role may open and do.",
     "LogDescription": "Every operation on personal data and every security event, as the law asks: who, what, when and why."
-  },
-  "License": {
-    "Title": "Free Trial",
-    "TrialDescription": "This installation is free to use for {days} days. After that it needs a lifetime subscription.",
-    "Expired": "Expired",
-    "LifetimeTitle": "Lifetime Subscription",
-    "LifetimeDescription": "This installation is registered. There is no time limit and no further payment.",
-    "LifetimeActive": "Active",
-    "Activate": "Activate",
-    "ActivateTitle": "Activate your lifetime subscription",
-    "ActivateDescription": "Call us on {phone}, read out the Device ID below, and type in the code we give you.",
-    "Activated": "Activated — thank you. This installation is yours for good.",
-    "DaysRemaining": "{count, plural, one {# day remaining} other {# days remaining}}",
-    "HoursRemaining": "{count, plural, one {# hour remaining} other {# hours remaining}}",
-    "DeviceId": "Device ID",
-    "ExpiredTitle": "Your free trial has ended",
-    "ContactMessage": "Thank you, please contact us to get your lifetime subscription at {phone}",
-    "CodeLabel": "Subscription code",
-    "CodeWrong": "That code is not right for this device. Please check it and try again.",
-    "UnlockAction": "Activate",
-    "UnlockFailed": "The code could not be checked. Please try again.",
-    "UnlockedTitle": "Thank you — your subscription is active",
-    "Restarting": "Restarting the application…"
   },
   "MediaUpload": {
     "SaveCopy": "Save a copy",
@@ -1164,6 +1142,7 @@
     "settings_rules": "Change قواعد العمل",
     "log_read": "Read the access and change log",
     "backup_run": "Make a backup now",
+    "sync_manage": "Set up sync between the two laptops, add or remove a laptop, settle sync conflicts",
     "backup_restore": "Restore a backup (the manager only)"
   },
   "AnchorScreen": {

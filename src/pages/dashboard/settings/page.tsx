@@ -14,7 +14,6 @@ import { AppearanceCard, LanguageCard } from "./_components/appearance-cards";
 import { BackupCard } from "./_components/backup-card";
 import { BranchesCard } from "./_components/branches-card";
 import { CentreIdentityCard } from "./_components/centre-identity-card";
-import { LicenseCard } from "./_components/license-card";
 import { SettingsGroups } from "./_components/settings-form/settings-groups";
 
 /**
@@ -32,12 +31,11 @@ import { SettingsGroups } from "./_components/settings-form/settings-groups";
  *  3. Language and appearance: how this machine shows everything above; then
  *     the choices that apply to the whole program.
  *  4. Backup, because it is the one action here with no undo.
- *  5. The licence, then System — two footers more than settings. The licence
- *     sits beside the version and the OS because that is the block a support
- *     call asks you to read out.
+ *  5. System, a footer more than a setting: the version and the OS, the block
+ *     a support call asks you to read out.
  *
- * The other three tabs (work rules, users and permissions, the log) are their
- * own pages beside this one.
+ * The other tabs (work rules, services, users and permissions, sync, the log)
+ * are their own pages beside this one.
  */
 export default function SettingsPage() {
   const t = useTranslations("Settings");
@@ -65,8 +63,6 @@ export default function SettingsPage() {
         <SettingsGroups tab="general" only={["program"]} />
 
         <BackupCard />
-
-        <LicenseCard />
 
         <Card>
           <CardHeader>

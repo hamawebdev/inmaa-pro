@@ -16,11 +16,14 @@ import moneyFr from "@/features/money/messages/fr.json";
 import stockAr from "@/features/stock/messages/ar.json";
 import stockEn from "@/features/stock/messages/en.json";
 import stockFr from "@/features/stock/messages/fr.json";
+import syncAr from "@/features/sync/messages/ar.json";
+import syncEn from "@/features/sync/messages/en.json";
+import syncFr from "@/features/sync/messages/fr.json";
 
 /**
  * The message catalogues, assembled from one set of files per feature folder.
  *
- * Six folders write messages (`src/features/<folder>/messages/{en,ar,fr}.json`)
+ * Seven folders write messages (`src/features/<folder>/messages/{en,ar,fr}.json`)
  * so that no two teammates ever edit the same file. Here they are merged into
  * the one catalogue per language that `use-intl` reads.
  *
@@ -29,7 +32,7 @@ import stockFr from "@/features/stock/messages/fr.json";
  * two folders may do is define the same key; src/i18n/messages.test.ts fails
  * when that happens, because here the later one would silently win.
  *
- * This module imports nothing but JSON, so tests and the lock window can read
+ * This module imports nothing but JSON, so tests and the boot of the window can read
  * the catalogues without pulling in the rest of the i18n layer.
  */
 
@@ -39,7 +42,7 @@ export type MessageLocale = (typeof MESSAGE_LOCALES)[number];
 export type MessageTree = { [key: string]: string | MessageTree };
 
 /** The folders that own message files, in merge order. */
-export const MESSAGE_FOLDERS = ["core", "people", "clients", "operations", "money", "stock"] as const;
+export const MESSAGE_FOLDERS = ["core", "people", "clients", "operations", "money", "stock", "sync"] as const;
 export type MessageFolder = (typeof MESSAGE_FOLDERS)[number];
 
 /** Each folder's own files, untouched. The tests check these one by one. */
@@ -50,6 +53,7 @@ export const FOLDER_MESSAGES: Record<MessageFolder, Record<MessageLocale, Messag
   operations: { en: operationsEn, ar: operationsAr, fr: operationsFr },
   money: { en: moneyEn, ar: moneyAr, fr: moneyFr },
   stock: { en: stockEn, ar: stockAr, fr: stockFr },
+  sync: { en: syncEn, ar: syncAr, fr: syncFr },
 };
 
 function isTree(value: string | MessageTree | undefined): value is MessageTree {

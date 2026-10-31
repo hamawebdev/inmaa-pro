@@ -63,6 +63,7 @@ const ROUTES: Array<[string, SectionId | undefined]> = [
   ["/dashboard/settings", "settings"],
   ["/dashboard/settings/rules", "settings"],
   ["/dashboard/settings/users", "settings"],
+  ["/dashboard/settings/sync", "settings"],
   ["/dashboard/settings/log", "settings"],
 
   // In no section at all.
@@ -113,6 +114,7 @@ describe("resolveTab", () => {
     expect(resolveTab("settings", "/dashboard/settings/rules")).toBe("rules");
     expect(resolveTab("settings", "/dashboard/settings/users")).toBe("users");
     expect(resolveTab("settings", "/dashboard/settings/users/u1")).toBe("users");
+    expect(resolveTab("settings", "/dashboard/settings/sync")).toBe("sync");
     expect(resolveTab("settings", "/dashboard/settings/log")).toBe("log");
   });
 
@@ -154,7 +156,7 @@ describe("registry integrity", () => {
       requests: ["files", "visits", "quality", "clients"],
       money: ["expenses", "income", "invoices", "payments", "reports"],
       stock: ["inventory", "handouts", "purchases", "maintenance"],
-      settings: ["general", "rules", "services", "users", "log"],
+      settings: ["general", "rules", "services", "users", "sync", "log"],
     });
   });
 

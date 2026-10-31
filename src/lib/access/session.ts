@@ -137,6 +137,48 @@ export async function loadSession(ex: Executor, userId: string): Promise<Session
 
 // ── The session of the running program ─────────────────────────────────────
 
+/** The tables whose rows make up a session: the account, its role and grants, its employee's name, its branch. */
+export const SESSION_TABLES: readonly string[] = ["User", "Role", "RoleGrant", "StaffMember", "Branch"];
+
+/** Whether two sessions give the same person the same name, role, branch and rights. */
+export function sameSession(a: Session, b: Session): boolean {
+  const sections = (s: Session) => JSON.stringify(Object.entries(s.sections).sort());
+  const capabilities = (s: Session) => [...s.capabilities].sort().join(",");
+  return (
+    a.userId === b.userId &&
+    a.userName === b.userName &&
+    a.roleId === b.roleId &&
+    a.staffMemberId === b.staffMemberId &&
+    a.branchId === b.branchId &&
+    sections(a) === sections(b) &&
+    capabilities(a) === capabilities(b)
+  );
+}
+
+/**
+ * The signed-in session after the other laptop's changes were applied here
+ * (two-laptop sync, docs/sync/DECISION.md section 7, case 10): read again when
+ * one of `SESSION_TABLES` moved. `signedOut` when the account or its role was
+ * switched off; `reloaded` with the new session when its access changed.
+ */
+export async function sessionAfterSync(
+  ex: Executor,
+  current: Session,
+  tables: ReadonlySet<string>,
+): Promise<{ outcome: "same" | "reloaded" | "signedOut"; session: Session | null }> {
+  if (!current.userId || !SESSION_TABLES.some((table) => tables.has(table))) {
+    return { outcome: "same", session: current };
+  }
+  let next: Session;
+  try {
+    next = await loadSession(ex, current.userId);
+  } catch (error) {
+    if (error instanceof ServiceError) return { outcome: "signedOut", session: null };
+    throw error;
+  }
+  return sameSession(current, next) ? { outcome: "same", session: current } : { outcome: "reloaded", session: next };
+}
+
 let current: Session | null = null;
 const listeners = new Set<() => void>();
 

@@ -10,6 +10,9 @@ import { loadFeatureSeeds } from "@/lib/seeds";
 import { buildContext, SYSTEM_SESSION } from "@/lib/service/context";
 import { programClock, setProgramAnchor, setProgramClock } from "@/lib/service/program";
 import { getSetting } from "@/lib/settings";
+import { withStampedTransaction } from "@/lib/sync/session";
+
+import { catchingUpAtStart, prepareSync, startSync } from "@/features/sync/api";
 
 import { startDayWatch } from "./day-start";
 import { firstRun, isFirstRunDone } from "./first-run";
@@ -26,7 +29,9 @@ import { firstRun, isFirstRunDone } from "./first-run";
  *  5. the anchor against the database, and the PC's clock against the work
  *     already recorded. What they found is kept for the screens that ask the
  *     manager (`startupAnchor`, `startupClock`); nothing is decided here;
- *  6. the day's own work, when neither found anything to ask about.
+ *  6. the day's own work, when neither found anything to ask about, and the
+ *     exchange with the other laptop (two-laptop sync: `prepareSync` runs
+ *     before step 5, and a laptop catching up starts its exchange at once).
  */
 
 /**
@@ -113,6 +118,8 @@ async function startTheDayIfClear(clock: Clock): Promise<void> {
   } catch (error) {
     console.error("daily: the day could not be started", error);
   }
+  // The exchange with the other laptop, on a database found in order (it does nothing until sync is set up).
+  startSync();
 }
 
 /**
@@ -156,12 +163,25 @@ export async function startProgram(): Promise<void> {
 
   if (!(await isFirstRunDone(db))) {
     const ctx = buildContext(SYSTEM_SESSION, clock);
-    await db.transaction().execute((trx) => firstRun(trx, ctx));
+    // Stamped like every write, so that sync's capture never meets an unstamped transaction.
+    await withStampedTransaction(db, ctx, (trx) => firstRun(trx, ctx));
     // Only where there is no anchor yet: a new database beside an old anchor is for the manager to judge.
     if (!(await desktopAnchorStore.read())) {
       await writeAnchor(db, desktopAnchorStore, ctx.now, { accept: "FIRST_RUN" });
     }
   }
+
+  // Two-laptop sync, before the anchor: a copy just joined has its anchor
+  // accepted here (it would read as another centre's otherwise), and a restored
+  // laptop catches up before anybody signs in, whatever the anchor says.
+  // It writes a joined copy's anchor itself, so the store is bound for this step only.
+  setProgramAnchor(desktopAnchorStore);
+  try {
+    await prepareSync();
+  } finally {
+    setProgramAnchor(null);
+  }
+  if (catchingUpAtStart()) startSync();
 
   await compareAtStart(clock);
   await checkClockAtStart(clock);

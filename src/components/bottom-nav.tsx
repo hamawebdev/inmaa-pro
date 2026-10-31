@@ -3,7 +3,9 @@ import { NavLink } from "react-router-dom";
 import { useTranslations } from "use-intl";
 
 import { LockMenu } from "@/components/lock-menu";
+import { SyncMenu } from "@/components/sync-menu";
 import { useSession } from "@/hooks/use-session";
+import { useSyncBar } from "@/hooks/use-sync-bar";
 import { mayOpenSection } from "@/lib/access/session";
 import { cn } from "@/lib/utils";
 import {
@@ -79,8 +81,10 @@ function accentClasses(accent: SectionAccent | undefined, active: boolean) {
  *    wears its section's own hue (see src/navigation/sections.ts) — the same hue
  *    that screen's heading and its tab strip use. "You are on the violet screen"
  *    is a landmark in a way that "you are on the third tab" is not.
- *  - **Lock and Settings**: reached on purpose, a few times a day, by whoever
- *    runs the place. They are fixed and narrow, so the eye reads the bar as
+ *  - **Lock, sync and Settings**: reached on purpose, a few times a day, by
+ *    whoever runs the place. The sync item appears only once the two laptops
+ *    are set up (docs/sync/DECISION.md), and says the exchange's state in the
+ *    tones of `StatusChip`. They are fixed and narrow, so the eye reads the bar as
  *    six-plus-two rather than as eight of a kind. Lock opens a menu, not a
  *    screen, so it has no hue.
  *
@@ -97,7 +101,10 @@ function accentClasses(accent: SectionAccent | undefined, active: boolean) {
  */
 export function BottomNav({ pathname }: { pathname: string }) {
   const t = useTranslations("Nav");
+  const tSync = useTranslations("Sync.Bar");
   const session = useSession();
+  // Only once sync is set up on this laptop: before that the bar is the academy's, unchanged.
+  const sync = useSyncBar();
   const activeSection = resolveSection(pathname);
   const sections = PRIMARY_SECTIONS.filter((section) => session !== null && mayOpenSection(session, section.id));
   const settingsOpen = session !== null && mayOpenSection(session, SETTINGS_SECTION.id);
@@ -155,6 +162,26 @@ export function BottomNav({ pathname }: { pathname: string }) {
             <NavItemInner icon={LockKeyhole} label={t("Lock")} active={false} />
           </button>
         </LockMenu>
+
+        {sync && (
+          <SyncMenu status={sync.status} state={sync.state} tone={sync.tone}>
+            {/* The exchange between the two laptops: a word and an icon in the
+                tone of its state, the same target as Lock beside it. */}
+            <button
+              type="button"
+              data-sync-bar={sync.state}
+              className={cn(
+                navItemBase,
+                utility,
+                "border-s-2 border-border",
+                accentClasses(undefined, false),
+                sync.ink,
+              )}
+            >
+              <NavItemInner icon={sync.icon} label={tSync(sync.state)} active={false} />
+            </button>
+          </SyncMenu>
+        )}
 
         {settingsOpen &&
           (() => {

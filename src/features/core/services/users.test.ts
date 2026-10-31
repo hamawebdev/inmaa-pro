@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import type { Capability } from "@/lib/access/catalogue";
+import { MANAGERS_OWN_CAPABILITIES, type Capability } from "@/lib/access/catalogue";
 import { createTestDatabase, type TestDatabase } from "@/testing/database";
 
 import { createAccount, listRoleGrants, saveRoleGrants, setAccountActive, updateAccount } from "./users";
@@ -129,5 +129,25 @@ describe("the manager's place (audit ACC-5)", () => {
     const after = await test.transact((ex, ctx) => listRoleGrants(ex, ctx));
     expect(after.find((role) => role.roleId === "ACCOUNTANT")?.capabilities).toContain("visit.enterOrder");
     expect(after.find((role) => role.roleId === "ADMINISTRATION")?.sections.STOCK).toBeUndefined();
+  });
+
+  it("keeps the two laptops' sync the manager's own: no role holds it, and a delegate cannot give it", async () => {
+    expect(MANAGERS_OWN_CAPABILITIES).toContain("sync.manage");
+    const { session } = await delegate();
+    const grants = await test.transact((ex, ctx) => listRoleGrants(ex, ctx));
+    expect(grants.some((role) => role.capabilities.includes("sync.manage"))).toBe(false);
+    const accountant = grants.find((role) => role.roleId === "ACCOUNTANT");
+    if (!accountant) throw new Error("test: no ACCOUNTANT role");
+    await expect(
+      test.transact(
+        (ex, ctx) =>
+          saveRoleGrants(ex, ctx, {
+            roleId: "ACCOUNTANT",
+            sections: accountant.sections,
+            capabilities: [...accountant.capabilities, "sync.manage"],
+          }),
+        session,
+      ),
+    ).rejects.toThrow("Only the manager gives or takes away the manager's own rights.");
   });
 });

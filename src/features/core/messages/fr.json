@@ -54,7 +54,8 @@
     "FilePartResidents": "Résidents",
     "FilePartHandouts": "Remises",
     "FilePartPayments": "Paiement",
-    "SettingsServices": "Services"
+    "SettingsServices": "Services",
+    "SettingsSync": "Synchronisation"
   },
   "Auth": {
     "Password": "Mot de passe",
@@ -313,29 +314,6 @@
     "RulesDescription": "Les règles que suit le programme pour planifier, facturer et payer. Chaque carte s'enregistre à part.",
     "UsersDescription": "Qui se connecte sur ce PC, et ce que chaque rôle peut ouvrir et faire.",
     "LogDescription": "Chaque opération sur des données personnelles et chaque événement de sécurité, comme la loi le demande : qui, quoi, quand et pourquoi."
-  },
-  "License": {
-    "Title": "Essai gratuit",
-    "TrialDescription": "Cette installation est utilisable gratuitement pendant {days} jours. Au-delà, un abonnement à vie est nécessaire.",
-    "Expired": "Expiré",
-    "LifetimeTitle": "Abonnement à vie",
-    "LifetimeDescription": "Cette installation est enregistrée. Il n'y a ni limite de durée ni paiement supplémentaire.",
-    "LifetimeActive": "Actif",
-    "Activate": "Activer",
-    "ActivateTitle": "Activez votre abonnement à vie",
-    "ActivateDescription": "Appelez-nous au {phone}, communiquez l'identifiant d'appareil ci-dessous, puis saisissez le code que nous vous donnons.",
-    "Activated": "Activé — merci. Cette installation est désormais la vôtre définitivement.",
-    "DaysRemaining": "{count, plural, one {# jour restant} other {# jours restants}}",
-    "HoursRemaining": "{count, plural, one {# heure restante} other {# heures restantes}}",
-    "DeviceId": "Identifiant d'appareil",
-    "ExpiredTitle": "Votre essai gratuit est terminé",
-    "ContactMessage": "Merci, veuillez nous contacter pour obtenir votre abonnement à vie au {phone}",
-    "CodeLabel": "Code d'abonnement",
-    "CodeWrong": "Ce code ne correspond pas à cet appareil. Veuillez le vérifier et réessayer.",
-    "UnlockAction": "Activer",
-    "UnlockFailed": "Le code n'a pas pu être vérifié. Veuillez réessayer.",
-    "UnlockedTitle": "Merci — votre abonnement est actif",
-    "Restarting": "Redémarrage de l'application…"
   },
   "MediaUpload": {
     "SaveCopy": "Enregistrer une copie",
@@ -1164,6 +1142,7 @@
     "settings_rules": "Modifier قواعد العمل",
     "log_read": "Lire le journal des accès et modifications",
     "backup_run": "Faire une sauvegarde maintenant",
+    "sync_manage": "Configurer la synchronisation des deux ordinateurs, ajouter ou retirer un ordinateur, régler les conflits de synchronisation",
     "backup_restore": "Restaurer une sauvegarde (le directeur seul)"
   },
   "AnchorScreen": {

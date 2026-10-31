@@ -101,6 +101,8 @@ export const CAPABILITIES = {
   "settings.rules": [],
   "log.read": [],
   "backup.run": ["ADMINISTRATION"],
+  // Two-laptop sync (docs/sync/DECISION.md): set it up, pair or remove a laptop, settle its conflicts.
+  "sync.manage": [],
   // The manager's alone: the database refuses a grant of it (a CHECK on RoleGrant).
   "backup.restore": [],
 } as const satisfies Record<string, readonly Exclude<RoleCode, "MANAGER">[]>;

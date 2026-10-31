@@ -1,12 +1,16 @@
 import * as React from "react";
 
 import { RouterProvider } from "react-router-dom";
+import { toast } from "sonner";
+import { useTranslations } from "use-intl";
 
 import { AnchorScreen } from "@/components/security/anchor-screen";
 import { ClockScreen } from "@/components/security/clock-screen";
 import { IdleLock } from "@/components/security/idle-lock";
 import { SignInScreen } from "@/components/security/sign-in-screen";
+import { SyncCatchUpScreen } from "@/components/security/sync-screens";
 import { recordCleanRestoreAction } from "@/features/core/services/backups";
+import { followSyncedChanges } from "@/features/core/services/session";
 import {
   recheckStartupClock,
   startupAnchor,
@@ -14,6 +18,7 @@ import {
   subscribeToStartupAnchor,
   subscribeToStartupClock,
 } from "@/features/core/services/startup";
+import { onSyncApplied, useSyncStartup } from "@/features/sync/api";
 import { useCan, useSession } from "@/hooks/use-session";
 import { MANAGER_ONLY_CAPABILITY, MANAGER_ROLE } from "@/lib/access/catalogue";
 import { router } from "@/routes";
@@ -34,6 +39,10 @@ import { clearRestoreNote, readRestoreNote, type RestoreNote } from "@/server/ba
  *    confirms or corrects it. Anyone else goes on to the program after a jump
  *    (nothing legal is issued meanwhile); with the clock behind, nobody else
  *    gets past the sign-in.
+ *  - This laptop catching up after a restore (two-laptop sync, DECISION
+ *    section 7 case 7): «جارٍ استرجاع ما فات من الحاسوب الآخر», before the
+ *    sign-in window. Only the manager signs in past it, to take the laptop out
+ *    of sync instead; nobody works until it has caught up.
  *  - Otherwise, the program.
  */
 export function ProgramGate() {
@@ -41,6 +50,21 @@ export function ProgramGate() {
   const anchor = React.useSyncExternalStore(subscribeToStartupAnchor, startupAnchor, startupAnchor);
   const clock = React.useSyncExternalStore(subscribeToStartupClock, startupClock, startupClock);
   const note = useRestoreNote(session !== null);
+  const syncStartup = useSyncStartup();
+  const [managerSignIn, setManagerSignIn] = React.useState(false);
+  const tAccess = useTranslations("SyncJoin.Access");
+
+  // The other laptop's changes, as they arrive: every screen reads again, and
+  // the session follows a change of this account's access (case 10).
+  React.useEffect(
+    () =>
+      onSyncApplied(({ tables }) => {
+        void followSyncedChanges(tables).then((outcome) => {
+          if (outcome === "reloaded") toast.info(tAccess("Changed"));
+        });
+      }),
+    [tAccess],
+  );
 
   // Each sign-in may change what the clock is measured against (a session opened on a date in question).
   const userId = session?.userId ?? null;
@@ -48,6 +72,31 @@ export function ProgramGate() {
     if (userId) void recheckStartupClock();
   }, [userId]);
 
+  if (syncStartup?.catchingUp) {
+    if (!session && !managerSignIn) {
+      return (
+        <SyncCatchUpScreen
+          state={syncStartup}
+          signedIn={false}
+          manager={false}
+          onManagerSignIn={() => setManagerSignIn(true)}
+        />
+      );
+    }
+    if (session) {
+      return (
+        <>
+          <IdleLock />
+          <SyncCatchUpScreen
+            state={syncStartup}
+            signedIn
+            manager={session.roleId === MANAGER_ROLE}
+            onManagerSignIn={() => {}}
+          />
+        </>
+      );
+    }
+  }
   if (!session) return <SignInScreen />;
   if (anchor && anchor.state !== "normal") {
     return (

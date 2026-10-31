@@ -118,7 +118,7 @@ describe("server and validator messages", () => {
     // Test files are not read: a sentence quoted in an assertion is checked where it is born.
     ...import.meta.glob(
       [
-        "../lib/{access,attachments,chain,clock,events,log,numbering,restricted,service,settings}/**/*.ts",
+        "../lib/{access,attachments,chain,clock,events,log,numbering,restricted,service,settings,sync}/**/*.ts",
         "!../lib/**/*.test.ts",
       ],
       { query: "?raw", import: "default", eager: true },

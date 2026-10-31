@@ -54,6 +54,7 @@ export const ALERT_KEYS = [
   "corrective.overdue",
   "inspection.due",
   "backup.stale",
+  "sync.attention",
 ] as const;
 export type AlertKey = (typeof ALERT_KEYS)[number];
 
@@ -74,7 +75,7 @@ export type AlertLeadSetting =
   | "alerts.staffContractEndLeadDays"
   | "alerts.backupStaleDays";
 
-export const ALERT_OWNERS = ["core", "people", "clients", "operations", "money", "stock"] as const;
+export const ALERT_OWNERS = ["core", "people", "clients", "operations", "money", "stock", "sync"] as const;
 export type AlertOwner = (typeof ALERT_OWNERS)[number];
 
 export interface AlertDefinition {

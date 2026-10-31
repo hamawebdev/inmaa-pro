@@ -6,7 +6,6 @@
 @import "tailwindcss" source(none);
 @source "./";
 @source "../index.html";
-@source "../lock.html";
 @import "tw-animate-css";
 
 /* Self-hosted typefaces — the app must render identically with no network.
