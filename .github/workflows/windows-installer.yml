@@ -61,6 +61,8 @@ jobs:
             the WebView2 runtime is inside the installer. The installers are not code-signed, so Windows may show
             "Windows protected your PC": choose "More info", then "Run anyway".
 
-            The program opens on a 7-day trial; the developer makes the unlock code from the device id it shows.
+            The program needs no licence or unlock code. Two laptops can share the same data through the encrypted
+            sync mailbox (Settings › المزامنة); without it, each laptop works on its own, offline.
+            Installing over 1.0.0 keeps every record: the database upgrades in place on first start.
           releaseDraft: false
           prerelease: ${{ github.event_name == 'workflow_dispatch' && inputs.prerelease }}
