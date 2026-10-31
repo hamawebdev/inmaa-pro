@@ -28,6 +28,6 @@
       "@/*": ["./src/*"]
     }
   },
-  "include": ["src"],
+  "include": ["src", "relay"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }

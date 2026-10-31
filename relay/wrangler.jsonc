@@ -1,0 +1,27 @@
+// The centre's mailbox, for Cloudflare's free plan. A template: it holds no account id and no secret.
+// Deploy it with the commands in README.md, from this folder. The setup key is a secret, set with
+// `npx wrangler@4 secret put SETUP_KEY`, never written here.
+{
+  "name": "inmaa-relay",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-01",
+  // The address is https://inmaa-relay.<your-subdomain>.workers.dev
+  "workers_dev": true,
+  "durable_objects": {
+    "bindings": [
+      // One per centre: devices, envelopes, acknowledgements, full copies, key rotations.
+      { "name": "MAILBOX", "class_name": "Mailbox" },
+      // File parts, eight per centre.
+      { "name": "PARTS", "class_name": "PartStore" },
+      // The pairing tickets.
+      { "name": "DIRECTORY", "class_name": "Directory" },
+    ],
+  },
+  // SQLite-backed Durable Objects: the only kind the free plan offers. Never edit a tag once deployed; add one.
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Mailbox", "PartStore", "Directory"] }],
+  "vars": {
+    // Writes are refused (the program shows "the mailbox is full") past this many stored bytes, below the free
+    // plan's 5 GB for the whole account.
+    "FULL_AT_BYTES": "4500000000",
+  },
+}

@@ -15,7 +15,7 @@ export default defineConfig({
   },
   test: {
     environment: "node",
-    include: ["src/**/*.test.ts"],
+    include: ["src/**/*.test.ts", "relay/**/*.test.ts"],
     // Most tests build a real database from the migrations, and a scenario may build the demo data: under the
     // whole suite's parallel load that can pass vitest's default 5 seconds without anything being wrong.
     testTimeout: 30_000,
