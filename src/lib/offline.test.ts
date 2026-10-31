@@ -1,14 +1,22 @@
 import { describe, expect, it } from "vitest";
 
 /**
- * The program is offline, and stays so by construction rather than by habit.
+ * The program is offline, and stays so by construction rather than by habit,
+ * with one exception that is narrow by construction too.
  *
- * Rule 1 of CLAUDE.md: nothing may need a connection at run time. Three things
- * hold that line. ESLint refuses network calls, outside links and web addresses
- * in `src/` (eslint.config.js). The content security policy and the navigation
- * guard refuse them at run time (tauri.conf.json, src-tauri/src/lib.rs). And
- * this test reads the Rust manifest, the capability files and the Tauri
- * configuration, where a single added line would hand the webview a way out.
+ * Rule 1 of CLAUDE.md, as docs/sync/DECISION.md section 9 amends it: nothing
+ * may need a connection at run time, and the program reaches one address only,
+ * the sync mailbox the director typed, over HTTPS, under `/v1/`. That request
+ * is made by the Rust side, in one file (src-tauri/src/sync/http.rs), with one
+ * HTTP library (`ureq`); the window itself still connects nowhere.
+ *
+ * Four things hold that line. ESLint refuses network calls, outside links and
+ * web addresses in `src/` (eslint.config.js). The content security policy and
+ * the navigation guard refuse them at run time (tauri.conf.json,
+ * src-tauri/src/lib.rs). The sync command refuses any other address, path,
+ * method, header or redirect (src-tauri/src/sync, with its Rust tests). And
+ * this test reads the Rust manifest and sources, the capability files and the
+ * Tauri configuration, where a single added line would hand the program a way out.
  */
 const raw = (pattern: Record<string, unknown>) => pattern as Record<string, string>;
 
@@ -24,9 +32,27 @@ const tauriConfigs = raw(
 const packageJson = Object.values(
   raw(import.meta.glob("../../package.json", { query: "?raw", import: "default", eager: true })),
 )[0];
-const htmlEntries = raw(
-  import.meta.glob(["../../index.html", "../../lock.html"], { query: "?raw", import: "default", eager: true }),
+const htmlEntries = raw(import.meta.glob(["../../*.html"], { query: "?raw", import: "default", eager: true }));
+const rustSources = raw(
+  import.meta.glob("../../src-tauri/src/**/*.rs", { query: "?raw", import: "default", eager: true }),
 );
+
+/** The one HTTP library the program may use, and the one file that may use it (DECISION section 9). */
+const SYNC_HTTP_CRATE = "ureq";
+const SYNC_HTTP_FILE = "src-tauri/src/sync/http.rs";
+
+/** The Tauri plugins the program uses. A new one is a decision, not a line: it must be added here too. */
+const PLUGINS = ["dialog", "fs", "log", "notification", "os", "process", "single-instance", "store", "window-state"];
+
+/** A Rust file's code without its tests: everything before the first `#[cfg(test)]`; nothing for a tests file. */
+function withoutTests(file: string, text: string): string {
+  if (/\/tests\.rs$/.test(file)) return "";
+  const at = text.indexOf("#[cfg(test)]");
+  return at === -1 ? text : text.slice(0, at);
+}
+
+/** Where a path ends inside the repository, for messages: `src-tauri/src/sync/http.rs`. */
+const repoPath = (file: string) => file.replace(/^(\.\.\/)+/, "");
 
 /** Plugins and crates whose whole purpose is to reach outside the program. */
 const FORBIDDEN_PLUGINS = [
@@ -132,19 +158,76 @@ export function outsideSources(policy: string | Record<string, string>): string[
 describe("offline, by construction", () => {
   it("reads the files it is meant to check", () => {
     expect(cargoToml).toContain("[dependencies]");
-    expect(Object.keys(capabilities).length).toBeGreaterThanOrEqual(2);
+    // One window, one capability: the licence's lock window and its capability are gone.
+    expect(Object.keys(capabilities).map(repoPath)).toEqual(["src-tauri/capabilities/default.json"]);
     expect(Object.keys(tauriConfigs).some((file) => file.endsWith("/tauri.conf.json"))).toBe(true);
-    expect(Object.keys(htmlEntries)).toHaveLength(2);
+    expect(Object.keys(htmlEntries).map(repoPath)).toEqual(["index.html"]);
+    expect(Object.keys(rustSources).map(repoPath)).toContain(SYNC_HTTP_FILE);
   });
 
-  it("depends on no Rust crate or Tauri plugin that reaches the network or another program", () => {
+  it("depends on no Rust crate or Tauri plugin that reaches the network or another program, but the sync's one", () => {
     const dependencies = cargoDependencies(cargoToml);
     expect(dependencies).toContain("tauri");
     const found = dependencies.filter(
       (name) =>
-        FORBIDDEN_CRATES.includes(name) || FORBIDDEN_PLUGINS.some((plugin) => name === `tauri-plugin-${plugin}`),
+        (FORBIDDEN_CRATES.includes(name) && name !== SYNC_HTTP_CRATE) ||
+        FORBIDDEN_PLUGINS.some((plugin) => name === `tauri-plugin-${plugin}`),
     );
     expect(found).toEqual([]);
+    // Exactly the plugins it had: none added.
+    expect(
+      dependencies
+        .filter((name) => name.startsWith("tauri-plugin-"))
+        .map((name) => name.slice("tauri-plugin-".length))
+        .sort(),
+    ).toEqual(PLUGINS);
+  });
+
+  it("uses one HTTP library, with HTTPS on ring and nothing else, in one file", () => {
+    expect(cargoDependencies(cargoToml)).toContain(SYNC_HTTP_CRATE);
+    // Its line: default features off (gzip), rustls only (ring and the bundled roots; no OpenSSL, no cookies).
+    const line = cargoToml.split(/\r?\n/).find((text) => text.trim().startsWith(`${SYNC_HTTP_CRATE} =`));
+    expect(line).toMatch(/default-features\s*=\s*false/);
+    expect(/features\s*=\s*\[([^\]]*)\]/.exec(line ?? "")?.[1].replace(/\s/g, "")).toBe('"rustls"');
+
+    // Named in that file and nowhere else in the Rust sources, comments included.
+    const naming = Object.entries(rustSources)
+      .filter(([, text]) => new RegExp(`\\b${SYNC_HTTP_CRATE}\\b`).test(text))
+      .map(([file]) => repoPath(file));
+    expect(naming).toEqual([SYNC_HTTP_FILE]);
+    // And no other client is reached for by its path either.
+    const others = Object.entries(rustSources).flatMap(([file, text]) =>
+      FORBIDDEN_CRATES.filter((name) => name !== SYNC_HTTP_CRATE)
+        .filter((name) => new RegExp(`\\b${name.replace(/-/g, "_")}::`).test(text))
+        .map((name) => `${repoPath(file)}: ${name}`),
+    );
+    expect(others).toEqual([]);
+  });
+
+  it("sends only toward the address the director typed: no web address written in the Rust code", () => {
+    // A literal with a host after the scheme ("https://example.com") in code that ships. Tests may use
+    // their own local server; a sentence such as "must start with https://" names no host.
+    const addresses = Object.entries(rustSources).flatMap(([file, text]) =>
+      [...withoutTests(file, text).matchAll(/"[^"\n]*\b(?:https?|wss?|ftp):\/\/[A-Za-z0-9[][^"\n]*"/g)].map(
+        (match) => `${repoPath(file)}: ${match[0]}`,
+      ),
+    );
+    expect(addresses).toEqual([]);
+
+    // The one call that sends: the origin read from the vault, HTTPS required.
+    const sync = withoutTests(
+      "mod.rs",
+      Object.entries(rustSources).find(([file]) => file.endsWith("/sync/mod.rs"))![1],
+    );
+    const sends = [...sync.matchAll(/http::send\(([^)]*)\)/g)].map((match) => match[1].replace(/\s+/g, " ").trim());
+    expect(sends).toEqual(["&origin, outgoing, http::TIMEOUT, true"]);
+    expect(sync).toMatch(/let origin = vault::origin\(/);
+    const http = withoutTests(
+      SYNC_HTTP_FILE,
+      Object.entries(rustSources).find(([file]) => file.endsWith("/sync/http.rs"))![1],
+    );
+    expect(http).toMatch(/\.https_only\(https_only\)/);
+    expect(http).toMatch(/\.max_redirects\(0\)/);
   });
 
   it("depends on no JavaScript package for those plugins either", () => {
@@ -243,7 +326,7 @@ describe("offline, by construction", () => {
     }
   });
 
-  it("loads nothing remote from the two HTML entry points", () => {
+  it("loads nothing remote from the HTML entry point", () => {
     const remote = Object.entries(htmlEntries).flatMap(([file, html]) =>
       [...html.matchAll(/\b(?:src|href)\s*=\s*["']([^"']+)["']/g)]
         .map((match) => match[1])

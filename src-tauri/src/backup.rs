@@ -48,7 +48,7 @@ pub struct BackupCopy {
     pub sha256: String,
 }
 
-fn sha256_of(path: &Path) -> std::io::Result<String> {
+pub(crate) fn sha256_of(path: &Path) -> std::io::Result<String> {
     use sha2::{Digest, Sha256};
     use std::io::Read;
 
@@ -71,8 +71,6 @@ fn sha256_of(path: &Path) -> std::io::Result<String> {
 #[tauri::command]
 #[specta::specta]
 pub async fn backup_to(app: tauri::AppHandle, target: String) -> Result<BackupCopy, CommandError> {
-    crate::license::guard(&app)?;
-
     let dir = app_data_dir(&app)?;
     let target = PathBuf::from(target);
     // Every copy, whoever asks for it: a backup in a synchronised folder is the centre's data leaving the PC.
@@ -106,9 +104,7 @@ pub async fn backup_to(app: tauri::AppHandle, target: String) -> Result<BackupCo
 /// copy has none (a copy made by hand, or by the academy's older backup).
 #[tauri::command]
 #[specta::specta]
-pub async fn backup_manifest(app: tauri::AppHandle, source: String) -> Result<Option<String>, CommandError> {
-    crate::license::guard(&app)?;
-
+pub async fn backup_manifest(source: String) -> Result<Option<String>, CommandError> {
     let manifest = PathBuf::from(source).with_extension("json");
     if !manifest.is_file() {
         return Ok(None);
@@ -204,9 +200,7 @@ fn refuse_synced(target: &Path) -> Result<(), CommandError> {
 
 #[tauri::command]
 #[specta::specta]
-pub async fn backup_folder_check(app: tauri::AppHandle, dir: String) -> Result<FolderCheck, CommandError> {
-    crate::license::guard(&app)?;
-
+pub async fn backup_folder_check(dir: String) -> Result<FolderCheck, CommandError> {
     let dir = PathBuf::from(dir);
     let exists = dir.is_dir();
     let writable = exists && {
@@ -238,9 +232,7 @@ fn is_auto_backup(name: &str) -> bool {
 /// restore (`inmaa-pre-restore-…`). Answers the names removed.
 #[tauri::command]
 #[specta::specta]
-pub async fn backup_rotate(app: tauri::AppHandle, dir: String, keep: u32) -> Result<Vec<String>, CommandError> {
-    crate::license::guard(&app)?;
-
+pub async fn backup_rotate(dir: String, keep: u32) -> Result<Vec<String>, CommandError> {
     let dir = PathBuf::from(dir);
     let mut autos: Vec<String> = std::fs::read_dir(&dir)
         .map_err(|error| CommandError::new(format!("could not read the backup folder: {error}")))?
@@ -275,14 +267,12 @@ const RESTORE_NOTE: &str = "restore-pending.json";
 #[tauri::command]
 #[specta::specta]
 pub async fn restore_pending(app: tauri::AppHandle) -> Result<Option<String>, CommandError> {
-    crate::license::guard(&app)?;
     Ok(std::fs::read_to_string(app_data_dir(&app)?.join(RESTORE_NOTE)).ok())
 }
 
 #[tauri::command]
 #[specta::specta]
 pub async fn restore_pending_clear(app: tauri::AppHandle) -> Result<(), CommandError> {
-    crate::license::guard(&app)?;
     let note = app_data_dir(&app)?.join(RESTORE_NOTE);
     if note.exists() {
         std::fs::remove_file(note)
@@ -297,7 +287,7 @@ const NOT_OURS: &str = "This file is not a backup of this program's data. Nothin
 const NOT_HERE: &str =
     "This copy was made by another version of the program, or is damaged. It cannot be restored here. Nothing was replaced.";
 /// The prefix of an error after which the open database was closed: the window restarts whatever happened.
-const RELAUNCH: &str = "RESTORE_RELAUNCH:";
+pub(crate) const RELAUNCH: &str = "RESTORE_RELAUNCH:";
 
 /// Whether a file is this program's database, before anything is replaced with
 /// it (audit FND-04): a SQLite file that passes its quick check, holds this
@@ -356,7 +346,7 @@ pub(crate) async fn check_restore_source(path: &Path) -> Result<(), CommandError
 /// Puts the staged database and uploads in place of the live ones, the open
 /// connection already closed. Renames only, and undone when one fails, so the
 /// data folder never holds half of a restore.
-fn swap_in(dir: &Path, staged: &Path, staged_uploads: Option<&Path>) -> Result<(), String> {
+pub(crate) fn swap_in(dir: &Path, staged: &Path, staged_uploads: Option<&Path>) -> Result<(), String> {
     let db_path = dir.join(crate::db::DB_FILE);
     let replaced = dir.join(format!("{}.replaced", crate::db::DB_FILE));
     // The sidecars belong to the replaced file and would be replayed over the restored one.
@@ -415,12 +405,6 @@ pub async fn restore_from(
     source: String,
     note: Option<String>,
 ) -> Result<(), CommandError> {
-    // A restore overwrites the database file, and with it the `_license` row inside.
-    // That is safe by design rather than by luck: the five OS anchors are
-    // untouched, and `vault::load` merges least-generously, so a backup taken
-    // before the trial ran down cannot put the time back. See `vault.rs`.
-    crate::license::guard(&app)?;
-
     let dir = app_data_dir(&app)?;
     let source = PathBuf::from(source);
 
@@ -489,8 +473,6 @@ pub async fn export_upload(
     segments: Vec<String>,
     target: String,
 ) -> Result<(), CommandError> {
-    crate::license::guard(&app)?;
-
     let source = upload_path(&app_data_dir(&app)?.join("uploads"), &segments)
         .ok_or_else(|| CommandError::new("invalid upload path"))?;
     if !source.is_file() {
@@ -512,12 +494,9 @@ pub async fn export_upload(
 #[tauri::command]
 #[specta::specta]
 pub async fn save_text_file(
-    app: tauri::AppHandle,
     target: String,
     contents: String,
 ) -> Result<(), CommandError> {
-    crate::license::guard(&app)?;
-
     let target = PathBuf::from(target);
     if target.as_os_str().is_empty() {
         return Err(CommandError::new("no file was chosen"));

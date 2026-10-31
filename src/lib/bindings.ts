@@ -191,8 +191,9 @@ async anchorRead() : Promise<Result<string | null, CommandError>> {
 }
 },
 /**
- * Writes the anchor to every folder it is kept in. Best effort per folder, as
- * for the licence record; an error only when none could be written.
+ * Writes the anchor to every folder it is kept in. Best effort per folder (a
+ * standard user may not write `%ProgramData%`); an error only when none could
+ * be written.
  */
 async anchorWrite(record: string) : Promise<Result<null, CommandError>> {
     try {
@@ -203,44 +204,124 @@ async anchorWrite(record: string) : Promise<Result<null, CommandError>> {
 }
 },
 /**
- * Where this installation stands. Read by the Settings card and by the lock
- * screen, which is why it carries no guard — it is the one thing a locked app
- * is allowed to answer.
+ * Chooses the mailbox address: the only way it is set. Works on an empty
+ * vault (a laptop joining a centre sets it first). Answers it normalised.
  */
-async licenseStatus() : Promise<LicenseStatus> {
-    return await TAURI_INVOKE("license_status");
-},
-/**
- * Takes the code the developer read back to the centre.
- * 
- * On success the caller restarts the app, which is the cleanest way to reach a
- * fully-permissioned main window: the locked process is holding a webview that
- * was built without filesystem access, and starting over is simpler to reason
- * about than promoting it.
- */
-async licenseUnlock(code: string) : Promise<Result<boolean, string>> {
+async syncSetOrigin(origin: string) : Promise<Result<string, CommandError>> {
     try {
-    return { status: "ok", data: await TAURI_INVOKE("license_unlock", { code }) };
+    return { status: "ok", data: await TAURI_INVOKE("sync_set_origin", { origin }) };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
 }
 },
 /**
- * Restarts the app, which is how a just-unlocked installation reaches its real
- * window.
- * 
- * The locked process is holding a webview built without filesystem permission —
- * the capability is fixed to the window at creation — so the way to a
- * fully-permissioned main window is to start over rather than to promote what
- * is already open. Called by the lock screen a moment after [`license_unlock`]
- * succeeds, so the centre sees that it worked before the window goes.
- * 
- * Unguarded by necessity: a locked app is exactly where this gets used. It
- * grants nothing — the next launch re-reads the licence and decides again.
+ * The vault as stored (a JSON object, as text), or nothing before sync is set up.
  */
-async licenseRestart() : Promise<void> {
-    await TAURI_INVOKE("license_restart");
+async syncVaultRead() : Promise<Result<string | null, CommandError>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("sync_vault_read") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async syncVaultWrite(json: string) : Promise<Result<null, CommandError>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("sync_vault_write", { json }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async syncVaultClear() : Promise<Result<null, CommandError>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("sync_vault_clear") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async dbSnapshot(name: string) : Promise<Result<FileInfo, CommandError>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("db_snapshot", { name }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Size and SHA-256 of a stored or temporary file, or nothing when it is not there.
+ */
+async fileInfo(path: string) : Promise<Result<FileInfo | null, CommandError>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("file_info", { path }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Puts a received file in place once all its parts are in and its SHA-256 is
+ * the one announced: `tmp` in `sync-tmp/`, `final` in `uploads/`. A file of
+ * the same name and bytes already there is fine; other bytes are a `CONFLICT`.
+ */
+async fileCommit(tmp: string, finalPath: string, sha256: string) : Promise<Result<null, CommandError>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("file_commit", { tmp, finalPath, sha256 }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Removes a temporary file; one that is not there is fine.
+ */
+async fileRemove(path: string) : Promise<Result<null, CommandError>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("file_remove", { path }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Empties the temporary folder.
+ */
+async syncTmpClear() : Promise<Result<null, CommandError>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("sync_tmp_clear") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async syncInstallCopy(path: string, note: string | null) : Promise<Result<null, CommandError>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("sync_install_copy", { path, note }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * The note the last installed copy left, as it was given.
+ */
+async syncInstallPending() : Promise<Result<string | null, CommandError>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("sync_install_pending") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async syncInstallPendingClear() : Promise<Result<null, CommandError>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("sync_install_pending_clear") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
 }
 }
 
@@ -265,6 +346,11 @@ export type BackupCopy = { size_bytes: number; sha256: string }
  */
 export type CommandError = { message: string }
 export type ExecuteResult = { rowsAffected: number; lastInsertId: number }
+export type FileInfo = { 
+/**
+ * Relative to the app data folder, as the commands take it.
+ */
+path: string; size_bytes: number; sha256: string }
 /**
  * What the program can tell about a folder before copying into it every day.
  */
@@ -274,32 +360,6 @@ export type FolderCheck = { exists: boolean; writable: boolean;
  */
 synced_by: string | null }
 export type JsonValue = null | boolean | number | string | JsonValue[] | Partial<{ [key in string]: JsonValue }>
-/**
- * What the frontend is told. Deliberately thin: a state, a countdown, an id to
- * read down the phone. Nothing about anchors, signatures or how any of it is
- * decided.
- */
-export type LicenseStatus = { 
-/**
- * `"trial"`, `"expired"` or `"unlocked"`.
- */
-state: string; 
-/**
- * Milliseconds of trial left, or `null` once bought.
- */
-remaining_ms: number | null; 
-/**
- * The machine's id, as shown on the lock screen and read out for support.
- */
-device_id: string; 
-/**
- * The number to ring.
- */
-contact_phone: string; 
-/**
- * Length of the trial, for the Settings copy.
- */
-trial_days: number }
 /**
  * A parameter value crossing the IPC boundary. Mirrors the JSON types Kysely
  * produces when it compiles a query.

@@ -81,7 +81,8 @@ export async function handleHarnessRequest(req, res, backend) {
       } else {
         value = backend.invoke(command, body.length ? JSON.parse(body.toString("utf8")) : {});
       }
-      sendJson(res, 200, { ok: true, value: value ?? null });
+      if (value instanceof Uint8Array) sendJson(res, 200, { ok: true, binary: Buffer.from(value).toString("base64") });
+      else sendJson(res, 200, { ok: true, value: value ?? null });
     } catch (error) {
       if (error instanceof CommandFailure) {
         sendJson(res, 200, { ok: false, error: error.payload, unstubbed: error.unstubbed });

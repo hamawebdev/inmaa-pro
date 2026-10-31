@@ -7,6 +7,9 @@
  *   npm run build
  *   node scripts/harness/csp-check.mjs --route /dashboard/home --route /dashboard/settings
  */
+import fs from "node:fs";
+import path from "node:path";
+
 import { parseArgs } from "./lib/args.mjs";
 import { ensureDemoDatabase, resolveDemoRoute } from "./lib/demo.mjs";
 import { parsePolicy, readPolicyFromTauriConfig, serializePolicy } from "./lib/dist-server.mjs";
@@ -23,7 +26,7 @@ const USAGE = `Usage: node scripts/harness/csp-check.mjs [options]
   --seed <file.sql>  SQL applied after the migrations; repeat for several
   --now <datetime>   fixed clock, e.g. 2026-10-11T10:30:00
 
-Build first (npm run build). The lock window (lock.html) is always checked too.
+Build first (npm run build). An app with a lock window (the reference's lock.html) has it checked too.
 Exit code 0 only when every screen settled and nothing was refused.
 `;
 
@@ -51,7 +54,8 @@ async function main() {
   };
   const views = [
     ...(args.route.length ? args.route : [undefined]).map((route) => ({ ...common, route })),
-    { ...common, page: "lock.html" },
+    // This program has one window since the licence went; the academy reference still has two.
+    ...(fs.existsSync(path.join(root, "lock.html")) ? [{ ...common, page: "lock.html" }] : []),
   ];
 
   console.log(`policy as written:\n  ${serializePolicy(policy)}`);

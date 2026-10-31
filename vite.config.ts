@@ -16,22 +16,6 @@ export default defineConfig(async () => ({
     },
   },
 
-  // Two entry points, because there are two windows and Rust decides which one
-  // opens (see src-tauri/src/license). `lock.html` is what an expired
-  // installation loads — a bundle with no database code in it at all, in a
-  // window whose capability grants it no filesystem. Building it separately is
-  // what makes that true rather than merely intended: were the lock screen a
-  // route inside the app bundle, every screen it guards would still be sitting
-  // in the same file.
-  build: {
-    rollupOptions: {
-      input: {
-        main: path.resolve(__dirname, "./index.html"),
-        lock: path.resolve(__dirname, "./lock.html"),
-      },
-    },
-  },
-
   // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
   //
   // 1. prevent Vite from obscuring rust errors

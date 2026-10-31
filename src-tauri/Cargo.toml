@@ -4,18 +4,8 @@ version = "1.0.0"
 description = "Inmaa Pro — cleaning centre management, offline desktop"
 authors = ["hamawebdev"]
 edition = "2021"
-# With a second binary target (unlock-code) present, Cargo/Tauri can't infer
-# which binary is the app; `default-run` names the one `tauri build` bundles.
-default-run = "inmaa-pro"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
-# Turns a customer's Device ID into the code that unlocks that one machine.
-# Run by the developer, never shipped: `cargo run --bin unlock-code -- <id>`.
-# See src/license/code.rs for the derivation it mirrors.
-[[bin]]
-name = "unlock-code"
-path = "src/bin/unlock_code.rs"
 
 [lib]
 # The `_lib` suffix may seem redundant but it is necessary
@@ -60,20 +50,22 @@ sqlx = { version = "0.8", default-features = false, features = [
   "macros",
 ] }
 
-# Licensing. Symmetric only — the record signatures and the unlock codes are
-# both HMAC-SHA256 under the constant in src/license/secret.rs. An offline app
-# has nobody to verify an asymmetric signature against, so a keypair would buy
-# nothing that this does not. Both crates were already in the tree as transitive
-# dependencies of sqlx and tauri, so promoting them adds nothing to the build.
+# The chain anchor's seal (HMAC-SHA256, src/anchor.rs) and the SHA-256 of a
+# backup or a received file. Both were already in the tree through sqlx and
+# tauri.
 sha2 = "0.10"
 hmac = "0.12"
+
+# Two-laptop sync (docs/sync/DECISION.md section 9): the one HTTP client, used
+# in src/sync/http.rs only, toward the one mailbox address the director typed,
+# over HTTPS. ureq because it is small and blocking (no second async runtime),
+# and because its rustls runs on `ring` with the webpki root certificates built
+# in: no OpenSSL and no aws-lc to build on Windows, no system trust store to
+# depend on. No gzip, no cookies, no proxy discovery beyond ureq's defaults.
+# src/lib/offline.test.ts allows this crate, and only in that file.
+ureq = { version = "3", default-features = false, features = ["rustls"] }
 
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 tauri-plugin-process = "2.3.1"
 tauri-plugin-single-instance = "2.4.2"
 tauri-plugin-window-state = "2.4.1"
-
-# Reads MachineGuid for the device fingerprint, and holds two of the six
-# licensing anchors. See src/license/device.rs and src/license/vault/windows.rs.
-[target.'cfg(windows)'.dependencies]
-winreg = "0.55"

@@ -40,24 +40,24 @@ node scripts/harness/csp-check.mjs --route /dashboard/home --route /dashboard/se
 
 `--help` on any of them lists every option. The ones used most:
 
-| Option                                      | Meaning                                                                    |
-| ------------------------------------------- | -------------------------------------------------------------------------- |
-| `--route <path>`                            | the hash-router path, as in the address after `#`                          |
-| `--reference`                               | use the scratch copy of the academy app                                    |
-| `--locale ar\|fr\|en`                       | language; left out, the app's own default applies                          |
-| `--theme light\|dark`                       | theme; left out, the app's own default applies (shown as light)            |
-| `--size 1440x900`, `--both-sizes`           | window size; `--both-sizes` is 1440x900 and 1024x640 from one load         |
-| `--seed <file.sql>`                         | SQL run after the migrations; repeatable                                   |
-| `--demo`                                    | start from the demo data (`npm run demo`); see below                       |
-| `--now <datetime>`                          | a fixed clock that still ticks, in the centre's time zone (Africa/Algiers) |
-| `--user <name>`                             | the account to sign in as, by sign-in name; `manager` when left out        |
-| `--signed-out`                              | stay on the sign-in window (`shot` only; the file is named `sign-in__…`)   |
-| `--before <js>`                             | evaluate this once settled, then settle again, before the picture          |
-| `--scroll bottom`, `--scroll-to <selector>` | scroll the main area before shooting                                       |
-| `--clip <selector>`                         | shoot one element                                                          |
-| `--eval <js>`                               | print the value of an expression evaluated in the page                     |
-| `--page lock.html --license expired`        | the lock window                                                            |
-| `--keep`                                    | keep the run's database and browser profile, for looking inside            |
+| Option                                      | Meaning                                                                                        |
+| ------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| `--route <path>`                            | the hash-router path, as in the address after `#`                                              |
+| `--reference`                               | use the scratch copy of the academy app                                                        |
+| `--locale ar\|fr\|en`                       | language; left out, the app's own default applies                                              |
+| `--theme light\|dark`                       | theme; left out, the app's own default applies (shown as light)                                |
+| `--size 1440x900`, `--both-sizes`           | window size; `--both-sizes` is 1440x900 and 1024x640 from one load                             |
+| `--seed <file.sql>`                         | SQL run after the migrations; repeatable                                                       |
+| `--demo`                                    | start from the demo data (`npm run demo`); see below                                           |
+| `--now <datetime>`                          | a fixed clock that still ticks, in the centre's time zone (Africa/Algiers)                     |
+| `--user <name>`                             | the account to sign in as, by sign-in name; `manager` when left out                            |
+| `--signed-out`                              | stay on the sign-in window (`shot` only; the file is named `sign-in__…`)                       |
+| `--before <js>`                             | evaluate this once settled, then settle again, before the picture                              |
+| `--scroll bottom`, `--scroll-to <selector>` | scroll the main area before shooting                                                           |
+| `--clip <selector>`                         | shoot one element                                                                              |
+| `--eval <js>`                               | print the value of an expression evaluated in the page                                         |
+| `--sync-vault <json>`                       | the sync vault the program reads (JSON text or a .json file); left out, empty: sync not set up |
+| `--keep`                                    | keep the run's database and browser profile, for looking inside                                |
 
 ## Signing in
 
@@ -177,10 +177,9 @@ font, script or image fails here and is reported.
 
 It shows the web part of the app in Chrome. These still need the real program:
 
-- **The desktop window.** That it opens, its size and title, single instance, the lock window
-  appearing when the licence runs out.
+- **The desktop window.** That it opens, its size and title, single instance.
 - **Tauri itself.** The harness answers the app's commands from Node (`lib/backend.mjs`). The Rust
-  commands, the capability files and the licence guard are not exercised.
+  commands and the capability files are not exercised.
 - **The content security policy as Tauri applies it.** `csp-check.mjs` sends the policy written in
   `tauri.conf.json` as a header and Chrome enforces it, with three things adapted for the browser
   (it prints them): the hash of the inline boot script, which Tauri adds at build time, and
@@ -188,7 +187,11 @@ It shows the web part of the app in Chrome. These still need the real program:
   still show that commands and uploaded images work under the policy.
 - **The database engine.** Node's SQLite is newer (3.50) than the one built into the app (3.46).
   A migration is proven on the app's engine by the Rust migration test, not here.
-- **The licence.** `--license` only chooses what the screens are told.
+- **Sync.** Nothing leaves a run: `sync_request` answers `OFFLINE:` as the program does with the internet down,
+  the vault is what `--sync-vault` gives (or empty), and `sync_install_copy` is refused. The snapshot and file-part
+  commands work, inside the run's own folder. The mailbox address, HTTPS, the `/v1/` paths and the refused redirect are
+  proven by the Rust tests (`src-tauri/src/sync`), and the exchange itself by the two-copy tests. The academy reference
+  (`--reference`) still has its licence: its two commands answer "unlocked".
 - **Dialogs, backup and restore.** File dialogs always answer "cancelled", so a backup made by hand, a restore and an
   export stop at their dialog. A copy the program makes by itself (`backup_to`) and a file it saves (`save_text_file`)
   land in the run's own folder (`backups/`, `exports/`), whatever path was asked; `restore_from` is refused. The daily

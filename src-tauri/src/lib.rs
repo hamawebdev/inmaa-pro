@@ -4,7 +4,7 @@ use tauri_specta::{collect_commands, Builder};
 mod anchor;
 mod backup;
 mod db;
-pub mod license;
+mod sync;
 
 /// A serializable error type for fallible Tauri commands.
 /// The frontend receives the `message` string (and a typed shape via tauri-specta).
@@ -19,17 +19,6 @@ impl CommandError {
         Self {
             message: message.into(),
         }
-    }
-}
-
-/// Lets `license::guard`'s refusal travel out of a command with `?`.
-///
-/// The guard deliberately returns a bare string that says nothing about why the
-/// installation is locked — see its docs — and this carries that string through
-/// unchanged rather than dressing it up.
-impl From<String> for CommandError {
-    fn from(message: String) -> Self {
-        Self { message }
     }
 }
 
@@ -52,32 +41,33 @@ fn specta_builder() -> Builder {
         backup::restore_pending_clear,
         anchor::anchor_read,
         anchor::anchor_write,
-        // The only three commands without a `license::guard`. They are what a
-        // locked installation is allowed to ask, and between them they can do
-        // nothing but report the licence, accept a code, and restart.
-        license::license_status,
-        license::license_unlock,
-        license::license_restart,
+        sync::sync_set_origin,
+        sync::sync_vault_read,
+        sync::sync_vault_write,
+        sync::sync_vault_clear,
+        sync::db_snapshot,
+        sync::file_info,
+        sync::file_commit,
+        sync::file_remove,
+        sync::sync_tmp_clear,
+        sync::sync_install_copy,
+        sync::sync_install_pending,
+        sync::sync_install_pending_clear,
+        // Not here: the three that carry raw bytes (sync::RAW_COMMANDS), which
+        // tauri-specta cannot type. `run()` routes them to sync::raw_handler.
     ])
 }
 
 // ── Windows ────────────────────────────────────────────────────────────────
 
-/// The app proper. Full capability: filesystem, dialogs, store, printing.
+/// The program's one window. Full capability: filesystem, dialogs, store, printing.
 const MAIN_WINDOW: &str = "main";
 
-/// The trial-expired screen. Its capability grants `core:default` and nothing
-/// else (see capabilities/lock.json), so the webview behind it cannot reach the
-/// database or the disk however it is persuaded to try.
-const LOCK_WINDOW: &str = "lock";
-
-/// Builds one of the windows declared in tauri.conf.json, by label.
+/// Builds a window declared in tauri.conf.json, by label.
 ///
-/// Both are declared there with `"create": false` — Tauri would otherwise build
-/// them both at startup, which is the one thing the licence module exists to
-/// prevent. Declaring them in config and building here keeps every dimension,
-/// title and minimum in the one file an editor expects to find them in, while
-/// leaving *which* window opens to the licence.
+/// It is declared there with `"create": false` and built here, because a window
+/// Tauri builds by itself from the config gets no navigation guard: this is
+/// where the guard is attached. Its size, title and minimum stay in the config.
 fn build_window(app: &AppHandle, label: &str) -> Result<tauri::WebviewWindow, String> {
     let config = app
         .config()
@@ -118,47 +108,6 @@ fn is_app_url(url: &tauri::Url) -> bool {
         "about" => url.as_str() == "about:blank",
         _ => false,
     }
-}
-
-/// Ages the trial once a minute for as long as the app is open, and closes the
-/// app down onto the lock screen the moment it runs out.
-///
-/// A plain OS thread rather than an async task: the tick writes to SQLite
-/// through its own connection and wants a blocking sleep, and this way it needs
-/// no timer runtime and cannot starve the UI.
-///
-/// It stops on either ending. Expiry swaps the window; an activation from
-/// Settings leaves a centre with no countdown left to run, and a thread waking
-/// every minute to age a licence that can no longer change is just a thread.
-///
-/// The swap itself is dispatched to the main thread, because that is where a
-/// window may be created and destroyed. The main window is closed *before* the
-/// lock window opens, so there is no moment where a fully-permissioned webview
-/// and an expired licence exist together.
-fn spawn_license_ticker(app: &AppHandle) {
-    let handle = app.clone();
-    std::thread::spawn(move || loop {
-        std::thread::sleep(std::time::Duration::from_secs(license::TICK_SECS));
-
-        match tauri::async_runtime::block_on(license::tick(&handle)) {
-            license::Status::Expired => {}
-            // Bought while the app was open. Nothing left to count.
-            license::Status::Unlocked => break,
-            license::Status::Trial => continue,
-        }
-
-        let app = handle.clone();
-        let _ = handle.run_on_main_thread(move || {
-            if let Some(window) = app.get_webview_window(MAIN_WINDOW) {
-                let _ = window.close();
-            }
-            if let Err(e) = build_window(&app, LOCK_WINDOW) {
-                eprintln!("error: could not open the lock window: {e}");
-                app.exit(1);
-            }
-        });
-        break;
-    });
 }
 
 /// Writes the typed TypeScript client to `src/lib/bindings.ts`.
@@ -204,12 +153,7 @@ pub fn run() {
     {
         app = app
             .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
-                // Either window, because a locked installation has only the
-                // second one — focusing "main" alone would do nothing there.
-                if let Some(window) = app
-                    .get_webview_window(MAIN_WINDOW)
-                    .or_else(|| app.get_webview_window(LOCK_WINDOW))
-                {
+                if let Some(window) = app.get_webview_window(MAIN_WINDOW) {
                     let _ = window.set_focus();
                 }
             }))
@@ -225,16 +169,18 @@ pub fn run() {
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_store::Builder::default().build())
         .plugin(tauri_plugin_log::Builder::new().build())
-        .invoke_handler(builder.invoke_handler())
+        .invoke_handler({
+            let typed = builder.invoke_handler();
+            move |invoke| {
+                if sync::RAW_COMMANDS.contains(&invoke.message.command()) {
+                    sync::raw_handler(invoke)
+                } else {
+                    typed(invoke)
+                }
+            }
+        })
         .setup(move |app| {
             builder.mount_events(app);
-
-            // Asked FIRST, before anything can create the file. `db::init` is
-            // moments away and creates it, so asking afterwards would always
-            // answer "yes" — and would tell a brand-new PC it had been wiped.
-            let db_existed = db::database_path(app.handle())
-                .map(|path| path.exists())
-                .unwrap_or(false);
 
             // Open the database and run migrations before the webview can issue
             // any query. Failing here is fatal: without storage there is no app.
@@ -243,21 +189,8 @@ pub fn run() {
                 .expect("failed to initialise the database");
             app.manage(db::Db(pool));
 
-            // THE decision, and it is taken here — before a window exists,
-            // before the frontend has run a line, and by Rust. Migrations having
-            // already run costs a locked install nothing: it never gets a
-            // webview that may ask for the data.
-            let status =
-                tauri::async_runtime::block_on(license::evaluate(app.handle(), db_existed));
-
-            if status == license::Status::Expired {
-                build_window(app.handle(), LOCK_WINDOW)?;
-            } else {
-                build_window(app.handle(), MAIN_WINDOW)?;
-                if status == license::Status::Trial {
-                    spawn_license_ticker(app.handle());
-                }
-            }
+            // The program opens straight on its window: no licence, no trial.
+            build_window(app.handle(), MAIN_WINDOW)?;
 
             Ok(())
         })
@@ -283,7 +216,6 @@ mod tests {
     fn the_window_stays_inside_the_program() {
         // Where the bundled app lives, per platform.
         assert!(is_app_url(&url("tauri://localhost/index.html")));
-        assert!(is_app_url(&url("tauri://localhost/lock.html")));
         assert!(is_app_url(&url("http://tauri.localhost/index.html")));
         assert!(is_app_url(&url("https://tauri.localhost/")));
         assert!(is_app_url(&url("about:blank")));

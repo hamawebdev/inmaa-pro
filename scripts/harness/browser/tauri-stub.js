@@ -102,7 +102,7 @@
   }
 
   async function send(cmd, args, options) {
-    // The two commands that restart the app: here, a reload is the restart.
+    // The commands that restart the app (license_restart: the academy reference's): here, a reload is the restart.
     if (cmd === "plugin:process|restart" || cmd === "license_restart") {
       window.setTimeout(function () {
         window.location.reload();
@@ -131,6 +131,13 @@
 
     var response = await nativeFetch("/__harness/invoke", init);
     var payload = await response.json();
+    // A command that answers bytes (tauri::ipc::Response) gives the window an ArrayBuffer.
+    if (payload.ok && typeof payload.binary === "string") {
+      var text = atob(payload.binary);
+      var bytes = new Uint8Array(text.length);
+      for (var i = 0; i < text.length; i++) bytes[i] = text.charCodeAt(i);
+      return bytes.buffer;
+    }
     if (payload.ok) return payload.value;
 
     if (payload.unstubbed && H.unstubbed.indexOf(cmd) === -1) H.unstubbed.push(cmd);
@@ -147,6 +154,7 @@
     });
   }
 
+  // The academy reference still has its lock window; this program has only "main".
   var label = /\/lock\.html$/.test(window.location.pathname) ? "lock" : "main";
 
   window.__TAURI_INTERNALS__ = {

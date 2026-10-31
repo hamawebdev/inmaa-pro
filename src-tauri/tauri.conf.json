@@ -20,18 +20,6 @@
         "minWidth": 1024,
         "minHeight": 640,
         "create": false
-      },
-      {
-        "label": "lock",
-        "title": "مركز إنماء برو",
-        "url": "lock.html",
-        "width": 900,
-        "height": 640,
-        "minWidth": 640,
-        "minHeight": 520,
-        "resizable": false,
-        "maximizable": false,
-        "create": false
       }
     ],
     "security": {

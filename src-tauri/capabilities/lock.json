@@ -1,7 +1,0 @@
-{
-  "$schema": "../gen/schemas/desktop-schema.json",
-  "identifier": "lock",
-  "description": "Capability for the trial-expired lock window. Grants the webview baseline and nothing else: no fs, no dialog, no store, no os, no process, no opener, no notification, no log. A locked installation cannot reach the centre's database or its uploads even if something inside this window asks for it — the permission to ask was never granted. The three commands the lock screen does call (license_status, license_unlock, license_restart) are defined by the app rather than by a plugin, and app commands are not capability-gated in Tauri v2, which is why every other app command opens with license::guard() instead.",
-  "windows": ["lock"],
-  "permissions": ["core:default"]
-}

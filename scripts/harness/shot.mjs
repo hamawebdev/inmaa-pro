@@ -19,10 +19,11 @@ import {
   REFERENCE_ROOT,
   sizeLabel,
 } from "./lib/session.mjs";
+import { readSyncVault } from "./lib/backend.mjs";
 
 const USAGE = `Usage: node scripts/harness/shot.mjs --route <path> [options]
 
-  --route <path>      hash-router path, e.g. /dashboard/home (required unless --page lock.html)
+  --route <path>      hash-router path, e.g. /dashboard/home (required unless --page or --signed-out)
   --reference         shoot the scratch copy of the academy app instead of this project
   --root <dir>        shoot the app in another folder
   --locale <code>     ar | fr | en            (default: the app's own default)
@@ -41,8 +42,9 @@ const USAGE = `Usage: node scripts/harness/shot.mjs --route <path> [options]
   --before <js>       evaluate this once the screen has settled, then let it settle again, before shooting
   --anchor <file>     start from this anchor record instead of the demo's (a JSON file): a database that
                       does not agree with it opens on the screen that asks the manager
-  --license <state>   unlocked | trial | expired (default unlocked)
-  --page <file>       index.html (default) or lock.html
+  --sync-vault <json> the sync vault the program reads (JSON text, or a .json file): sync looks set up.
+                      Left out, the vault is empty: "sync not set up"
+  --page <file>       index.html (default), or another HTML file of the app (the reference's lock.html)
   --wait <selector>   wait for this CSS selector before shooting
   --scroll <n|bottom> scroll the main area first
   --scroll-to <sel>   scroll until this element is at the top
@@ -90,7 +92,7 @@ async function main() {
   const harness = await openHarness({
     root,
     seeds: args.seed,
-    license: args.license,
+    syncVault: readSyncVault(args["sync-vault"]),
     keep: Boolean(args.keep),
     demo: demo ?? undefined,
     anchor: args.anchor ? path.resolve(args.anchor) : undefined,

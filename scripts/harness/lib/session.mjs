@@ -102,7 +102,7 @@ function buildUrl(origin, view) {
 /**
  * @typedef {object} View
  * @property {string} [route]   hash-router path, e.g. "/dashboard/home"
- * @property {string} [page]    "index.html" (default) or "lock.html"
+ * @property {string} [page]    "index.html" (default), or another HTML file of the app (the reference's "lock.html")
  * @property {string} [locale]  "ar" | "fr" | "en"; omitted = the app's default
  * @property {string} [theme]   "light" | "dark" | "system"; omitted = the app's default
  * @property {string} [user]    the sign-in name of the account to be signed in as (default "manager")
@@ -121,7 +121,7 @@ function buildUrl(origin, view) {
  * @param {object} [options]
  * @param {string} [options.root]      the app to serve; this project by default
  * @param {string[]} [options.seeds]   SQL files applied after the migrations
- * @param {"unlocked"|"trial"|"expired"} [options.license]
+ * @param {object|null} [options.syncVault] what the sync vault holds (null: sync not set up)
  * @param {object[]} [options.plugins] extra Vite plugins (experiments)
  * @param {Map<string, string[]>} [options.builtWithPolicy] serve the built `dist/` under this
  *   content security policy instead of the source through Vite
@@ -135,7 +135,7 @@ function buildUrl(origin, view) {
 export async function openHarness({
   root = PROJECT_ROOT,
   seeds = [],
-  license = "unlocked",
+  syncVault = null,
   plugins = [],
   builtWithPolicy,
   timezone = DEFAULT_TIMEZONE,
@@ -225,7 +225,7 @@ export async function openHarness({
       root,
       runDir,
       seeds: seeds.map((seed) => path.resolve(seed)),
-      license,
+      syncVault,
       database: demo?.db,
       anchor: anchor ?? demo?.anchor,
     });

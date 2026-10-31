@@ -12,6 +12,7 @@ import path from "node:path";
 
 import { parseArgs, routeSlug } from "./lib/args.mjs";
 import { ensureDemoDatabase, resolveDemoRoute } from "./lib/demo.mjs";
+import { readSyncVault } from "./lib/backend.mjs";
 import { HARNESS_DIR, openHarness, printReport, PROJECT_ROOT, REFERENCE_ROOT } from "./lib/session.mjs";
 
 const USAGE = `Usage: node scripts/harness/pdf.mjs --route <path> [options]
@@ -39,6 +40,7 @@ const USAGE = `Usage: node scripts/harness/pdf.mjs --route <path> [options]
   --wait <selector>   wait for this CSS selector before printing
   --before <js>       evaluate this once the screen has settled, then let it settle again, before
                       printing (a page whose sheet appears after a reason is typed)
+  --sync-vault <json> the sync vault the program reads (JSON text, or a .json file); empty by default
   --keep              keep the run's database and browser profile under .harness/run
 
 The paper is A4. A sheet that declares its own @page size or margin gets what it declares.
@@ -111,7 +113,13 @@ async function main() {
   );
   if (jobs.length === 0) throw new Error(`${args.routes} names no route`);
 
-  const harness = await openHarness({ root, seeds: args.seed, keep: Boolean(args.keep), demo: demo ?? undefined });
+  const harness = await openHarness({
+    root,
+    seeds: args.seed,
+    keep: Boolean(args.keep),
+    demo: demo ?? undefined,
+    syncVault: readSyncVault(args["sync-vault"]),
+  });
   let clean = true;
   try {
     for (const job of jobs) {

@@ -10,7 +10,8 @@
  *
  * Known differences from the real app (see README.md):
  *  - node:sqlite's SQLite is newer than the one sqlx bundles;
- *  - the licence is whatever the run asks for, never the real state;
+ *  - the sync mailbox is never reached: `sync_request` answers OFFLINE, the vault is what the run
+ *    gives (`--sync-vault`) or empty, and a full copy is never installed;
  *  - dialogs always answer "cancelled".
  */
 import crypto from "node:crypto";
@@ -184,12 +185,12 @@ function runSqlFile(sqlite, file, label) {
  * @param {string} options.root      the app being served (holds src-tauri/migrations)
  * @param {string} options.runDir    this run's throwaway directory
  * @param {string[]} [options.seeds] SQL files applied after the migrations
- * @param {"unlocked"|"trial"|"expired"} [options.license]
+ * @param {object|null} [options.syncVault] what the sync vault holds; null: sync not set up
  * @param {string} [options.database] a database to start from instead of an empty one (the demo data):
  *   it is copied into this run, and already holds the migrations
  * @param {string} [options.anchor]   the anchor record to start from, copied beside it
  */
-export async function createBackend({ root, runDir, seeds = [], license = "unlocked", database, anchor }) {
+export async function createBackend({ root, runDir, seeds = [], syncVault = null, database, anchor }) {
   const { DatabaseSync } = await loadSqlite();
   const appData = path.join(runDir, "appdata");
   fs.mkdirSync(appData, { recursive: true });
@@ -248,15 +249,61 @@ export async function createBackend({ root, runDir, seeds = [], license = "unloc
     return insideAppData(path.join(appData, target));
   }
 
-  function licenseStatus() {
-    const day = 24 * 60 * 60 * 1000;
+  /** The academy reference's licence (this program has none since 2026-10-31): always unlocked. */
+  function referenceLicenceStatus() {
     return {
-      state: license,
-      remaining_ms: license === "trial" ? 5 * day : license === "expired" ? 0 : null,
+      state: "unlocked",
+      remaining_ms: null,
       device_id: "HARN-ESS0-0000-0001",
       contact_phone: "0000000000",
       trial_days: 7,
     };
+  }
+
+  // ── Sync (src-tauri/src/sync), as far as a run without a network can go ──
+  /** The vault, in memory: what the run gave, or nothing ("sync not set up"). */
+  let vault = syncVault ? { ...syncVault } : null;
+  const SYNC_TMP = "sync-tmp";
+
+  /** The same rule as `confine` in src-tauri/src/sync/mod.rs: a relative path under one of `roots`. */
+  function syncPath(relative, roots) {
+    const segments = String(relative ?? "").split("/");
+    const plain = (segment) =>
+      segment !== "" &&
+      segment !== "." &&
+      segment !== ".." &&
+      !/[\\/:\0*?"<>|]/.test(segment) &&
+      !/[. ]$/.test(segment);
+    if (segments.length < 2 || !roots.includes(segments[0]) || !segments.every(plain)) {
+      throw commandError(`REFUSED: ${relative} is not a file of the program's ${roots.join(" or ")} folder`);
+    }
+    return path.join(appData, ...segments);
+  }
+
+  function fileInfo(relative) {
+    const file = syncPath(relative, ["uploads", SYNC_TMP]);
+    if (!fs.existsSync(file) || !fs.statSync(file).isFile()) return null;
+    const bytes = fs.readFileSync(file);
+    return {
+      path: relative,
+      size_bytes: bytes.length,
+      sha256: crypto.createHash("sha256").update(bytes).digest("hex"),
+    };
+  }
+
+  function normaliseOrigin(typed) {
+    let url;
+    try {
+      url = new URL(String(typed ?? "").trim());
+    } catch {
+      throw commandError("REFUSED: the mailbox address is not an address");
+    }
+    if (url.protocol !== "https:") throw commandError("REFUSED: the mailbox address must start with https://");
+    if (url.username || url.password)
+      throw commandError("REFUSED: the mailbox address must not hold a name or a password");
+    if (url.pathname !== "/" || url.search || url.hash)
+      throw commandError("REFUSED: the mailbox address must not have a path");
+    return url.origin;
   }
 
   /**
@@ -343,8 +390,111 @@ export async function createBackend({ root, runDir, seeds = [], license = "unloc
         if (typeof args?.record !== "string") throw commandError("invalid anchor record");
         fs.writeFileSync(anchorFile, args.record);
         return null;
+
+      // ── Sync (src-tauri/src/sync) ──────────────────────────────────────
+      case "sync_set_origin": {
+        const origin = normaliseOrigin(args?.origin);
+        vault = { ...(vault ?? {}), origin };
+        return origin;
+      }
+      case "sync_vault_read":
+        return vault ? JSON.stringify(vault) : null;
+      case "sync_vault_write": {
+        let next;
+        try {
+          next = JSON.parse(String(args?.json));
+        } catch {
+          throw commandError("REFUSED: the vault must be a JSON object");
+        }
+        if (!next || typeof next !== "object" || Array.isArray(next))
+          throw commandError("REFUSED: the vault must be a JSON object");
+        const stored = vault?.origin;
+        if ("origin" in next && next.origin !== stored) {
+          throw commandError("REFUSED: the mailbox address is chosen with sync_set_origin only");
+        }
+        vault = stored ? { ...next, origin: stored } : next;
+        return null;
+      }
+      case "sync_vault_clear":
+        vault = null;
+        return null;
+      case "sync_request":
+        // Nothing leaves a harness run: the program sees what it sees with the internet down.
+        throw commandError("OFFLINE: the browser harness reaches no network");
+      case "db_snapshot": {
+        const name = String(args?.name ?? "");
+        const file = syncPath(`${SYNC_TMP}/${name}`, [SYNC_TMP]);
+        fs.mkdirSync(path.dirname(file), { recursive: true });
+        fs.rmSync(file, { force: true });
+        try {
+          sqlite.prepare("VACUUM INTO ?").run(file);
+        } catch (error) {
+          throw sqliteError(error);
+        }
+        return fileInfo(`${SYNC_TMP}/${name}`);
+      }
+      case "file_info":
+        return fileInfo(args?.path);
+      case "file_read_part": {
+        const file = syncPath(args?.path, ["uploads", SYNC_TMP]);
+        const offset = Number(args?.offset ?? 0);
+        const len = Number(args?.len ?? 0);
+        if (len > 4 * 1024 * 1024) throw commandError("REFUSED: a part is at most 4 MB");
+        const bytes = fs.readFileSync(file);
+        return new Uint8Array(bytes.subarray(offset, offset + len));
+      }
+      case "file_write_part": {
+        const relative = decodeURIComponent(raw?.headers?.["x-file-path"] ?? "");
+        const offset = Number(raw?.headers?.["x-file-offset"]);
+        const file = syncPath(relative, [SYNC_TMP]);
+        fs.mkdirSync(path.dirname(file), { recursive: true });
+        const length = fs.existsSync(file) ? fs.statSync(file).size : 0;
+        if (!Number.isInteger(offset) || offset > length) {
+          throw commandError(`REFUSED: ${relative} holds ${length} bytes; a part cannot start at ${offset}`);
+        }
+        const fd = fs.openSync(file, fs.existsSync(file) ? "r+" : "w");
+        try {
+          fs.writeSync(fd, raw?.body ?? Buffer.alloc(0), 0, (raw?.body ?? Buffer.alloc(0)).length, offset);
+        } finally {
+          fs.closeSync(fd);
+        }
+        return null;
+      }
+      case "file_commit": {
+        const source = syncPath(args?.tmp, [SYNC_TMP]);
+        const target = syncPath(args?.finalPath, ["uploads"]);
+        const expected = String(args?.sha256 ?? "").toLowerCase();
+        const actual = crypto.createHash("sha256").update(fs.readFileSync(source)).digest("hex");
+        if (actual !== expected) {
+          fs.rmSync(source, { force: true });
+          throw commandError(`MISMATCH: ${args?.tmp} is not the file announced`);
+        }
+        if (fs.existsSync(target)) {
+          const present = crypto.createHash("sha256").update(fs.readFileSync(target)).digest("hex");
+          if (present !== expected) throw commandError(`CONFLICT: ${args?.finalPath} already holds another file`);
+          fs.rmSync(source, { force: true });
+          return null;
+        }
+        fs.mkdirSync(path.dirname(target), { recursive: true });
+        fs.renameSync(source, target);
+        return null;
+      }
+      case "file_remove":
+        fs.rmSync(syncPath(args?.path, [SYNC_TMP]), { force: true });
+        return null;
+      case "sync_tmp_clear":
+        fs.rmSync(path.join(appData, SYNC_TMP), { recursive: true, force: true });
+        return null;
+      case "sync_install_copy":
+        throw commandError("installing a full copy is not available in the browser harness");
+      case "sync_install_pending":
+        return null;
+      case "sync_install_pending_clear":
+        return null;
+
+      // ── The academy reference's licence (--reference); this program has none ──
       case "license_status":
-        return licenseStatus();
+        return referenceLicenceStatus();
       case "license_unlock":
         return false;
 
@@ -438,3 +588,19 @@ export async function createBackend({ root, runDir, seeds = [], license = "unloc
 }
 
 export { CommandFailure };
+
+/**
+ * `--sync-vault`: JSON text, or the path of a .json file holding it. Nothing given: no vault.
+ * @param {string|undefined} value
+ * @returns {object|null}
+ */
+export function readSyncVault(value) {
+  if (value === undefined || value === null || value === "") return null;
+  const text = String(value).trim().startsWith("{")
+    ? String(value)
+    : fs.readFileSync(path.resolve(String(value)), "utf8");
+  const parsed = JSON.parse(text);
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed))
+    throw new Error("--sync-vault must be a JSON object");
+  return parsed;
+}
