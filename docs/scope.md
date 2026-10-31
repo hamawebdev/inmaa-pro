@@ -1,7 +1,7 @@
 # مركز إنماء برو management program: approved scope
 
 **Status: approved by the developer on 2026-10-11 ("continue"), with the defaults below and the assumptions in section 9 in force.**
-Desktop only, fully offline, Tauri, on the academy app at `/mnt/data/academy-system-desktop` (v2.2.0).
+Desktop only, offline except the sync between the two laptops (2026-10-31), Tauri, on the academy app at `/mnt/data/academy-system-desktop` (v2.2.0).
 Owners: **F** Foundation, **P** People, **C** Clients and contracts, **O** Operations, **M** Money and stock. The Checker owns no feature.
 
 ## 1. Decisions in force
@@ -11,7 +11,7 @@ The developer was asked six questions and answered "continue", so these defaults
 1. **Reference app.** `/mnt/data/academy-system-desktop`.
 2. **His section ④.** Bar label «المصاريف», screen heading «المصاريف والمداخيل». Expenses per division (his note, which reads «قسم المصاريف») and income per division (the developer's instruction) are two tabs.
 3. **The suspended-or-penalised check** applies to cleaning workers, centre employees and clients. Only the manager can answer yes, the answer is logged, and it allows that one registration.
-4. **One PC.** One local database and one licence per machine. Staff take turns, each with an account and a role.
+4. **Two laptops** (the developer, 2026-10-31, replacing «One PC»): the director's and the assistant's, each with the whole database, kept in sync through an encrypted mailbox on Cloudflare's free plan; each works alone without internet. No licence. Staff take turns on each, each with an account and a role. `docs/sync/DECISION.md`.
 5. **Windows.** The app is built and proven on Linux here. The Windows installer is built later on a Windows machine; the configuration must already carry an offline WebView2 install mode.
 6. **Alerts** are a tile and a list on the home screen plus a desktop notification while the program is open. Nothing is sent. The payment alert is for the office and lists the payer's name and phone.
 
@@ -49,7 +49,7 @@ The closest academy screen is in brackets. The academy has two visual generation
 - **طلبات الخدمة › العملاء.** One card per client: sites, contacts, last and next service, payment state, rating, sanction state [academy student overview].
 - **المصاريف.** Expenses by division and category [academy expenses]. Income by division: four tiles, period filter, chart and table [academy finance analytics]. Invoices: list, a run for all contracts with the visit statement, print, void [finance table and receipt print; the run is new]. التسديد والديون: payments, due dates, overdue list, cash receipts and daily reconciliation [academy payment ledger and debt list]. Reports: end of day, week, month, per worker, per contract, forecast, export files.
 - **المخزون.** Inventory with minimum levels; hand-outs recorded against a job, to a named worker, with equipment returns; purchases; maintenance [list with dialog throughout].
-- **الإعدادات.** عام: centre identity, tax identifiers, letterhead, language, appearance, backup, licence, system, branches. قواعد العمل: days, periods, limits, alert lead times, approval rule, tax mode, stamp duty, numbering, zones, rates. الخدمات: his two service lists, by division (decision 7). المستخدمون والصلاحيات: accounts, roles, role by section. السجل: access and change log.
+- **الإعدادات.** عام: centre identity, tax identifiers, letterhead, language, appearance, backup, system, branches. المزامنة: the two laptops, the books, the conflicts (2026-10-31). قواعد العمل: days, periods, limits, alert lead times, approval rule, tax mode, stamp duty, numbering, zones, rates. الخدمات: his two service lists, by division (decision 7). المستخدمون والصلاحيات: accounts, roles, role by section. السجل: access and change log.
 - **Lock.** Signing in at start is new: the academy opens straight onto its home screen. The lock screen gains a user list, "lock now" signs out, and the section picker becomes role by section. Cost and margin are for المدير; health answers and the confidential hiring score for المدير and مسئول الموارد البشرية.
 
 Printed sheets: his six forms and a complexes copy of the building contract, in his layout with his letterhead; inspection sheet, quote, mission order (with attendance, checklist, worker's notes and sign-off slip), supervisor inspection sheet, invoice, cash receipt, payment reminder, payslip, hand-out slip, supervisor day sheet, reports, ID card. Printed forms are always Arabic.
@@ -87,7 +87,7 @@ Printed sheets: his six forms and a complexes copy of the building contract, in 
 | 25 | Worker file | Planned, on his registration form | Workers › العمال | P |
 | 26 | Site on the map | Part: address, landmark and written directions on the order; an optional QR of the coordinates for the worker's own phone, off by default; no map | File form; printed order | C |
 | 27 | Worker presence and safety | Part: only the "no arrival reported" flag; position check, automatic late alert and SOS not possible | Home | O |
-| 28 | Work without internet | Not possible | | none |
+| 28 | Work without internet | Done differently (2026-10-31): each laptop works without internet; the two laptops sync when they have it | Settings › المزامنة | sync team |
 | 29 | Follow-up of pending quotes | Planned (alert tile) | Home tile; Requests › الملفات | C |
 | 30 | Profitability per contract | Planned | File hub; Money › التقارير والمؤشرات | M |
 | 31 | Legal invoice data | Planned | Money › الفواتير | M |

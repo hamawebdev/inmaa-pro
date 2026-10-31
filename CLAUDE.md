@@ -1,6 +1,6 @@
 # مركز إنماء برو management program
 
-A desktop program that runs a cleaning centre in Algeria (مركز إنماء برو, أم البواقي): centre employees, cleaning workers, service requests and contracts in four divisions, visits, quality, money and stock. One PC, fully offline, Tauri.
+A desktop program that runs a cleaning centre in Algeria (مركز إنماء برو, أم البواقي): centre employees, cleaning workers, service requests and contracts in four divisions, visits, quality, money and stock. Two laptops (the director's and the assistant's), each with the whole program and database, kept in sync through an encrypted mailbox on Cloudflare (`docs/sync/DECISION.md`); otherwise offline. Tauri.
 
 You are one teammate of six. You do not see the coordinator's conversation with the developer. Everything you need is in this file, in `docs/scope.md`, and in the inputs listed below.
 
@@ -17,8 +17,8 @@ You are one teammate of six. You do not see the coordinator's conversation with 
 
 ## The developer's rules
 
-1. **Offline.** Nothing may need a connection at run time: no fetch, no remote fonts, scripts or images, no updater, no links that open a browser, no messaging. A feature the plan gave to workers' phones is built as its office form: printed for the worker or supervisor, typed in afterwards by the office. A feature that exists only with a network is not built (scope section 4).
-2. **Exact design as the academy app.** Layout, navigation, colours, type, components, light and dark, languages and right-to-left, lock and activation, backup, printing. Reuse its shell and components; do not redraw them. Only the business changes. Where the academy has two visual generations, match the newer one: its home screen, attendance family and settings (`SectionScreen`, `DetailScreen`, `ScreenHeader`, `ScreenTabs`, `StatCard`, `StatusChip`, `DataTable` with `TableSearch` and `TablePager`). Every new screen names its closest academy screen and follows it.
+1. **Offline, except sync.** Nothing may need a connection at run time, and the program reaches one address only: the sync mailbox the director typed at set-up, over HTTPS, from the Rust side (`src-tauri/src/sync/http.rs`), never from the window (the developer, 2026-10-31; `docs/sync/DECISION.md` section 9). Otherwise: no fetch, no remote fonts, scripts or images, no updater, no links that open a browser, no messaging. Each laptop works alone without internet. A feature the plan gave to workers' phones is built as its office form: printed for the worker or supervisor, typed in afterwards by the office. A feature that exists only with a network is not built (scope section 4).
+2. **Exact design as the academy app.** Layout, navigation, colours, type, components, light and dark, languages and right-to-left, backup, printing (the licence and its lock window were removed on 2026-10-31). Reuse its shell and components; do not redraw them. Only the business changes. Where the academy has two visual generations, match the newer one: its home screen, attendance family and settings (`SectionScreen`, `DetailScreen`, `ScreenHeader`, `ScreenTabs`, `StatCard`, `StatusChip`, `DataTable` with `TableSearch` and `TablePager`). Every new screen names its closest academy screen and follows it.
 3. **Arabic is the default language, worded as in the client's forms.** Use his words for labels and options, exactly, wherever he has a word (scope sections 2, 7 and 9 list the agreed wording and the two corrections). French and English stay: every text exists in all three.
 4. **His six forms.** Every field on them exists on a screen with the same options, in the same order. Each form or contract prints in the layout of his Word file, on A4, with his letterhead, ready to sign and stamp. Printed forms are always Arabic.
 5. **The Algerian legal rules** in scope section 5 apply.
@@ -84,7 +84,7 @@ The developer has asked for videos of the program for the client, made with Reco
 
 ## How this codebase works
 
-Maintained by Foundation. The shell is the academy app's, copied here under a new name (`Inmaa Pro`, `com.hamawebdev.inmaa-pro`, `inmaa.db`), with this program's sections and a placeholder page on every route. React 19, React Router (hash router), TanStack Query, Kysely over SQLite through Tauri commands, Tailwind 4, shadcn/ui, `use-intl`. The database is the data model's (`docs/data-model/`): 109 tables, and every rule the model promises is enforced by SQLite itself.
+Maintained by Foundation. The shell is the academy app's, copied here under a new name (`Inmaa Pro`, `com.hamawebdev.inmaa-pro`, `inmaa.db`), with this program's sections and a placeholder page on every route. React 19, React Router (hash router), TanStack Query, Kysely over SQLite through Tauri commands, Tailwind 4, shadcn/ui, `use-intl`. The database is the data model's (`docs/data-model/`): 118 tables (109 shared between the two laptops), and every rule the model promises is enforced by SQLite itself.
 
 ### Commands
 
@@ -295,7 +295,7 @@ export async function seedDemo(ex: Executor, ctx: ServiceContext, tools: DemoToo
 
 ### Sign-in and roles
 
-- Nobody is signed in when the program opens. The sign-in window (`src/components/security/sign-in-screen.tsx`, in the licence lock window's style) is drawn instead of the program: no page is mounted behind it. A person picks his name and types his password; an account with no password yet chooses one there; a password the manager gave is replaced at once by its owner; the manager alone has a recovery code, shown once. «قفل الآن» on the bar signs out, and so does the idle lock after `security.idleLockMinutes` minutes without input (default 15; 0 is off): the router is unmounted, so a form in progress is lost. Never keep half-typed work anywhere that outlives the page. The services are `src/features/core/services/sign-in.ts`; DESIGN.md section 12 has the rules.
+- Nobody is signed in when the program opens. The sign-in window (`src/components/security/sign-in-screen.tsx`, in the academy's lock window's style) is drawn instead of the program: no page is mounted behind it. A person picks his name and types his password; an account with no password yet chooses one there; a password the manager gave is replaced at once by its owner; the manager alone has a recovery code, shown once. «قفل الآن» on the bar signs out, and so does the idle lock after `security.idleLockMinutes` minutes without input (default 15; 0 is off): the router is unmounted, so a form in progress is lost. Never keep half-typed work anywhere that outlives the page. The services are `src/features/core/services/sign-in.ts`; DESIGN.md section 12 has the rules.
 - **Roles by section.** The bar and the Ctrl+K list leave out a section the signed-in role holds no level on; the route gate answers any other way in with "not open to your account", and the page is never mounted. الرئيسية is everybody's. A role that only reads a section sees its pages: every write must be refused by its service (`requireSection(ctx, …, "WRITE")` or a capability), and the screen should leave the button out (`useSectionLevel`, `useCan`).
 - **The manager answers under his own name.** There is no dialog that takes his password inside another user's session. What only he may do (`sanction.answer`, an approval, an override) he does signed in himself: the question waits in its owner's list and on its alert tile.
 - Accounts are made, given a password, switched off and linked to a centre employee in Settings › المستخدمون والصلاحيات, where each role's level on every section and its capabilities are set too (`src/features/core/services/users.ts`: `createAccount`, `giveAccountPassword`, `setAccountActive`, `linkAccountToStaff(ex, ctx, { userId, staffMemberId })`, `saveRoleGrants`). A change of rights takes effect at the account's next sign-in. `users.manage` may be given to another role, but the manager's place stays his: only he gives or changes the MANAGER role, switches a manager's account, or gives or takes away a capability no role holds by default (`MANAGERS_OWN_CAPABILITIES`); nobody changes his own role or raises his own role's rights.
@@ -407,9 +407,10 @@ Everything that goes to paper is drawn on the A4 sheet in `src/components/print/
 
 Rule 1 is checked by tools, not left to care:
 
+- The window connects nowhere. The one network path is the Rust command `sync_request`: HTTPS only, to the origin saved in the sync vault, paths under `/v1/`, no redirects (`src-tauri/src/sync/`).
 - ESLint refuses, in `src/`: `fetch`, `XMLHttpRequest`, `WebSocket`, `window.open`, a web address in a string, `target="_blank"`, and `tel:` / `mailto:` links.
 - The content security policy (`src-tauri/tauri.conf.json`) refuses anything not bundled with the program, and the windows refuse to navigate anywhere else (`src-tauri/src/lib.rs`).
-- `src/lib/offline.test.ts` fails if a network plugin, crate or capability is added.
+- `src/lib/offline.test.ts` fails if a network plugin or capability is added, if any HTTP crate but `ureq` (rustls only) is added, or if `ureq` or a web address appears anywhere in the Rust sources but `src-tauri/src/sync/http.rs`.
 - The policy is not applied by `tauri dev` or by the harness's normal mode. `npm run csp:check` is where it is seen working, on the built `dist/`.
 
 ### The database
@@ -421,9 +422,21 @@ Rule 1 is checked by tools, not left to care:
 - The harness builds a fresh database for every run, so screenshots are never affected.
 - SQL is proven on the engine that ships by Rust tests (`cargo test --lib`): `migrations_apply_on_the_shipped_engine`, and `the_model_proof_holds_on_the_shipped_engine`, which replays every statement of the proof on sqlx's SQLite 3.46. Node's SQLite, which the JavaScript tests and the harness use, is a newer release.
 
+### Sync between the two laptops
+
+The decision, every case and its outcome: `docs/sync/DECISION.md`; who built what and the contracts: `docs/sync/BUILD.md`; the tables and triggers: DESIGN.md section 20. In short:
+
+- Every write transaction is stamped (`stampTransaction`, `src/lib/sync/session.ts`; `action`, `transact`, the day-start runner, first run, `test.transact` and `rows.insert` already do). Triggers copy every change of a shared table into `SyncOutbox`; while sync is set up, a write that was not stamped is refused (`SYNC_UNSTAMPED`). A new write path must go through `withStampedTransaction`.
+- A shared table is every table not marked `/// @local` in the schema. Local: `Sequence`, `ChainHead`, `BackupRun`, the sync tables, `system.*` and `backup.*` settings, `User.failedSignInCount` and `lastSignInAt`, the two cached totals on update.
+- Only the laptop that holds the books writes the seven legal chains, the legal gaps and the debt ledger, closes a cash day and runs the owners' day-start handlers (`requireBooks`, `src/lib/sync/books`). An action that must also work on the other laptop leaves that part for the books' laptop to finish after applying (see the dues rebalance and the pending debt lines).
+- Ordinary numbers come from blocks agreed between the laptops once sync is set up (`src/lib/sync/blocks`); before set-up, numbering is 1.0.0's.
+- The log has one chain per laptop (`AuditLog.chain`, hash version 2). The clock check reads this laptop's own chain.
+- A row that two laptops could create independently for the same thing gets an id derived from what it is (`setting-<key>`, `zone-<communeId>`, `commune-<wilaya>-<hash>`).
+- Two copies in a test: `createSyncPair()` (`src/testing/sync/pair.ts`); scenarios in `src/testing/scenarios/sync/`.
+
 ### Still provisional
 
 - Settings › قواعد العمل holds every setting of DESIGN.md section 11 and the zones of communes. The lists that are tables of another owner (training days and skills, inspection criteria, clause text) have no editor there yet: each is its owner's, and a branch editor is not built.
 - The letterhead pictures are the bundled ones: `letterhead.headerUrl` and `letterhead.footerUrl` have no upload field.
 - The log screen names a record by its table (`StaffMember`) beside its label: the tables have no words of their own yet.
-- Licence: a 7-day trial that counts real time, on this machine too. In a debug build, `INMAA_LICENSE_RESET=1` starts it again. The developer makes an unlock code with `cargo run --quiet --bin unlock-code -- <DEVICE-ID>` in `src-tauri/`.
+- Sync has not yet run against the deployed Cloudflare mailbox or on Windows: its tests run the mailbox's own code in memory (`src/testing/sync/memory-relay.ts`).
