@@ -1,0 +1,23 @@
+{
+  "v": 1,
+  "databaseId": "00000000-0000-4000-8000-000000000001",
+  "writtenAt": "2026-10-12T08:00:00.000Z",
+  "heads": {
+    "AuditLog": { "seq": 500, "hash": "b468b530c8e209e335b3936c57d7a500dcafdcf1faf1e2363ed6d9cccfce348a" },
+    "Invoice": { "seq": 2, "hash": "a9c3aef9e11cdd8ca03006ffc28e153fcbf47207cb7534b0f11b0701ebb6378a" },
+    "InvoiceLine": { "seq": 2, "hash": "e74f35fe7c9cc17578bc923eb5ea2c3b5978b6162a1ff0c2d1c28cbd32d5a741" },
+    "InvoiceVisit": { "seq": 9, "hash": "ee5aba2f8fd44ed59c7168fd25df18d2ecc702f7d3f1ed7b683c906c403dc53b" },
+    "Payment": { "seq": 1, "hash": "b57deb6b4307bc0f05bee5a2004c1e5d2fa6cc3b1e1218d3cb1e2954f5c59130" },
+    "PaymentAllocation": { "seq": 1, "hash": "17424e6141515d1b6a45d5f4cf8afa362c0a1af6f08df71974dd59c2c0ff41a5" },
+    "Receipt": { "seq": 4, "hash": "204994378a6cafc8540ede50d9eb54e06922f0decf6009070d657f4773129d8d" },
+    "LegalEvent": { "seq": 0, "hash": "7049a6616bb2f578047c6f9acb0ff67e012dea71d3b38880ac1ca9d3004cf5e6" }
+  },
+  "legal": {
+    "INVOICE": { "2026": { "lastValue": 2, "lastDate": "2026-10-12" } },
+    "RECEIPT": {
+      "2025": { "lastValue": 37, "lastDate": "2025-12-18" },
+      "2026": { "lastValue": 4, "lastDate": "2026-10-12" }
+    }
+  },
+  "lastInvoice": { "number": "000002/2026", "issueDate": "2026-10-12" }
+}

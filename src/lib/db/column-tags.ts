@@ -106,4 +106,10 @@ export const COLUMN_TAGS: Record<string, Record<string, string>> = {
   Purchase: { date: "date", division: "code:EXPENSE_DIVISION", total: "money", method: "code:PAYMENT_METHOD", paidAmount: "money", invoiceUrl: "url" },
   PurchaseLine: { qty: "qty", unitPrice: "money", amount: "money" },
   MaintenanceRecord: { kind: "code:MAINTENANCE_KIND", date: "date", cost: "money", conditionAfter: "code:ITEM_CONDITION", nextDueDate: "date" },
+  SyncOutbox: { op: "code:SYNC_OP", data: "json" },
+  SyncState: { value: "json" },
+  SyncHeld: { change: "json", resolution: "code:SYNC_HELD_RESOLUTION" },
+  SyncConflict: { keptValue: "json", otherValue: "json", resolution: "code:SYNC_CONFLICT_RESOLUTION" },
+  SyncBooks: { lastInvoiceNumber: "json", lastReceiptNumber: "json" },
+  NumberBlock: { key: "code:SEQUENCE_KEY", kind: "code:NUMBER_BLOCK_KIND", answer: "code:NUMBER_BLOCK_ANSWER" },
 };

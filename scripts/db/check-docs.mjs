@@ -115,8 +115,23 @@ for (const model of models) {
         say(`${model.name}.${f.name}: a name the conventions replaced (note, sortOrder, ...Min, createdAt)`);
     }
   }
-  if (!scalar.has("id")) say(`${model.name}: no id`);
-  if (!scalar.has("createdAt") && !["Setting", "Sequence", "ChainHead", "BackupRun"].includes(model.name))
+  // The sync tables' keys are named by their contract (docs/sync/BUILD.md 2.1): SyncOutbox.seq, SyncState.key, SyncCell's three.
+  const hasKey =
+    scalar.has("id") ||
+    model.fields.some((f) => /@id\b/.test(f.attrs)) ||
+    model.blockAttrs.some((a) => a.startsWith("@@id"));
+  if (!hasKey) say(`${model.name}: no id`);
+  const NO_CREATED_AT = ["Setting", "Sequence", "ChainHead", "BackupRun"];
+  const SYNC_NO_CREATED_AT = [
+    "SyncSession",
+    "SyncOutbox",
+    "SyncCell",
+    "SyncState",
+    "SyncHeld",
+    "SyncConflict",
+    "SyncBooks",
+  ];
+  if (!scalar.has("createdAt") && ![...NO_CREATED_AT, ...SYNC_NO_CREATED_AT].includes(model.name))
     say(`${model.name}: no createdAt`);
   for (const attr of model.blockAttrs) {
     const cols = /\[([^\]]+)\]/.exec(attr);
@@ -127,7 +142,7 @@ for (const model of models) {
     for (const c of cols[1].split(",").map((s) => s.trim()))
       if (!scalar.has(c)) say(`${model.name}: ${attr} names unknown column ${c}`);
   }
-  const chained = model.doc.includes("@trigger chained"),
+  const chained = model.doc.some((l) => /^@trigger chained(\(\w+\))?$/.test(l)),
     appendOnly = chained || model.doc.includes("@trigger appendOnly");
   if (chained) {
     for (const c of CHAIN_COLS) if (!scalar.has(c)) say(`${model.name}: chained without ${c}`);
@@ -180,6 +195,7 @@ const contracts = read("CONTRACTS.md");
     "Clients and contracts": "CLIENTS AND CONTRACTS",
     Operations: "OPERATIONS",
     "Money and stock": "MONEY AND STOCK",
+    Sync: "SYNC",
   };
   const where = new Map();
   let cur = null;

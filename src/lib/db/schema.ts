@@ -138,6 +138,7 @@ export interface AuditLogTable {
   prevHash: string;
   hash: string;
   createdAt: string;
+  chain: string | null;
 }
 
 export interface UploadTable {
@@ -2316,6 +2317,108 @@ export interface MaintenanceRecordTable {
   updatedByUserId: string | null;
 }
 
+export interface SyncSessionTable {
+  id: string;
+  capturing: Generated<number>;
+  applying: Generated<number>;
+  txId: string | null;
+  hlc: string | null;
+}
+
+export interface SyncOutboxTable {
+  seq: number;
+  txId: string;
+  hlc: string;
+  tbl: string;
+  rowId: string;
+  op: string;
+  data: string;
+}
+
+export interface SyncCellTable {
+  tbl: string;
+  rowId: string;
+  col: string;
+  hlc: string;
+}
+
+export interface SyncStateTable {
+  key: string;
+  value: string;
+}
+
+export interface SyncHeldTable {
+  id: string;
+  originDeviceId: string;
+  txSeq: number;
+  hlc: string;
+  tbl: string;
+  rowId: string;
+  change: string;
+  reason: string;
+  firstAt: string;
+  lastTriedAt: string;
+  tries: Generated<number>;
+  resolvedAt: string | null;
+  resolution: string | null;
+}
+
+export interface SyncConflictTable {
+  id: string;
+  tbl: string;
+  rowId: string;
+  col: string;
+  keptValue: string;
+  keptHlc: string;
+  otherValue: string;
+  otherHlc: string;
+  otherDeviceId: string;
+  detectedAt: string;
+  resolvedAt: string | null;
+  resolution: string | null;
+}
+
+export interface SyncDeviceTable {
+  id: string;
+  name: string;
+  slot: number;
+  joinedAt: string;
+  removedAt: string | null;
+  removedReason: string | null;
+  replacesDeviceId: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SyncBooksTable {
+  id: string;
+  holderDeviceId: string;
+  epoch: number;
+  handedAt: string | null;
+  requestedByDeviceId: string | null;
+  requestedAt: string | null;
+  lastInvoiceNumber: string | null;
+  lastReceiptNumber: string | null;
+  forced: Generated<number>;
+  reason: string | null;
+  updatedAt: string;
+}
+
+export interface NumberBlockTable {
+  id: string;
+  key: string;
+  year: number;
+  blockIndex: number;
+  size: number;
+  deviceId: string;
+  kind: string;
+  answer: string | null;
+  answeredAt: string | null;
+  used: Generated<number>;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface DB {
   Branch: BranchTable;
   Role: RoleTable;
@@ -2426,4 +2529,13 @@ export interface DB {
   Purchase: PurchaseTable;
   PurchaseLine: PurchaseLineTable;
   MaintenanceRecord: MaintenanceRecordTable;
+  SyncSession: SyncSessionTable;
+  SyncOutbox: SyncOutboxTable;
+  SyncCell: SyncCellTable;
+  SyncState: SyncStateTable;
+  SyncHeld: SyncHeldTable;
+  SyncConflict: SyncConflictTable;
+  SyncDevice: SyncDeviceTable;
+  SyncBooks: SyncBooksTable;
+  NumberBlock: NumberBlockTable;
 }

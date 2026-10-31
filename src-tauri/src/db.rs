@@ -40,7 +40,7 @@ use crate::CommandError;
 pub struct Db(pub SqlitePool);
 
 /// The database file inside the app data directory. Named once, here: backup,
-/// restore and the licence anchor all ask for this constant.
+/// restore and the sync commands all ask for this constant.
 pub(crate) const DB_FILE: &str = "inmaa.db";
 
 /// A parameter value crossing the IPC boundary. Mirrors the JSON types Kysely
@@ -70,8 +70,8 @@ impl From<sqlx::Error> for CommandError {
     }
 }
 
-/// Where the database lives. Also asked by `license::db_path` (for the anchor
-/// kept inside it) and by `run()` (to learn whether the file existed *before*
+/// Where the database lives. Also asked by backup and restore, by the sync
+/// commands, and by `run()` (to learn whether the file existed *before*
 /// this launch created it), so the path is defined once here rather than
 /// rebuilt by each caller.
 ///
@@ -288,12 +288,10 @@ fn row_to_json(row: &SqliteRow) -> Result<serde_json::Value, CommandError> {
 #[tauri::command]
 #[specta::specta]
 pub async fn db_select(
-    app: tauri::AppHandle,
     db: State<'_, Db>,
     sql: String,
     params: Vec<SqlValue>,
 ) -> Result<Vec<serde_json::Value>, CommandError> {
-    crate::license::guard(&app)?;
     check_statement(&sql)?;
 
     let rows = bind_all(sqlx::query(&sql), &params)
@@ -308,12 +306,10 @@ pub async fn db_select(
 #[tauri::command]
 #[specta::specta]
 pub async fn db_execute(
-    app: tauri::AppHandle,
     db: State<'_, Db>,
     sql: String,
     params: Vec<SqlValue>,
 ) -> Result<ExecuteResult, CommandError> {
-    crate::license::guard(&app)?;
     check_statement(&sql)?;
 
     let result = bind_all(sqlx::query(&sql), &params)
@@ -330,9 +326,7 @@ pub async fn db_execute(
 /// self-contained file. Used by backup before handing the path to the user.
 #[tauri::command]
 #[specta::specta]
-pub async fn db_checkpoint(app: tauri::AppHandle, db: State<'_, Db>) -> Result<(), CommandError> {
-    crate::license::guard(&app)?;
-
+pub async fn db_checkpoint(db: State<'_, Db>) -> Result<(), CommandError> {
     sqlx::query("PRAGMA wal_checkpoint(TRUNCATE);")
         .execute(&db.0)
         .await?;
@@ -343,8 +337,6 @@ pub async fn db_checkpoint(app: tauri::AppHandle, db: State<'_, Db>) -> Result<(
 #[tauri::command]
 #[specta::specta]
 pub async fn db_path(app: tauri::AppHandle) -> Result<String, CommandError> {
-    crate::license::guard(&app)?;
-
     Ok(database_path(&app)?.to_string_lossy().to_string())
 }
 
@@ -385,11 +377,26 @@ mod tests {
                     .expect("the schema can be read")
                 }
             };
-            // The data model: 109 tables and 122 triggers (0001 made 107 and 120;
+            // The data model: 118 tables and 389 triggers (0001 made 107 and 120;
             // 0003 adds the two service lists, each with its no-delete trigger;
-            // 0004 adds two columns to StaffMember).
-            assert_eq!(count("table").await, 109, "tables");
-            assert_eq!(count("trigger").await, 122, "triggers");
+            // 0004 adds two columns to StaffMember; 0005 adds the nine sync tables,
+            // four of them with a no-delete trigger, and 263 capture triggers on the
+            // 109 shared tables).
+            assert_eq!(count("table").await, 118, "tables");
+            assert_eq!(count("trigger").await, 389, "triggers");
+            let session: (String, i64, i64) =
+                sqlx::query_as("SELECT \"id\", \"capturing\", \"applying\" FROM \"SyncSession\"")
+                    .fetch_one(&pool)
+                    .await
+                    .expect("0005: the SyncSession row");
+            assert_eq!(session, ("session".to_string(), 0, 0), "0005: capture is off until sync is set up");
+            let chain: i64 = sqlx::query_scalar(
+                "SELECT COUNT(*) FROM pragma_table_info('AuditLog') WHERE name = 'chain' AND type = 'TEXT' AND \"notnull\" = 0",
+            )
+            .fetch_one(&pool)
+            .await
+            .expect("AuditLog's columns");
+            assert_eq!(chain, 1, "0005: AuditLog.chain");
             let added: i64 = sqlx::query_scalar(
                 "SELECT COUNT(*) FROM pragma_table_info('StaffMember') WHERE name IN ('trialEndDate', 'fixedTermReason') AND type = 'TEXT' AND \"notnull\" = 0",
             )
@@ -519,6 +526,45 @@ mod tests {
         r: Option<serde_json::Value>,
     }
 
+    /// Runs every statement of a tape, in order, on `pool`, and demands the answer
+    /// Node's SQLite gave: accepted or refused alike, and the same row read back.
+    /// Returns how many were refused.
+    async fn replay(tape: &Tape, pool: &SqlitePool) -> usize {
+        let mut refused = 0;
+        for (index, step) in tape.steps.iter().enumerate() {
+            let outcome = if step.k == "get" {
+                bind_all(sqlx::query(&step.sql), &step.p)
+                    .fetch_optional(pool)
+                    .await
+                    .map(|row| row.map(|row| row_to_json(&row).expect("a row converts")))
+            } else {
+                bind_all(sqlx::query(&step.sql), &step.p).execute(pool).await.map(|_| None)
+            };
+
+            match (&step.e, outcome) {
+                (None, Ok(row)) => {
+                    if step.k == "get" {
+                        let expected = step.r.clone().unwrap_or(serde_json::Value::Null);
+                        let got = row.unwrap_or(serde_json::Value::Null);
+                        assert_eq!(got, expected, "step {index}: {} read a different row", step.sql);
+                    }
+                }
+                (Some(expected), Err(error)) => {
+                    refused += 1;
+                    let message = error.to_string();
+                    assert!(
+                        message.contains(expected.as_str()),
+                        "step {index}: {} was refused with `{message}`, expected `{expected}`",
+                        step.sql
+                    );
+                }
+                (None, Err(error)) => panic!("step {index}: {} was refused here: {error}", step.sql),
+                (Some(expected), Ok(_)) => panic!("step {index}: {} was accepted here; expected `{expected}`", step.sql),
+            }
+        }
+        refused
+    }
+
     /// The data model's proof, replayed on the engine that ships.
     ///
     /// `scripts/db/model-proof.mjs` makes 157 attempts to break the database's
@@ -550,39 +596,194 @@ mod tests {
                 .await
                 .expect("the schema migration applies");
 
-            let mut refused = 0;
-            for (index, step) in tape.steps.iter().enumerate() {
-                let outcome = if step.k == "get" {
-                    bind_all(sqlx::query(&step.sql), &step.p)
-                        .fetch_optional(&pool)
-                        .await
-                        .map(|row| row.map(|row| row_to_json(&row).expect("a row converts")))
-                } else {
-                    bind_all(sqlx::query(&step.sql), &step.p).execute(&pool).await.map(|_| None)
-                };
-
-                match (&step.e, outcome) {
-                    (None, Ok(row)) => {
-                        if step.k == "get" {
-                            let expected = step.r.clone().unwrap_or(serde_json::Value::Null);
-                            let got = row.unwrap_or(serde_json::Value::Null);
-                            assert_eq!(got, expected, "step {index}: {} read a different row", step.sql);
-                        }
-                    }
-                    (Some(expected), Err(error)) => {
-                        refused += 1;
-                        let message = error.to_string();
-                        assert!(
-                            message.contains(expected.as_str()),
-                            "step {index}: {} was refused with `{message}`, expected `{expected}`",
-                            step.sql
-                        );
-                    }
-                    (None, Err(error)) => panic!("step {index}: {} was refused here: {error}", step.sql),
-                    (Some(expected), Ok(_)) => panic!("step {index}: {} was accepted here; expected `{expected}`", step.sql),
-                }
-            }
+            let refused = replay(&tape, &pool).await;
             assert!(refused > 100, "the proof is mostly refusals: {refused}");
+            pool.close().await;
+        });
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// The sync proof (migration 0005), replayed on the engine that ships.
+    ///
+    /// `scripts/db/sync-proof.mjs` tries capture (on, off, unstamped, while
+    /// applying, the settings and columns each laptop keeps), the sync tables'
+    /// checks, the per-laptop log chains, the single legal chains and a
+    /// LOST_DEVICE gap, on a database every migration made. Here the program's
+    /// own `open` makes that database, and every statement must answer alike.
+    #[test]
+    fn the_sync_proof_holds_on_the_shipped_engine() {
+        let tape: Tape = serde_json::from_str(include_str!("../proof/sync-proof.tape.json")).expect("the tape parses");
+        assert_eq!(tape.migration, "all");
+        assert!(tape.steps.len() > 100, "the tape holds the whole proof");
+
+        let dir = temp_dir("sync-proof");
+        let path = dir.join(DB_FILE);
+
+        tauri::async_runtime::block_on(async {
+            let pool = open(&path).await.expect("every migration applies");
+            let refused = replay(&tape, &pool).await;
+            assert!(refused > 25, "the proof tries many refusals: {refused}");
+            pool.close().await;
+        });
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// An installed 1.0.0 copy, with the centre's data in it, upgrades in place.
+    ///
+    /// `src/testing/fixtures/1.0.0/inmaa-1.0.0.db` is a database the 1.0.0
+    /// program made (its migrations, first run, its demo data, an OPENING gap,
+    /// two stored files, and the `_sqlx_migrations` rows it wrote). The program
+    /// opens a copy as it would at start: the migrator applies 0004 and 0005.
+    /// 0005 rebuilds AuditLog and SequenceGap: every row of both must come out
+    /// with every column as it went in, and every other table with as many rows;
+    /// the schema must then be exactly the one a new database gets; the keys and
+    /// the file must check; and capture and the per-laptop chain must work there.
+    #[test]
+    fn the_1_0_0_fixture_upgrades_in_place() {
+        let dir = temp_dir("fixture-1.0.0");
+        let path = dir.join(DB_FILE);
+        std::fs::copy(
+            concat!(env!("CARGO_MANIFEST_DIR"), "/../src/testing/fixtures/1.0.0/inmaa-1.0.0.db"),
+            &path,
+        )
+        .expect("the 1.0.0 fixture");
+        let fresh_path = dir.join("fresh.db");
+
+        tauri::async_runtime::block_on(async {
+            let rows = |pool: SqlitePool, sql: String| async move {
+                sqlx::query(&sql)
+                    .fetch_all(&pool)
+                    .await
+                    .expect("read")
+                    .iter()
+                    .map(|row| row_to_json(row).expect("a row converts"))
+                    .collect::<Vec<_>>()
+            };
+            let strip = |mut rows: Vec<serde_json::Value>, column: &str| {
+                for row in rows.iter_mut() {
+                    let removed = row.as_object_mut().expect("a row").remove(column);
+                    assert_eq!(removed, Some(serde_json::Value::Null), "{column} of an upgraded row is empty");
+                }
+                rows
+            };
+
+            // The file as 1.0.0 left it, read without upgrading it.
+            let options = SqliteConnectOptions::from_str(&format!("sqlite:{}", path.to_string_lossy()))
+                .expect("path")
+                .foreign_keys(true)
+                .pragma("recursive_triggers", "ON");
+            let old = SqlitePoolOptions::new().max_connections(1).connect_with(options).await.expect("connect");
+            let applied: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM \"_sqlx_migrations\" WHERE \"success\" = 1")
+                .fetch_one(&old)
+                .await
+                .expect("the 1.0.0 program's migrations");
+            assert_eq!(applied, 3, "1.0.0 applied 0001 to 0003");
+            let tables: Vec<String> = sqlx::query_scalar(
+                "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND name <> '_sqlx_migrations' ORDER BY name",
+            )
+            .fetch_all(&old)
+            .await
+            .expect("tables");
+            assert_eq!(tables.len(), 109);
+            let mut counts = Vec::new();
+            for table in &tables {
+                let n: i64 = sqlx::query_scalar(&format!("SELECT COUNT(*) FROM \"{table}\""))
+                    .fetch_one(&old)
+                    .await
+                    .expect("count");
+                counts.push((table.clone(), n));
+            }
+            let log_before = rows(old.clone(), "SELECT * FROM \"AuditLog\" ORDER BY rowid".into()).await;
+            let gaps_before = rows(old.clone(), "SELECT * FROM \"SequenceGap\" ORDER BY rowid".into()).await;
+            assert!(log_before.len() > 400, "the fixture holds a real log");
+            assert_eq!(gaps_before.len(), 1, "the fixture holds an OPENING gap, which references a log row");
+            old.close().await;
+
+            // The program opens it: 0004 and 0005 apply.
+            let pool = open(&path).await.expect("the 1.0.0 database upgrades");
+            let applied: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM \"_sqlx_migrations\" WHERE \"success\" = 1")
+                .fetch_one(&pool)
+                .await
+                .expect("migrations");
+            assert_eq!(applied, sqlx::migrate!("./migrations").iter().count() as i64, "every embedded migration applied");
+
+            for (table, n) in &counts {
+                let after: i64 = sqlx::query_scalar(&format!("SELECT COUNT(*) FROM \"{table}\""))
+                    .fetch_one(&pool)
+                    .await
+                    .expect("count");
+                assert_eq!(after, *n, "{table} keeps its {n} rows");
+            }
+            let log_after = rows(pool.clone(), "SELECT * FROM \"AuditLog\" ORDER BY rowid".into()).await;
+            assert_eq!(strip(log_after, "chain"), log_before, "every log row, every column, unchanged");
+            let gaps_after = rows(pool.clone(), "SELECT * FROM \"SequenceGap\" ORDER BY rowid".into()).await;
+            assert_eq!(gaps_after, gaps_before, "every gap, every column, unchanged");
+            let violations = sqlx::query("PRAGMA foreign_key_check").fetch_all(&pool).await.expect("fk check");
+            assert!(violations.is_empty(), "every row still points at something");
+            let check: String = sqlx::query_scalar("PRAGMA integrity_check").fetch_one(&pool).await.expect("check");
+            assert_eq!(check, "ok");
+
+            // The upgraded schema is the one a new database gets: every table,
+            // index and trigger, with its text (the rebuilt tables' indexes and
+            // triggers, and the two named triggers 0005 wrote again, included).
+            let fresh = open(&fresh_path).await.expect("a new database");
+            let schema = "SELECT type, name, tbl_name, sql FROM sqlite_master WHERE name NOT LIKE 'sqlite_autoindex%' AND tbl_name <> '_sqlx_migrations' ORDER BY type, name";
+            let upgraded_schema = rows(pool.clone(), schema.into()).await;
+            let fresh_schema = rows(fresh.clone(), schema.into()).await;
+            assert_eq!(upgraded_schema.len(), fresh_schema.len(), "as many schema objects");
+            assert_eq!(upgraded_schema, fresh_schema, "the upgraded schema is a new database's");
+            fresh.close().await;
+            for name in [
+                "AuditLog_chain_seq",
+                "AuditLog_localDate_idx",
+                "AuditLog_chain_insert",
+                "AuditLog_chain_advance",
+                "AuditLog_no_update",
+                "AuditLog_no_delete",
+                "AuditLog_sync_insert",
+                "SequenceGap_key_year_idx",
+                "SequenceGap_no_update",
+                "SequenceGap_no_delete",
+                "SequenceGap_sync_insert",
+                "ChainHead_step",
+                "Sequence_legal_step",
+            ] {
+                let n: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM sqlite_master WHERE name = ?1")
+                    .bind(name)
+                    .fetch_one(&pool)
+                    .await
+                    .expect("schema");
+                assert_eq!(n, 1, "{name} is there");
+            }
+
+            // The rebuilt log still refuses a change, and its 1.0.0 chain goes on.
+            assert!(
+                sqlx::query("UPDATE \"AuditLog\" SET \"reason\" = 'x'").execute(&pool).await.is_err(),
+                "the log stays append-only"
+            );
+            assert!(
+                sqlx::query("DELETE FROM \"SequenceGap\"").execute(&pool).await.is_err(),
+                "the gaps stay append-only"
+            );
+            // Capture, once switched on, refuses an unstamped write and copies a stamped one.
+            sqlx::query("UPDATE \"SyncSession\" SET \"capturing\" = 1").execute(&pool).await.expect("capture on");
+            let unstamped = sqlx::query("UPDATE \"Zone\" SET \"note\" = 'x'").execute(&pool).await;
+            assert!(
+                unstamped.as_ref().is_err_and(|error| error.to_string().contains("SYNC_UNSTAMPED")),
+                "an unstamped write is refused: {unstamped:?}"
+            );
+            sqlx::query("UPDATE \"SyncSession\" SET \"txId\" = 'tx', \"hlc\" = '1761897600000.0000.dev-a'")
+                .execute(&pool)
+                .await
+                .expect("stamp");
+            let changed = sqlx::query("UPDATE \"Zone\" SET \"note\" = 'x'").execute(&pool).await.expect("a change").rows_affected();
+            let copied: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM \"SyncOutbox\" WHERE \"tbl\" = 'Zone' AND \"op\" = 'U' AND json_extract(\"data\", '$.note[0]') = 'x'")
+                .fetch_one(&pool)
+                .await
+                .expect("outbox");
+            assert!(changed > 0 && copied == changed as i64, "each changed zone is copied once: {changed} {copied}");
             pool.close().await;
         });
 

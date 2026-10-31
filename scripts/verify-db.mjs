@@ -29,6 +29,7 @@ import { tmpdir } from "node:os";
 import { basename, join, relative, resolve } from "node:path";
 
 import {
+  allCaptureTriggers,
   buildDdl,
   CHAINED_TABLES,
   columnsInTableOrder,
@@ -36,6 +37,7 @@ import {
   FROZEN_MIGRATIONS,
   LATER_MIGRATIONS,
   listMigrations,
+  namedTriggers,
   parseSchema,
   ROOT,
   sqlDefault,
@@ -141,7 +143,7 @@ for (const model of models) {
     type: SQLTYPE[column.type],
     notnull: column.optional ? 0 : 1,
     dflt_value: column.def === null ? null : String(sqlDefault(column.def)),
-    pk: column.id ? 1 : 0,
+    pk: column.id ? 1 : model.pk ? model.pk.indexOf(column.name) + 1 : 0,
   }));
   const actual = info.map((column) => ({
     name: column.name,
@@ -212,22 +214,39 @@ check(
 );
 
 console.log("\ntriggers");
-const triggerRows = sqlite.prepare(`SELECT "name", "tbl_name" FROM sqlite_master WHERE "type" = 'trigger'`).all();
+const triggerRows = sqlite
+  .prepare(`SELECT "name", "tbl_name", "sql" FROM sqlite_master WHERE "type" = 'trigger'`)
+  .all();
 const triggerProblems = [];
+const capture = allCaptureTriggers(models);
+const captureOf = (table) =>
+  [...capture.keys()].filter((name) => new RegExp(`^${table}_sync_(insert|update|delete)$`).test(name));
 for (const model of models) {
   const actual = triggerRows.filter((row) => row.tbl_name === model.name).map((row) => row.name);
-  const expected = ddl.triggerNames.get(model.name) ?? [];
+  const expected = [...(ddl.triggerNames.get(model.name) ?? []), ...captureOf(model.name)];
   if (!same(sorted(actual), sorted(expected))) {
     triggerProblems.push(
       `${model.name}: ${list(expected.filter((name) => !actual.includes(name)))} missing, ${list(actual.filter((name) => !expected.includes(name)))} extra`,
     );
   }
 }
-const expectedTriggers = [...ddl.triggerNames.values()].flat().length;
+const expectedTriggers = [...ddl.triggerNames.values()].flat().length + capture.size;
 check(
-  `the ${expectedTriggers} triggers of the schema, each on its table`,
+  `the ${expectedTriggers} triggers of the schema (${capture.size} of them capture), each on its table`,
   triggerProblems.length === 0 && triggerRows.length === expectedTriggers,
   list(triggerProblems, 4),
+);
+// The text too: a template, a named trigger or a capture trigger that changed in the sources and
+// was not written again by a migration (a capture trigger is stale when its table gained a column).
+const wantedText = new Map([...ddl.triggerSql, ...namedTriggers(), ...capture]);
+// SQLite keeps a trigger's text from CREATE to END, without the closing semicolon.
+const staleTriggers = triggerRows
+  .filter((row) => wantedText.get(row.name)?.replace(/;$/, "") !== row.sql)
+  .map((row) => row.name);
+check(
+  "every trigger the database holds is the text its source gives now (templates, triggers.sql, capture)",
+  staleTriggers.length === 0,
+  list(staleTriggers),
 );
 const chainedWithoutTriggers = CHAINED_TABLES.filter(
   (table) =>
@@ -332,6 +351,14 @@ check(
   empty.length === 0,
   list(empty),
 );
+const session = sqlite.prepare(`SELECT "id", "capturing", "applying", "txId", "hlc" FROM "SyncSession"`).all();
+check(
+  "the one SyncSession row, capture off (sync is not set up by a migration)",
+  same(
+    session.map((row) => [row.id, row.capturing, row.applying, row.txId, row.hlc]),
+    [["session", 0, 0, null, null]],
+  ),
+);
 check("integrity check", sqlite.prepare("PRAGMA integrity_check").get().integrity_check === "ok");
 
 sqlite.close();
@@ -347,6 +374,16 @@ check(
   `scripts/db/model-proof.mjs --check (${summary})`,
   proof.status === 0,
   `${proof.stdout}${proof.stderr}`.trim().split("\n").slice(-4).join(" | "),
+);
+
+console.log("\nthe sync proof (migration 0005, on every migration)");
+const syncProof = spawnSync(process.execPath, [resolve(ROOT, "scripts/db/sync-proof.mjs"), "--check"], {
+  encoding: "utf8",
+});
+check(
+  `scripts/db/sync-proof.mjs --check (${`${syncProof.stdout}`.trim().split("\n").at(-1) ?? ""})`,
+  syncProof.status === 0,
+  `${syncProof.stdout}${syncProof.stderr}`.trim().split("\n").slice(-4).join(" | "),
 );
 
 // ── 5. The documents ─────────────────────────────────────────────────────────

@@ -62,10 +62,12 @@ BEGIN SELECT RAISE(ABORT, 'SEQUENCE:legal_step'); END;
 -- A chain head moves one step at a time, keeps its table, and only onto the row its table has
 -- just received (the chain_advance trigger runs after that insert). So a head cannot be moved by
 -- hand, which would hide a missing row. (Foundation, F2: the step alone let an UPDATE through.)
+-- The log has one chain per laptop once sync is set up (migration 0005, which wrote this trigger
+-- again): the head "AuditLog" is the 1.0.0 chain (chain null), "AuditLog:<deviceId>" a laptop's.
 CREATE TRIGGER "ChainHead_step" BEFORE UPDATE ON "ChainHead"
 WHEN NEW."id" IS NOT OLD."id" OR NEW."lastSeq" IS NOT OLD."lastSeq" + 1 OR length(NEW."lastHash") <> 64
   OR NOT EXISTS (
-       SELECT 1 FROM "AuditLog" WHERE NEW."id" = 'AuditLog' AND "chainSeq" = NEW."lastSeq" AND "hash" = NEW."lastHash"
+       SELECT 1 FROM "AuditLog" WHERE COALESCE("chain", 'AuditLog') = NEW."id" AND "chainSeq" = NEW."lastSeq" AND "hash" = NEW."lastHash"
        UNION ALL SELECT 1 FROM "Invoice" WHERE NEW."id" = 'Invoice' AND "chainSeq" = NEW."lastSeq" AND "hash" = NEW."lastHash"
        UNION ALL SELECT 1 FROM "InvoiceLine" WHERE NEW."id" = 'InvoiceLine' AND "chainSeq" = NEW."lastSeq" AND "hash" = NEW."lastHash"
        UNION ALL SELECT 1 FROM "InvoiceVisit" WHERE NEW."id" = 'InvoiceVisit' AND "chainSeq" = NEW."lastSeq" AND "hash" = NEW."lastHash"

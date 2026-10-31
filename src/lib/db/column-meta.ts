@@ -116,6 +116,15 @@ export const DATE_COLUMNS = {
   Purchase: ["cancelledAt", "createdAt", "updatedAt"],
   PurchaseLine: ["createdAt"],
   MaintenanceRecord: ["cancelledAt", "createdAt", "updatedAt"],
+  SyncSession: [],
+  SyncOutbox: [],
+  SyncCell: [],
+  SyncState: [],
+  SyncHeld: ["firstAt", "lastTriedAt", "resolvedAt"],
+  SyncConflict: ["detectedAt", "resolvedAt"],
+  SyncDevice: ["joinedAt", "removedAt", "createdAt", "updatedAt"],
+  SyncBooks: ["handedAt", "requestedAt", "updatedAt"],
+  NumberBlock: ["answeredAt", "createdAt", "updatedAt"],
 } as const satisfies Record<TableName, readonly string[]>;
 
 /** Stored as 0/1, handed to the screens as booleans. An empty one stays null: "neither box ticked". */
@@ -229,4 +238,13 @@ export const BOOLEAN_COLUMNS = {
   Purchase: [],
   PurchaseLine: [],
   MaintenanceRecord: [],
+  SyncSession: ["capturing", "applying"],
+  SyncOutbox: [],
+  SyncCell: [],
+  SyncState: [],
+  SyncHeld: [],
+  SyncConflict: [],
+  SyncDevice: [],
+  SyncBooks: ["forced"],
+  NumberBlock: [],
 } as const satisfies Record<TableName, readonly string[]>;

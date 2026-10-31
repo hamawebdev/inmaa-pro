@@ -94,6 +94,20 @@ F Foundation, P People, C Clients and contracts, O Operations, M Money and stock
 | `StockItem`, `EquipmentUnit`, `StockMovement`, `InventoryCount`, `InventoryCountLine`, `Supplier`, `PurchaseRequest`, `PurchaseRequestLine`, `Purchase`, `PurchaseLine`, `MaintenanceRecord` | M | nobody else |
 | `HandOut`, `HandOutLine`, `HandOutReturn` | M | O (the order's "materials and equipment handed over", through `getHandOutsForVisit`); P (`getEquipmentIncidents`); C (hub tile) |
 
+### Sync
+
+The two-laptop sync (docs/sync/DECISION.md, DESIGN.md section 20), migration 0005. Not one of the five owners: written by the sync team's **engine** (`src/lib/sync`) and **ledger** (`src/lib/sync/books`, `src/lib/sync/blocks`).
+
+| Table | Writes | Reads |
+|---|---|---|
+| `SyncSession` | engine (`stampTransaction`, `unstampTransaction`, the applier's `applying`; set-up turns `capturing` on) | the capture triggers |
+| `SyncOutbox` | the capture triggers only | engine (sending) |
+| `SyncCell` | the capture triggers on a local change; engine on an applied one | engine (the merge) |
+| `SyncState`, `SyncHeld`, `SyncConflict` | engine | engine; the sync screens through engine's services |
+| `SyncDevice` | engine (set-up, pairing, removal) | engine, ledger; the sync screens |
+| `SyncBooks` | ledger (`initBooks`, `requestBooks`, `answerBooksRequest`, `takeBooksFromLostLaptop`) | ledger (`requireBooks`, called by Money's and People's services); the sync screens |
+| `NumberBlock` | ledger (the owner writes `used`, the other laptop writes `answer`) | ledger (`src/lib/numbering` when sync is set up) |
+
 ## 3. What each owner exports
 
 Names are proposals; the plain-words column is the contract. Every function takes `(ex, ctx, ...)`; only what follows is shown.

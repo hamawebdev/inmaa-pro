@@ -119,7 +119,12 @@ Used by `File.amountBasis`, `Quote.amountBasis`.
 | DATA_SUBJECT | `WORKER` · `EMPLOYEE` · `CLIENT` · `RESIDENT` · `CONTACT` · `USER` |
 | DISCLOSURE_KIND | `PRINT` · `EXPORT` · `BACKUP` |
 | BACKUP_KIND | `AUTO` · `MANUAL` · `PRE_RESTORE` · `RESTORE` |
-| GAP_KIND (`SequenceGap.kind`) | `RESTORE` (numbers lost when an older backup was restored) · `OPENING` (numbers issued on paper that year before the program) |
+| GAP_KIND (`SequenceGap.kind`) | `RESTORE` (numbers lost when an older backup was restored) · `OPENING` (numbers issued on paper that year before the program) · `LOST_DEVICE` (numbers a lost or broken laptop may have issued, declared by the manager when she takes the books from it; migration 0005, DESIGN.md section 20) |
+| SYNC_OP (`SyncOutbox.op`) | `I` (insert: every column) · `U` (change: the changed columns, each with the stamp it replaced) · `D` (delete: the whole old row) |
+| SYNC_HELD_RESOLUTION (`SyncHeld.resolution`) | `APPLIED` (applied at a later try) · `KEPT_OURS` (this laptop's version kept, sent as a new change) · `SET_ASIDE` (the newer record set aside where its table allows a soft delete) |
+| SYNC_CONFLICT_RESOLUTION (`SyncConflict.resolution`) | `KEPT` (the value that won stays) · `USED_OTHER` (the other value put back, as a new change) |
+| NUMBER_BLOCK_KIND (`NumberBlock.kind`) | `START` (the counter's value at set-up, the director's laptop's) · `CLAIM` (asked of the other laptop while in touch) · `FALLBACK` (taken from this laptop's own half while apart) |
+| NUMBER_BLOCK_ANSWER (`NumberBlock.answer`) | `ACCEPTED` · `REFUSED` (null: not asked, or not answered yet) |
 | PHOTO_KIND (`Upload.kind`, sets of photos; wording Operations) | `BEFORE` · `AFTER` · `ISSUE` |
 | SEQUENCE_KEY | `STAFF_WORKER` · `STAFF_EMPLOYEE` · `CLIENT_DOSSIER` · `FILE_HOUSING_REQUEST` · `FILE_HOUSING_CONTRACT` · `FILE_ORG_REQUEST` · `FILE_ORG_CONTRACT` · `FILE_BUILDING_CONTRACT` · `FILE_COMPLEX_CONTRACT` · `QUOTE` · `VISIT` · `INVOICE` · `RECEIPT` · `COMPLAINT` · `INSPECTION` · `VIOLATION` · `PAY_RUN` · `PAYSLIP` · `PAYOUT` · `HANDOUT` · `COUNT` · `PURCHASE_REQUEST` · `PURCHASE` · `EQUIPMENT_UNIT` |
 

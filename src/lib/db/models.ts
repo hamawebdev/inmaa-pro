@@ -132,6 +132,7 @@ export interface AuditLogRow {
   prevHash: string;
   hash: string;
   createdAt: Date;
+  chain: string | null;
 }
 
 export interface UploadRow {
@@ -2308,4 +2309,106 @@ export interface MaintenanceRecordRow {
   updatedAt: Date;
   createdByUserId: string | null;
   updatedByUserId: string | null;
+}
+
+export interface SyncSessionRow {
+  id: string;
+  capturing: boolean;
+  applying: boolean;
+  txId: string | null;
+  hlc: string | null;
+}
+
+export interface SyncOutboxRow {
+  seq: number;
+  txId: string;
+  hlc: string;
+  tbl: string;
+  rowId: string;
+  op: string;
+  data: string;
+}
+
+export interface SyncCellRow {
+  tbl: string;
+  rowId: string;
+  col: string;
+  hlc: string;
+}
+
+export interface SyncStateRow {
+  key: string;
+  value: string;
+}
+
+export interface SyncHeldRow {
+  id: string;
+  originDeviceId: string;
+  txSeq: number;
+  hlc: string;
+  tbl: string;
+  rowId: string;
+  change: string;
+  reason: string;
+  firstAt: Date;
+  lastTriedAt: Date;
+  tries: number;
+  resolvedAt: Date | null;
+  resolution: string | null;
+}
+
+export interface SyncConflictRow {
+  id: string;
+  tbl: string;
+  rowId: string;
+  col: string;
+  keptValue: string;
+  keptHlc: string;
+  otherValue: string;
+  otherHlc: string;
+  otherDeviceId: string;
+  detectedAt: Date;
+  resolvedAt: Date | null;
+  resolution: string | null;
+}
+
+export interface SyncDeviceRow {
+  id: string;
+  name: string;
+  slot: number;
+  joinedAt: Date;
+  removedAt: Date | null;
+  removedReason: string | null;
+  replacesDeviceId: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface SyncBooksRow {
+  id: string;
+  holderDeviceId: string;
+  epoch: number;
+  handedAt: Date | null;
+  requestedByDeviceId: string | null;
+  requestedAt: Date | null;
+  lastInvoiceNumber: string | null;
+  lastReceiptNumber: string | null;
+  forced: boolean;
+  reason: string | null;
+  updatedAt: Date;
+}
+
+export interface NumberBlockRow {
+  id: string;
+  key: string;
+  year: number;
+  blockIndex: number;
+  size: number;
+  deviceId: string;
+  kind: string;
+  answer: string | null;
+  answeredAt: Date | null;
+  used: number;
+  createdAt: Date;
+  updatedAt: Date;
 }

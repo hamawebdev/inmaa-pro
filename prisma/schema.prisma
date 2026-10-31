@@ -36,6 +36,8 @@
 //       @url     managed upload path, registered in Upload
 //       @key     derived search key, rewritten on every save
 //       @snap    frozen copy taken when the row is written
+//       @local   this laptop's own value: a change of it alone is not sent to
+//                the other laptop (two-laptop sync, DESIGN.md section 20)
 //       sys      set by the service, never typed by a person
 //  4. `@default(x)` is written only where the DDL carries `DEFAULT x`. The
 //     columns id, createdAt and updatedAt have NO default: the application
@@ -61,6 +63,13 @@
 //       /// @trigger headOnly(Parent, fk)  rows only for the parent just chained
 //       /// @trigger frozenWithRun(path) [except a, b]   frozen once the pay run is not DRAFT
 //       /// @trigger named <TriggerName>   written out in triggers.sql
+//       /// @trigger chained(col)          chained, one chain per value of col
+//                                         (null = the table's own chain)
+//       /// @local                         this laptop's own table: never sent
+//                                         to the other laptop (no capture)
+//       /// @syncExcept <SQL over the row> rows that are this laptop's own
+//     Every table without @local gets the three capture triggers of the
+//     two-laptop sync (DESIGN.md section 20), generated from its columns.
 //     Column names inside @check, @uniqueWhere and @index are bare; the
 //     generator quotes them.
 //  8. Sources named in comments: F1 worker form; F2 building contract;
@@ -164,8 +173,8 @@ model User {
   branchId           String?
   isActive           Boolean   @default(true)
   mustChangePassword Boolean   @default(false)
-  failedSignInCount  Int       @default(0)
-  lastSignInAt       DateTime?
+  failedSignInCount  Int       @default(0) // @local
+  lastSignInAt       DateTime? // @local
   deactivatedAt      DateTime?
   createdAt          DateTime
   updatedAt          DateTime
@@ -181,8 +190,10 @@ model User {
 
 /// Key and value. The value is always JSON text ("40", "\"ar\"", "[...]").
 /// Keys and defaults: DESIGN.md section 11. system.databaseId is written once: every genesis hash depends on it.
+/// system.* and backup.* are this laptop's own (its id, its day-start marks, its backup folder): never sent to the other laptop.
 /// @trigger named Setting_database_id_update
 /// @trigger named Setting_database_id_delete
+/// @syncExcept key GLOB 'system.*' OR key GLOB 'backup.*'
 model Setting {
   id              String   @id
   key             String   @unique
@@ -196,8 +207,10 @@ model Setting {
 /// The two legal keys (INVOICE, RECEIPT): nobody increments by hand. The insert of the document itself moves the counter (triggers of Invoice and Receipt), so a number without a document cannot exist.
 /// @trigger named Sequence_seed
 /// @trigger named Sequence_monotonic
+/// Each laptop's own: derived from the rows it holds, so its triggers keep checking every insert (DESIGN.md section 20).
 /// @trigger named Sequence_legal_step
 /// @trigger noDelete
+/// @local
 model Sequence {
   id        String   @id
   key       String   // @code SEQUENCE_KEY
@@ -209,13 +222,14 @@ model Sequence {
   @@unique([key, year])
 }
 
-/// Numbers of a legal sequence that this database does not hold, with the reason: written when an older backup is restored (RESTORE), or once at first run when the centre already issued numbers on paper that year (OPENING). Append-only.
+/// Numbers of a legal sequence that this database does not hold, with the reason: written when an older backup is restored (RESTORE), once at first run when the centre already issued numbers on paper that year (OPENING), or when the manager takes the books from a lost laptop and declares the last numbers seen on paper (LOST_DEVICE). Append-only.
+/// Rebuilt by migration 0005 with AuditLog, which it references (its rows copied unchanged).
 /// @trigger appendOnly
 model SequenceGap {
   id              String   @id
   key             String   // @code SEQUENCE_KEY (INVOICE, RECEIPT)
   year            Int
-  kind            String   // @code GAP_KIND (RESTORE, OPENING)
+  kind            String   // @code GAP_KIND (RESTORE, OPENING, LOST_DEVICE)
   fromValue       Int      // first missing number
   toValue         Int      // last missing number
   reason          String
@@ -228,24 +242,28 @@ model SequenceGap {
   @@index([key, year])
 }
 
-/// Head of each hash chain. One row per chained table, id = the table name.
-/// Seeded with lastSeq 0 and the genesis hash (DESIGN.md section 8).
+/// Head of each hash chain. One row per chained table, id = the table name; and, once sync is set up, one per laptop's log chain, id = "AuditLog:<deviceId>".
+/// Seeded with lastSeq 0 and the genesis hash (DESIGN.md section 8). Each laptop's own (DESIGN.md section 20).
 /// @trigger named ChainHead_step
 /// @trigger named ChainHead_seed
 /// @trigger noDelete
+/// @local
 model ChainHead {
-  id        String   @id // table name: "Invoice", "AuditLog", ...
+  id        String   @id // table name: "Invoice", "AuditLog", ...; or "AuditLog:<deviceId>"
   lastSeq   Int      @default(0)
   lastHash  String   // 64 hex characters
   updatedAt DateTime
 }
 
 /// The access and change log (#33; Law 18-07 art. 41 bis 3: operation, reason, date, time, user). Append-only, hash-chained, never purged.
-/// @trigger chained
+/// Two-laptop sync (migration 0005, which rebuilt the table): rows written before sync was set up are on the 1.0.0 chain (chain null); from set-up each laptop writes its own chain, "AuditLog:<deviceId>", and receives the other's rows unchanged. chainSeq counts within its chain.
+/// @trigger chained(chain)
 /// @check operation IN ('COLLECT','CONSULT','CHANGE','DISCLOSE','ERASE','SECURITY')
+/// @check chain IS NULL OR chain GLOB 'AuditLog:?*'
+/// @uniqueWhere AuditLog_chain_seq (COALESCE(chain, 'AuditLog'), chainSeq)
 model AuditLog {
   id               String   @id
-  chainSeq         Int      @unique // sys; 1, 2, 3 ... with no gap
+  chainSeq         Int      // sys; 1, 2, 3 ... with no gap, within its chain
   occurredAt       DateTime // sys; the instant
   localDate        String   // @date sys; "date" of art. 41 bis 3
   localTime        String   // @time sys; "time" of art. 41 bis 3
@@ -267,10 +285,11 @@ model AuditLog {
   recipient        String?  // to whom it was disclosed, when known
   changes          String?  // @json {"field": [old, new]}; restricted fields carry no values
   context          String?  // @json free details (route, counts, file name, chain heads)
-  hashV            Int      // sys; version of the hashed column list (DESIGN.md section 8)
+  hashV            Int      // sys; version of the hashed column list (DESIGN.md section 8): 1 without chain, 2 with it
   prevHash         String   // sys
   hash             String   // sys
   createdAt        DateTime
+  chain            String?  // sys; null = the 1.0.0 chain; "AuditLog:<deviceId>" after sync set-up (migration 0005)
 
   @@index([localDate])
   @@index([entity, entityId])
@@ -350,6 +369,8 @@ model Zone {
 
 /// One row per backup made or tried (#33: automatic daily backup), and per restore. Lets the home tile say "no backup for N days".
 /// A protected copy (every PRE_RESTORE) is never rotated away by backup.keepCount: it is the only place that still holds what a restore removed.
+/// Each laptop's own (its backup folder).
+/// @local
 model BackupRun {
   id                String    @id
   kind              String    // @code BACKUP_KIND (AUTO, MANUAL, PRE_RESTORE, RESTORE)
@@ -2582,7 +2603,7 @@ model PaymentDue {
   expectedAmount  Int       // @money; from «المبلغ إجمالي» and amountBasis
   invoiceId       String?   // set when invoiced; cleared when that invoice is voided
   amount          Int       // @money; the receivable: expectedAmount until invoiced, then this due's share of that invoice's totalTTC. Never the stamp duty
-  paidAmount      Int       @default(0) // @money sys; kept by trigger PaymentAllocation_paid
+  paidAmount      Int       @default(0) // @money sys @local; kept by trigger PaymentAllocation_paid (each laptop recomputes it from the allocations it receives)
   draftId         String?   // the InvoiceDraft that holds this due, so two drafts never take one due
   cancelledAt     DateTime? // contract ended early, terms changed
   cancelReason    String?
@@ -3088,7 +3109,7 @@ model StockItem {
   unit            String    // @code UNIT
   tracking        String    // @code STOCK_TRACKING (QUANTITY, UNIT)
   minLevel        Int?      // @qty; D1 «الحد الأدنى»
-  onHandQty       Int       @default(0) // @qty sys; kept by trigger StockMovement_on_hand
+  onHandQty       Int       @default(0) // @qty sys @local; kept by trigger StockMovement_on_hand (each laptop recomputes it from the movements it receives)
   avgCost         Int       @default(0) // @money per unit; weighted average, updated at each purchase
   isActive        Boolean   @default(true)
   note            String?
@@ -3439,4 +3460,174 @@ model MaintenanceRecord {
   unit EquipmentUnit @relation(fields: [unitId], references: [id], onDelete: Restrict)
 
   @@index([unitId, date])
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// OWNER: SYNC (9 models)
+// Two laptops, one centre (docs/sync/DECISION.md; DESIGN.md section 20).
+// Added by migration 0005. Six are this laptop's own (@local, never sent):
+// SyncSession, SyncOutbox, SyncCell, SyncState, SyncHeld, SyncConflict.
+// Three are shared like any business table: SyncDevice (engine writes),
+// SyncBooks and NumberBlock (ledger writes).
+// ═══════════════════════════════════════════════════════════════════════════
+
+/// The capture switch, one row (id 'session'), seeded by migration 0005 with capturing 0.
+/// capturing 1 once sync is set up; applying 1 while the other laptop's changes are applied (they are not captured again).
+/// txId and hlc: the stamp of the write transaction in progress (engine's stampTransaction); a capture trigger refuses with SYNC_UNSTAMPED while capturing and txId is null.
+/// @check id = 'session'
+/// @check capturing IN (0, 1) AND applying IN (0, 1)
+/// @trigger noDelete
+/// @local
+model SyncSession {
+  id        String  @id // 'session'
+  capturing Boolean @default(false)
+  applying  Boolean @default(false)
+  txId      String? // sys; the write transaction in progress
+  hlc       String? // sys; its hybrid clock stamp "<ms 13 digits>.<counter 4 digits>.<deviceId>"
+}
+
+/// Every change to a shared table, in the order it was made, written only by the capture triggers (one per insert, change or delete).
+/// data: for I every column {col: value}; for U the changed columns only {col: [newValue, replacedHlc]}; for D the whole old row.
+/// @check op IN ('I', 'U', 'D')
+/// @local
+model SyncOutbox {
+  seq   Int    @id // INTEGER PRIMARY KEY: SQLite numbers the rows in the order they were written
+  txId  String // the write transaction (SyncSession.txId)
+  hlc   String // its stamp (SyncSession.hlc)
+  tbl   String // the table
+  rowId String // the row's id
+  op    String // @code SYNC_OP (I, U, D)
+  data  String // @json see above
+
+  @@index([txId])
+}
+
+/// The stamp of each field's last change: written by the capture trigger on a local change, and by the engine on an applied one.
+/// @local
+model SyncCell {
+  tbl   String
+  rowId String
+  col   String
+  hlc   String
+
+  @@id([tbl, rowId, col])
+}
+
+/// This laptop's sync state, key and value (engine's keys: its identity, cursors, clock, status).
+/// @local
+model SyncState {
+  key   String @id
+  value String // @json
+}
+
+/// A change from the other laptop that this database refused, kept whole with the database's reason, and tried again at every sync.
+/// @local
+model SyncHeld {
+  id             String    @id
+  originDeviceId String    // the laptop that made it (SyncDevice.id; not a foreign key: it may arrive before its device row)
+  txSeq          Int       // its transaction's number on that laptop
+  hlc            String
+  tbl            String    // the change's table, as in change.t
+  rowId          String    // the change's row, as in change.id
+  change         String    // @json {t, id, op, data} as the envelope carried it
+  reason         String    // the database's refusal
+  firstAt        DateTime
+  lastTriedAt    DateTime
+  tries          Int       @default(0)
+  resolvedAt     DateTime?
+  resolution     String?   // @code SYNC_HELD_RESOLUTION (APPLIED, KEPT_OURS, SET_ASIDE)
+
+  @@index([resolvedAt])
+  @@index([originDeviceId, txSeq])
+  @@index([tbl, rowId])
+}
+
+/// The same field changed on both laptops while apart: the value that lost, kept with who typed it and when, one click from coming back.
+/// id derived from the table, row, field and both stamps, so both laptops name a conflict alike.
+/// keptValue and otherValue are the JSON text of the value ('null' for none), so text and integers keep their kind.
+/// @local
+model SyncConflict {
+  id            String    @id
+  tbl           String
+  rowId         String
+  col           String
+  keptValue     String    // @json
+  keptHlc       String
+  otherValue    String    // @json
+  otherHlc      String
+  otherDeviceId String    // SyncDevice.id
+  detectedAt    DateTime
+  resolvedAt    DateTime?
+  resolution    String?   // @code SYNC_CONFLICT_RESOLUTION (KEPT, USED_OTHER)
+
+  @@index([resolvedAt])
+  @@index([tbl, rowId])
+}
+
+/// A laptop of the centre: at most two active, slot 0 (the director's, which set sync up) and slot 1 (the one that joined).
+/// A removed laptop keeps its row (removedAt, removedReason); its replacement joins under a new id in the same slot.
+/// @check slot IN (0, 1)
+/// @check removedAt IS NULL OR removedReason IS NOT NULL
+/// @uniqueWhere SyncDevice_active_slot (slot) WHERE removedAt IS NULL
+/// @trigger noDelete
+model SyncDevice {
+  id               String    @id
+  name             String    // as the laptop names itself ("حاسوب المديرة")
+  slot             Int       // 0 or 1; the director's laptop takes the even number blocks, the other the odd
+  joinedAt         DateTime
+  removedAt        DateTime?
+  removedReason    String?   // typed by the manager
+  replacesDeviceId String?
+  createdAt        DateTime
+  updatedAt        DateTime
+
+  replaces SyncDevice? @relation(fields: [replacesDeviceId], references: [id], onDelete: Restrict)
+}
+
+/// Where the books are (DECISION section 5): one row, id 'books'. Only the holder writes the seven legal chains, the legal gaps, the debt ledger and the cash days, and runs the day-start jobs.
+/// lastInvoiceNumber, lastReceiptNumber: JSON {"<year>": {"seq": n, "date": "YYYY-MM-DD" or null}} of the hand-over, one entry per year whose counter is above 0.
+/// @check id = 'books'
+/// @check forced IN (0, 1)
+/// @check forced = 0 OR reason IS NOT NULL
+/// @trigger noDelete
+model SyncBooks {
+  id                  String    @id // 'books'
+  holderDeviceId      String
+  epoch               Int       // 1 at set-up, one more at each hand-over
+  handedAt            DateTime?
+  requestedByDeviceId String?
+  requestedAt         DateTime?
+  lastInvoiceNumber   String?   // @json see above
+  lastReceiptNumber   String?   // @json see above
+  forced              Boolean   @default(false) // taken from a lost laptop by the manager
+  reason              String?   // typed; required when forced
+  updatedAt           DateTime
+
+  holder      SyncDevice  @relation(fields: [holderDeviceId], references: [id], onDelete: Restrict)
+  requestedBy SyncDevice? @relation(fields: [requestedByDeviceId], references: [id], onDelete: Restrict)
+}
+
+/// A block of numbers of one key and year that one laptop numbers inside (DECISION section 5). id "<key>-<year>-<blockIndex>-<deviceId>".
+/// The owner writes used; the other laptop writes answer (a CLAIM is ACCEPTED or REFUSED; START and FALLBACK blocks need no answer).
+/// @check kind IN ('START', 'CLAIM', 'FALLBACK')
+/// @check answer IS NULL OR answer IN ('ACCEPTED', 'REFUSED')
+/// @check size > 0 AND used >= 0 AND used <= size AND blockIndex >= 0
+/// @trigger noDelete
+model NumberBlock {
+  id         String    @id
+  key        String    // @code SEQUENCE_KEY
+  year       Int       // 0 or the year, as Sequence
+  blockIndex Int       // block b holds the numbers b*size+1 … (b+1)*size (DESIGN.md section 20, "Numbers")
+  size       Int       // 10; 50 for visits
+  deviceId   String
+  kind       String    // @code NUMBER_BLOCK_KIND (START, CLAIM, FALLBACK)
+  answer     String?   // @code NUMBER_BLOCK_ANSWER (ACCEPTED, REFUSED)
+  answeredAt DateTime?
+  used       Int       @default(0) // how many of its numbers this laptop gave
+  createdAt  DateTime
+  updatedAt  DateTime
+
+  device SyncDevice @relation(fields: [deviceId], references: [id], onDelete: Restrict)
+
+  @@index([key, year, blockIndex])
 }

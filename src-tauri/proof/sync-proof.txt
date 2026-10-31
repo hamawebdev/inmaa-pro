@@ -1,0 +1,64 @@
+ok   the one SyncSession row, capture off
+ok   a second SyncSession row -> CHECK constraint failed: id
+ok   the SyncSession row deleted -> NO_DELETE:SyncSession
+ok   capturing set to 2 -> CHECK constraint failed: capturing
+ok   an outbox row with an unknown op -> CHECK constraint failed: op
+ok   a third laptop slot -> CHECK constraint failed: slot
+ok   two active laptops in one slot -> UNIQUE constraint failed: SyncDevice.slot
+ok   a laptop removed without a reason -> CHECK constraint failed: removedAt
+ok   a laptop row deleted -> NO_DELETE:SyncDevice
+ok   books under another id -> CHECK constraint failed: id
+ok   books taken by force without a reason -> CHECK constraint failed: forced
+ok   the books on the director's laptop
+ok   a number block of an unknown kind -> CHECK constraint failed: kind
+ok   a block using more numbers than it holds -> CHECK constraint failed: size
+ok   a starting block
+ok   capture off: an insert is not copied
+ok   capture off: a change is not copied, no field stamp
+ok   an insert in a transaction nobody stamped -> SYNC_UNSTAMPED
+ok   a change in a transaction nobody stamped -> SYNC_UNSTAMPED
+ok   a refused write leaves nothing in the outbox
+ok   an insert is copied whole: every column, as stored
+ok   a change copies the changed fields only, each with the stamp it replaced (none yet)
+ok   a change stamps each changed field
+ok   a later change carries the stamp the field had
+ok   a change that changes nothing is not copied
+ok   a field emptied is copied as null
+ok   a system.* or backup.* setting is never copied
+ok   another setting is copied
+ok   a delete is copied with the whole old row
+ok   a stock item's insert is copied with its total as inserted
+ok   a movement is copied, the total it moves is not
+ok   the cached total took no field stamp
+ok   a sign-in's counters alone are not copied
+ok   a change with the counters copies the other fields only
+ok   while applying, a write needs no stamp
+ok   while applying, nothing is copied and no field stamp moves
+ok   an append-only row still cannot change -> APPEND_ONLY:StockMovement:update
+ok   a row on the 1.0.0 chain (chain null)
+ok   a second one
+ok   the 1.0.0 head moved
+ok   a row on a laptop chain that has no head yet -> CHAIN:AuditLog:out_of_sequence
+ok   a laptop chain's head seeded above 0 -> CHAIN:ChainHead:seed
+ok   laptop A's first row: seq 1 on its own chain, from its genesis
+ok   it was copied for the other laptop, chain included
+ok   laptop B's first row: seq 1 too, on its chain
+ok   laptop A's second row
+ok   each chain's head is checked and moved alone
+ok   a row on laptop A's chain linked to the 1.0.0 head -> CHAIN:AuditLog:out_of_sequence
+ok   a row on laptop A's chain at a seq already used -> CHAIN:AuditLog:out_of_sequence
+ok   a log row on a chain that is not a log chain -> CHECK constraint failed: chain
+ok   two rows at one place of one chain (behind the triggers: the unique index) -> UNIQUE constraint failed: index 'AuditLog_chain_seq'
+ok   a laptop chain's head moved by hand -> CHAIN:ChainHead:step
+ok   a laptop chain's head moved onto the other laptop's row -> CHAIN:ChainHead:step
+ok   a log row changed -> APPEND_ONLY:AuditLog:update
+ok   a log row deleted -> APPEND_ONLY:AuditLog:delete
+ok   a legal row out of its single chain -> CHAIN:LegalEvent:out_of_sequence
+ok   an invoice counter jumping with no gap -> SEQUENCE:legal_step
+ok   a LOST_DEVICE gap, numbers 1 to 7, explained by a log entry
+ok   the gap was copied for the other laptop
+ok   the counter moves over the gap
+ok   the counter (this laptop's own) was not copied
+ok   a gap row changed -> APPEND_ONLY:SequenceGap:update
+ok   every row points at something
+63 passed, 0 failed

@@ -18,6 +18,7 @@ export type ChainColumn = readonly [name: string, type: "TEXT" | "INTEGER"];
 export const CHAIN_COLUMNS: Record<ChainedTable, Record<number, readonly ChainColumn[]>> = {
   AuditLog: {
     1: [["id", "TEXT"], ["chainSeq", "INTEGER"], ["occurredAt", "TEXT"], ["localDate", "TEXT"], ["localTime", "TEXT"], ["operation", "TEXT"], ["action", "TEXT"], ["userId", "TEXT"], ["userName", "TEXT"], ["userRole", "TEXT"], ["approvedByUserId", "TEXT"], ["reason", "TEXT"], ["ownerCode", "TEXT"], ["entity", "TEXT"], ["entityId", "TEXT"], ["entityLabel", "TEXT"], ["subjectKind", "TEXT"], ["subjectId", "TEXT"], ["subjectLabel", "TEXT"], ["disclosure", "TEXT"], ["recipient", "TEXT"], ["changes", "TEXT"], ["context", "TEXT"], ["hashV", "INTEGER"], ["prevHash", "TEXT"], ["createdAt", "TEXT"]],
+    2: [["id", "TEXT"], ["chainSeq", "INTEGER"], ["occurredAt", "TEXT"], ["localDate", "TEXT"], ["localTime", "TEXT"], ["operation", "TEXT"], ["action", "TEXT"], ["userId", "TEXT"], ["userName", "TEXT"], ["userRole", "TEXT"], ["approvedByUserId", "TEXT"], ["reason", "TEXT"], ["ownerCode", "TEXT"], ["entity", "TEXT"], ["entityId", "TEXT"], ["entityLabel", "TEXT"], ["subjectKind", "TEXT"], ["subjectId", "TEXT"], ["subjectLabel", "TEXT"], ["disclosure", "TEXT"], ["recipient", "TEXT"], ["changes", "TEXT"], ["context", "TEXT"], ["hashV", "INTEGER"], ["prevHash", "TEXT"], ["createdAt", "TEXT"], ["chain", "TEXT"]],
   },
   Invoice: {
     1: [["id", "TEXT"], ["numberSeq", "INTEGER"], ["numberYear", "INTEGER"], ["number", "TEXT"], ["fileId", "TEXT"], ["clientId", "TEXT"], ["division", "TEXT"], ["serviceType", "TEXT"], ["branchId", "TEXT"], ["issueDate", "TEXT"], ["issuedAt", "TEXT"], ["issuedByUserId", "TEXT"], ["periodStart", "TEXT"], ["periodEnd", "TEXT"], ["taxMode", "TEXT"], ["vatRate", "INTEGER"], ["pricesIncludeVat", "INTEGER"], ["grossAmount", "INTEGER"], ["discountAmount", "INTEGER"], ["totalHT", "INTEGER"], ["vatAmount", "INTEGER"], ["totalTTC", "INTEGER"], ["paymentMethod", "TEXT"], ["stampDuty", "INTEGER"], ["netToPay", "INTEGER"], ["amountWordsAr", "TEXT"], ["amountWordsFr", "TEXT"], ["dueDate", "TEXT"], ["paymentPlace", "TEXT"], ["sellerSnapshot", "TEXT"], ["buyerSnapshot", "TEXT"], ["ifuMention", "TEXT"], ["note", "TEXT"], ["replacesInvoiceId", "TEXT"], ["contentDigest", "TEXT"], ["hashV", "INTEGER"], ["chainSeq", "INTEGER"], ["prevHash", "TEXT"], ["createdAt", "TEXT"], ["createdByUserId", "TEXT"]],
@@ -44,7 +45,7 @@ export const CHAIN_COLUMNS: Record<ChainedTable, Record<number, readonly ChainCo
 
 /** The version new rows are written under. */
 export const CURRENT_HASH_VERSION: Record<ChainedTable, number> = {
-  AuditLog: 1,
+  AuditLog: 2,
   Invoice: 1,
   InvoiceLine: 1,
   InvoiceVisit: 1,

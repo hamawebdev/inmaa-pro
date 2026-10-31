@@ -55,11 +55,39 @@ export const LATER_MIGRATIONS = [
     models: [],
     columns: [{ model: "StaffMember", names: ["trialEndDate", "fixedTermReason"] }],
   },
+  // Two laptops, one centre (docs/sync/DECISION.md, 2026-10-31): the nine sync tables, the
+  // per-laptop log chain (AuditLog rebuilt with its `chain` column, and SequenceGap, which
+  // references it), and the capture triggers on every shared table.
+  {
+    file: "0005_sync.sql",
+    models: [
+      "SyncSession",
+      "SyncOutbox",
+      "SyncCell",
+      "SyncState",
+      "SyncHeld",
+      "SyncConflict",
+      "SyncDevice",
+      "SyncBooks",
+      "NumberBlock",
+    ],
+    rebuilds: [
+      { model: "AuditLog", added: ["chain"] },
+      { model: "SequenceGap", added: [] },
+    ],
+    capture: true,
+  },
 ];
 
-/** The columns a later migration adds, as `[model, column]` names, in its order. */
+/** The migration that created the capture triggers: a later one that adds columns to a shared table writes them again. */
+export const CAPTURE_MIGRATION = "0005_sync.sql";
+
+/** The columns a later migration adds, as `[model, column]` names, in its order: by ALTER, then by a rebuild. */
 function addedColumnNames(migration) {
-  return (migration.columns ?? []).flatMap(({ model, names }) => names.map((name) => [model, name]));
+  return [
+    ...(migration.columns ?? []).flatMap(({ model, names }) => names.map((name) => [model, name])),
+    ...(migration.rebuilds ?? []).flatMap(({ model, added }) => added.map((name) => [model, name])),
+  ];
 }
 
 /** Every column some later migration adds, as `Model.column`. */
@@ -106,27 +134,31 @@ export function columnsInTableOrder(model) {
 export function columnsOfLaterMigration(file, models = parseSchema()) {
   const migration = LATER_MIGRATIONS.find((candidate) => candidate.file === file);
   if (!migration) throw new Error(`${file} is not in LATER_MIGRATIONS`);
-  return addedColumnNames(migration).map(([modelName, name]) => {
-    const model = models.find((candidate) => candidate.name === modelName);
-    if (!model) throw new Error(`${file}: the schema has no model ${modelName}`);
-    if (migration.models.includes(modelName)) throw new Error(`${file}: ${modelName} is created here, not altered`);
-    const column = model.cols.find((candidate) => candidate.name === name);
-    if (!column) throw new Error(`${file}: the schema has no column ${modelName}.${name}`);
-    const named = (text) => new RegExp(`\\b${name}\\b`).test(text);
-    if (column.id || column.unique || (!column.optional && column.def === null))
-      throw new Error(`${file}: ${modelName}.${name} must be optional or have a default, and be no key`);
-    if (
-      model.rels.some((rel) => rel.col === name) ||
-      foreignKeysOf(model).some((key) => key.col === name) ||
-      model.uniques.some((cols) => cols.includes(name)) ||
-      model.indexes.some((cols) => cols.includes(name)) ||
-      model.directives.some(named) ||
-      // A trigger whose UPDATE OF list 0001 wrote would not cover the new column.
-      model.directives.some((directive) => /frozenWithRun\(.*\)\s+except/.test(directive))
-    )
-      throw new Error(`${file}: ${modelName}.${name} is named by a relation, index, check or trigger: not a plain ADD`);
-    return { model, column };
-  });
+  return (migration.columns ?? [])
+    .flatMap(({ model, names }) => names.map((name) => [model, name]))
+    .map(([modelName, name]) => {
+      const model = models.find((candidate) => candidate.name === modelName);
+      if (!model) throw new Error(`${file}: the schema has no model ${modelName}`);
+      if (migration.models.includes(modelName)) throw new Error(`${file}: ${modelName} is created here, not altered`);
+      const column = model.cols.find((candidate) => candidate.name === name);
+      if (!column) throw new Error(`${file}: the schema has no column ${modelName}.${name}`);
+      const named = (text) => new RegExp(`\\b${name}\\b`).test(text);
+      if (column.id || column.unique || (!column.optional && column.def === null))
+        throw new Error(`${file}: ${modelName}.${name} must be optional or have a default, and be no key`);
+      if (
+        model.rels.some((rel) => rel.col === name) ||
+        foreignKeysOf(model).some((key) => key.col === name) ||
+        model.uniques.some((cols) => cols.includes(name)) ||
+        model.indexes.some((cols) => cols.includes(name)) ||
+        model.directives.some(named) ||
+        // A trigger whose UPDATE OF list 0001 wrote would not cover the new column.
+        model.directives.some((directive) => /frozenWithRun\(.*\)\s+except/.test(directive))
+      )
+        throw new Error(
+          `${file}: ${modelName}.${name} is named by a relation, index, check or trigger: not a plain ADD`,
+        );
+      return { model, column };
+    });
 }
 
 /** The models a later migration adds, in the order it names them. */
@@ -156,6 +188,16 @@ export const CHAINED_TABLES = [
   "LegalEvent",
 ];
 
+/**
+ * The versions of a chained table's hash (DESIGN.md section 8), each with the columns it
+ * leaves out; every other column but `hash` is covered, in table order. A row carries its
+ * hashV, so an old version stays verifiable. A table not named here has version 1 only.
+ */
+export const HASH_VERSIONS = {
+  // 0005 added `chain` (the per-laptop log chain): version 2 covers it.
+  AuditLog: [{ v: 1, without: ["chain"] }, { v: 2 }],
+};
+
 /** The unit or meaning a trailing comment gives a column. At most one applies. */
 function tagOf(comment) {
   for (const tag of ["date", "time", "money", "min", "qty", "bp", "udeg", "json", "url", "key"]) {
@@ -180,7 +222,7 @@ export function parseSchema(file = SCHEMA_FILE) {
       .slice(d, i)
       .map((line) => line.replace(/^\/\/\/\s?/, ""))
       .filter((line) => line.startsWith("@"));
-    const model = { name: header[1], cols: [], rels: [], uniques: [], indexes: [], directives };
+    const model = { name: header[1], cols: [], rels: [], uniques: [], indexes: [], directives, pk: null };
     for (i++; lines[i] !== "}"; i++) {
       const raw = lines[i];
       const comment = (/\/\/(.*)$/.exec(raw) || [, ""])[1];
@@ -193,6 +235,13 @@ export function parseSchema(file = SCHEMA_FILE) {
             .split(",")
             .map((s) => s.trim()),
         );
+        continue;
+      }
+      if (line.startsWith("@@id")) {
+        model.pk = /\[([^\]]+)\]/
+          .exec(line)[1]
+          .split(",")
+          .map((s) => s.trim());
         continue;
       }
       if (line.startsWith("@@index")) {
@@ -220,6 +269,8 @@ export function parseSchema(file = SCHEMA_FILE) {
           list: list ?? null,
           isDate: tag === "date",
           isTime: tag === "time",
+          // This laptop's own value: a change of it alone is not captured (DESIGN.md section 20).
+          local: /@local\b/.test(comment),
         });
       } else {
         const rel = /fields:\s*\[(\w+)\],\s*references:\s*\[(\w+)\],\s*onDelete:\s*(\w+)/.exec(field[4]);
@@ -286,12 +337,14 @@ export function buildDdl(models = parseSchema()) {
   const namedWanted = [];
   const indexNames = new Map();
   const triggerNames = new Map();
+  const triggerSql = new Map();
   for (const m of models) {
     const cols = new Set(m.cols.map((c) => c.name));
     const defs = m.cols.map((c) => `  ${columnDdl(c)}`);
     for (const r of foreignKeysOf(m)) {
       defs.push(`  FOREIGN KEY ("${r.col}") REFERENCES "${r.target}" ("${r.ref}") ON DELETE ${r.onDelete}`);
     }
+    if (m.pk) defs.push(`  PRIMARY KEY (${m.pk.map((c) => `"${c}"`).join(", ")})`);
     for (const u of m.uniques) defs.push(`  UNIQUE (${u.map((c) => `"${c}"`).join(", ")})`);
     const post = [];
     const indexes = m.indexes.map((ix) => `${m.name}_${ix.join("_")}_idx`);
@@ -310,8 +363,12 @@ export function buildDdl(models = parseSchema()) {
       } else if ((x = /^@trigger\s+(.+)$/.exec(d))) {
         const made = template(m, x[1]);
         templated.push(...made);
-        triggers.push(...made.map((sql) => /CREATE TRIGGER "(\w+)"/.exec(sql)[1]));
-      } else throw new Error(`${m.name}: unknown directive ${d}`);
+        for (const sql of made) {
+          const name = /CREATE TRIGGER "(\w+)"/.exec(sql)[1];
+          triggers.push(name);
+          triggerSql.set(name, sql);
+        }
+      } else if (d !== "@local" && !/^@syncExcept\s+.+$/.test(d)) throw new Error(`${m.name}: unknown directive ${d}`);
     }
     out.push(`CREATE TABLE "${m.name}" (\n${defs.join(",\n")}\n) STRICT;`);
     for (const ix of m.indexes) {
@@ -321,7 +378,15 @@ export function buildDdl(models = parseSchema()) {
     indexNames.set(m.name, indexes);
     triggerNames.set(m.name, triggers);
   }
-  return { models, tables: out.join("\n"), templated: templated.join("\n\n"), namedWanted, indexNames, triggerNames };
+  return {
+    models,
+    tables: out.join("\n"),
+    templated: templated.join("\n\n"),
+    namedWanted,
+    indexNames,
+    triggerNames,
+    triggerSql,
+  };
 }
 
 function template(m, spec) {
@@ -332,13 +397,17 @@ function template(m, spec) {
     `CREATE TRIGGER "${X}_no_delete" BEFORE DELETE ON "${X}"\nBEGIN SELECT RAISE(ABORT, '${code}:${X}${code === "APPEND_ONLY" ? ":delete" : ""}'); END;`;
   if (spec === "appendOnly") return [noUpd, noDel("APPEND_ONLY")];
   if (spec === "noDelete") return [noDel("NO_DELETE")];
-  if (spec === "chained")
+  if ((x = /^chained(?:\((\w+)\))?$/.exec(spec))) {
+    // chained(col): one chain per value of col, its head the ChainHead row of that id; null is the table's own chain.
+    if (x[1] && !m.cols.some((c) => c.name === x[1])) throw new Error(`${X}: chained(${x[1]}) names unknown column`);
+    const head = x[1] ? `COALESCE(NEW."${x[1]}", '${X}')` : `'${X}'`;
     return [
       noUpd,
       noDel("APPEND_ONLY"),
-      `CREATE TRIGGER "${X}_chain_insert" BEFORE INSERT ON "${X}"\nWHEN NEW."chainSeq" IS NOT (SELECT "lastSeq" + 1 FROM "ChainHead" WHERE "id" = '${X}')\n  OR NEW."prevHash" IS NOT (SELECT "lastHash" FROM "ChainHead" WHERE "id" = '${X}')\n  OR length(NEW."hash") <> 64\nBEGIN SELECT RAISE(ABORT, 'CHAIN:${X}:out_of_sequence'); END;`,
-      `CREATE TRIGGER "${X}_chain_advance" AFTER INSERT ON "${X}"\nBEGIN UPDATE "ChainHead" SET "lastSeq" = NEW."chainSeq", "lastHash" = NEW."hash", "updatedAt" = NEW."createdAt" WHERE "id" = '${X}'; END;`,
+      `CREATE TRIGGER "${X}_chain_insert" BEFORE INSERT ON "${X}"\nWHEN NEW."chainSeq" IS NOT (SELECT "lastSeq" + 1 FROM "ChainHead" WHERE "id" = ${head})\n  OR NEW."prevHash" IS NOT (SELECT "lastHash" FROM "ChainHead" WHERE "id" = ${head})\n  OR length(NEW."hash") <> 64\nBEGIN SELECT RAISE(ABORT, 'CHAIN:${X}:out_of_sequence'); END;`,
+      `CREATE TRIGGER "${X}_chain_advance" AFTER INSERT ON "${X}"\nBEGIN UPDATE "ChainHead" SET "lastSeq" = NEW."chainSeq", "lastHash" = NEW."hash", "updatedAt" = NEW."createdAt" WHERE "id" = ${head}; END;`,
     ];
+  }
   if ((x = /^legalNumber\((\w+)\)$/.exec(spec)))
     return [
       `CREATE TRIGGER "${X}_number" BEFORE INSERT ON "${X}"\nWHEN NEW."numberSeq" IS NOT (SELECT "lastValue" + 1 FROM "Sequence" WHERE "key" = '${x[1]}' AND "year" = NEW."numberYear")\nBEGIN SELECT RAISE(ABORT, 'LEGAL_SEQUENCE:${X}:number'); END;`,
@@ -394,4 +463,171 @@ export async function openMigratedDatabase(file = ":memory:") {
   db.exec("PRAGMA foreign_keys = ON; PRAGMA recursive_triggers = ON;");
   for (const migration of await listMigrations()) db.exec(readFileSync(migration, "utf8"));
   return db;
+}
+
+// ── Two-laptop sync: what is captured (DESIGN.md section 20) ───────────────
+
+/** A table this laptop keeps to itself: never captured, never sent (`/// @local`). */
+export const isLocalModel = (model) => model.directives.includes("@local");
+
+/** The tables the capture triggers copy into SyncOutbox: every model but the @local ones. */
+export const sharedModels = (models = parseSchema()) => models.filter((model) => !isLocalModel(model));
+
+/** Its rows that are this laptop's own (`/// @syncExcept <SQL>`), as an expression over `ROW."col"`, or null. */
+function syncExceptOf(model, row) {
+  const directive = model.directives.find((d) => d.startsWith("@syncExcept"));
+  if (!directive) return null;
+  const cols = new Set(model.cols.map((c) => c.name));
+  return quoteCols(directive.replace(/^@syncExcept\s+/, ""), cols).replace(/"(\w+)"/g, (whole, name) =>
+    cols.has(name) ? `${row}."${name}"` : whole,
+  );
+}
+
+/** Whether a model's template triggers refuse updates, or deletes. */
+const refusesUpdate = (model) => model.directives.some((d) => /^@trigger\s+(appendOnly|chained)\b/.test(d));
+const refusesDelete = (model) => refusesUpdate(model) || model.directives.includes("@trigger noDelete");
+
+/**
+ * `{col: value, …}` for every column of a row, as JSON text. SQLite 3.46 (the engine
+ * that ships) takes at most 127 arguments in a function call, so the pairs go in
+ * groups of 60: json_object of the first, then json_set for each next one.
+ */
+function rowJson(columns, row) {
+  const pairs = columns.map((c) => [`'${c.name}'`, `${row}."${c.name}"`]);
+  let sql = `json_object(${pairs
+    .slice(0, 60)
+    .map((p) => p.join(", "))
+    .join(", ")})`;
+  for (let i = 60; i < pairs.length; i += 60) {
+    sql = `json_set(${sql}, ${pairs
+      .slice(i, i + 60)
+      .map(([key, value]) => `'$.${key.slice(1, -1)}', ${value}`)
+      .join(", ")})`;
+  }
+  return sql;
+}
+
+const SESSION = `"SyncSession" WHERE "id" = 'session'`;
+const CAPTURING = `(SELECT "capturing" = 1 AND "applying" = 0 FROM ${SESSION})`;
+const UNSTAMPED = `SELECT RAISE(ABORT, 'SYNC_UNSTAMPED') WHERE (SELECT "txId" FROM ${SESSION}) IS NULL;`;
+
+/**
+ * The capture triggers of one shared table, as `[name, sql]` pairs (BUILD 2.2):
+ * AFTER INSERT always; AFTER UPDATE unless the table refuses updates; AFTER DELETE
+ * unless it refuses deletes. Each runs only while `capturing = 1 AND applying = 0`,
+ * refuses a write whose transaction was not stamped, and reads the row from NEW or
+ * OLD (never from the table), so what it copies is the row as written, before any
+ * other trigger touched it (a cached total at its inserted value).
+ * On update: only the columns that changed, none of the @local ones, each with
+ * the stamp it replaced (SyncCell), and SyncCell then takes this transaction's stamp.
+ */
+export function captureTriggers(model) {
+  const X = model.name;
+  if (!model.cols.some((c) => c.name === "id" && c.id)) throw new Error(`${X}: a shared table needs its id column`);
+  const except = (row) => {
+    const sql = syncExceptOf(model, row);
+    return sql ? `\n  AND NOT (${sql})` : "";
+  };
+  const outbox = (op, row, data) =>
+    `INSERT INTO "SyncOutbox" ("txId", "hlc", "tbl", "rowId", "op", "data")\n  SELECT "txId", "hlc", '${X}', ${row}."id", '${op}', ${data} FROM ${SESSION};`;
+  const out = [
+    [
+      `${X}_sync_insert`,
+      `CREATE TRIGGER "${X}_sync_insert" AFTER INSERT ON "${X}"\nWHEN ${CAPTURING}${except("NEW")}\nBEGIN\n${UNSTAMPED}\n${outbox("I", "NEW", rowJson(model.cols, "NEW"))}\nEND;`,
+    ],
+  ];
+  if (!refusesUpdate(model)) {
+    const watched = model.cols.filter((c) => !c.local);
+    const changed = (c) => `NEW."${c.name}" IS NOT OLD."${c.name}"`;
+    const cell = (c) =>
+      `(SELECT "hlc" FROM "SyncCell" WHERE "tbl" = '${X}' AND "rowId" = NEW."id" AND "col" = '${c.name}')`;
+    const values = watched
+      .map((c, i) =>
+        i === 0
+          ? `SELECT '${c.name}' AS "k", json_array(NEW."${c.name}", ${cell(c)}) AS "v" WHERE ${changed(c)}`
+          : `SELECT '${c.name}', json_array(NEW."${c.name}", ${cell(c)}) WHERE ${changed(c)}`,
+      )
+      .join("\n    UNION ALL ");
+    const names = watched
+      .map((c, i) =>
+        i === 0 ? `SELECT '${c.name}' AS "k" WHERE ${changed(c)}` : `SELECT '${c.name}' WHERE ${changed(c)}`,
+      )
+      .join("\n    UNION ALL ");
+    out.push([
+      `${X}_sync_update`,
+      `CREATE TRIGGER "${X}_sync_update" AFTER UPDATE ON "${X}"\nWHEN ${CAPTURING}${except("NEW")}\n  AND (${watched.map(changed).join("\n    OR ")})\nBEGIN\n${UNSTAMPED}\n${outbox("U", "NEW", `(SELECT json_group_object("k", json("v")) FROM (\n    ${values}))`)}\nINSERT INTO "SyncCell" ("tbl", "rowId", "col", "hlc")\n  SELECT '${X}', NEW."id", "k", (SELECT "hlc" FROM ${SESSION}) FROM (\n    ${names})\n  WHERE true\n  ON CONFLICT ("tbl", "rowId", "col") DO UPDATE SET "hlc" = excluded."hlc";\nEND;`,
+    ]);
+  }
+  if (!refusesDelete(model)) {
+    out.push([
+      `${X}_sync_delete`,
+      `CREATE TRIGGER "${X}_sync_delete" AFTER DELETE ON "${X}"\nWHEN ${CAPTURING}${except("OLD")}\nBEGIN\n${UNSTAMPED}\n${outbox("D", "OLD", rowJson(model.cols, "OLD"))}\nEND;`,
+    ]);
+  }
+  return out;
+}
+
+/** Every capture trigger, by name, for the schema as it stands. */
+export function allCaptureTriggers(models = parseSchema()) {
+  return new Map(sharedModels(models).flatMap((model) => captureTriggers(model)));
+}
+
+/** The named triggers of prisma/triggers.sql, by name, each as its whole CREATE TRIGGER statement. */
+export function namedTriggers(file = TRIGGERS_FILE) {
+  const text = readFileSync(file, "utf8");
+  return new Map([...text.matchAll(/CREATE TRIGGER "(\w+)"[\s\S]*?\bEND;/g)].map((m) => [m[1], m[0]]));
+}
+
+/**
+ * A table rebuilt in place, inside the migration's transaction (`foreign_keys` stays on):
+ * the new table is made under `<name>__new` with the schema's shape, the rows copied, the
+ * old table dropped, the new one renamed. A table that references a rebuilt one is rebuilt
+ * with it (its new copy references the other's `__new`, which the rename then follows), and
+ * the referencing one is dropped first, so no row ever points at a dropped table. The named
+ * triggers of other tables that read a rebuilt table are dropped first (a rename re-reads
+ * every trigger) and written again from prisma/triggers.sql, with the rebuilt tables'
+ * indexes and template and named triggers.
+ */
+export function rebuildSql(rebuilds, models = parseSchema()) {
+  const names = rebuilds.map((r) => r.model);
+  const byName = new Map(models.map((m) => [m.name, m]));
+  const temp = (name) => `${name}__new`;
+  const named = namedTriggers();
+  const readers = [...named]
+    .filter(([, sql]) => {
+      const on = /ON "(\w+)"/.exec(sql)[1];
+      return !names.includes(on) && names.some((name) => sql.includes(`"${name}"`));
+    })
+    .map(([name]) => name);
+  const out = [];
+  for (const name of readers) out.push(`DROP TRIGGER "${name}";`);
+  for (const { model: name, added } of rebuilds) {
+    const model = byName.get(name);
+    if (!model) throw new Error(`rebuild: the schema has no model ${name}`);
+    const renamed = {
+      ...model,
+      name: temp(name),
+      rels: model.rels.map((rel) => (names.includes(rel.target) ? { ...rel, target: temp(rel.target) } : rel)),
+      directives: model.directives.filter((d) => d.startsWith("@check")),
+      indexes: [],
+    };
+    const created = buildDdl([renamed]).tables.trim();
+    const kept = columnsInTableOrder(model)
+      .filter((c) => !added.includes(c.name))
+      .map((c) => `"${c.name}"`)
+      .join(", ");
+    out.push(created, `INSERT INTO "${temp(name)}" (${kept})\n  SELECT ${kept} FROM "${name}";`);
+  }
+  for (const name of [...names].reverse()) out.push(`DROP TABLE "${name}";`);
+  for (const name of names) out.push(`ALTER TABLE "${temp(name)}" RENAME TO "${name}";`);
+  const { tables, triggerSql, namedWanted } = buildDdl(names.map((name) => byName.get(name)));
+  out.push(
+    ...tables.split("\n").filter((line) => line.startsWith("CREATE INDEX") || line.startsWith("CREATE UNIQUE INDEX")),
+  );
+  out.push(...triggerSql.values());
+  for (const name of [...namedWanted, ...readers]) {
+    if (!named.has(name)) throw new Error(`rebuild: trigger ${name} is not in prisma/triggers.sql`);
+    out.push(named.get(name));
+  }
+  return out.join("\n\n");
 }
