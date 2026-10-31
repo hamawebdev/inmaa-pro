@@ -4,6 +4,7 @@ import { appendChained, invoiceContentDigest } from "@/lib/chain";
 import { CHAINED_TABLES, type ChainedTable } from "@/lib/db/chain-columns";
 import type { TableName } from "@/lib/db/column-meta";
 import type { DB } from "@/lib/db/schema";
+import { withStampedTransaction } from "@/lib/sync/session";
 import { peekLegalNumber } from "@/lib/numbering";
 import type { Executor, ServiceContext } from "@/lib/service/context";
 
@@ -192,7 +193,20 @@ export function createRows(test: Pick<TestDatabase, "db" | "ctx">): Rows {
     over: Record<string, unknown> = {},
     at: { ex?: Executor; ctx?: ServiceContext } = {},
   ): Promise<Record<string, unknown>> {
-    const ex = at.ex ?? test.db;
+    // Outside a transaction, one of its own, stamped: once sync is set up the capture triggers refuse an unstamped write.
+    if (!at.ex) {
+      // Parents made inside a transaction that rolls back are forgotten with it.
+      const known = new Set(made.keys());
+      try {
+        return await withStampedTransaction(test.db, at.ctx ?? test.ctx(), (ex, ctx) =>
+          insert(table, over, { ex, ctx }),
+        );
+      } catch (error) {
+        for (const key of [...made.keys()]) if (!known.has(key)) made.delete(key);
+        throw error;
+      }
+    }
+    const ex = at.ex;
     const ctx = at.ctx ?? test.ctx();
     const row = await fill(table, over, { ex, ctx });
     if (isChained(table)) {

@@ -18,6 +18,7 @@ import { transact } from "@/lib/service/action";
 import { buildContext } from "@/lib/service/context";
 import { describeError } from "@/lib/service/errors";
 import { programClock } from "@/lib/service/program";
+import { withStampedTransaction } from "@/lib/sync/session";
 import {
   getMediaFileName,
   getManagedUploadPathSegments,
@@ -56,7 +57,8 @@ const programStore: ByteStore = {
 export async function saveManagedUpload(input: Omit<SaveUploadInput, "file"> & { file: File }): Promise<string> {
   const ctx = buildContext(currentSession(), programClock());
   const file = { name: input.file.name, type: input.file.type, bytes: new Uint8Array(await input.file.arrayBuffer()) };
-  const { url } = await saveUpload(db, ctx, programStore, { ...input, file });
+  // Its own stamped transaction: once sync is set up the Upload row is captured, and an unstamped write is refused.
+  const { url } = await withStampedTransaction(db, ctx, (ex) => saveUpload(ex, ctx, programStore, { ...input, file }));
   return url;
 }
 

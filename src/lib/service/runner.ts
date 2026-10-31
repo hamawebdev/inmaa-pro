@@ -3,6 +3,7 @@ import type { Kysely } from "kysely";
 import { LEGAL_CHAINS, writeAnchor, type AnchorStore } from "@/lib/chain/anchor";
 import type { Clock } from "@/lib/clock";
 import type { DB } from "@/lib/db/schema";
+import { stampTransaction, unstampTransaction } from "@/lib/sync/session";
 
 import { buildContext, type Executor, type ServiceContext, type Session } from "./context";
 import { describeError, ServiceError, type ActionResult } from "./errors";
@@ -86,7 +87,13 @@ export function createRunner(deps: RunnerDeps) {
    */
   async function transact<Output>(work: (ex: Executor, ctx: ServiceContext) => Promise<Output>): Promise<Output> {
     const ctx = buildContext(deps.session(), deps.clock());
-    const output = await deps.db.transaction().execute((trx) => work(trx, ctx));
+    // Stamped first and last (src/lib/sync/session.ts): once sync is set up, the capture triggers refuse an unstamped write.
+    const output = await deps.db.transaction().execute(async (trx) => {
+      const stamp = await stampTransaction(trx, ctx);
+      const result = await work(trx, ctx);
+      await unstampTransaction(trx, stamp);
+      return result;
+    });
     await anchorAfter(ctx);
     return output;
   }

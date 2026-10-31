@@ -49,6 +49,14 @@ export interface ServiceContext extends Session {
    * rewritten at once.
    */
   readonly touchedChains: Set<string>;
+  /**
+   * This laptop's id once two-laptop sync is set up on it, null before (the
+   * program then behaves as 1.0.0). Filled by `stampTransaction`
+   * (src/lib/sync/session.ts), the first statement of every write transaction,
+   * from this database's own `SyncState`: a context that never opened a write
+   * transaction reads it with `syncDeviceIdOf(ex)` from the same file.
+   */
+  syncDeviceId: string | null;
 }
 
 /** The session of the program itself: no user, every right. Used by the day-start job and by first run. */
@@ -74,5 +82,6 @@ export function buildContext(session: Session, clock: Clock): ServiceContext {
     toInstant: (date, time) => toInstant(date, time, clock.utcOffsetMin),
     toLocal: (instant) => toLocal(instant, clock.utcOffsetMin),
     touchedChains: new Set(),
+    syncDeviceId: null,
   };
 }

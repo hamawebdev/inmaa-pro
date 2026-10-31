@@ -18,6 +18,7 @@ import { loadFeatureEvents } from "@/lib/events";
 import { loadFeatureSeeds } from "@/lib/seeds";
 import { buildContext, SYSTEM_SESSION, type Executor, type ServiceContext, type Session } from "@/lib/service/context";
 import { createRunner, type Runner } from "@/lib/service/runner";
+import { withStampedTransaction } from "@/lib/sync/session";
 
 import { runDemo, type DemoNames } from "./demo";
 import { NodeSqliteDialect } from "./node-sqlite-dialect";
@@ -129,7 +130,7 @@ async function wrap(sqlite: DatabaseSync, options: TestDatabaseOptions, didFirst
 
   if (options.firstRun !== false && !didFirstRun) {
     const ctx = buildContext(SYSTEM_SESSION, clock);
-    await db.transaction().execute((trx) =>
+    await withStampedTransaction(db, ctx, (trx) =>
       firstRun(trx, ctx, {
         databaseId: TEST_DATABASE_ID,
         seeds: options.seeds !== false && options.events !== false,
@@ -160,8 +161,7 @@ async function wrap(sqlite: DatabaseSync, options: TestDatabaseOptions, didFirst
     demo,
     ctx: (session = manager) => buildContext(session, clock),
     async transact(work, session = manager) {
-      const ctx = buildContext(session, clock);
-      return db.transaction().execute((trx) => work(trx, ctx));
+      return withStampedTransaction(db, buildContext(session, clock), work);
     },
     run: createRunner({
       db,
@@ -177,20 +177,22 @@ async function wrap(sqlite: DatabaseSync, options: TestDatabaseOptions, didFirst
       accounts += 1;
       const id = `user-${role.toLowerCase()}-${accounts}`;
       const now = clock.now().toISOString();
-      await db
-        .insertInto("User")
-        .values({
-          id,
-          username: id,
-          displayName: `${role} ${accounts}`,
-          passwordHash: "",
-          roleId: role,
-          staffMemberId: sessionOptions.staffMemberId ?? null,
-          branchId: "branch-main",
-          createdAt: now,
-          updatedAt: now,
-        })
-        .execute();
+      await withStampedTransaction(db, buildContext(SYSTEM_SESSION, clock), (ex) =>
+        ex
+          .insertInto("User")
+          .values({
+            id,
+            username: id,
+            displayName: `${role} ${accounts}`,
+            passwordHash: "",
+            roleId: role,
+            staffMemberId: sessionOptions.staffMemberId ?? null,
+            branchId: "branch-main",
+            createdAt: now,
+            updatedAt: now,
+          })
+          .execute(),
+      );
       return loadSession(db, id);
     },
     rows: undefined as unknown as Rows,
