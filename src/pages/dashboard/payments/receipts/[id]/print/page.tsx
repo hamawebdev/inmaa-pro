@@ -34,7 +34,8 @@ export default function ReceiptPrintPage() {
   });
 
   async function record() {
-    const result = await recordReceiptPrintedAction({ receiptId: id });
+    // On the laptop without the books the sheet is a copy, and is recorded as one (no event on the legal chain).
+    const result = await recordReceiptPrintedAction({ receiptId: id, asCopy: data?.receipt.copy ?? false });
     if (!result.success) toast.error(errorMessage(result.error, t("PrintNotRecorded")));
     return result.success;
   }

@@ -5,6 +5,8 @@ import { logSecurity } from "@/lib/log";
 import type { Executor, ServiceContext } from "@/lib/service/context";
 import { ServiceError } from "@/lib/service/errors";
 import { getSetting } from "@/lib/settings";
+import { deviceOf, logChainOf } from "@/lib/sync/books/guard";
+import { syncDeviceIdOf } from "@/lib/sync/session";
 
 /** Thrown when the PC's date jumped forward and nobody confirmed it yet. The screen asks the manager, then calls again. */
 export class ClockJumpError extends ServiceError {
@@ -53,11 +55,25 @@ export type SessionClockNote = { state: "behind" | "jump"; lastAt: string; jumpD
  * The manager's word is a fresh start: what was written before it no longer
  * counts, so a date he confirmed after a wrong one was recorded is measured
  * from his confirmation, not from the wrong date.
+ *
+ * Only this laptop's own log is read (DECISION section 5): once sync is set
+ * up, its own chain `AuditLog:<deviceId>`, never the other laptop's, whose
+ * clock may run ahead or behind; before, the one chain there is. Every
+ * position below (`chainSeq`) is a place in that one chain.
  */
 async function clockReference(ex: Executor, ctx: ServiceContext): Promise<string | null> {
+  const device = deviceOf(ctx) ?? (await syncDeviceIdOf(ex));
+  const own = device ? logChainOf(device) : null;
+  // The 1.0.0 chain is the rows without a chain; a laptop's, the rows that name it.
+  const log = (alias?: string) => {
+    const column = alias ? `${alias}.chain` : "chain";
+    return own === null ? sql<boolean>`${sql.ref(column)} is null` : sql<boolean>`${sql.ref(column)} = ${own}`;
+  };
+
   const confirmed = await ex
     .selectFrom("AuditLog")
     .select(["chainSeq", "occurredAt"])
+    .where(log())
     .where("operation", "=", "SECURITY")
     .where("action", "=", "CLOCK_WARNING")
     // The log's order is the order of his words; the date is exactly what is in doubt (audit FND-02).
@@ -75,6 +91,7 @@ async function clockReference(ex: Executor, ctx: ServiceContext): Promise<string
           .where("operation", "=", "SECURITY")
           .where("action", "=", "SIGN_IN")
           .where("userId", "=", ctx.userId)
+          .where(log())
           // Her latest sign-in in the log's order, not by its date: one made at a wrong future date is not "present" (FND-03).
           .orderBy("chainSeq", "desc")
           .limit(1)
@@ -89,12 +106,14 @@ async function clockReference(ex: Executor, ctx: ServiceContext): Promise<string
         .select((inner) => inner.fn.min("n.chainSeq").as("seq"))
         .where("n.operation", "=", "SECURITY")
         .where("n.action", "=", "SIGN_IN")
+        .where(log("n"))
         .whereRef("n.chainSeq", ">", "s.chainSeq")
         .as("untilSeq"),
     ])
     .where("s.operation", "=", "SECURITY")
     .where("s.action", "=", "SIGN_IN")
     .where("s.chainSeq", ">", from)
+    .where(log("s"))
     .where(sql<boolean>`json_extract(s.context, '$.clock') is not null`)
     .execute();
 
@@ -104,6 +123,7 @@ async function clockReference(ex: Executor, ctx: ServiceContext): Promise<string
     .select("occurredAt")
     .where("action", "not in", SESSION_ACTIONS)
     .where("chainSeq", ">", from)
+    .where(log())
     .$if(presentSeq !== null, (qb) => qb.where("chainSeq", "<", presentSeq ?? 0))
     .$if(doubtful.length > 0, (qb) =>
       qb.where((eb) =>

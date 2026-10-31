@@ -1,5 +1,4 @@
 import { requireSection } from "@/lib/access/session";
-import { newId } from "@/lib/db/rows";
 import { logChange } from "@/lib/log";
 import type { Executor, ServiceContext } from "@/lib/service/context";
 
@@ -47,6 +46,9 @@ export async function getSettings<K extends SettingKey>(
   return out;
 }
 
+/** A setting's row id, derived from its key. Rows written before 2.0 keep the random id they had. */
+export const settingId = (key: string) => `setting-${key}`;
+
 /**
  * Writes one setting. A change a person made is logged with its old and new
  * value; the keys the program writes for itself (`system.*`) are not.
@@ -73,7 +75,8 @@ export async function setSetting<K extends SettingKey>(
   } else {
     await ex
       .insertInto("Setting")
-      .values({ id: newId(), key, value: text, updatedAt: ctx.now, updatedByUserId: ctx.userId })
+      // The id is the key's own (DECISION section 3): two laptops that first set one key make one row.
+      .values({ id: settingId(key), key, value: text, updatedAt: ctx.now, updatedByUserId: ctx.userId })
       .execute();
   }
 

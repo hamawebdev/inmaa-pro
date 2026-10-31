@@ -1,4 +1,5 @@
 import { requireCapability, requireSection } from "@/lib/access/session";
+import { holdsBooks, requireBooks } from "@/lib/sync/books";
 import { appendChained, invoiceContentDigest } from "@/lib/chain";
 import { assertClockSane } from "@/lib/clock/sanity";
 import { newId } from "@/lib/db/rows";
@@ -779,6 +780,7 @@ export async function issueInvoice(
 ): Promise<IssuedInvoice> {
   requireSection(ctx, "MONEY", "WRITE");
   requireCapability(ctx, "invoice.issue");
+  await requireBooks(ex, ctx);
   if (ctx.userId === null) throw new Error("money: an invoice is issued by somebody");
   await assertClockSane(ex, ctx, { confirmedJump: input.confirmedClockJump });
 
@@ -927,6 +929,7 @@ export async function voidInvoice(
 ): Promise<{ id: string }> {
   requireSection(ctx, "MONEY", "WRITE");
   requireCapability(ctx, "invoice.void");
+  await requireBooks(ex, ctx);
   if (ctx.userId === null) throw new Error("money: an invoice is voided by somebody");
   const reason = input.reason.trim();
   if (!reason) throw new ServiceError("A reason is required.");
@@ -1174,6 +1177,8 @@ export async function getInvoiceSheet(
     ifuMention: invoice.ifuMention ? (JSON.parse(invoice.ifuMention) as { ar: string; fr: string }) : null,
     note: invoice.note,
     voided,
+    // Two laptops: the laptop without the books prints a copy, never a second original (DECISION section 5).
+    copy: !(await holdsBooks(ex, ctx)),
   };
   const statement: VisitStatementData | null =
     visits.length === 0
@@ -1204,6 +1209,7 @@ export async function getInvoiceSheet(
             remark: row.remark,
           })),
           voided,
+          copy: data.copy,
         };
   return { id: invoice.id, fileId: invoice.fileId, invoice: data, statement };
 }
@@ -1211,12 +1217,18 @@ export async function getInvoiceSheet(
 /**
  * The invoice went to paper: a `PRINTED` event on its chain, and the
  * disclosure the law asks for (a sheet naming a person was printed).
+ *
+ * Two laptops (coordinator's ruling): on the laptop without the books it
+ * prints as a copy («نسخة»), with no event on the legal chain, the print
+ * still in this laptop's own log. `asCopy` is what the sheet on screen says;
+ * an original asked for where the books are not is refused, so the paper
+ * always says what the record says.
  */
 export async function recordInvoicePrinted(
   ex: Executor,
   ctx: ServiceContext,
-  input: { invoiceId: string },
-): Promise<{ id: string }> {
+  input: { invoiceId: string; asCopy?: boolean },
+): Promise<{ id: string; copy: boolean }> {
   requireSection(ctx, "MONEY", "READ");
   if (ctx.userId === null) throw new Error("money: a sheet is printed by somebody");
   const invoice = await ex
@@ -1225,16 +1237,19 @@ export async function recordInvoicePrinted(
     .where("id", "=", input.invoiceId)
     .executeTakeFirst();
   if (!invoice) throw new ServiceError("This invoice does not exist.");
-  await appendChained(ex, ctx, "LegalEvent", {
-    id: newId(),
-    invoiceId: invoice.id,
-    paymentId: null,
-    receiptId: null,
-    type: "PRINTED",
-    reason: null,
-    createdAt: ctx.now,
-    createdByUserId: ctx.userId,
-  });
+  const copy = input.asCopy ?? !(await holdsBooks(ex, ctx));
+  if (!copy) {
+    await appendChained(ex, ctx, "LegalEvent", {
+      id: newId(),
+      invoiceId: invoice.id,
+      paymentId: null,
+      receiptId: null,
+      type: "PRINTED",
+      reason: null,
+      createdAt: ctx.now,
+      createdByUserId: ctx.userId,
+    });
+  }
   await logDisclose(ex, ctx, {
     owner: "MONEY",
     action: "PRINT",
@@ -1243,8 +1258,9 @@ export async function recordInvoicePrinted(
     entityLabel: invoice.number,
     subject: { kind: "CLIENT", id: invoice.clientId },
     disclosure: "PRINT",
+    context: copy ? { copy: true } : undefined,
   });
-  return { id: invoice.id };
+  return { id: invoice.id, copy };
 }
 
 // ── What the screens call ────────────────────────────────────────────────────

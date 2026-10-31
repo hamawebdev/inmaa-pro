@@ -4,8 +4,9 @@ import { newId } from "@/lib/db/rows";
 import { logSecurity } from "@/lib/log";
 import type { Executor, ServiceContext } from "@/lib/service/context";
 import { ServiceError } from "@/lib/service/errors";
+import { requireBooks } from "@/lib/sync/books/guard";
 
-import { genesisHash, readChainHeads, readDatabaseId, verifyChains } from "./index";
+import { hashInChain, readChainHeads, readDatabaseId, verifyChains, type ChainHeads } from "./index";
 
 /**
  * The anchor: how a restored old copy is detected.
@@ -28,11 +29,17 @@ const LEGAL_KEYS: readonly LegalKey[] = ["INVOICE", "RECEIPT"];
 /** The chains whose every commit is anchored at once. The log's is anchored at most once a minute. */
 export const LEGAL_CHAINS: ReadonlySet<string> = new Set(CHAINED_TABLES.filter((table) => table !== "AuditLog"));
 
+/**
+ * The record kept outside the database. Its shape is still the one 1.0.0
+ * wrote (`v: 1`): `heads` simply holds more chains once sync is set up (each
+ * laptop's log chain, `AuditLog:<deviceId>`), so a record written by 1.0.0 is
+ * read as it is, and compared chain by chain.
+ */
 export interface AnchorRecord {
   v: 1;
   databaseId: string;
   writtenAt: string;
-  heads: Record<ChainedTable, { seq: number; hash: string }>;
+  heads: ChainHeads;
   /** Per key, per year: the legal counters. By year, so a restore across 1 January still knows the old year's top. */
   legal: Record<LegalKey, Record<string, { lastValue: number; lastDate: string | null }>>;
   lastInvoice: { number: string; issueDate: string } | null;
@@ -140,16 +147,10 @@ export interface AnchorComparison {
   state: AnchorState;
   anchor: AnchorRecord | null;
   database: AnchorRecord;
-  /** Per chain, where the database stands against the anchor. */
-  chains: Array<{ table: ChainedTable; state: "same" | "ahead" | "behind" | "altered" }>;
+  /** Per chain, where the database stands against the anchor. `table` is the chain: a table's name or `AuditLog:<deviceId>`. */
+  chains: Array<{ table: ChainedTable | `AuditLog:${string}`; state: "same" | "ahead" | "behind" | "altered" }>;
   /** Legal numbers the anchor knows and this database does not hold: what a confirmation will declare as gaps. */
   lostNumbers: Array<{ key: LegalKey; year: number; fromValue: number; toValue: number; lastDate: string | null }>;
-}
-
-async function hashAt(ex: Executor, table: ChainedTable, seq: number, databaseId: string): Promise<string | null> {
-  if (seq === 0) return genesisHash(databaseId, table);
-  const row = await ex.selectFrom(table).select("hash").where("chainSeq", "=", seq).executeTakeFirst();
-  return row?.hash ?? null;
 }
 
 export async function compareAnchor(ex: Executor, store: AnchorStore, now: string): Promise<AnchorComparison> {
@@ -157,27 +158,36 @@ export async function compareAnchor(ex: Executor, store: AnchorStore, now: strin
   const anchor = await store.read();
 
   if (!anchor) {
-    const holdsRows = CHAINED_TABLES.some((table) => database.heads[table].seq > 0);
+    const holdsRows = Object.values(database.heads).some((head) => head.seq > 0);
     return { state: holdsRows ? "unanchored" : "normal", anchor: null, database, chains: [], lostNumbers: [] };
   }
   if (anchor.databaseId !== database.databaseId) {
     return { state: "foreign", anchor, database, chains: [], lostNumbers: [] };
   }
 
+  // Every chain either side knows: the eight tables, and each laptop's log chain. A chain the anchor
+  // never saw is "ahead" (this laptop's own, newly started, or the other laptop's rows received: normal);
+  // one the anchor knows and the database lacks is "behind" (rows were removed, or an older copy restored).
   const chains: AnchorComparison["chains"] = [];
-  for (const table of CHAINED_TABLES) {
-    const here = database.heads[table];
-    const there = anchor.heads[table];
+  const ids = [
+    ...CHAINED_TABLES,
+    ...[...new Set([...Object.keys(database.heads), ...Object.keys(anchor.heads)])]
+      .filter((id) => id.startsWith("AuditLog:"))
+      .sort(),
+  ] as Array<ChainedTable | `AuditLog:${string}`>;
+  for (const table of ids) {
+    const here = database.heads[table] as { seq: number; hash: string } | undefined;
+    const there = anchor.heads[table] as { seq: number; hash: string } | undefined;
     if (!there) {
       chains.push({ table, state: "ahead" });
-    } else if (here.seq < there.seq) {
+    } else if (!here || here.seq < there.seq) {
       chains.push({ table, state: "behind" });
     } else if (here.seq === there.seq) {
       chains.push({ table, state: here.hash === there.hash ? "same" : "altered" });
     } else {
       chains.push({
         table,
-        state: (await hashAt(ex, table, there.seq, database.databaseId)) === there.hash ? "ahead" : "altered",
+        state: (await hashInChain(ex, table, there.seq, database.databaseId)) === there.hash ? "ahead" : "altered",
       });
     }
   }
@@ -260,6 +270,8 @@ export async function acceptRestoredDatabase(
   const { comparison } = input;
   if (comparison.state !== "behind" || !comparison.anchor)
     throw new Error("anchor: this database is not behind its anchor");
+  // Legal gaps are the books' (DECISION section 5): on the other laptop the lost numbers come back from the mailbox.
+  if (comparison.lostNumbers.length > 0) await requireBooks(ex, ctx);
 
   const auditLogId = await logSecurity(ex, ctx, {
     owner: "FOUNDATION",

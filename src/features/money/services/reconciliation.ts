@@ -1,4 +1,5 @@
 import { requireCapability, requireSection, can } from "@/lib/access/session";
+import { requireBooks } from "@/lib/sync/books";
 import { appendChained } from "@/lib/chain";
 import { newId } from "@/lib/db/rows";
 import { logChange } from "@/lib/log";
@@ -237,6 +238,7 @@ export async function declareReceipt(
 ): Promise<{ id: string }> {
   requireSection(ctx, "MONEY", "WRITE");
   requireCapability(ctx, "reconciliation.close");
+  await requireBooks(ex, ctx);
   if (ctx.userId === null) throw new Error("money: a receipt is declared by somebody");
   const reason = input.reason.trim();
   if (!reason) throw new ServiceError("A reason is required.");
@@ -296,6 +298,7 @@ export async function closeReconciliation(
 ): Promise<{ id: string; difference: number }> {
   requireSection(ctx, "MONEY", "WRITE");
   requireCapability(ctx, "reconciliation.close");
+  await requireBooks(ex, ctx);
   if (ctx.userId === null) throw new Error("money: a day is closed by somebody");
   if (!Number.isSafeInteger(input.countedCash) || input.countedCash < 0) {
     throw new ServiceError("An amount cannot be negative.");

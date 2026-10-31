@@ -1,5 +1,5 @@
 import { can, requireCapability, sectionLevel } from "@/lib/access/session";
-import { newId } from "@/lib/db/rows";
+import { sha256Hex } from "@/lib/chain/canonical";
 import { emit } from "@/lib/events";
 import { isWilayaCode } from "@/lib/geo/wilayas";
 import { logChange } from "@/lib/log";
@@ -34,6 +34,18 @@ export interface EnsureCommuneInput {
 }
 
 /**
+ * The id of a commune added by name: derived from its wilaya and its name key
+ * (DECISION section 3), so that two laptops that add the same commune while
+ * apart make one row. The seeded communes keep `commune-<official code>`.
+ */
+export async function communeId(wilayaCode: string, nameKey: string): Promise<string> {
+  return `commune-${wilayaCode}-${(await sha256Hex(nameKey)).slice(0, 16)}`;
+}
+
+/** The id of the zone made for a commune: one per commune on both laptops. */
+export const zoneIdForCommune = (communeId: string) => `zone-${communeId}`;
+
+/**
  * The commune of that name in that wilaya, created when it is new. Two
  * spellings of one name are one commune: «ام البواقي» finds «أم البواقي».
  * Called by Clients and People inside their own save, and by the picker's "add".
@@ -56,7 +68,7 @@ export async function ensureCommune(
     .executeTakeFirst();
   if (existing) return { id: existing.id, created: false };
 
-  const id = newId();
+  const id = await communeId(input.wilayaCode, nameKey);
   await ex
     .insertInto("Commune")
     .values({
@@ -93,7 +105,8 @@ export async function ensureZoneForCommune(
   if (!commune) throw new ServiceError("This commune does not exist.");
   if (commune.zoneId) return { zoneId: commune.zoneId, created: false };
 
-  const zoneId = newId();
+  // Derived from the commune (DECISION section 3): two laptops that make it while apart make one zone.
+  const zoneId = zoneIdForCommune(commune.id);
   await ex
     .insertInto("Zone")
     .values({
@@ -105,6 +118,7 @@ export async function ensureZoneForCommune(
       createdByUserId: ctx.userId,
       updatedByUserId: ctx.userId,
     })
+    .onConflict((conflict) => conflict.column("id").doNothing())
     .execute();
   // Only the columns that change: a save never names a column it does not mean to touch.
   await ex

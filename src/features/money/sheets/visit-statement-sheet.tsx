@@ -12,7 +12,17 @@ import { hoursText } from "../rules/hours";
 import type { Division, ServiceType } from "../validators/option-codes";
 
 import { DIVISION_LABEL, SERVICE_TYPE_LABEL } from "./print-labels";
-import { DateText, FieldTable, Gap, Num, SheetHeading, SignatureBlock, VoidMark, VoidStamp } from "./sheet-parts";
+import {
+  CopyMark,
+  DateText,
+  FieldTable,
+  Gap,
+  Num,
+  SheetHeading,
+  SignatureBlock,
+  VoidMark,
+  VoidStamp,
+} from "./sheet-parts";
 import { field, TYPE } from "./sheet-style";
 
 /**
@@ -65,6 +75,8 @@ export interface VisitStatementData {
   rows: readonly VisitStatementRow[];
   /** Set when the invoice was voided. */
   voided: { date: IsoDate; reason: string } | null;
+  /** Printed on the laptop that does not hold the books: a copy, marked «نسخة». */
+  copy?: boolean;
 }
 
 /** The rows of the statement: 11 points, so that a month of daily visits stays readable on two pages. */
@@ -83,7 +95,7 @@ export function VisitStatementBody({ data }: { data: VisitStatementData }) {
 
   return (
     <div style={{ position: "relative" }}>
-      {data.voided && <VoidStamp word="ملغاة" />}
+      {data.voided ? <VoidStamp word="ملغاة" /> : data.copy && <VoidStamp word="نسخة" />}
       <SheetHeading
         title="كشف الزيارات المنجزة"
         references={[
@@ -93,6 +105,7 @@ export function VisitStatementBody({ data }: { data: VisitStatementData }) {
       />
       <Gap mm={5} />
       {data.voided && <VoidMark word="ملغاة" what="الفاتورة" reason={data.voided.reason} date={data.voided.date} />}
+      {data.copy && <CopyMark what="من كشف الزيارات الأصلي" />}
 
       <FieldTable
         widths={[28, 65.65, 28, 65.65]}

@@ -5,6 +5,8 @@ import type { DB } from "@/lib/db/schema";
 import { buildContext, SYSTEM_SESSION, type Executor, type ServiceContext } from "@/lib/service/context";
 import { seedSteps } from "@/lib/seeds";
 import { getSetting, setSetting } from "@/lib/settings";
+import { readBooksRow } from "@/lib/sync/books/guard";
+import { stampTransaction, unstampTransaction } from "@/lib/sync/session";
 import type { LocalDate } from "@/lib/units";
 
 /**
@@ -31,6 +33,11 @@ import type { LocalDate } from "@/lib/units";
  *  - all of one owner's handlers run in ONE transaction, with the mark that
  *    the day is done. If one throws, that owner's day is rolled back and tried
  *    again at the next start or the next hour; the other owners are not held up.
+ *
+ * Two laptops (DECISION section 4): the owners' handlers and seed steps run
+ * only on the laptop that holds the books, so they never run twice; the
+ * other laptop receives what they wrote. Foundation's own (`core`) run on
+ * both. Before sync is set up, every owner runs, as in 1.0.0.
  */
 export interface DayStart {
   /** The centre's date now. */
@@ -44,6 +51,9 @@ export type RegisterDaily = (name: string, handler: DailyHandler) => void;
 
 export const DAILY_OWNERS = ["core", "people", "clients", "operations", "money", "stock"] as const;
 export type DailyOwner = (typeof DAILY_OWNERS)[number];
+
+/** Foundation's own steps: they run on both laptops (each its own day). */
+const RUNS_ON_BOTH_LAPTOPS: ReadonlySet<DailyOwner> = new Set(["core"]);
 
 const handlers = new Map<DailyOwner, Array<{ name: string; handler: DailyHandler }>>();
 
@@ -93,6 +103,8 @@ export interface DayStartReport {
   alreadyDone: DailyOwner[];
   /** The owners whose handlers failed: rolled back, to be tried again. */
   failed: Array<{ owner: DailyOwner; error: string }>;
+  /** The owners left to the laptop that holds the books. */
+  elsewhere: DailyOwner[];
 }
 
 /**
@@ -102,7 +114,7 @@ export interface DayStartReport {
  */
 export async function runDayStart(db: Kysely<DB>, clock: Clock): Promise<DayStartReport> {
   const ctx = buildContext(SYSTEM_SESSION, clock);
-  const report: DayStartReport = { today: ctx.today, ran: [], alreadyDone: [], failed: [] };
+  const report: DayStartReport = { today: ctx.today, ran: [], alreadyDone: [], failed: [], elsewhere: [] };
 
   for (const owner of DAILY_OWNERS) {
     const list = handlers.get(owner) ?? [];
@@ -111,16 +123,29 @@ export async function runDayStart(db: Kysely<DB>, clock: Clock): Promise<DayStar
     if (list.length === 0 && seeds.length === 0) continue;
     try {
       const ran = await db.transaction().execute(async (trx) => {
+        const stamp = await stampTransaction(trx, ctx);
+        // The books' laptop alone runs the owners' days (ctx.syncDeviceId is set by the stamp).
+        if (!RUNS_ON_BOTH_LAPTOPS.has(owner) && ctx.syncDeviceId !== null) {
+          const books = await readBooksRow(trx);
+          if (books && books.holderDeviceId !== ctx.syncDeviceId) {
+            await unstampTransaction(trx, stamp);
+            return "elsewhere" as const;
+          }
+        }
         // Read inside the transaction: two windows of time cannot both start one owner's day.
         const done = await getSetting(trx, "system.dayStart");
-        if (done[owner] === ctx.today) return false;
+        if (done[owner] === ctx.today) {
+          await unstampTransaction(trx, stamp);
+          return false;
+        }
         const day: DayStart = { today: ctx.today, since: (done[owner] as LocalDate | undefined) ?? null };
         for (const { step } of seeds) await step(trx, ctx);
         for (const { handler } of list) await handler(trx, ctx, day);
         await setSetting(trx, ctx, "system.dayStart", { ...done, [owner]: ctx.today });
+        await unstampTransaction(trx, stamp);
         return true;
       });
-      (ran ? report.ran : report.alreadyDone).push(owner);
+      (ran === "elsewhere" ? report.elsewhere : ran ? report.ran : report.alreadyDone).push(owner);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       console.error(`daily: the day-start handlers of ${owner} failed and were rolled back`, error);

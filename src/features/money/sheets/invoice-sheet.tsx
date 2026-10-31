@@ -24,6 +24,7 @@ import {
 import { CURRENCY, DIVISION_LABEL, PAYMENT_METHOD_LABEL, SERVICE_TYPE_LABEL } from "./print-labels";
 import {
   Amount,
+  CopyMark,
   DateText,
   FieldTable,
   Gap,
@@ -147,6 +148,8 @@ export interface InvoiceSheetData {
   note: string | null;
   /** Set when the invoice was voided. */
   voided: { date: IsoDate; reason: string } | null;
+  /** Printed on the laptop that does not hold the books: a copy, marked «نسخة». */
+  copy?: boolean;
 }
 
 /** A value, or a dash where the centre or the client has none. */
@@ -324,7 +327,7 @@ function InvoiceBody({ invoice }: { invoice: InvoiceSheetData }) {
 
   return (
     <div style={{ position: "relative" }}>
-      {invoice.voided && <VoidStamp word="ملغاة" />}
+      {invoice.voided ? <VoidStamp word="ملغاة" /> : invoice.copy && <VoidStamp word="نسخة" />}
       <SheetHeading
         title="فاتورة"
         references={[
@@ -336,6 +339,7 @@ function InvoiceBody({ invoice }: { invoice: InvoiceSheetData }) {
       {invoice.voided && (
         <VoidMark word="ملغاة" what="هذه الفاتورة" reason={invoice.voided.reason} date={invoice.voided.date} />
       )}
+      {invoice.copy && <CopyMark what="من الفاتورة الأصلية" />}
 
       <FieldTable
         heading="مقدم الخدمة"

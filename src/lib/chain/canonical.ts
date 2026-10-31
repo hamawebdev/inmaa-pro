@@ -71,9 +71,14 @@ export async function sha256Hex(text: string): Promise<string> {
   return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
-/** Where a table's chain starts: it depends on the database, so two databases never share a chain. */
-export function genesisHash(databaseId: string, table: ChainedTable): Promise<string> {
-  return sha256Hex(`GENESIS\n${databaseId}\n${table}`);
+/**
+ * Where a chain starts: it depends on the database, so two databases never
+ * share a chain. A chain is a table's name, or a laptop's own log chain
+ * (`AuditLog:<deviceId>`, DECISION section 5), whose genesis names it too, so
+ * the two laptops' log chains never share a link.
+ */
+export function genesisHash(databaseId: string, chain: ChainedTable | `AuditLog:${string}`): Promise<string> {
+  return sha256Hex(`GENESIS\n${databaseId}\n${chain}`);
 }
 
 export function rowHash(table: ChainedTable, prevHash: string, canonicalText: string): Promise<string> {

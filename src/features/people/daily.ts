@@ -3,6 +3,7 @@ import { addDays } from "@/lib/clock";
 import { emit } from "@/lib/events";
 import type { Executor, ServiceContext } from "@/lib/service/context";
 import type { LocalDate } from "@/lib/units";
+import { postDeferredDebts } from "./services/payouts";
 import { settleTrainingCompletions } from "./services/training";
 
 /**
@@ -63,5 +64,9 @@ export function registerDaily(daily: RegisterDaily) {
   // A training day that has come may complete a worker's training.
   daily("complete the training of workers whose last day came", async (ex, ctx, { today, since }) => {
     await settleTrainingCompletions(ex, ctx, { from: since ?? today, to: today });
+  });
+  // Two laptops: the debt lines decided on the laptop without the books (catch-up of each sync round's posting).
+  daily("post the debt lines decided on the other laptop", async (ex, ctx) => {
+    await postDeferredDebts(ex, ctx);
   });
 }

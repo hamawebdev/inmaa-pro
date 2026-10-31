@@ -1,6 +1,9 @@
+import { sql } from "kysely";
+
 import { appendChained } from "@/lib/chain";
 import { newId } from "@/lib/db/rows";
 import type { Executor, ServiceContext } from "@/lib/service/context";
+import { holdsBooks } from "@/lib/sync/books/guard";
 
 /**
  * A file's credit: money received that no due holds (RULINGS, INV-2).
@@ -63,13 +66,21 @@ async function liveAllocations(ex: Executor, fileId: string): Promise<LiveAlloca
     .execute();
 }
 
-/** Allocations are written by somebody: an invoice, its void or a payment, never the program alone. */
-function author(ctx: ServiceContext): string {
+/**
+ * Allocations are written by somebody: an invoice, its void or a payment, never the program alone. When the
+ * books' laptop moves them for a change made on the other laptop, they are that change's author's (`byUserId`).
+ */
+function author(ctx: ServiceContext, byUserId?: string | null): string {
+  if (byUserId) return byUserId;
   if (ctx.userId === null) throw new Error("money: an allocation is moved by somebody");
   return ctx.userId;
 }
 
-async function allocate(ex: Executor, ctx: ServiceContext, row: { paymentId: string; dueId: string; amount: number }) {
+async function allocate(
+  ex: Executor,
+  ctx: ServiceContext,
+  row: { paymentId: string; dueId: string; amount: number; byUserId?: string | null },
+) {
   await appendChained(ex, ctx, "PaymentAllocation", {
     id: newId(),
     paymentId: row.paymentId,
@@ -77,11 +88,11 @@ async function allocate(ex: Executor, ctx: ServiceContext, row: { paymentId: str
     amount: row.amount,
     reversesAllocationId: null,
     createdAt: ctx.now,
-    createdByUserId: author(ctx),
+    createdByUserId: author(ctx, row.byUserId),
   });
 }
 
-async function reverse(ex: Executor, ctx: ServiceContext, allocation: LiveAllocation) {
+async function reverse(ex: Executor, ctx: ServiceContext, allocation: LiveAllocation, byUserId?: string | null) {
   await appendChained(ex, ctx, "PaymentAllocation", {
     id: newId(),
     paymentId: allocation.paymentId,
@@ -89,7 +100,7 @@ async function reverse(ex: Executor, ctx: ServiceContext, allocation: LiveAlloca
     amount: -allocation.amount,
     reversesAllocationId: allocation.id,
     createdAt: ctx.now,
-    createdByUserId: author(ctx),
+    createdByUserId: author(ctx, byUserId),
   });
 }
 
@@ -138,7 +149,11 @@ export async function filesCredit(ex: Executor, fileIds: readonly string[]): Pro
 }
 
 /** Places the file's credit on its open dues, the oldest first. Answers what is left unplaced. */
-export async function settleCredit(ex: Executor, ctx: ServiceContext, input: { fileId: string }): Promise<number> {
+export async function settleCredit(
+  ex: Executor,
+  ctx: ServiceContext,
+  input: { fileId: string; byUserId?: string | null },
+): Promise<number> {
   const credits = await unplaced(ex, input.fileId);
   if (credits.length === 0) return 0;
   const open = (
@@ -160,7 +175,7 @@ export async function settleCredit(ex: Executor, ctx: ServiceContext, input: { f
       if (available <= 0) break;
       if (due.room <= 0) continue;
       const part = Math.min(available, due.room);
-      await allocate(ex, ctx, { paymentId: credit.paymentId, dueId: due.id, amount: part });
+      await allocate(ex, ctx, { paymentId: credit.paymentId, dueId: due.id, amount: part, byUserId: input.byUserId });
       due.room -= part;
       available -= part;
     }
@@ -177,7 +192,7 @@ export async function settleCredit(ex: Executor, ctx: ServiceContext, input: { f
 export async function rebalanceFile(
   ex: Executor,
   ctx: ServiceContext,
-  input: { fileId: string },
+  input: { fileId: string; byUserId?: string | null },
 ): Promise<{ moved: number; credit: number }> {
   const over = (
     await ex
@@ -194,12 +209,13 @@ export async function rebalanceFile(
       for (const allocation of live.filter((row) => row.dueId === due.id)) {
         if (excess <= 0) break;
         const take = Math.min(allocation.amount, excess);
-        await reverse(ex, ctx, allocation);
+        await reverse(ex, ctx, allocation, input.byUserId);
         if (allocation.amount - take > 0) {
           await allocate(ex, ctx, {
             paymentId: allocation.paymentId,
             dueId: due.id,
             amount: allocation.amount - take,
+            byUserId: input.byUserId,
           });
         }
         excess -= take;
@@ -209,4 +225,41 @@ export async function rebalanceFile(
   }
   const credit = await settleCredit(ex, ctx, input);
   return { moved, credit };
+}
+
+/**
+ * Two laptops (coordinator's ruling): a change made on the laptop without the
+ * books (a programme cut, a cancelled due) cannot move allocations, which are
+ * a legal chain. It leaves the due holding more than it asks for; the books'
+ * laptop brings every such file back here, after applying the other laptop's
+ * changes and at the start of its day. The moves are the author's of the
+ * change that made them needed (the due's last editor). Idempotent: a file
+ * already in order is not touched. Nothing on the laptop without the books.
+ */
+export async function rebalanceWaitingFiles(ex: Executor, ctx: ServiceContext): Promise<{ files: number }> {
+  if (!(await holdsBooks(ex, ctx))) return { files: 0 };
+  const rows = await ex
+    .selectFrom("PaymentDue")
+    .select(["fileId", "updatedByUserId", "createdByUserId", "updatedAt"])
+    .where(sql<boolean>`"paidAmount" > MAX("amount", 0)`)
+    .orderBy("fileId")
+    .orderBy("updatedAt", "desc")
+    .execute();
+  const files = new Map<string, string | null>();
+  for (const row of rows) {
+    if (!files.has(row.fileId)) files.set(row.fileId, row.updatedByUserId ?? row.createdByUserId ?? null);
+  }
+  if (files.size === 0) return { files: 0 };
+  // A due the program itself changed names nobody: the move is then the manager's, the centre's own account.
+  const manager = await ex
+    .selectFrom("User")
+    .select("id")
+    .where("roleId", "=", "MANAGER")
+    .orderBy("createdAt")
+    .limit(1)
+    .executeTakeFirst();
+  for (const [fileId, byUserId] of files) {
+    await rebalanceFile(ex, ctx, { fileId, byUserId: byUserId ?? ctx.userId ?? manager?.id ?? null });
+  }
+  return { files: files.size };
 }

@@ -148,6 +148,11 @@ export interface FileMoney {
   payments: PaymentListRow[];
   /** Money received that no due holds: offered first to the next payment (credit.ts). */
   credit: number;
+  /**
+   * Two laptops: money paid on dues that were cut on the laptop without the books, waiting for the books' laptop
+   * to place it (credit.ts, `rebalanceWaitingFiles`). 0 otherwise.
+   */
+  creditPending: number;
 }
 
 /** A file's part «التسديد»: its dues with their state, its invoices and the payments received. */
@@ -161,6 +166,7 @@ export async function getFileMoney(ex: Executor, ctx: ServiceContext, input: { f
     .where("File.deletedAt", "is", null)
     .executeTakeFirst();
   if (!file) throw new ServiceError("This file does not exist.");
+  const dues = await listFileDues(ex, ctx, { fileId: file.id });
   return {
     fileId: file.id,
     fileNumber: file.number,
@@ -168,10 +174,11 @@ export async function getFileMoney(ex: Executor, ctx: ServiceContext, input: { f
     division: divisionOf(file.division),
     payerName: file.payerName,
     summary: await getFilePaymentSummary(ex, ctx, { fileId: file.id }),
-    dues: await listFileDues(ex, ctx, { fileId: file.id }),
+    dues,
     invoices: await readInvoiceList(ex, { fileId: file.id }),
     payments: await readPaymentList(ex, { fileId: file.id }),
     credit: await fileCredit(ex, file.id),
+    creditPending: dues.reduce((sum, due) => sum + due.pendingExcess, 0),
   };
 }
 

@@ -5,6 +5,7 @@ import { query } from "@/lib/service/action";
 import { changedColumns } from "@/lib/service/changes";
 import type { Executor, ServiceContext } from "@/lib/service/context";
 import { getSetting } from "@/lib/settings";
+import { holdsBooks } from "@/lib/sync/books/guard";
 import { localDate, money, type LocalDate } from "@/lib/units";
 
 import { dueState, paymentState } from "../rules/alerts";
@@ -352,7 +353,9 @@ async function endDues(
     result.updated += 1;
   }
   // What was paid on a due that no longer asks for it goes to the file's other dues, else to its credit.
-  if (moneyFreed) await rebalanceFile(ex, ctx, { fileId: file.id });
+  // Two laptops: only the books' laptop moves allocations; elsewhere the due waits, over its amount, until the
+  // books' laptop rebalances the file after this change reaches it (`rebalanceWaitingFiles`).
+  if (moneyFreed && (await holdsBooks(ex, ctx))) await rebalanceFile(ex, ctx, { fileId: file.id });
 }
 
 // ── Reading ──────────────────────────────────────────────────────────────────
@@ -369,7 +372,14 @@ export interface DueLine {
   plannedVisits: number | null;
   expectedAmount: number;
   amount: number;
+  /** What the due holds of the money paid, never more than it asks. */
   paidAmount: number;
+  /**
+   * Two laptops: money paid on the due beyond what it now asks (it was cut on the laptop without the books), that
+   * the books' laptop will place on the file's other dues or keep as its credit. 0 once rebalanced, and always 0
+   * on one laptop.
+   */
+  pendingExcess: number;
   remaining: number;
   invoiceId: string | null;
   invoiceNumber: string | null;
@@ -411,7 +421,8 @@ export async function listFileDues(ex: Executor, ctx: ServiceContext, input: { f
         plannedVisits: row.plannedVisits,
         expectedAmount: row.expectedAmount,
         amount: row.amount,
-        paidAmount: row.paidAmount,
+        paidAmount: Math.min(row.paidAmount, Math.max(0, row.amount)),
+        pendingExcess: Math.max(0, row.paidAmount - Math.max(0, row.amount)),
         remaining,
         invoiceId: row.invoiceId,
         invoiceNumber: row.invoiceNumber,

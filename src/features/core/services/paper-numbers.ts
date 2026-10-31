@@ -5,6 +5,7 @@ import { logChange } from "@/lib/log";
 import { action, query } from "@/lib/service/action";
 import type { Executor, ServiceContext } from "@/lib/service/context";
 import { ServiceError } from "@/lib/service/errors";
+import { requireBooks } from "@/lib/sync/books";
 import type { LocalDate } from "@/lib/units";
 
 /**
@@ -78,6 +79,7 @@ export async function declarePaperNumbers(
     throw new ServiceError("You do not have permission to do this.");
   }
   if (!(PAPER_KEYS as readonly string[]).includes(input.key)) throw new Error("core: not a legal sequence key");
+  await requireBooks(ex, ctx);
   const reason = input.reason.trim();
   if (!reason) throw new ServiceError("A reason is required.");
   const lastValue = input.lastValue;

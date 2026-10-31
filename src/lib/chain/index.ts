@@ -2,6 +2,7 @@ import { sql } from "kysely";
 
 import { CHAIN_COLUMNS, CHAINED_TABLES, CURRENT_HASH_VERSION, type ChainedTable } from "@/lib/db/chain-columns";
 import type { Executor, ServiceContext } from "@/lib/service/context";
+import { deviceOf, logChainOf, requireBooks, syncIsSetUp } from "@/lib/sync/books/guard";
 
 import { canonical, genesisHash, invoiceContentDigest, rowHash } from "./canonical";
 
@@ -23,11 +24,80 @@ export { CHAINED_TABLES, type ChainedTable } from "@/lib/db/chain-columns";
  */
 
 /**
+ * A chain: one of the eight tables, or a laptop's own log chain once sync is
+ * set up (DECISION section 5). The access log is written on both laptops all
+ * day, so it cannot be one chain with two writers: rows written before sync
+ * keep the 1.0.0 chain (`AuditLog`, column `chain` null), and from set-up each
+ * laptop writes its own (`AuditLog:<deviceId>`, its own genesis, hash version
+ * 2). The seven legal chains stay single: only the laptop that holds the books
+ * writes them.
+ */
+export type ChainId = ChainedTable | `AuditLog:${string}`;
+
+const isLogChain = (id: string): id is `AuditLog:${string}` => id.startsWith("AuditLog:");
+
+/**
+ * Whether the schema has the log's `chain` column (migration 0005). Generated
+ * with the schema, so it is the same answer as the database's.
+ */
+export const LOG_HAS_CHAIN = (CHAIN_COLUMNS.AuditLog[CURRENT_HASH_VERSION.AuditLog] ?? []).some(
+  ([name]) => name === "chain",
+);
+
+/** A head first met: a laptop chain seeded at its genesis. */
+const NOT_YET = "1970-01-01T00:00:00.000Z";
+
+/**
+ * The head of a laptop's log chain, created at its genesis the first time the
+ * chain is met: when this laptop starts its own chain, and before the first
+ * row of the other laptop's chain is applied (the trigger checks every row
+ * against its head). Idempotent. Only `AuditLog:<id>` chains: the eight table
+ * heads are made by first run.
+ */
+export async function ensureChainHead(
+  ex: Executor,
+  chain: string,
+  at: string = NOT_YET,
+): Promise<{ seq: number; hash: string }> {
+  const found = await ex
+    .selectFrom("ChainHead")
+    .select(["lastSeq", "lastHash"])
+    .where("id", "=", chain)
+    .executeTakeFirst();
+  if (found) return { seq: found.lastSeq, hash: found.lastHash };
+  if (!isLogChain(chain) || chain.length <= "AuditLog:".length)
+    throw new Error(`chain: ${chain} has no head, and only a laptop's log chain is made on first meeting`);
+  const hash = await genesisHash(await readDatabaseId(ex), chain);
+  await ex.insertInto("ChainHead").values({ id: chain, lastSeq: 0, lastHash: hash, updatedAt: at }).execute();
+  return { seq: 0, hash };
+}
+
+/**
+ * Starts this laptop's own log chain: at sync set-up on the director's
+ * laptop, and when a laptop joins, before its first log entry. Idempotent.
+ */
+export async function startOwnLogChain(
+  ex: Executor,
+  ctx: ServiceContext,
+  deviceId: string,
+): Promise<{ chain: string }> {
+  const chain = logChainOf(deviceId);
+  await ensureChainHead(ex, chain, ctx.now);
+  return { chain };
+}
+
+/**
  * Adds one row to a chained table, inside the caller's transaction.
  *
  * `row` is the whole row as the database stores it, without `hashV`,
- * `chainSeq`, `prevHash` and `hash`: every other column is given, an empty one
- * as `null`, a yes/no as 0 or 1, an instant as its ISO string.
+ * `chainSeq`, `prevHash` and `hash` (and, for the log, `chain`): every other
+ * column is given, an empty one as `null`, a yes/no as 0 or 1, an instant as
+ * its ISO string.
+ *
+ * Once sync is set up, a row of the seven legal tables is written only on the
+ * laptop that holds the books (`requireBooks`): this is the guarantee, the
+ * services' own early refusals only say it sooner. A log row goes to this
+ * laptop's own chain.
  */
 export async function appendChained<T extends ChainedTable>(
   ex: Executor,
@@ -35,15 +105,35 @@ export async function appendChained<T extends ChainedTable>(
   table: T,
   row: Record<string, unknown>,
 ): Promise<{ hashV: number; chainSeq: number; prevHash: string; hash: string }> {
-  const head = await ex
+  const device = LOG_HAS_CHAIN ? deviceOf(ctx) : null;
+  if (LOG_HAS_CHAIN) {
+    if (table !== "AuditLog") await requireBooks(ex, ctx);
+    else if (device === null && (await syncIsSetUp(ex)))
+      throw new Error("ledger: sync is set up but this context has no device");
+  }
+  const chain = table === "AuditLog" && device !== null ? logChainOf(device) : null;
+  const headId: string = chain ?? table;
+
+  const found = await ex
     .selectFrom("ChainHead")
     .select(["lastSeq", "lastHash"])
-    .where("id", "=", table)
+    .where("id", "=", headId)
     .executeTakeFirst();
+  const head = found
+    ? { lastSeq: found.lastSeq, lastHash: found.lastHash }
+    : chain
+      ? await ensureChainHead(ex, chain, ctx.now).then((made) => ({ lastSeq: made.seq, lastHash: made.hash }))
+      : null;
   if (!head) throw new Error(`chain: ${table} has no head. First run has not completed.`);
 
   const hashV = CURRENT_HASH_VERSION[table];
-  const full = { ...row, hashV, chainSeq: head.lastSeq + 1, prevHash: head.lastHash };
+  const full = {
+    ...row,
+    ...(table === "AuditLog" && LOG_HAS_CHAIN ? { chain } : {}),
+    hashV,
+    chainSeq: head.lastSeq + 1,
+    prevHash: head.lastHash,
+  };
   const hash = await rowHash(table, head.lastHash, canonical(table, hashV, full));
 
   // The triggers check the sequence and the previous hash again, and move the head.
@@ -52,24 +142,72 @@ export async function appendChained<T extends ChainedTable>(
     .values({ ...full, hash } as never)
     .execute();
 
-  ctx.touchedChains.add(table);
+  ctx.touchedChains.add(headId);
   return { hashV, chainSeq: full.chainSeq, prevHash: head.lastHash, hash };
 }
 
-/** The heads of the eight chains, as `ChainHead` holds them. */
-export async function readChainHeads(ex: Executor): Promise<Record<ChainedTable, { seq: number; hash: string }>> {
-  const rows = await ex.selectFrom("ChainHead").select(["id", "lastSeq", "lastHash"]).execute();
-  const heads = {} as Record<ChainedTable, { seq: number; hash: string }>;
+export type ChainHead = { seq: number; hash: string };
+/** Every chain's head: the eight tables', and each laptop's log chain once sync is set up. */
+export type ChainHeads = Record<ChainedTable, ChainHead> & { [chain: string]: ChainHead };
+
+/** The heads of every chain, as `ChainHead` holds them: the eight tables first, then the laptops' log chains. */
+export async function readChainHeads(ex: Executor): Promise<ChainHeads> {
+  const rows = await ex.selectFrom("ChainHead").select(["id", "lastSeq", "lastHash"]).orderBy("id").execute();
+  const heads = {} as ChainHeads;
   for (const table of CHAINED_TABLES) {
     const row = rows.find((candidate) => candidate.id === table);
     if (!row) throw new Error(`chain: ${table} has no head.`);
     heads[table] = { seq: row.lastSeq, hash: row.lastHash };
   }
+  for (const row of rows) if (isLogChain(row.id)) heads[row.id] = { seq: row.lastSeq, hash: row.lastHash };
   return heads;
+}
+
+/** Which table a chain's rows are in. */
+export const tableOfChain = (chain: string): ChainedTable => (isLogChain(chain) ? "AuditLog" : (chain as ChainedTable));
+
+/**
+ * The rows of one chain, in order. The 1.0.0 log chain is the rows whose
+ * `chain` is null; a laptop's is the rows that name it.
+ */
+export async function chainRows(ex: Executor, chain: string): Promise<Array<Record<string, unknown>>> {
+  const table = tableOfChain(chain);
+  const filter =
+    table !== "AuditLog" || !LOG_HAS_CHAIN
+      ? sql``
+      : isLogChain(chain)
+        ? sql`WHERE "chain" = ${chain}`
+        : sql`WHERE "chain" IS NULL`;
+  return (await sql`SELECT * FROM ${sql.table(table)} ${filter} ORDER BY "chainSeq"`.execute(ex)).rows as Array<
+    Record<string, unknown>
+  >;
+}
+
+/** The hash of the row at a place in a chain (its genesis at 0), or null when there is no such row. */
+export async function hashInChain(
+  ex: Executor,
+  chain: string,
+  seq: number,
+  databaseId: string,
+): Promise<string | null> {
+  if (seq === 0) return genesisHash(databaseId, chain as ChainId);
+  const table = tableOfChain(chain);
+  const filter =
+    table !== "AuditLog" || !LOG_HAS_CHAIN
+      ? sql``
+      : isLogChain(chain)
+        ? sql`AND "chain" = ${chain}`
+        : sql`AND "chain" IS NULL`;
+  const row = (
+    await sql<{ hash: string }>`SELECT "hash" FROM ${sql.table(table)} WHERE "chainSeq" = ${seq} ${filter}`.execute(ex)
+  ).rows[0];
+  return row?.hash ?? null;
 }
 
 export interface ChainReport {
   table: ChainedTable;
+  /** The chain: the table's name, or a laptop's log chain `AuditLog:<deviceId>`. */
+  chain: string;
   rows: number;
   /** The `chainSeq` of the first row that does not verify, or null when the chain is whole. */
   firstBroken: number | null;
@@ -91,11 +229,13 @@ export interface VerifyReport {
 /**
  * Checks everything the chains promise, from the rows themselves:
  *
- *  - each chain: numbered 1, 2, 3 with no gap, each row carrying the hash of
+ *  - each chain (the eight tables', and every laptop's log chain present,
+ *    whether written here or received): numbered 1, 2, 3 with no gap, each row carrying the hash of
  *    the one before, each hash the hash of its row, and the last one equal to
  *    the table's head;
  *  - every invoice still commits to its lines and its visit statement;
- *  - the two legal sequences have no hole in any year, save declared gaps;
+ *  - the two legal sequences have no hole in any year, save declared gaps
+ *    (a restore, paper numbers, a lost laptop);
  *  - the two cached totals equal the sum of their ledgers.
  *
  * It reads; it never repairs.
@@ -109,11 +249,22 @@ export async function verifyChains(
   const tables = options.tables ?? CHAINED_TABLES;
   const chains: ChainReport[] = [];
 
+  const chainIds: string[] = [];
   for (const table of tables) {
-    const rows = (await sql`SELECT * FROM ${sql.table(table)} ORDER BY "chainSeq"`.execute(ex)).rows as Array<
-      Record<string, unknown>
-    >;
-    let previous = await genesisHash(databaseId, table);
+    chainIds.push(table);
+    if (table === "AuditLog" && LOG_HAS_CHAIN) {
+      const named = await sql<{
+        chain: string;
+      }>`SELECT DISTINCT "chain" FROM "AuditLog" WHERE "chain" IS NOT NULL`.execute(ex);
+      const laptops = new Set([...Object.keys(heads).filter(isLogChain), ...named.rows.map((row) => row.chain)]);
+      chainIds.push(...[...laptops].sort());
+    }
+  }
+
+  for (const chain of chainIds) {
+    const table = tableOfChain(chain);
+    const rows = await chainRows(ex, chain);
+    let previous = await genesisHash(databaseId, chain as ChainId);
     let firstBroken: number | null = null;
     let problem: string | null = null;
     let expectedSeq = 0;
@@ -136,11 +287,15 @@ export async function verifyChains(
       previous = String(row.hash);
     }
 
-    if (firstBroken === null && (heads[table].seq !== rows.length || heads[table].hash !== previous)) {
+    const head = heads[chain] as ChainHead | undefined;
+    if (firstBroken === null && !head) {
+      firstBroken = 1;
+      problem = "the chain has no head";
+    } else if (firstBroken === null && head && (head.seq !== rows.length || head.hash !== previous)) {
       firstBroken = rows.length + 1;
       problem = "the head of the chain does not match its last row";
     }
-    chains.push({ table, rows: rows.length, firstBroken, problem });
+    chains.push({ table, chain, rows: rows.length, firstBroken, problem });
   }
 
   const brokenDigests = tables.includes("Invoice") ? await findBrokenDigests(ex) : [];

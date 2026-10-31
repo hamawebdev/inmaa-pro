@@ -7,7 +7,7 @@ import type { CollectorKind } from "../validators/option-codes";
 
 import type { SellerSnapshot } from "./invoice-sheet";
 import { CURRENCY } from "./print-labels";
-import { Amount, DateText, Gap, Num, SheetHeading, VoidMark, VoidStamp } from "./sheet-parts";
+import { Amount, CopyMark, DateText, Gap, Num, SheetHeading, VoidMark, VoidStamp } from "./sheet-parts";
 import { TYPE } from "./sheet-style";
 
 /**
@@ -68,6 +68,8 @@ export interface CashReceiptData {
   stampScaleNote: string;
   /** Set when the receipt was voided. */
   voided: { date: IsoDate; reason: string } | null;
+  /** Printed on the laptop that does not hold the books: a copy, marked «نسخة» (not one of the two halves). */
+  copy?: boolean;
 }
 
 const COPIES = ["نسخة العميل", "نسخة المركز"] as const;
@@ -155,7 +157,7 @@ function ReceiptCopy({ receipt, copy }: { receipt: CashReceiptData; copy: string
   return (
     // Half a page each, so that the cut falls near the middle.
     <div style={{ minHeight: "136mm", position: "relative" }}>
-      {receipt.voided && <VoidStamp word="ملغى" />}
+      {receipt.voided ? <VoidStamp word="ملغى" /> : receipt.copy && <VoidStamp word="نسخة" />}
       <CopyLetterhead />
       <Identifiers seller={receipt.seller} />
       <Gap mm={1.5} />
@@ -174,6 +176,7 @@ function ReceiptCopy({ receipt, copy }: { receipt: CashReceiptData; copy: string
       {receipt.voided && (
         <VoidMark word="ملغى" what="هذا السند" reason={receipt.voided.reason} date={receipt.voided.date} />
       )}
+      {receipt.copy && <CopyMark what="من السند الأصلي" />}
 
       <SheetTable columns={[46, 54, 32, 55.3]}>
         <SheetRow heightMm={row}>

@@ -30,7 +30,11 @@ export default function ReceiptBatchPrintPage() {
   });
 
   async function record() {
-    const result = await recordReceiptBatchPrintedAction({ batchId: id });
+    // On the laptop without the books the sheets are copies, and are recorded as such.
+    const result = await recordReceiptBatchPrintedAction({
+      batchId: id,
+      asCopy: data?.receipts[0]?.receipt.copy ?? false,
+    });
     if (!result.success) toast.error(errorMessage(result.error, t("PrintNotRecorded")));
     return result.success;
   }

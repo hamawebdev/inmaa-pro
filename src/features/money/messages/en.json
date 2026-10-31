@@ -541,7 +541,8 @@
       "Payer": "Paid by",
       "Receipt": "Receipt"
     },
-    "Credit": "Credit: {amount}"
+    "Credit": "Credit: {amount}",
+    "AllocationWaiting": "Placing the payments on the dues is waiting for the laptop that holds the books ({amount} to place)."
   },
   "Reconciliation": {
     "Title": "Daily reconciliation",

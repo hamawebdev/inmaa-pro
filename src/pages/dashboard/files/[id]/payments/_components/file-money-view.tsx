@@ -77,6 +77,10 @@ export function FileMoneyView({ money: file }: { money: FileMoney }) {
 
       <section className="space-y-4 tall:space-y-5">
         <SectionHeading>{t("Dues")}</SectionHeading>
+        {/* Two laptops: a due cut where the books are not still holds its money until the books' laptop places it. */}
+        {file.creditPending > 0 && (
+          <p className="text-sm text-warning-ink">{t("AllocationWaiting", { amount: money(file.creditPending) })}</p>
+        )}
         <Table>
           <TableHeader>
             <TableRow>

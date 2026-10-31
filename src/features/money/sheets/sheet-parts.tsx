@@ -239,6 +239,30 @@ export function VoidMark({
 }
 
 /**
+ * The mark of a copy (two laptops, coordinator's ruling): an invoice or a
+ * receipt printed on the laptop that does not hold the books is never a
+ * second original. A box at the top says so, and `VoidStamp` draws the word
+ * «نسخة» across the body, so that no part of the page passes for the original.
+ */
+export function CopyMark({ what }: { /** «من الفاتورة الأصلية», «من السند الأصلي». */ what: string }) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: "4mm",
+        border: "1.5pt solid #000",
+        margin: "1mm 1mm 3mm",
+        padding: "0.8mm 3mm",
+      }}
+    >
+      <p style={{ fontSize: "18pt", fontWeight: 700, lineHeight: 1.2, whiteSpace: "nowrap" }}>نسخة</p>
+      <p style={{ ...TYPE.body, fontSize: "11pt", lineHeight: 1.35 }}>هذه نسخة {what}، لا تقوم مقام الأصل.</p>
+    </div>
+  );
+}
+
+/**
  * The word of a voided document drawn across the block it is placed in. The
  * block must be `position: relative`. Grey ink, so the text under it stays
  * readable; it takes no room in the layout.

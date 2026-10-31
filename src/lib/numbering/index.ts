@@ -4,6 +4,8 @@ import { logChange } from "@/lib/log";
 import type { Executor, ServiceContext } from "@/lib/service/context";
 import { ServiceError } from "@/lib/service/errors";
 import { getSetting } from "@/lib/settings";
+import { claimInBlocks, takeFromBlocks } from "@/lib/sync/blocks";
+import { numberingDeviceOf } from "@/lib/sync/books/guard";
 import type { LocalDate } from "@/lib/units";
 
 /**
@@ -19,6 +21,14 @@ import type { LocalDate } from "@/lib/units";
  * counters. `peekLegalNumber` says which number the next document must carry,
  * and the insert of the document itself moves the counter (a trigger), so a
  * number can never exist without its document.
+ *
+ * Two laptops (DECISION section 5). Once sync is set up on this laptop
+ * (`ctx.syncDeviceId`), and after the manager took it out of sync (it goes
+ * on in its own blocks, never below what it knew), the ordinary keys are
+ * numbered inside this laptop's blocks (src/lib/sync/blocks) and their `Sequence` row stays where set-up
+ * left it: the top of the numbers given before sync. The legal keys stay one
+ * sequence, written only by the laptop that holds the books. Before set-up,
+ * everything below is exactly as in 1.0.0.
  */
 
 export const SEQUENCE_KEYS = [
@@ -195,6 +205,12 @@ export async function nextNumbers(
     throw new Error("numbering: count must be a whole number of at least 1");
 
   const year = sequenceYear(key, options.date);
+  if ((await numberingDeviceOf(ex, ctx)) !== null) {
+    // Two laptops: from this laptop's blocks. Consecutive inside a block, not always across two.
+    const seqs = await takeFromBlocks(ex, ctx, key, year, options.count);
+    const shape = await shapeOf(ex, key, options.suffix);
+    return seqs.map((seq) => ({ seq, year, display: formatNumber(key, seq, year, shape) }));
+  }
   const counter = await counterOf(ex, ctx, key, year);
   const first = await firstValue(ex, key, year, counter.lastValue);
   const last = first + options.count - 1;
@@ -229,6 +245,24 @@ export async function claimNumber(
   if (options.isFree && !(await options.isFree())) throw new ServiceError("This number is already taken.");
 
   const year = sequenceYear(key, options.date);
+  if ((await numberingDeviceOf(ex, ctx)) !== null) {
+    const claimed = await claimInBlocks(ex, ctx, key, year, options.value);
+    const number = {
+      seq: options.value,
+      year,
+      display: formatNumber(key, options.value, year, await shapeOf(ex, key, options.suffix)),
+    };
+    await logChange(ex, ctx, {
+      owner: "FOUNDATION",
+      action: "NUMBER_CLAIM",
+      reason: options.reason,
+      entity: claimed.blockId ? "NumberBlock" : "Sequence",
+      entityId: claimed.blockId ?? `${key}-${year}`,
+      entityLabel: `${key} ${number.display}`,
+      changes: claimed.used ? { used: claimed.used } : undefined,
+    });
+    return number;
+  }
   const counter = await counterOf(ex, ctx, key, year);
   if (options.value > counter.lastValue) {
     await ex

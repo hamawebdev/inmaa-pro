@@ -14,10 +14,12 @@ import { requireCapability, requireSection } from "@/lib/access/session";
 import { newId } from "@/lib/db/rows";
 import { emit } from "@/lib/events";
 import { logChange } from "@/lib/log";
+import { sql } from "kysely";
 import { nextNumber } from "@/lib/numbering";
 import { action, query } from "@/lib/service/action";
 import type { Executor, ServiceContext } from "@/lib/service/context";
 import { ServiceError } from "@/lib/service/errors";
+import { holdsBooks, requireBooks } from "@/lib/sync/books";
 import { localDate, money } from "@/lib/units";
 
 import { HOURS_PATH } from "./hours";
@@ -196,6 +198,8 @@ export interface DebtEntryInput {
   violationId?: string | null;
   handOutReturnId?: string | null;
   reversesEntryId?: string | null;
+  /** Who decided it, when the books' laptop posts what was decided on the other laptop; the acting user otherwise. */
+  byUserId?: string | null;
 }
 
 /**
@@ -207,6 +211,8 @@ export async function addDebtEntry(
   ctx: ServiceContext,
   input: DebtEntryInput,
 ): Promise<{ id: string; balanceAfter: number }> {
+  // The person's ledger is a running balance: only the laptop that holds the books writes it (DECISION section 4).
+  await requireBooks(ex, ctx);
   if (!(DEBT_DIRECTIONS as readonly string[]).includes(input.direction))
     throw new Error("people: unknown debt direction");
   if (!(DEBT_REASONS as readonly string[]).includes(input.reason)) throw new Error("people: unknown debt reason");
@@ -241,7 +247,7 @@ export async function addDebtEntry(
       handOutReturnId: input.handOutReturnId ?? null,
       reversesEntryId: input.reversesEntryId ?? null,
       createdAt: ctx.now,
-      createdByUserId: ctx.userId,
+      createdByUserId: input.byUserId ?? ctx.userId,
     })
     .execute();
   await logChange(ex, ctx, {
@@ -255,6 +261,91 @@ export async function addDebtEntry(
     context: { direction: input.direction, reason: input.reason, amount: input.amount },
   });
   return { id, balanceAfter };
+}
+
+// ── Two laptops: debts decided where the books are not ───────────────────────
+
+/**
+ * A debt line decided by an ordinary save on the laptop without the books (a
+ * violation's deduction, an equipment charge: coordinator's ruling). The
+ * ledger is a running balance that only the books' laptop writes, so the save
+ * does not write it: it carries the lines in its own log entry
+ * (`context.debtPending`), and the books' laptop posts them when the entry
+ * reaches it (`postDeferredDebts`).
+ */
+export type DeferredDebt = Omit<DebtEntryInput, "byUserId" | "payoutId" | "payslipId" | "reversesEntryId">;
+
+/**
+ * Whether this save writes the ledger now (the books are here, or sync is not
+ * set up), or defers the lines to the books' laptop.
+ */
+export const mayWriteLedger = (ex: Executor, ctx: ServiceContext) => holdsBooks(ex, ctx);
+
+/** The sources whose deferred lines are posted, and the ledger column that says a source is already posted. */
+const DEFERRED_SOURCES = { Violation: "violationId", HandOutReturn: "handOutReturnId" } as const;
+
+/**
+ * Run on the books' laptop after each round and at the start of its day:
+ * the lines decided on the other laptop that are not in the ledger yet are
+ * posted, in the order they were decided, as their decider's. Idempotent,
+ * keyed by the source row: a source that has any line in the ledger is
+ * posted. Nothing on the laptop without the books.
+ */
+export async function postDeferredDebts(ex: Executor, ctx: ServiceContext): Promise<{ posted: number }> {
+  if (!(await holdsBooks(ex, ctx))) return { posted: 0 };
+  const entries = await ex
+    .selectFrom("AuditLog")
+    .select(["userId", "entity", "entityId", "context"])
+    .where("entity", "in", Object.keys(DEFERRED_SOURCES))
+    .where(sql<boolean>`json_extract("context", '$.debtPending') IS NOT NULL`)
+    .orderBy("occurredAt")
+    .orderBy("chainSeq")
+    .execute();
+  let posted = 0;
+  for (const entry of entries) {
+    const column = DEFERRED_SOURCES[entry.entity as keyof typeof DEFERRED_SOURCES];
+    if (!column || !entry.entityId) continue;
+    const done = await ex
+      .selectFrom("StaffDebtEntry")
+      .select("id")
+      .where(column, "=", entry.entityId)
+      .executeTakeFirst();
+    if (done) continue;
+    const lines = (JSON.parse(entry.context ?? "{}") as { debtPending?: DeferredDebt[] }).debtPending ?? [];
+    for (const line of lines) {
+      await addDebtEntry(ex, ctx, { ...line, [column]: entry.entityId, byUserId: entry.userId });
+      posted += 1;
+    }
+  }
+  return { posted };
+}
+
+/** The lines decided for a source and still waiting for the books' laptop, from the decision's log entry. */
+export async function deferredDebtsOf(
+  ex: Executor,
+  entity: keyof typeof DEFERRED_SOURCES,
+  ids: readonly string[],
+): Promise<Map<string, DeferredDebt[]>> {
+  const out = new Map<string, DeferredDebt[]>();
+  if (ids.length === 0) return out;
+  const column = DEFERRED_SOURCES[entity];
+  const entries = await ex
+    .selectFrom("AuditLog")
+    .select(["entityId", "context"])
+    .where("entity", "=", entity)
+    .where("entityId", "in", ids)
+    .where(sql<boolean>`json_extract("context", '$.debtPending') IS NOT NULL`)
+    .execute();
+  const posted = new Set(
+    (await ex.selectFrom("StaffDebtEntry").select(column).where(column, "in", ids).execute()).map(
+      (row) => (row as Record<string, string | null>)[column],
+    ),
+  );
+  for (const entry of entries) {
+    if (!entry.entityId || posted.has(entry.entityId)) continue;
+    out.set(entry.entityId, (JSON.parse(entry.context ?? "{}") as { debtPending: DeferredDebt[] }).debtPending);
+  }
+  return out;
 }
 
 /** A debt typed by the office (damage, loss, an overpayment), or a repayment in cash, or a debt written off. */

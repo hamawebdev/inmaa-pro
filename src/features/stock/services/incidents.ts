@@ -1,4 +1,4 @@
-import { addDebtEntry } from "@/features/people/services/payouts";
+import { addDebtEntry, deferredDebtsOf, mayWriteLedger, type DeferredDebt } from "@/features/people/services/payouts";
 import { requireCapability, requireSection } from "@/lib/access/session";
 import { logChange } from "@/lib/log";
 import { action, query } from "@/lib/service/action";
@@ -97,9 +97,20 @@ export async function getEquipmentIncidents(
     )
     .execute();
 
+  // Two laptops: a charge settled where the books are not waits in its decision's log entry for the books' laptop;
+  // it is settled all the same (People's `deferredDebtsOf`).
+  const deferred = await deferredDebtsOf(
+    ex,
+    "HandOutReturn",
+    rows.map((row) => row.id),
+  );
+
   const incidents = rows.map((row): EquipmentIncident => {
     const cost = Math.round((row.unitCost * (row.qtyLost + row.qtyDamaged)) / 1000);
-    const own = entries.filter((entry) => entry.handOutReturnId === row.id);
+    const own = [
+      ...entries.filter((entry) => entry.handOutReturnId === row.id),
+      ...(deferred.get(row.id) ?? []).map((line) => ({ direction: line.direction, amount: line.amount })),
+    ];
     const charged = own.reduce(
       (sum, entry) => sum + (entry.direction === "INCREASE" ? entry.amount : -entry.amount),
       0,
@@ -157,6 +168,7 @@ export async function settleEquipmentCharge(
   }
 
   const note = `${reason} (التسليم رقم ${incident.handOutNumber})`;
+  const lines: DeferredDebt[] = [];
   // The incident at its cost, by what happened to it…
   const lostCost = Math.round((incident.cost * incident.lost) / (incident.lost + incident.damaged));
   for (const [amount, kind] of [
@@ -164,7 +176,7 @@ export async function settleEquipmentCharge(
     [incident.cost - lostCost, "DAMAGE"],
   ] as const) {
     if (amount <= 0) continue;
-    await addDebtEntry(ex, ctx, {
+    lines.push({
       staffId: incident.workerId,
       date: ctx.today,
       direction: "INCREASE",
@@ -176,7 +188,7 @@ export async function settleEquipmentCharge(
   }
   // … and what the manager forgives, written off beside it.
   if (input.amount < incident.cost) {
-    await addDebtEntry(ex, ctx, {
+    lines.push({
       staffId: incident.workerId,
       date: ctx.today,
       direction: "DECREASE",
@@ -186,6 +198,9 @@ export async function settleEquipmentCharge(
       handOutReturnId: incident.handOutReturnId,
     });
   }
+  // Two laptops: where the books are not, the lines go with the decision's log entry, for the books' laptop.
+  const now = await mayWriteLedger(ex, ctx);
+  if (now) for (const line of lines) await addDebtEntry(ex, ctx, line);
   await logChange(ex, ctx, {
     owner: "MONEY",
     action: "SANCTION_SET",
@@ -194,7 +209,10 @@ export async function settleEquipmentCharge(
     entityId: incident.handOutReturnId,
     entityLabel: incident.handOutNumber,
     subject: { kind: "WORKER", id: incident.workerId, label: incident.workerName },
-    context: { charged: input.amount === incident.cost ? "WHOLE" : input.amount === 0 ? "NOTHING" : "PART" },
+    context: {
+      charged: input.amount === incident.cost ? "WHOLE" : input.amount === 0 ? "NOTHING" : "PART",
+      ...(now ? {} : { debtPending: lines }),
+    },
   });
   return { handOutReturnId: incident.handOutReturnId, charged: input.amount };
 }

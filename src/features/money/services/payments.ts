@@ -1,6 +1,7 @@
 import { canCollectCash } from "@/features/people/services/staff-exports";
 import { can, requireCapability, requireSection } from "@/lib/access/session";
 import { linkUpload } from "@/lib/attachments";
+import { holdsBooks, requireBooks } from "@/lib/sync/books";
 import { appendChained } from "@/lib/chain";
 import { assertClockSane } from "@/lib/clock/sanity";
 import { newId } from "@/lib/db/rows";
@@ -112,6 +113,7 @@ export async function recordPayment(
 ): Promise<RecordedPayment> {
   // The capability is the gate, not the section: reception and administration take payments at the desk.
   requireCapability(ctx, "payment.record");
+  await requireBooks(ex, ctx);
   if (ctx.userId === null) throw new Error("money: a payment is recorded by somebody");
   if (!(PAYMENT_METHODS as readonly string[]).includes(input.method)) {
     throw new Error(`money: unknown payment method ${input.method}`);
@@ -305,6 +307,7 @@ export async function voidPayment(
 ): Promise<{ id: string }> {
   requireSection(ctx, "MONEY", "WRITE");
   requireCapability(ctx, "payment.void");
+  await requireBooks(ex, ctx);
   if (ctx.userId === null) throw new Error("money: a payment is voided by somebody");
   const reason = input.reason.trim();
   if (!reason) throw new ServiceError("A reason is required.");
@@ -563,6 +566,7 @@ export async function issueReceiptBatch(
   input: IssueReceiptBatchInput,
 ): Promise<{ batchId: string; receiptIds: string[]; firstNumber: string; lastNumber: string }> {
   requireCapability(ctx, "payment.record");
+  await requireBooks(ex, ctx);
   if (ctx.userId === null) throw new Error("money: receipts are handed out by somebody");
   if (!(COLLECTOR_KINDS as readonly string[]).includes(input.collectorKind)) {
     throw new Error(`money: unknown collector ${input.collectorKind}`);
@@ -697,16 +701,21 @@ export async function getReceiptSheet(
         : null,
       stampScaleNote: stampScaleNote(await readStampSettings(ex)),
       voided: ended ? { date: ctx.toLocal(ended.createdAt).date, reason: ended.reason ?? "" } : null,
+      // Two laptops: the laptop without the books prints a copy, never a second original (DECISION section 5).
+      copy: !(await holdsBooks(ex, ctx)),
     },
   };
 }
 
-/** The receipt went to paper: a `PRINTED` event on its chain, and the disclosure the law asks for. */
+/**
+ * The receipt went to paper: a `PRINTED` event on its chain, and the disclosure the law asks for.
+ * On the laptop without the books, a copy: no event, the print in this laptop's own log (as `recordInvoicePrinted`).
+ */
 export async function recordReceiptPrinted(
   ex: Executor,
   ctx: ServiceContext,
-  input: { receiptId: string },
-): Promise<{ id: string }> {
+  input: { receiptId: string; asCopy?: boolean },
+): Promise<{ id: string; copy: boolean }> {
   if (!can(ctx, "payment.record")) requireSection(ctx, "MONEY", "READ");
   if (ctx.userId === null) throw new Error("money: a sheet is printed by somebody");
   const receipt = await ex
@@ -720,16 +729,19 @@ export async function recordReceiptPrinted(
     .select("clientId")
     .where("receiptId", "=", receipt.id)
     .executeTakeFirst();
-  await appendChained(ex, ctx, "LegalEvent", {
-    id: newId(),
-    invoiceId: null,
-    paymentId: null,
-    receiptId: receipt.id,
-    type: "PRINTED",
-    reason: null,
-    createdAt: ctx.now,
-    createdByUserId: ctx.userId,
-  });
+  const copy = input.asCopy ?? !(await holdsBooks(ex, ctx));
+  if (!copy) {
+    await appendChained(ex, ctx, "LegalEvent", {
+      id: newId(),
+      invoiceId: null,
+      paymentId: null,
+      receiptId: receipt.id,
+      type: "PRINTED",
+      reason: null,
+      createdAt: ctx.now,
+      createdByUserId: ctx.userId,
+    });
+  }
   await logDisclose(ex, ctx, {
     owner: "MONEY",
     action: "PRINT",
@@ -738,8 +750,9 @@ export async function recordReceiptPrinted(
     entityLabel: receipt.number,
     subject: payment ? { kind: "CLIENT", id: payment.clientId } : undefined,
     disclosure: "PRINT",
+    context: copy ? { copy: true } : undefined,
   });
-  return { id: receipt.id };
+  return { id: receipt.id, copy };
 }
 
 // ── A block of blank receipts ────────────────────────────────────────────────
@@ -837,7 +850,7 @@ export async function getReceiptBatch(
 export async function recordReceiptBatchPrinted(
   ex: Executor,
   ctx: ServiceContext,
-  input: { batchId: string },
+  input: { batchId: string; asCopy?: boolean },
 ): Promise<{ count: number }> {
   if (!can(ctx, "payment.record")) requireSection(ctx, "MONEY", "READ");
   const ids = await ex
@@ -847,7 +860,7 @@ export async function recordReceiptBatchPrinted(
     .orderBy("numberSeq")
     .execute();
   if (ids.length === 0) throw new ServiceError("This receipt does not exist.");
-  for (const { id } of ids) await recordReceiptPrinted(ex, ctx, { receiptId: id });
+  for (const { id } of ids) await recordReceiptPrinted(ex, ctx, { receiptId: id, asCopy: input.asCopy });
   return { count: ids.length };
 }
 

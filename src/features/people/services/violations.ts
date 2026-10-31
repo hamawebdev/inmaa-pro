@@ -21,7 +21,7 @@ import { staffName } from "@/lib/text/names";
 import { localDate } from "@/lib/units";
 
 import { HIRING_PATH } from "./hiring";
-import { addDebtEntry } from "./payouts";
+import { addDebtEntry, mayWriteLedger, type DeferredDebt } from "./payouts";
 import { setSanction } from "./sanctions";
 import { recordLeaving, staffOf } from "./staff-shared";
 
@@ -181,21 +181,25 @@ export async function decideViolation(ex: Executor, ctx: ServiceContext, input: 
   if (!isDate(date)) throw new ServiceError("Enter a valid date.");
   const worker = await staffOf(ex, "WORKER", violation.staffId);
   const reason = `${violation.number}: ${violation.description}`;
+  let debtPending: DeferredDebt[] | null = null;
 
   switch (input.action) {
     case "DEDUCTION": {
       if (!input.amount || !Number.isSafeInteger(input.amount) || input.amount <= 0) {
         throw new ServiceError("Enter an amount above zero.");
       }
-      await addDebtEntry(ex, ctx, {
+      const line = {
         staffId: worker.id,
         date,
-        direction: "INCREASE",
-        reason: "OTHER",
+        direction: "INCREASE" as const,
+        reason: "OTHER" as const,
         amount: input.amount,
         violationId: violation.id,
         note: reason,
-      });
+      };
+      // Two laptops: where the books are not, the line goes with the decision's log entry, for the books' laptop.
+      if (await mayWriteLedger(ex, ctx)) await addDebtEntry(ex, ctx, line);
+      else debtPending = [line];
       break;
     }
     case "SUSPENSION":
@@ -240,6 +244,7 @@ export async function decideViolation(ex: Executor, ctx: ServiceContext, input: 
     entityLabel: violation.number,
     subject: { kind: "WORKER", id: worker.id, label: staffName(worker) },
     changes: { status: ["OPEN", "DECIDED"], action: [null, input.action] },
+    context: debtPending ? { debtPending } : undefined,
   });
 }
 

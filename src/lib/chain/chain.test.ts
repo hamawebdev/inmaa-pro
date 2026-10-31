@@ -136,7 +136,7 @@ describe("the chains (B2 to B6)", () => {
 
     expect(report.ok).toBe(false);
     expect(report.chains.filter((chain) => chain.firstBroken !== null)).toEqual([
-      { table: "AuditLog", rows: 3, firstBroken: 2, problem: "its content was changed" },
+      { table: "AuditLog", chain: "AuditLog", rows: 3, firstBroken: 2, problem: "its content was changed" },
     ]);
   });
 

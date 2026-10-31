@@ -541,7 +541,8 @@
       "Payer": "Payé par",
       "Receipt": "Reçu"
     },
-    "Credit": "Avoir : {amount}"
+    "Credit": "Avoir : {amount}",
+    "AllocationWaiting": "La répartition des paiements sur les échéances attend l'ordinateur qui tient les livres ({amount} à répartir)."
   },
   "Reconciliation": {
     "Title": "Rapprochement quotidien",
