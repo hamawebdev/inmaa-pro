@@ -1,6 +1,6 @@
 import type { Executor } from "@/lib/service/context";
 
-import type { SyncClockState, SyncDeviceIdentity } from "./session";
+import type { SyncClockState, SyncDeviceIdentity, SyncDeviceKind, SyncSlot } from "./session";
 
 /**
  * This laptop's own sync state, in `SyncState` (key → JSON). Local: never
@@ -17,6 +17,7 @@ import type { SyncClockState, SyncDeviceIdentity } from "./session";
  * | file:<url>     | `FileState`: where a stored file's bytes are on the mailbox, and whether they are here |
  * | copy           | `CopyState`: the last full copy this laptop put on the mailbox |
  * | left           | which laptop this was, once the manager took it out of sync (ledger keeps its books state by it) |
+ * | mailboxDevices | `MailboxDevicesState`: the devices as the mailbox last listed them (last contact, last envelope) |
  */
 
 export interface PendingSend {
@@ -53,7 +54,7 @@ export interface ReceiveState {
   skipTxIds: string[];
 }
 
-export type ExchangeOutcome = "OK" | "OFFLINE" | "LIMIT" | "FULL" | "REVOKED" | "REFUSED" | "REJOIN";
+export type ExchangeOutcome = "OK" | "OFFLINE" | "LIMIT" | "FULL" | "REVOKED" | "OUTDATED" | "REFUSED" | "REJOIN";
 
 export interface ExchangeState {
   lastExchangeAt: string | null;
@@ -88,6 +89,12 @@ export interface FileState {
   lastTriedAt?: string | null;
 }
 
+/** The centre's devices as the mailbox last listed them (every few minutes), for the status. */
+export interface MailboxDevicesState {
+  at: string;
+  devices: Array<{ id: string; lastSeenAt: string | null; lastSeq: number }>;
+}
+
 export interface CopyState {
   at: string;
   blobId: string;
@@ -111,7 +118,8 @@ interface Keys {
   exchange: ExchangeState;
   catchUp: CatchUpState;
   copy: CopyState;
-  left: { deviceId: string; slot: 0 | 1; leftAt: string };
+  mailboxDevices: MailboxDevicesState;
+  left: { deviceId: string; slot: SyncSlot; leftAt: string; kind?: SyncDeviceKind };
 }
 
 export async function readState<K extends keyof Keys>(ex: Executor, key: K): Promise<Keys[K] | null> {

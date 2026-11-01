@@ -8,8 +8,9 @@ import { deviceIdOf, expectChainsVerify, LONG, registerAFile, registerAWorker } 
 
 /**
  * DECISION section 5, "the other numbers": workers', clients' and files' numbers are cut in blocks agreed between the
- * laptops; apart, each takes from its own half (the director's laptop the even blocks, the assistant's the odd). A
- * number is never given twice, while apart or in touch, and never changes after it is given.
+ * devices; apart, each takes from its own third (docs/phone/DECISION.md section 2: block index mod 3 = its slot, 0
+ * the director's laptop, 1 the assistant's). A number is never given twice, while apart or in touch, and never
+ * changes after it is given.
  */
 let pair: SyncPair | null = null;
 afterEach(() => {
@@ -77,18 +78,18 @@ describe("ordinary numbers (blocks)", () => {
       expectNoNumberTwice(numbers);
       for (const [id, number] of given) expect(numbers.get(id), `the number of ${id} never changed`).toBe(number);
     }
-    // Apart, each laptop took fallback blocks from its own half only.
+    // Apart, each laptop took fallback blocks from its own third only.
     const fallback = await p.a.test.db
       .selectFrom("NumberBlock")
       .select(["deviceId", "blockIndex", "kind"])
       .where("key", "=", "STAFF_WORKER")
       .where("kind", "=", "FALLBACK")
       .execute();
-    expect(fallback.length, "apart, the agreed blocks ran out and each laptop took from its half").toBeGreaterThan(0);
+    expect(fallback.length, "apart, the agreed blocks ran out and each laptop took from its third").toBeGreaterThan(0);
     expect(new Set(fallback.map((block) => block.deviceId)).size).toBe(2);
     for (const block of fallback) {
       const slot = block.deviceId === deviceIdOf(p.a) ? 0 : 1;
-      expect(block.blockIndex % 2, `fallback block ${block.blockIndex} is in its laptop's half`).toBe(slot);
+      expect(block.blockIndex % 3, `fallback block ${block.blockIndex} is in its laptop's third`).toBe(slot);
     }
     await expectChainsVerify(p);
   });

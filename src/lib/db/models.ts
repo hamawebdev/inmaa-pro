@@ -2382,6 +2382,7 @@ export interface SyncDeviceRow {
   replacesDeviceId: string | null;
   createdAt: Date;
   updatedAt: Date;
+  kind: string;
 }
 
 export interface SyncBooksRow {

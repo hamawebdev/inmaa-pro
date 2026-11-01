@@ -6,24 +6,42 @@ import { ServiceError } from "@/lib/service/errors";
 import { deviceOf, numberingDeviceOf, requireCaughtUp } from "@/lib/sync/books/guard";
 
 /**
- * Number blocks (DECISION section 5): how two laptops number the documents
- * that are not legal sequences (registration numbers, files, quotes, mission
- * orders, complaints, pay runs…) without ever giving one number twice.
+ * Number blocks (DECISION section 5; docs/phone/DECISION.md section 2): how
+ * the centre's devices (two laptops and the director's phone) number the
+ * documents that are not legal sequences (registration numbers, files,
+ * quotes, mission orders, complaints, pay runs…) without ever giving one
+ * number twice.
  *
  * Each key and year is cut into blocks on a fixed grid: block `b` holds the
  * numbers `b·size + 1` to `(b + 1)·size`, ten numbers a block, fifty for
- * mission orders. A laptop numbers only inside a block that is its own
- * (`NumberBlock`, shared):
+ * mission orders. A device numbers only inside a block that is its own
+ * (`NumberBlock`, shared). The grid is cut in thirds: block `b` is in the
+ * third of slot `b mod 3` (0 the director's laptop, 1 the second laptop, 2
+ * the phone), and that slot's device is the block's warden:
  *
  *  - START: at set-up, every counter's current value becomes the director's
- *    laptop's first block, so its next number is the one it would have given;
- *  - CLAIM: while in touch, a laptop asks ahead for the next free block; the
- *    other laptop answers at its next sync, ACCEPTED, or REFUSED when it
- *    already has a row on that block (two claims on one block: slot 0 keeps
- *    it). A claim is used only once ACCEPTED;
- *  - FALLBACK: when it has no usable block left, a laptop takes one from its
- *    own half, slot 0 the even blocks and slot 1 the odd ones, above every
- *    block it knows of. The halves never meet.
+ *    laptop's first block, so its next number is the one it would have given
+ *    (in whatever third; every device that joins later starts from a copy
+ *    that holds it);
+ *  - CLAIM: while in touch, a device asks ahead for the next free block above
+ *    every block it knows. In its own third it is its own warden and the
+ *    claim is accepted as it is made. In another laptop's third, that laptop
+ *    answers at its next sync: ACCEPTED, or REFUSED when any other device
+ *    already has a usable row on that block (its own START or FALLBACK, or a
+ *    claim it accepted); two claims waiting on one block: the lower slot
+ *    keeps it. Only the warden answers, so two answers can never disagree.
+ *    The laptops never claim in the phone's third: the phone is online only
+ *    while it is open, and a claim waiting days for it would hold numbering
+ *    back. A claim is used only once ACCEPTED; a claim whose warden was
+ *    removed is refused by its own device;
+ *  - FALLBACK: when it has no usable block left, a device takes one from its
+ *    own third, above every block it knows of.
+ *
+ * Why no number is given twice: a block in third `t` is numbered only by the
+ * device of slot `t` (its fallbacks and its own claims) or by a device whose
+ * claim that device accepted, and that device accepts one claim at most, and
+ * none where it already numbers; it takes a fallback only above every block
+ * it knows, which includes every claim it accepted. The thirds never meet.
  *
  * Every block is above every block known when it was made and above the
  * numbers given before sync (`Sequence`, which numbering no longer moves for
@@ -47,9 +65,9 @@ export const blockOf = (value: number, size: number): number => Math.floor((valu
 export const blockId = (key: string, year: number, blockIndex: number, deviceId: string) =>
   `${key}-${year}-${blockIndex}-${deviceId}`;
 
-/** A typed number that is neither one given before sync nor inside one of this laptop's blocks. */
+/** A typed number that is neither one given before sync nor inside one of this device's blocks. */
 export const CLAIM_OUTSIDE_BLOCKS =
-  "This number is not among those given before the two laptops were joined, nor among this laptop's own numbers: it cannot be typed here.";
+  "This number is not among those given before sync was set up, nor among this device's own numbers: it cannot be typed here.";
 
 /** How long a key counts as "used recently" for the claims kept ahead. */
 const RECENT_DAYS = 30;
@@ -81,11 +99,43 @@ async function blocksOf(ex: Executor, key: string, year: number): Promise<BlockR
     .execute();
 }
 
-/** This laptop's slot: 0 numbers in the even blocks when apart, 1 in the odd. */
-async function slotOf(ex: Executor, deviceId: string): Promise<0 | 1> {
+/** How many thirds the grid is cut in: one per slot (two laptops and the phone). */
+export const THIRDS = 3;
+
+/** The slot whose third a block is in: that slot's device is the block's warden. */
+export const thirdOf = (blockIndex: number): number => blockIndex % THIRDS;
+
+/** This device's slot: apart, it numbers in the blocks whose index is its slot modulo 3. */
+async function slotOf(ex: Executor, deviceId: string): Promise<number> {
   const row = await ex.selectFrom("SyncDevice").select("slot").where("id", "=", deviceId).executeTakeFirst();
-  if (!row) throw new Error(`ledger: laptop ${deviceId} is not in SyncDevice`);
-  return row.slot === 1 ? 1 : 0;
+  if (!row) throw new Error(`ledger: device ${deviceId} is not in SyncDevice`);
+  return row.slot;
+}
+
+interface ActiveDevice {
+  id: string;
+  slot: number;
+  kind: string;
+}
+
+/** The centre's active devices as this database knows them, by slot. */
+async function activeDevices(ex: Executor): Promise<Map<number, ActiveDevice>> {
+  const rows = await ex
+    .selectFrom("SyncDevice")
+    .select(["id", "slot", "kind"])
+    .where("removedAt", "is", null)
+    .execute();
+  return new Map(rows.map((row) => [row.slot, row]));
+}
+
+/**
+ * Whether a device of `slot` may claim block `index`: in its own third (it is its own warden), or in the third of
+ * an active laptop, which answers. Never in the phone's third but by the phone, nor in a third with no device.
+ */
+function mayClaim(index: number, slot: number, active: Map<number, ActiveDevice>): boolean {
+  const third = thirdOf(index);
+  if (third === slot) return true;
+  return active.get(third)?.kind === "LAPTOP";
 }
 
 /** The numbers given before sync for a key and year: the counter as set-up left it. */
@@ -223,7 +273,7 @@ export async function takeFromBlocks(
   await requireCaughtUp(ex);
   const numbers: number[] = [];
   let known = await blocksOf(ex, key, year);
-  let slot: 0 | 1 | null = null;
+  let slot: number | null = null;
 
   while (numbers.length < count) {
     let block = known.find(
@@ -233,7 +283,7 @@ export async function takeFromBlocks(
       slot ??= await slotOf(ex, device);
       const place = await nextPlace(ex, key, year, known);
       let index = place.from;
-      while (index % 2 !== slot || place.skipped(index) >= place.size) index += 1;
+      while (thirdOf(index) !== slot || place.skipped(index) >= place.size) index += 1;
       block = await insertBlock(ex, ctx, {
         key,
         year,
@@ -285,10 +335,14 @@ export async function claimInBlocks(
 }
 
 /**
- * Run by the sync loop after each round of applying: this laptop answers the
- * other laptop's claims. Refused when this laptop has a row on that block (a
- * START, a FALLBACK, an accepted claim); two claims that are both waiting:
- * slot 0 keeps the block. Accepted otherwise. Idempotent.
+ * Run by the sync loop after each round of applying: this device answers the
+ * claims waiting on the blocks of its own third (it is their warden; a claim
+ * on another third is not its to answer). Refused when another device than
+ * the claimant has a usable row on that block (this device's START or
+ * FALLBACK, a claim already accepted), or when the claimant was removed; two
+ * claims waiting on one block: the lower slot keeps it. Accepted otherwise.
+ * Nothing is answered while this device catches up after a restore: its own
+ * blocks went back with the backup. Idempotent.
  */
 export async function answerBlockClaims(
   ex: Executor,
@@ -296,31 +350,35 @@ export async function answerBlockClaims(
 ): Promise<{ accepted: number; refused: number }> {
   const device = deviceOf(ctx);
   if (!device) return { accepted: 0, refused: 0 };
+  if (await catchingUp(ex)) return { accepted: 0, refused: 0 };
+  const slot = await slotOf(ex, device);
   const waiting = await ex
     .selectFrom("NumberBlock as c")
     .innerJoin("SyncDevice as d", "d.id", "c.deviceId")
-    .select(["c.id", "c.key", "c.year", "c.blockIndex", "d.slot", "d.removedAt"])
+    .select(["c.id", "c.key", "c.year", "c.blockIndex", "c.deviceId", "d.slot", "d.removedAt"])
     .where("c.deviceId", "<>", device)
     .where("c.kind", "=", "CLAIM")
     .where("c.answer", "is", null)
+    .where(sql<boolean>`c."blockIndex" % ${THIRDS} = ${slot}`)
     .orderBy("c.key")
     .orderBy("c.year")
     .orderBy("c.blockIndex")
+    .orderBy("d.slot")
     .execute();
   let accepted = 0;
   let refused = 0;
   for (const claim of waiting) {
-    const mine = await ex
+    const others = await ex
       .selectFrom("NumberBlock")
       .select(["kind", "answer"])
       .where("key", "=", claim.key)
       .where("year", "=", claim.year)
       .where("blockIndex", "=", claim.blockIndex)
-      .where("deviceId", "=", device)
+      .where("deviceId", "<>", claim.deviceId)
       .execute();
-    const holds = mine.some((block) => isUsable(block));
-    const waitingToo = mine.some((block) => block.kind === "CLAIM" && block.answer === null);
-    const accept = claim.removedAt === null && !holds && (!waitingToo || claim.slot === 0);
+    // Ordered by slot: a lower slot's claim on the same block, if any, was answered first and now holds it.
+    const taken = others.some((block) => isUsable(block));
+    const accept = claim.removedAt === null && !taken;
     await ex
       .updateTable("NumberBlock")
       .set({ answer: accept ? "ACCEPTED" : "REFUSED", answeredAt: ctx.now, updatedAt: ctx.now })
@@ -332,16 +390,42 @@ export async function answerBlockClaims(
   return { accepted, refused };
 }
 
+async function catchingUp(ex: Executor): Promise<boolean> {
+  const row = await ex.selectFrom("SyncState").select("key").where("key", "=", "catchUp").executeTakeFirst();
+  return row !== undefined;
+}
+
 /**
- * Run by the sync loop while the laptops are in touch: for each key and year
- * this laptop numbered in recently, keeps one block claimed ahead of the one
- * it is using, so that numbers stay close to the order of time and a laptop
+ * Run by the sync loop while the devices are in touch: for each key and year
+ * this device numbered in recently, keeps one block claimed ahead of the one
+ * it is using, so that numbers stay close to the order of time and a device
  * rarely needs a fallback. A claim goes to the next block above every block
- * known. Idempotent: it claims only where no spare is left or waiting.
+ * known that this device may claim (`mayClaim`): in its own third it is
+ * accepted at once. First, its own claims waiting on a warden that is no
+ * longer in the centre are refused, so they never hold numbering back.
+ * Idempotent: it claims only where no spare is left or waiting.
  */
 export async function topUpBlockClaims(ex: Executor, ctx: ServiceContext): Promise<{ claimed: number }> {
   const device = deviceOf(ctx);
   if (!device) return { claimed: 0 };
+  if (await catchingUp(ex)) return { claimed: 0 };
+  const slot = await slotOf(ex, device);
+  const active = await activeDevices(ex);
+  const stranded = await ex
+    .selectFrom("NumberBlock")
+    .select(["id", "blockIndex"])
+    .where("deviceId", "=", device)
+    .where("kind", "=", "CLAIM")
+    .where("answer", "is", null)
+    .execute();
+  for (const claim of stranded) {
+    if (mayClaim(claim.blockIndex, slot, active)) continue;
+    await ex
+      .updateTable("NumberBlock")
+      .set({ answer: "REFUSED", answeredAt: ctx.now, updatedAt: ctx.now })
+      .where("id", "=", claim.id)
+      .execute();
+  }
   const since = new Date(Date.parse(ctx.now) - RECENT_DAYS * 86_400_000).toISOString();
   const recent = await ex
     .selectFrom("NumberBlock")
@@ -361,8 +445,8 @@ export async function topUpBlockClaims(ex: Executor, ctx: ServiceContext): Promi
     if (Math.max(0, withRoom - 1) + waiting >= 1) continue;
     const place = await nextPlace(ex, key, year, known);
     let index = place.from;
-    while (place.skipped(index) >= place.size) index += 1;
-    await insertBlock(ex, ctx, {
+    while (place.skipped(index) >= place.size || !mayClaim(index, slot, active)) index += 1;
+    const block = await insertBlock(ex, ctx, {
       key,
       year,
       blockIndex: index,
@@ -371,15 +455,24 @@ export async function topUpBlockClaims(ex: Executor, ctx: ServiceContext): Promi
       kind: "CLAIM",
       used: place.skipped(index),
     });
+    // In its own third this device is the warden: nobody else numbers there unless it accepted them.
+    if (thirdOf(index) === slot) {
+      await ex
+        .updateTable("NumberBlock")
+        .set({ answer: "ACCEPTED", answeredAt: ctx.now, updatedAt: ctx.now })
+        .where("id", "=", block.id)
+        .execute();
+    }
     claimed += 1;
   }
   return { claimed };
 }
 
 /**
- * A laptop removed (engine's `removeLaptop`): its claims still waiting are
+ * A device removed (engine's `removeDevice`): its claims still waiting are
  * refused, so it can never number in them. Its other blocks stay, known, so
- * nobody numbers there again.
+ * nobody numbers there again. The claims other devices made on its third are
+ * refused by their own devices at their next round (`topUpBlockClaims`).
  */
 export async function retireBlocks(ex: Executor, ctx: ServiceContext, deviceId: string): Promise<{ refused: number }> {
   const result = await ex

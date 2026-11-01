@@ -96,7 +96,7 @@ F Foundation, P People, C Clients and contracts, O Operations, M Money and stock
 
 ### Sync
 
-The two-laptop sync (docs/sync/DECISION.md, DESIGN.md section 20), migration 0005. Not one of the five owners: written by the sync team's **engine** (`src/lib/sync`) and **ledger** (`src/lib/sync/books`, `src/lib/sync/blocks`).
+The sync between two laptops and the director's phone (docs/sync/DECISION.md, docs/phone/DECISION.md, DESIGN.md section 20), migrations 0005 and 0006. Not one of the five owners: written by the sync team's **engine** (`src/lib/sync`) and **ledger** (`src/lib/sync/books`, `src/lib/sync/blocks`).
 
 | Table | Writes | Reads |
 |---|---|---|
@@ -106,7 +106,7 @@ The two-laptop sync (docs/sync/DECISION.md, DESIGN.md section 20), migration 000
 | `SyncState`, `SyncHeld`, `SyncConflict` | engine | engine; the sync screens through engine's services |
 | `SyncDevice` | engine (set-up, pairing, removal) | engine, ledger; the sync screens |
 | `SyncBooks` | ledger (`initBooks`, `requestBooks`, `answerBooksRequest`, `takeBooksFromLostLaptop`) | ledger (`requireBooks`, called by Money's and People's services); the sync screens |
-| `NumberBlock` | ledger (the owner writes `used`, the other laptop writes `answer`) | ledger (`src/lib/numbering` when sync is set up) |
+| `NumberBlock` | ledger (the owner writes `used`; the block's warden, the device of slot `blockIndex mod 3`, writes `answer`, or the owner itself on its own third or when its warden is gone) | ledger (`src/lib/numbering` when sync is set up) |
 
 ## 3. What each owner exports
 

@@ -7,11 +7,30 @@
  * acknowledgements are the mailbox's own sequence (`mseq`).
  */
 import { fromUtf8, utf8 } from "../crypto/bytes";
-import { RelayConflict, RelayError, RelayFull, RelayLimit, RelayOffline, RelayRefused, RelayRevoked } from "./errors";
+import {
+  RelayConflict,
+  RelayError,
+  RelayFull,
+  RelayLimit,
+  RelayOffline,
+  RelayOutdated,
+  RelayRefused,
+  RelayRevoked,
+} from "./errors";
 import { decodeFrames, type EnvelopeHead } from "./frames";
 import { TransportFailure, type RelayMethod, type RelayResponse, type RelayTransport } from "./transport";
 
 export type { EnvelopeHead };
+
+/**
+ * The sync protocol this program speaks, sent on every request (`x-inmaa-protocol`, docs/phone/BUILD.md 2.3).
+ * Version 2: the director's phone as a third device, number blocks by thirds.
+ */
+export const RELAY_PROTOCOL = 2;
+export const PROTOCOL_HEADER = "x-inmaa-protocol";
+
+/** A laptop (slots 0 and 1) or the director's phone (slot 2). */
+export type RelayDeviceKind = "LAPTOP" | "PHONE";
 
 /** What a laptop holds to speak for itself to the mailbox (kept in native's vault). */
 export interface RelayCredentials {
@@ -27,8 +46,9 @@ export interface Timed {
 }
 
 export interface JoinedDevice extends RelayCredentials, Timed {
-  /** 0 for the laptop that set the centre up; the other laptop takes the free slot. */
+  /** 0 for the laptop that set the centre up; the other laptop takes the free slot of 0 and 1; the phone 2. */
   slot: number;
+  kind: RelayDeviceKind;
 }
 
 export interface ListedEnvelope extends EnvelopeHead {
@@ -52,6 +72,7 @@ export interface RelayDevice {
   id: string;
   name: string;
   slot: number;
+  kind: RelayDeviceKind;
   joinedAt: number;
   removedAt: number | null;
   /** The highest envelope number this device put (0 when none). */
@@ -93,10 +114,22 @@ export interface RelayClient {
   time(): Promise<Timed>;
   /** A new centre with this laptop as its first device (slot 0). Needs the developer's setup key. */
   createCentre(setupKey: string, deviceName: string): Promise<JoinedDevice>;
-  /** Leaves the sealed ticket at its id for at most `ttlSec` seconds (30 minutes at most). */
-  createTicket(ticketId: string, sealed: Uint8Array, ttlSec: number): Promise<Timed & { expiresAt: number }>;
-  /** Joins the centre the ticket names. Needs no credentials. */
-  redeemTicket(ticketId: string, deviceName: string): Promise<JoinedDevice & { sealed: Uint8Array }>;
+  /**
+   * Leaves the sealed ticket at its id for at most `ttlSec` seconds (30 minutes at most), for a device of `kind`
+   * (default LAPTOP): the mailbox refuses it to the other kind.
+   */
+  createTicket(
+    ticketId: string,
+    sealed: Uint8Array,
+    ttlSec: number,
+    kind?: RelayDeviceKind,
+  ): Promise<Timed & { expiresAt: number }>;
+  /** Joins the centre the ticket names, as a device of `kind` (default LAPTOP). Needs no credentials. */
+  redeemTicket(
+    ticketId: string,
+    deviceName: string,
+    kind?: RelayDeviceKind,
+  ): Promise<JoinedDevice & { sealed: Uint8Array }>;
 
   /** Idempotent on identical bytes; `RelayConflict` when that number holds other bytes. */
   putEnvelope(input: {
@@ -186,6 +219,7 @@ export function failureOf(response: RelayResponse, now: number): RelayError {
   }
 
   if (status === 410 && code === "REVOKED") return new RelayRevoked(status, relayTime);
+  if (status === 426 && code === "UPDATE_REQUIRED") return new RelayOutdated(status, relayTime);
   if (status === 507) return new RelayFull(status, relayTime);
   if (status === 409 && code === "SEQ_TAKEN") {
     let stored: number | null;
@@ -235,7 +269,7 @@ export function createRelayClient(
     path: string,
     init: { body?: Uint8Array; json?: unknown; headers?: Record<string, string>; auth?: boolean } = {},
   ): Promise<RelayResponse & { relayTime: number }> {
-    const headers: Record<string, string> = { ...init.headers };
+    const headers: Record<string, string> = { ...init.headers, [PROTOCOL_HEADER]: String(RELAY_PROTOCOL) };
     let body = init.body;
     if (init.json !== undefined) {
       body = utf8(JSON.stringify(init.json));
@@ -297,6 +331,7 @@ export function createRelayClient(
       centreId: segment(h["x-relay-centre"] ?? "", ID.centre, "the centre id"),
       deviceId: segment(h["x-relay-device"] ?? "", ID.device, "the device id"),
       slot: Number(h["x-relay-slot"]),
+      kind: h["x-relay-kind"] === "PHONE" ? "PHONE" : "LAPTOP",
       token: segment(h["x-relay-token"] ?? "", /^[0-9a-f]{64}$/, "the token"),
       sealed: response.body,
       relayTime: response.relayTime,
@@ -313,23 +348,26 @@ export function createRelayClient(
     },
 
     async createCentre(setupKey, deviceName) {
-      return sendJson<Omit<JoinedDevice, "relayTime">>("POST", "/v1/centres", {
+      const answer = await sendJson<Omit<JoinedDevice, "relayTime" | "kind">>("POST", "/v1/centres", {
         auth: false,
         headers: { "x-setup-key": setupKey },
-        json: { deviceName },
+        json: { deviceName, kind: "LAPTOP" },
       });
+      return { ...answer, kind: "LAPTOP" };
     },
 
-    async createTicket(ticketId, sealed, ttlSec) {
+    async createTicket(ticketId, sealed, ttlSec, kind = "LAPTOP") {
       const id = segment(ticketId, ID.ticket, "the ticket id");
-      return sendJson<{ expiresAt: number }>("POST", `${centre()}/tickets/${id}?ttl=${wholeNumber(ttlSec, "ttl")}`, {
-        body: sealed,
-      });
+      return sendJson<{ expiresAt: number }>(
+        "POST",
+        `${centre()}/tickets/${id}?ttl=${wholeNumber(ttlSec, "ttl")}&kind=${kind === "PHONE" ? "PHONE" : "LAPTOP"}`,
+        { body: sealed },
+      );
     },
 
-    async redeemTicket(ticketId, deviceName) {
+    async redeemTicket(ticketId, deviceName, kind = "LAPTOP") {
       const id = segment(ticketId, ID.ticket, "the ticket id");
-      return joined(await send("POST", `/v1/tickets/${id}/redeem`, { auth: false, json: { deviceName } }));
+      return joined(await send("POST", `/v1/tickets/${id}/redeem`, { auth: false, json: { deviceName, kind } }));
     },
 
     async putEnvelope({ seq, keyId, kind, body }) {

@@ -21,9 +21,17 @@ beforeEach(() => {
 async function call(
   method: string,
   path: string,
-  options: { token?: string; headers?: Record<string, string>; body?: Uint8Array | string } = {},
+  options: {
+    token?: string;
+    headers?: Record<string, string>;
+    body?: Uint8Array | string;
+    /** The sync protocol the request says it speaks: 2 unless a test says otherwise (null: no header). */
+    protocol?: string | null;
+  } = {},
 ) {
   const headers: Record<string, string> = { ...options.headers };
+  const protocol = options.protocol === undefined ? "2" : options.protocol;
+  if (protocol !== null) headers["x-inmaa-protocol"] = protocol;
   if (options.token) headers.authorization = `Bearer ${options.token}`;
   return worker.fetch(new Request(ORIGIN + path, { method, headers, body: options.body as BodyInit | undefined }), env);
 }
@@ -42,6 +50,8 @@ interface Device {
   token: string;
 }
 
+type Kind = "LAPTOP" | "PHONE";
+
 async function createCentre(name = "director"): Promise<Device> {
   const response = await call("POST", "/v1/centres", {
     headers: { "x-setup-key": "test-setup-key" },
@@ -51,20 +61,22 @@ async function createCentre(name = "director"): Promise<Device> {
   return (await response.json()) as Device;
 }
 
-async function fileTicket(device: Device, ticketId: string, ttl = 1800) {
-  return call("POST", `/v1/centres/${device.centreId}/tickets/${ticketId}?ttl=${ttl}`, {
+async function fileTicket(device: Device, ticketId: string, ttl = 1800, kind?: Kind) {
+  return call("POST", `/v1/centres/${device.centreId}/tickets/${ticketId}?ttl=${ttl}${kind ? `&kind=${kind}` : ""}`, {
     token: device.token,
     body: bytesOf(64, 7),
   });
 }
 
-async function redeem(ticketId: string, name = "assistant") {
-  return call("POST", `/v1/tickets/${ticketId}/redeem`, { body: JSON.stringify({ deviceName: name }) });
+async function redeem(ticketId: string, name = "assistant", kind?: Kind) {
+  return call("POST", `/v1/tickets/${ticketId}/redeem`, {
+    body: JSON.stringify(kind ? { deviceName: name, kind } : { deviceName: name }),
+  });
 }
 
-async function pair(first: Device, ticketId = hex(32, "b")): Promise<Device> {
-  expect((await fileTicket(first, ticketId)).status).toBe(201);
-  const response = await redeem(ticketId);
+async function pair(first: Device, ticketId = hex(32, "b"), kind?: Kind): Promise<Device> {
+  expect((await fileTicket(first, ticketId, 1800, kind)).status).toBe(201);
+  const response = await redeem(ticketId, kind === "PHONE" ? "phone" : "assistant", kind);
   expect(response.status).toBe(200);
   return {
     centreId: response.headers.get("x-relay-centre")!,
@@ -112,6 +124,29 @@ describe("the mailbox's time", () => {
     expect(refused.status).toBe(404);
     expect(refused.headers.get("x-relay-time")).toBe(String(clock));
     expect((await call("GET", "/elsewhere")).status).toBe(404);
+  });
+});
+
+describe("the sync protocol", () => {
+  it("refuses any request that does not say protocol 2, whatever it asks, with the mailbox's time", async () => {
+    for (const protocol of [null, "1", "x", ""]) {
+      const response = await call("GET", "/v1/time", { protocol });
+      expect([response.status, errorOf(response)]).toEqual([426, "UPDATE_REQUIRED"]);
+      expect(response.headers.get("x-relay-time")).toBe(String(clock));
+    }
+    const create = await call("POST", "/v1/centres", {
+      protocol: "1",
+      headers: { "x-setup-key": "test-setup-key" },
+      body: JSON.stringify({ deviceName: "director" }),
+    });
+    expect([create.status, errorOf(create)]).toEqual([426, "UPDATE_REQUIRED"]);
+    const director = await createCentre();
+    const old = await call("GET", `/v1/centres/${director.centreId}/devices`, {
+      token: director.token,
+      protocol: null,
+    });
+    expect([old.status, errorOf(old)]).toEqual([426, "UPDATE_REQUIRED"]);
+    expect((await call("GET", "/v1/time", { protocol: "3" })).status).toBe(200);
   });
 });
 
@@ -203,8 +238,22 @@ describe("devices and tokens", () => {
     ).json()) as { devices: Record<string, unknown>[]; keyId: string | null };
     expect(body.keyId).toBeNull();
     expect(body.devices).toEqual([
-      expect.objectContaining({ id: director.deviceId, name: "director", slot: 0, lastSeq: 2, ackedUpTo: 0 }),
-      expect.objectContaining({ id: assistant.deviceId, name: "assistant", slot: 1, lastSeq: 0, ackedUpTo: 2 }),
+      expect.objectContaining({
+        id: director.deviceId,
+        name: "director",
+        slot: 0,
+        kind: "LAPTOP",
+        lastSeq: 2,
+        ackedUpTo: 0,
+      }),
+      expect.objectContaining({
+        id: assistant.deviceId,
+        name: "assistant",
+        slot: 1,
+        kind: "LAPTOP",
+        lastSeq: 0,
+        ackedUpTo: 2,
+      }),
     ]);
     expect(body.devices[0]).not.toHaveProperty("tokenHash");
   });
@@ -303,6 +352,95 @@ describe("pairing tickets", () => {
     expect((await redeem("nothex")).status).toBe(400);
     await fileTicket(director, hex(32, "1"));
     expect(errorOf(await fileTicket(director, hex(32, "1")))).toBe("TICKET_EXISTS");
+  });
+});
+
+describe("the director's phone", () => {
+  it("joins on a phone's ticket in slot 2, beside two laptops", async () => {
+    const director = await createCentre();
+    await pair(director, hex(32, "1"));
+    expect((await fileTicket(director, hex(32, "2"), 1800, "PHONE")).status).toBe(201);
+    const response = await redeem(hex(32, "2"), "phone", "PHONE");
+    expect(response.status).toBe(200);
+    expect(response.headers.get("x-relay-slot")).toBe("2");
+    expect(response.headers.get("x-relay-kind")).toBe("PHONE");
+    const { devices } = (await (
+      await call("GET", `/v1/centres/${director.centreId}/devices`, { token: director.token })
+    ).json()) as { devices: { slot: number; kind: string; removedAt: number | null }[] };
+    expect(devices.map((d) => [d.slot, d.kind, d.removedAt])).toEqual([
+      [0, "LAPTOP", null],
+      [1, "LAPTOP", null],
+      [2, "PHONE", null],
+    ]);
+  });
+
+  it("refuses a phone on a laptop's ticket and a laptop on the phone's, leaving the ticket unspent", async () => {
+    const director = await createCentre();
+    await fileTicket(director, hex(32, "1"), 1800, "LAPTOP");
+    await fileTicket(director, hex(32, "2"), 1800, "PHONE");
+    const phoneOnLaptop = await redeem(hex(32, "1"), "phone", "PHONE");
+    expect([phoneOnLaptop.status, errorOf(phoneOnLaptop)]).toEqual([409, "TICKET_FOR_LAPTOP"]);
+    const laptopOnPhone = await redeem(hex(32, "2"), "assistant", "LAPTOP");
+    expect([laptopOnPhone.status, errorOf(laptopOnPhone)]).toEqual([409, "TICKET_FOR_PHONE"]);
+    // A redeem without a kind is a laptop's (1.1.0's body shape).
+    expect(errorOf(await redeem(hex(32, "2"), "assistant"))).toBe("TICKET_FOR_PHONE");
+    // Both tickets still serve the device they were made for.
+    expect((await redeem(hex(32, "1"), "assistant", "LAPTOP")).headers.get("x-relay-slot")).toBe("1");
+    expect((await redeem(hex(32, "2"), "phone", "PHONE")).headers.get("x-relay-slot")).toBe("2");
+  });
+
+  it("accepts one active phone, and a replacement after it is removed", async () => {
+    const director = await createCentre();
+    const phone = await pair(director, hex(32, "1"), "PHONE");
+    expect(phone.slot).toBe(2);
+    const second = await fileTicket(director, hex(32, "2"), 1800, "PHONE");
+    expect([second.status, errorOf(second)]).toEqual([409, "PHONE_TAKEN"]);
+    // A laptop's ticket is still filed: the centre has one laptop.
+    expect((await fileTicket(director, hex(32, "3"), 1800, "LAPTOP")).status).toBe(201);
+    await call("DELETE", `/v1/centres/${director.centreId}/devices/${phone.deviceId}`, { token: director.token });
+    const replacement = await pair(director, hex(32, "4"), "PHONE");
+    expect(replacement.slot).toBe(2);
+    const revoked = await call("GET", `/v1/centres/${director.centreId}/devices`, { token: phone.token });
+    expect(revoked.status).toBe(410);
+  });
+
+  it("refuses a phone's join when the phone's slot was taken meanwhile, and gives the ticket back", async () => {
+    const director = await createCentre();
+    await fileTicket(director, hex(32, "1"), 1800, "PHONE");
+    await fileTicket(director, hex(32, "2"), 1800, "PHONE");
+    expect((await redeem(hex(32, "1"), "phone", "PHONE")).status).toBe(200);
+    const late = await redeem(hex(32, "2"), "phone", "PHONE");
+    expect([late.status, errorOf(late)]).toEqual([409, "PHONE_TAKEN"]);
+    const ticket = env.DIRECTORY.objects
+      .get("directory")!
+      .sql.exec(`SELECT usedAt FROM ticket WHERE id = ?`, hex(32, "2"));
+    expect(ticket.toArray()[0].usedAt).toBeNull();
+  });
+
+  it("never starts a centre, and never puts the full copy", async () => {
+    const create = await call("POST", "/v1/centres", {
+      headers: { "x-setup-key": "test-setup-key" },
+      body: JSON.stringify({ deviceName: "phone", kind: "PHONE" }),
+    });
+    expect([create.status, errorOf(create)]).toEqual([409, "PHONE_CANNOT_CREATE"]);
+    const unknownKind = await call("POST", "/v1/centres", {
+      headers: { "x-setup-key": "test-setup-key" },
+      body: JSON.stringify({ deviceName: "tablet", kind: "TABLET" }),
+    });
+    expect(errorOf(unknownKind)).toBe("BAD_REQUEST");
+    const director = await createCentre();
+    const phone = await pair(director, hex(32, "1"), "PHONE");
+    const blobId = hex(64, "c");
+    await call("PUT", `/v1/centres/${phone.centreId}/parts/${blobId}/0?kind=copy`, {
+      token: phone.token,
+      body: bytesOf(50, 9),
+    });
+    const copy = await call("POST", `/v1/centres/${phone.centreId}/full-copies`, {
+      token: phone.token,
+      body: JSON.stringify({ blobId, parts: 1, bytes: 50, keyId: "k1", covers: 0 }),
+    });
+    expect([copy.status, errorOf(copy)]).toEqual([403, "PHONE_NO_COPY"]);
+    expect(errorOf(await fileTicket(director, hex(32, "2"), 1800, "TABLET" as Kind))).toBe("BAD_REQUEST");
   });
 });
 
@@ -429,6 +567,27 @@ describe("collection", () => {
     await ack(assistant, 4);
     // Envelope 4 is acknowledged by both and covered, but stored less than 90 days before... it was not: all are old.
     expect((await list(director, 2)).envelopes).toEqual([]);
+  });
+
+  it("waits for the phone's acknowledgement too, and for a removed phone no longer", async () => {
+    const director = await createCentre();
+    const assistant = await pair(director, hex(32, "1"));
+    const phone = await pair(director, hex(32, "2"), "PHONE");
+    await put(director, 1, bytesOf(10));
+    await put(assistant, 1, bytesOf(10, 2));
+    await fullCopy(director, 2);
+    clock += KEEP_MS + GC_EVERY_MS;
+    for (const device of [director, assistant]) {
+      await call("POST", `/v1/centres/${device.centreId}/ack?upTo=2`, { token: device.token });
+    }
+    expect((await list(director)).envelopes).toHaveLength(2); // the phone has not applied them
+    clock += GC_EVERY_MS;
+    await call("POST", `/v1/centres/${phone.centreId}/ack?upTo=1`, { token: phone.token });
+    expect((await list(director)).envelopes.map((e) => e.head.mseq)).toEqual([2]);
+    await call("DELETE", `/v1/centres/${director.centreId}/devices/${phone.deviceId}`, { token: director.token });
+    clock += GC_EVERY_MS;
+    await call("POST", `/v1/centres/${director.centreId}/ack?upTo=2`, { token: director.token });
+    expect((await list(director)).envelopes).toHaveLength(0);
   });
 
   it("keeps envelopes younger than 90 days, and waits for a removed device no longer", async () => {

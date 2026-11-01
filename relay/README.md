@@ -1,12 +1,18 @@
 # The centre's mailbox (Cloudflare Worker)
 
-The two laptops of the centre exchange their changes through this small program, which runs on Cloudflare's free
-plan, on the developer's own Cloudflare account. It stores sealed envelopes and file parts it cannot open (the key
-never leaves the laptops) and hands them back. Why it was chosen, and what it keeps and for how long:
-`docs/sync/DECISION.md`, sections 1, 2 and 6.
+The centre's devices (the director's laptop, the assistant's laptop and the director's phone) exchange their
+changes through this small program, which runs on Cloudflare's free plan, on the developer's own Cloudflare account.
+It stores sealed envelopes and file parts it cannot open (the key never leaves the devices) and hands them back. It
+accepts at most two active laptops and one active phone per centre. Why it was chosen, and what it keeps and for how
+long: `docs/sync/DECISION.md`, sections 1, 2 and 6, and `docs/phone/DECISION.md`, section 2.
+
+This mailbox speaks **sync protocol 2** (version 1.2.0 of the program, the first with the phone). Every request must
+carry the header `x-inmaa-protocol: 2`; anything else is answered `426` with `x-relay-error: UPDATE_REQUIRED`, and
+the program then shows «حدّث البرنامج على هذا الجهاز». So install 1.2.0 on both laptops before the phone joins.
 
 You do this once. It takes about twenty minutes. You need a computer with internet, Node.js 20 or later
-(`node --version` to check) and this repository. No payment card is needed.
+(`node --version` to check), `curl` (Windows 10 and later have `curl.exe`) and this repository, at version 1.2.0 or
+later. No payment card is needed.
 
 Nothing you create here goes into the repository: not the address, not the setup key, not your account id.
 
@@ -89,16 +95,24 @@ It lists `SETUP_KEY` (the name only).
 ## 6. Check the mailbox answers
 
 ```sh
-curl -i https://inmaa-relay.<your name>.workers.dev/v1/time
+curl -i -H "x-inmaa-protocol: 2" https://inmaa-relay.<your name>.workers.dev/v1/time
 ```
 
 On Windows PowerShell, type `curl.exe` instead of `curl`. The answer must start with `HTTP/1.1 200` (or
 `HTTP/2 200`), carry a line `x-relay-time: …`, and end with `{"now":…}` (the mailbox's time in milliseconds).
 
+That an older program is refused (the same request without the header):
+
+```sh
+curl -i https://inmaa-relay.<your name>.workers.dev/v1/time
+```
+
+The answer must be `426` with `x-relay-error: UPDATE_REQUIRED`.
+
 And that the setup key is checked (this creates nothing):
 
 ```sh
-curl -i -X POST -H "x-setup-key: wrong" -d '{"deviceName":"test"}' https://inmaa-relay.<your name>.workers.dev/v1/centres
+curl -i -X POST -H "x-inmaa-protocol: 2" -H "x-setup-key: wrong" -d '{"deviceName":"test"}' https://inmaa-relay.<your name>.workers.dev/v1/centres
 ```
 
 The answer must be `403` with `x-relay-error: SETUP_KEY`. (In PowerShell, write the body as
@@ -109,11 +123,13 @@ The answer must be `403` with `x-relay-error: SETUP_KEY`. (In PowerShell, write 
 - the **mailbox address** (step 4), and
 - the **setup key** (step 5).
 
-Give them on paper or in person, not by e-mail or chat. She types them once, in the program, in Settings ›
-المزامنة, on her own laptop. The assistant's laptop never needs the setup key: it joins with the pairing code.
+Give them on paper or in person, not by e-mail or chat. The director types them once, in the program, in Settings ›
+المزامنة, on the director's laptop. The assistant's laptop and the director's phone never need the setup key: each
+joins with a pairing code made on a laptop («إضافة الحاسوب الثاني», «إضافة هاتف المدير»), and types only the
+mailbox address and that code.
 
 Neither goes into the repository, a commit, an issue or a message. If the setup key leaks, set a new one with step
-5 again: the laptops already set up keep working (they use their own device tokens, not the setup key).
+5 again: the devices already in the centre keep working (they use their own device tokens, not the setup key).
 
 ## Later
 
@@ -124,12 +140,15 @@ Neither goes into the repository, a commit, an issue or a message. If the setup 
   against 100,000), and **Storage & Databases** › **Durable Objects** (stored bytes, against 5 GB). The program
   shows the same: its sync page warns from 80% of storage, and refuses to send at 4.5 GB (`FULL_AT_BYTES` in
   `wrangler.jsonc`).
-- **When a daily allowance is spent**, Cloudflare refuses requests until 00:00 UTC (01:00 in Algeria). The laptops
-  keep working and send what waited afterwards. Nothing to do.
+- **When a daily allowance is spent**, Cloudflare refuses requests until 00:00 UTC (01:00 in Algeria). The devices
+  keep working and send what waited afterwards. Nothing to do. Three devices polling every 15 seconds while open use
+  about 18,000 requests a day at most (the phone only while its app is open), far below the 100,000.
+- **A new sync protocol** (a future version that changes the exchange): deploy the new mailbox only once every device
+  has the new program, or the devices not yet updated show «حدّث البرنامج على هذا الجهاز» and wait.
 - **See what the mailbox is doing**: `npx wrangler@4 tail` shows requests as they arrive (paths and statuses; the
   mailbox never logs a body). Ctrl+C stops it.
 - **Remove the mailbox** (only if the centre stops syncing): `npx wrangler@4 delete`. Every envelope and file part
-  on it is deleted. The laptops keep their own data; they show that the mailbox cannot be reached.
+  on it is deleted. The devices keep their own data; they show that the mailbox cannot be reached.
 - **Sign out of wrangler** on a shared computer: `npx wrangler@4 logout`.
 
 ## For the developer: trying it without an account
@@ -140,7 +159,7 @@ repository's root (also part of `npm test`). To run it locally in Cloudflare's o
 ```sh
 printf 'SETUP_KEY=local-test-key\n' > .dev.vars
 npx wrangler@4 dev --local --port 8787
-curl -i http://127.0.0.1:8787/v1/time
+curl -i -H "x-inmaa-protocol: 2" http://127.0.0.1:8787/v1/time
 ```
 
 Ctrl+C stops it. `.dev.vars` and `.wrangler/` are ignored by git (`relay/.gitignore`); delete `.dev.vars` when done.
@@ -150,10 +169,10 @@ Ctrl+C stops it. `.dev.vars` and `.wrangler/` are ignored by git (`relay/.gitign
 | File               | What it is                                                                   |
 | ------------------ | ---------------------------------------------------------------------------- |
 | `wrangler.jsonc`   | the Worker's settings: its name, its three Durable Object classes, the limit |
-| `src/index.ts`     | the Worker: routes `/v1/…`, checks the setup key, joins with a ticket        |
+| `src/index.ts`     | the Worker: routes `/v1/…`, the protocol, the setup key, joins with a ticket |
 | `src/mailbox.ts`   | one Durable Object per centre: devices, envelopes, acknowledgements, copies  |
 | `src/parts.ts`     | file parts, in eight Durable Objects per centre                              |
-| `src/directory.ts` | the pairing tickets                                                          |
+| `src/directory.ts` | the pairing tickets, each for a laptop or the phone                          |
 | `src/frames.ts`    | the binary format of a page of envelopes                                     |
 | `src/cf.ts`        | the few Cloudflare types the code uses                                       |
 | `test/fake-env.ts` | the Durable Objects on `node:sqlite`, for the tests and the program's tests  |

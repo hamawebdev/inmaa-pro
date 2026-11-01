@@ -9,16 +9,39 @@ import { isCapturing, syncDeviceIdOf } from "@/lib/sync/session";
  * a cycle through the log: this file reads, it never writes.
  */
 
-/** The refusal on the laptop that does not hold the books. */
-export const BOOKS_ELSEWHERE = "The books are on the other laptop. Ask for them, and try again when they have arrived.";
+/**
+ * The refusals on a device that does not hold the books, each naming where they are
+ * (docs/phone/BUILD.md, sync's brief: «الدفاتر عند هاتف المدير»): by the holder's slot.
+ */
+export const BOOKS_ON_DIRECTORS_LAPTOP =
+  "The books are on the director's laptop. Ask for them, and try again when they have arrived.";
+export const BOOKS_ON_SECOND_LAPTOP =
+  "The books are on the second laptop. Ask for them, and try again when they have arrived.";
+export const BOOKS_ON_DIRECTORS_PHONE =
+  "The books are on the director's phone. Ask for them, and try again when they have arrived.";
+/** When the holder is not known here (its row has not arrived yet). */
+export const BOOKS_ON_ANOTHER_DEVICE =
+  "The books are on another device. Ask for them, and try again when they have arrived.";
 
-/** The refusal on a laptop that holds the books but has not yet received every document issued before the hand-over. */
+/** Where the books are, as the refusal says it, by the holder's slot. */
+export function booksElsewhere(holderSlot: number | null): string {
+  if (holderSlot === 0) return BOOKS_ON_DIRECTORS_LAPTOP;
+  if (holderSlot === 1) return BOOKS_ON_SECOND_LAPTOP;
+  if (holderSlot === 2) return BOOKS_ON_DIRECTORS_PHONE;
+  return BOOKS_ON_ANOTHER_DEVICE;
+}
+
+/** Any of the four refusals of a device without the books (for `expect(…).rejects.toThrow(BOOKS_ELSEWHERE)`). */
+export const BOOKS_ELSEWHERE =
+  /^The books are on (the director's laptop|the second laptop|the director's phone|another device)\. Ask for them, and try again when they have arrived\.$/;
+
+/** The refusal on a device that holds the books but has not yet received every document issued before the hand-over. */
 export const BOOKS_ARRIVING =
-  "The books are on their way to this laptop: the last invoices and receipts have not all arrived yet. Try again in a minute.";
+  "The books are on their way to this device: the last invoices and receipts have not all arrived yet. Try again in a minute.";
 
-/** The refusal on a restored laptop that has not yet taken back from the mailbox what it did after its backup. */
+/** The refusal on a restored device that has not yet taken back from the mailbox what it did after its backup. */
 export const CATCHING_UP =
-  "This laptop is taking back from the mailbox what it did after the backup. Try again when it has caught up.";
+  "This device is taking back from the mailbox what it did after the backup. Try again when it has caught up.";
 
 /**
  * Refuses while this laptop catches up after a restore (DECISION section 7,
@@ -31,9 +54,9 @@ export async function requireCaughtUp(ex: Executor): Promise<void> {
   if (row) throw new ServiceError(CATCHING_UP);
 }
 
-/** The refusal on a laptop taken out of sync while the other laptop held the books (coordinator's ruling). */
+/** The refusal on a device taken out of sync while another device held the books (coordinator's ruling). */
 export const BOOKS_LEFT_BEHIND =
-  "This laptop was taken out of sync while the other laptop held the books: invoices, receipts and payments are issued there only.";
+  "This device was taken out of sync while another device held the books: invoices, receipts and payments are issued there only.";
 
 /**
  * The laptop this database was before the manager took it out of sync
@@ -124,7 +147,12 @@ export async function requireBooks(ex: Executor, ctx: ServiceContext): Promise<v
   if (device === null) throw new Error("ledger: sync is set up but this context has no device");
   await requireCaughtUp(ex);
   const books = await readBooksRow(ex);
-  if (!books || books.holderDeviceId !== device) throw new ServiceError(BOOKS_ELSEWHERE);
+  if (!books || books.holderDeviceId !== device) {
+    const holder = books
+      ? await ex.selectFrom("SyncDevice").select("slot").where("id", "=", books.holderDeviceId).executeTakeFirst()
+      : undefined;
+    throw new ServiceError(booksElsewhere(holder?.slot ?? null));
+  }
 
   // The hand-over is applied after every document it covers; this only guards a database that skipped some.
   for (const [key, text] of [

@@ -80,6 +80,18 @@ export const LATER_MIGRATIONS = [
     ],
     capture: true,
   },
+  // The director's phone, a third device (docs/phone/DECISION.md section 2, 2026-10-31): SyncDevice
+  // rebuilt with slot 2 and its kind (0005's CHECK allowed slots 0 and 1, and a check cannot be
+  // altered), and the two tables that reference it rebuilt with it; their capture triggers written again.
+  {
+    file: "0006_phone.sql",
+    models: [],
+    rebuilds: [
+      { model: "SyncDevice", added: ["kind"] },
+      { model: "SyncBooks", added: [] },
+      { model: "NumberBlock", added: [] },
+    ],
+  },
 ];
 
 /** The migration that created the capture triggers: a later one that adds columns to a shared table writes them again. */
@@ -620,6 +632,15 @@ export function rebuildSql(rebuilds, models = parseSchema()) {
       .map((c) => `"${c.name}"`)
       .join(", ");
     out.push(created, `INSERT INTO "${temp(name)}" (${kept})\n  SELECT ${kept} FROM "${name}";`);
+  }
+  // A table that references itself (SyncDevice.replacesDeviceId) cannot be dropped while a row points at another:
+  // RESTRICT is enforced row by row, even inside DROP TABLE's implicit delete. The rows are already copied, so the
+  // old table's own references are cleared first, its capture of updates dropped before (it goes with the table).
+  for (const name of names) {
+    const own = byName.get(name).rels.filter((rel) => rel.target === name);
+    if (own.length === 0) continue;
+    out.push(`DROP TRIGGER IF EXISTS "${name}_sync_update";`);
+    for (const rel of own) out.push(`UPDATE "${name}" SET "${rel.col}" = NULL WHERE "${rel.col}" IS NOT NULL;`);
   }
   for (const name of [...names].reverse()) out.push(`DROP TABLE "${name}";`);
   for (const name of names) out.push(`ALTER TABLE "${temp(name)}" RENAME TO "${name}";`);

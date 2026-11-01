@@ -10,12 +10,18 @@
 /** A value as SQLite stores it. */
 export type SqlValue = string | number | null;
 
-/** Which laptop this is: the director's (slot 0, the first one set up) or the assistant's (slot 1). */
-export type DeviceSlot = 0 | 1;
+/**
+ * Which device this is: the director's laptop (slot 0, the first one set up), the assistant's laptop (slot 1), or
+ * the director's phone (slot 2, docs/phone/DECISION.md section 2).
+ */
+export type DeviceSlot = 0 | 1 | 2;
+
+/** A laptop (slot 0 or 1) or the director's phone (slot 2). */
+export type DeviceKind = "LAPTOP" | "PHONE";
 
 /**
  * Where the exchange stands, as the bar shows it. One code at a time, the most
- * serious first: REVOKED > REJOIN > CATCHING_UP > FULL > LIMIT > OFFLINE >
+ * serious first: REVOKED > OUTDATED > REJOIN > CATCHING_UP > FULL > LIMIT > OFFLINE >
  * SENDING > SYNCED.
  *
  * - `OFF`: sync is not set up on this laptop (the program behaves as 1.0.0).
@@ -25,6 +31,7 @@ export type DeviceSlot = 0 | 1;
  * - `LIMIT`: the free plan's daily limit is reached; requests resume at `limitRetryAt` (00:00 UTC, 01:00 in Algeria).
  * - `FULL`: the mailbox's storage is full (danger): the developer must free room.
  * - `REVOKED`: this laptop was removed from the centre on the other laptop: it no longer exchanges anything.
+ * - `OUTDATED`: the mailbox refuses this program's sync protocol (426 UPDATE_REQUIRED): «حدّث البرنامج على هذا الجهاز».
  * - `CATCHING_UP`: after a restore, or after weeks away, this laptop takes back what the mailbox holds before anyone works (case 7).
  * - `REJOIN`: this database is from before sync was set up, or the mailbox no longer holds what it needs: it must join again from the full copy (case 8).
  */
@@ -36,6 +43,7 @@ export type SyncExchange =
   | "LIMIT"
   | "FULL"
   | "REVOKED"
+  | "OUTDATED"
   | "CATCHING_UP"
   | "REJOIN";
 
@@ -45,6 +53,7 @@ export type SyncExchange =
  *
  * - `LEGAL_INCIDENT` (danger): a lost laptop came back with invoices or receipts issued after its books were taken.
  * - `REVOKED` (danger): see `SyncExchange`.
+ * - `OUTDATED` (danger): see `SyncExchange`; install the latest version on this device.
  * - `FULL` (danger): the mailbox is full.
  * - `REJOIN` (danger): join again from the full copy.
  * - `CATCH_UP_OFFLINE` (danger): a restored laptop waits for the internet before anyone works; the manager may take it out of sync instead.
@@ -58,6 +67,7 @@ export type SyncExchange =
 export type SyncProblem =
   | "LEGAL_INCIDENT"
   | "REVOKED"
+  | "OUTDATED"
   | "FULL"
   | "REJOIN"
   | "CATCH_UP_OFFLINE"
@@ -74,10 +84,15 @@ export interface SyncDeviceView {
   id: string;
   name: string;
   slot: DeviceSlot;
+  kind: DeviceKind;
   isThis: boolean;
   joinedAt: string;
-  /** The last time this laptop heard from it through the mailbox (its newest envelope applied here); this laptop's own: its last exchange. */
+  /** The last time this device heard from it through the mailbox (its newest envelope applied here); this device's own: its last exchange. */
   lastExchangeAt: string | null;
+  /** Its last contact with the mailbox, as the mailbox last told this device (null: not known yet). */
+  lastSeenAt: string | null;
+  /** Its envelopes on the mailbox not yet applied here (null: not known yet; always 0 for this device). */
+  waitingFromIt: number | null;
   removedAt: string | null;
   holdsBooks: boolean;
 }
@@ -101,8 +116,8 @@ export interface SyncStatus {
   problem: SyncProblem | null;
   problems: SyncProblem[];
   severity: SyncSeverity;
-  thisDevice: { id: string; name: string; slot: DeviceSlot } | null;
-  /** Both laptops (removed ones too, with `removedAt`), this one first. */
+  thisDevice: { id: string; name: string; slot: DeviceSlot; kind: DeviceKind } | null;
+  /** Every device of the centre, two laptops and the phone at most active (removed ones too, with `removedAt`), this one first, then by slot. */
   devices: SyncDeviceView[];
   /** The last successful exchange with the mailbox. */
   lastExchangeAt: string | null;
@@ -205,6 +220,8 @@ export interface SyncHeldRow {
 // ─── Inputs and answers of the services ──────────────────────────────────────
 
 export interface SetUpSyncInput {
+  /** The device setting up: a phone never does (docs/phone/DECISION.md section 3). Default LAPTOP. */
+  kind?: DeviceKind;
   /** The mailbox's address the developer gave: "https://…", no path. */
   origin: string;
   setupKey: string;
@@ -223,16 +240,26 @@ export interface NewAssistantAccount {
 
 export type AddSecondLaptopInput = { accountId: string } | { newAccount: NewAssistantAccount };
 
+/**
+ * «إضافة الحاسوب الثاني» (a laptop, with the assistant's account) or «إضافة هاتف المدير» (the phone: the director
+ * signs in on it with his own manager account, so no account is chosen).
+ */
+export type PairDeviceInput = ({ kind: "LAPTOP" } & AddSecondLaptopInput) | { kind: "PHONE" };
+
 export interface PairingCodeAnswer {
+  /** The kind of device the code is for: the mailbox refuses it to the other kind. */
+  kind: DeviceKind;
   /** 20 characters, Crockford base32, ungrouped: the screen groups them by four. */
   code: string;
   /** The code is refused after this instant (30 minutes) or after one use. */
   expiresAt: string;
-  /** The assistant's account she signs in with on her laptop. */
+  /** The account that signs in on the new device: the assistant's on a laptop, the manager who paired on the phone. */
   accountId: string;
 }
 
 export interface JoinCentreInput {
+  /** What is joining: the phone joins on a phone's code only, a laptop on a laptop's. Default LAPTOP. */
+  kind?: DeviceKind;
   origin: string;
   /** As typed: spaces, dashes and case are ignored. */
   code: string;
@@ -247,13 +274,16 @@ export interface JoinProgress {
   total: number | null;
 }
 
-export interface RemoveLaptopInput {
+export interface RemoveDeviceInput {
   deviceId: string;
   reason: string;
-  /** When the removed laptop held the books: the last numbers seen on paper (DECISION 5). */
+  /** When the removed device held the books: the last numbers seen on paper (DECISION 5). */
   lastInvoice?: number | null;
   lastReceipt?: number | null;
 }
+
+/** 1.1.0's name: removing a laptop is removing a device. */
+export type RemoveLaptopInput = RemoveDeviceInput;
 
 export interface ResolveConflictInput {
   conflictId: string;

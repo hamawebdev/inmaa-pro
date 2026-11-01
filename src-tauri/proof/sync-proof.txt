@@ -3,8 +3,15 @@ ok   a second SyncSession row -> CHECK constraint failed: id
 ok   the SyncSession row deleted -> NO_DELETE:SyncSession
 ok   capturing set to 2 -> CHECK constraint failed: capturing
 ok   an outbox row with an unknown op -> CHECK constraint failed: op
-ok   a third laptop slot -> CHECK constraint failed: slot
+ok   a third laptop slot -> CHECK constraint failed: kind
+ok   a fourth slot -> CHECK constraint failed: slot
+ok   a phone in a laptop's slot -> CHECK constraint failed: kind
+ok   a device of an unknown kind -> CHECK constraint failed: kind
+ok   a laptop's row is a LAPTOP by default
 ok   two active laptops in one slot -> UNIQUE constraint failed: SyncDevice.slot
+ok   the director's phone in slot 2
+ok   a second active phone -> UNIQUE constraint failed: SyncDevice.slot
+ok   the phone turned into a laptop -> CHECK constraint failed: kind
 ok   a laptop removed without a reason -> CHECK constraint failed: removedAt
 ok   a laptop row deleted -> NO_DELETE:SyncDevice
 ok   books under another id -> CHECK constraint failed: id
@@ -61,4 +68,4 @@ ok   the counter moves over the gap
 ok   the counter (this laptop's own) was not copied
 ok   a gap row changed -> APPEND_ONLY:SequenceGap:update
 ok   every row points at something
-63 passed, 0 failed
+70 passed, 0 failed

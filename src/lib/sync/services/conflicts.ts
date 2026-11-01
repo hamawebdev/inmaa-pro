@@ -41,7 +41,7 @@ import type {
 export const CONFLICT_ERRORS = {
   conflictUnknown: "This conflict does not exist or was already settled.",
   heldUnknown: "This held change does not exist or was already settled.",
-  recordGone: "This record was deleted on one of the laptops: its value cannot be put back.",
+  recordGone: "This record was deleted on one of the devices: its value cannot be put back.",
   actionNotAllowed: "This record cannot be settled that way.",
   stillRefused: "The database still refuses this change. Fix the cause first.",
 } as const;

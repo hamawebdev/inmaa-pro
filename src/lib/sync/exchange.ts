@@ -17,6 +17,7 @@ import {
 
 import { applyChange, beginApplying, emptyOutcome, endApplying, foldTransaction, type ApplyOutcome } from "./apply";
 import { hlcInstant } from "./hlc";
+import type { SyncVault } from "./centre";
 import { mailboxFailureOf, type MailboxClient, type MailboxEnvelope } from "./mailbox";
 import {
   decodePayload,
@@ -61,6 +62,11 @@ export interface SyncEnv {
   ring: KeyRing;
   /** The anchor kept outside the database, rewritten after applied rows joined a chain. Null keeps none. */
   anchor: AnchorStore | null;
+  /**
+   * The vault, where a key ring that followed a rotation is saved (rotation.ts). Left out, a new key is used for
+   * this round only.
+   */
+  vault?: SyncVault | null;
 }
 
 /** This laptop sent an envelope the mailbox already holds with other content: it was restored from a backup. */

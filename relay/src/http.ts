@@ -7,6 +7,20 @@ import type { Env } from "./cf";
 export const TIME_HEADER = "x-relay-time";
 export const ERROR_HEADER = "x-relay-error";
 
+/**
+ * The sync protocol every request must say it speaks (docs/phone/BUILD.md 2.3). Version 2 brought the phone: a third
+ * device and number blocks by thirds. A program that sends no version, or an older one, would number by halves beside
+ * a phone numbering by thirds, so the mailbox refuses it (426 UPDATE_REQUIRED) until it is updated.
+ */
+export const PROTOCOL_HEADER = "x-inmaa-protocol";
+export const PROTOCOL = 2;
+
+/** The two kinds of device: at most two active laptops (slots 0 and 1) and one active phone (slot 2) per centre. */
+export const DEVICE_KINDS = ["LAPTOP", "PHONE"] as const;
+export type DeviceKind = (typeof DEVICE_KINDS)[number];
+export const isDeviceKind = (value: unknown): value is DeviceKind =>
+  typeof value === "string" && (DEVICE_KINDS as readonly string[]).includes(value);
+
 /** Statuses with a meaning of their own for the client. */
 export const STATUS = {
   /** The device's token was revoked (a removed laptop): `RelayRevoked`. */
@@ -17,6 +31,8 @@ export const STATUS = {
   conflict: 409,
   /** Too many attempts, or Cloudflare's daily allowance: `RelayLimit` (with Retry-After). */
   limit: 429,
+  /** The program speaks an older sync protocol: `RelayOutdated`. */
+  outdated: 426,
 } as const;
 
 export function now(env: Env): number {

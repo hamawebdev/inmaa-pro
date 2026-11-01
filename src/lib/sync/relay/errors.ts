@@ -1,5 +1,5 @@
 /**
- * What a call to the mailbox can fail with (BUILD 2.4). Every failure is one of six kinds; the sync loop and the
+ * What a call to the mailbox can fail with (BUILD 2.4). Every failure is one of seven kinds; the sync loop and the
  * screens decide on the kind, never on a status code.
  *
  * - `RelayOffline`: no answer, or the service is down (network failure, a timeout, a cut, any 5xx but 507).
@@ -8,9 +8,11 @@
  * - `RelayRevoked`: this laptop was removed from the centre; its token is refused for good.
  * - `RelayFull`: the mailbox is near Cloudflare's 5 GB; nothing more is stored until something is deleted.
  * - `RelayConflict`: an envelope of this number is already stored with other bytes.
+ * - `RelayOutdated`: the mailbox speaks a newer sync protocol than this program (426 UPDATE_REQUIRED,
+ *   docs/phone/BUILD.md 2.3): nothing is exchanged until the program is updated on this device.
  * - `RelayRefused`: anything else the mailbox (or what answers at that address) refuses; `code` says what.
  */
-export type RelayFailureKind = "offline" | "limit" | "revoked" | "full" | "conflict" | "refused";
+export type RelayFailureKind = "offline" | "limit" | "revoked" | "full" | "conflict" | "outdated" | "refused";
 
 export class RelayError extends Error {
   constructor(
@@ -80,10 +82,18 @@ export class RelayConflict extends RelayError {
   }
 }
 
+export class RelayOutdated extends RelayError {
+  constructor(status: number, relayTime: number | null) {
+    super("outdated", "relay: the mailbox needs a newer version of the program", status, "UPDATE_REQUIRED", relayTime);
+    this.name = "RelayOutdated";
+  }
+}
+
 /**
  * Codes the mailbox answers with, for the screens: `SETUP_KEY` (wrong setup key), `TICKET_UNKNOWN`,
  * `TICKET_USED`, `TICKET_EXPIRED` (the code is not, or no longer, valid), `TWO_DEVICES` (the centre has its two
- * laptops), `TOKEN_UNKNOWN`, `CENTRE_UNKNOWN`, `OLD_KEY`, `PARTS_MISSING`, `NOT_FOUND`, `TOO_LARGE`,
+ * laptops), `PHONE_TAKEN` (it has its phone), `TICKET_FOR_LAPTOP` / `TICKET_FOR_PHONE` (the code was made for the
+ * other kind of device), `PHONE_CANNOT_CREATE`, `PHONE_NO_COPY`, `TOKEN_UNKNOWN`, `CENTRE_UNKNOWN`, `OLD_KEY`, `PARTS_MISSING`, `NOT_FOUND`, `TOO_LARGE`,
  * `BAD_REQUEST`; and `NOT_RELAY` when what answered at that address is not a mailbox (a wrong address), and
  * `TRANSPORT` when the laptop's own HTTP command refused the request (no address set, a path not allowed).
  */

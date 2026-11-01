@@ -3464,8 +3464,9 @@ model MaintenanceRecord {
 
 // ═══════════════════════════════════════════════════════════════════════════
 // OWNER: SYNC (9 models)
-// Two laptops, one centre (docs/sync/DECISION.md; DESIGN.md section 20).
-// Added by migration 0005. Six are this laptop's own (@local, never sent):
+// Two laptops and the director's phone, one centre (docs/sync/DECISION.md,
+// docs/phone/DECISION.md; DESIGN.md section 20). Added by migration 0005;
+// 0006 rebuilds SyncDevice (and SyncBooks, NumberBlock, which reference it). Six are this laptop's own (@local, never sent):
 // SyncSession, SyncOutbox, SyncCell, SyncState, SyncHeld, SyncConflict.
 // Three are shared like any business table: SyncDevice (engine writes),
 // SyncBooks and NumberBlock (ledger writes).
@@ -3564,22 +3565,26 @@ model SyncConflict {
   @@index([tbl, rowId])
 }
 
-/// A laptop of the centre: at most two active, slot 0 (the director's, which set sync up) and slot 1 (the one that joined).
-/// A removed laptop keeps its row (removedAt, removedReason); its replacement joins under a new id in the same slot.
-/// @check slot IN (0, 1)
+/// A device of the centre: at most two active laptops, slot 0 (the director's, which set sync up) and slot 1 (the one that
+/// joined), and one active phone, slot 2 (the director's phone, docs/phone/DECISION.md section 2; kind and slot 2 go together).
+/// A removed device keeps its row (removedAt, removedReason); its replacement joins under a new id in the same slot.
+/// Rebuilt by migration 0006 (slot 2 and kind; 0005's check allowed slots 0 and 1 only); existing rows are laptops.
+/// @check slot IN (0, 1, 2)
+/// @check kind IN ('LAPTOP', 'PHONE') AND (slot = 2) = (kind = 'PHONE')
 /// @check removedAt IS NULL OR removedReason IS NOT NULL
 /// @uniqueWhere SyncDevice_active_slot (slot) WHERE removedAt IS NULL
 /// @trigger noDelete
 model SyncDevice {
   id               String    @id
-  name             String    // as the laptop names itself ("حاسوب المديرة")
-  slot             Int       // 0 or 1; the director's laptop takes the even number blocks, the other the odd
+  name             String    // as the device names itself ("حاسوب المديرة", "هاتف المدير")
+  slot             Int       // 0, 1 (laptops) or 2 (the phone); a device out of touch takes the number blocks whose index is its slot modulo 3
   joinedAt         DateTime
   removedAt        DateTime?
   removedReason    String?   // typed by the manager
   replacesDeviceId String?
   createdAt        DateTime
   updatedAt        DateTime
+  kind             String    @default("LAPTOP") // @code SYNC_DEVICE_KIND (LAPTOP, PHONE); added by 0006
 
   replaces SyncDevice? @relation(fields: [replacesDeviceId], references: [id], onDelete: Restrict)
 }

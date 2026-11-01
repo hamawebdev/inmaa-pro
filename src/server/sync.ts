@@ -19,9 +19,10 @@ import {
   leaveCentre,
   mailboxError,
   mayJoin,
+  pairDevice,
   pairSecondLaptop,
   redeemAndDownload,
-  removeOtherLaptop,
+  removeDevice,
   setUpCentre,
   SYNC_ERRORS,
   type CentreEnv,
@@ -37,7 +38,9 @@ import type {
   AddSecondLaptopInput,
   JoinCentreInput,
   JoinProgress,
+  PairDeviceInput,
   PairingCodeAnswer,
+  RemoveDeviceInput,
   RemoveLaptopInput,
   SetUpSyncInput,
   SyncStartupState,
@@ -86,8 +89,10 @@ const nativeVault: SyncVault = {
     return value as SyncVaultData;
   },
   async write(data) {
-    const { centreId, deviceId, token, slot, deviceName, keyRing } = data;
-    unwrap(await commands.syncVaultWrite(JSON.stringify({ centreId, deviceId, token, slot, deviceName, keyRing })));
+    const { centreId, deviceId, token, slot, deviceName, keyRing, kind } = data;
+    unwrap(
+      await commands.syncVaultWrite(JSON.stringify({ centreId, deviceId, token, slot, deviceName, keyRing, kind })),
+    );
   },
   async clear() {
     unwrap(await commands.syncVaultClear());
@@ -211,13 +216,37 @@ async function afterRound(outcome: RoundOutcome): Promise<void> {
   if (outcome.kind === "REJOIN") setStartup({ catchingUp: false, offline: false, rejoin: true, done: 0, total: null });
 }
 
+/**
+ * A round at once when the window comes back to the foreground or the network returns (docs/phone/BUILD.md 2.4):
+ * the phone syncs only while the app is open, so opening it is enough to catch up. The same on a laptop woken from
+ * sleep. Listened to while the loop runs.
+ */
+let stopWaking: (() => void) | null = null;
+
+function listenForWaking(): void {
+  if (stopWaking || typeof window === "undefined") return;
+  const wake = () => {
+    if (typeof document !== "undefined" && document.visibilityState === "hidden") return;
+    void loop.now();
+  };
+  window.addEventListener("online", wake);
+  document.addEventListener("visibilitychange", wake);
+  stopWaking = () => {
+    window.removeEventListener("online", wake);
+    document.removeEventListener("visibilitychange", wake);
+    stopWaking = null;
+  };
+}
+
 /** Starts the sync loop (idempotent; nothing happens when sync is not set up). */
 export function startSync(): void {
   loop.start();
+  listenForWaking();
 }
 
 export function stopSync(): void {
   loop.stop();
+  stopWaking?.();
 }
 
 // ─── What the screens call ───────────────────────────────────────────────────
@@ -251,21 +280,37 @@ export function setUpSyncAction(input: SetUpSyncInput): Promise<ActionResult<{ d
     } catch {
       throw new ServiceError(SYNC_ERRORS.notMailbox);
     }
-    const vault = await setUpCentre(centreEnv(), ctx, { setupKey: input.setupKey, deviceName: input.deviceName });
-    loop.start();
+    const vault = await setUpCentre(centreEnv(), ctx, {
+      setupKey: input.setupKey,
+      deviceName: input.deviceName,
+      kind: input.kind,
+    });
+    startSync();
     return { deviceId: vault.deviceId };
   });
 }
 
+/** «إضافة الحاسوب الثاني» (1.1.0's action; the same as `pairDeviceAction({ kind: "LAPTOP", … })`). */
 export function addSecondLaptopAction(input: AddSecondLaptopInput): Promise<ActionResult<PairingCodeAnswer>> {
   return asAction(() => pairSecondLaptop(centreEnv(), sessionContext(), input));
 }
 
-export function removeLaptopAction(input: RemoveLaptopInput): Promise<ActionResult<{ removed: string }>> {
+/** «إضافة الحاسوب الثاني» or «إضافة هاتف المدير»: the code for the new device (docs/phone/BUILD.md 2.2). */
+export function pairDeviceAction(input: PairDeviceInput): Promise<ActionResult<PairingCodeAnswer>> {
+  return asAction(() => pairDevice(centreEnv(), sessionContext(), input));
+}
+
+/** «إزالة جهاز»: another device of the centre (a laptop or the phone), with a reason (case 9). */
+export function removeDeviceAction(input: RemoveDeviceInput): Promise<ActionResult<{ removed: string }>> {
   return asAction(async () => {
-    await removeOtherLaptop(centreEnv(), sessionContext(), input);
+    await removeDevice(centreEnv(), sessionContext(), input);
     return { removed: input.deviceId };
   });
+}
+
+/** 1.1.0's name for `removeDeviceAction`. */
+export function removeLaptopAction(input: RemoveLaptopInput): Promise<ActionResult<{ removed: string }>> {
+  return removeDeviceAction(input);
 }
 
 export function leaveSyncAction(input: { reason: string }): Promise<ActionResult<{ left: true }>> {
@@ -280,7 +325,7 @@ export function leaveSyncAction(input: { reason: string }): Promise<ActionResult
 /** «مزامنة الآن»: a round now; any signed-in user. Answers the status after it. */
 export function syncNowAction(): Promise<ActionResult<SyncStatus>> {
   return asAction(async () => {
-    loop.start();
+    startSync();
     await loop.now();
     return syncStatusQuery();
   });

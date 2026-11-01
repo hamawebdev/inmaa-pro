@@ -2,7 +2,7 @@ import type { Kysely } from "kysely";
 
 import type { DB } from "@/lib/db/schema";
 import type { Executor, ServiceContext } from "@/lib/service/context";
-import { afterApplyingRound, booksState } from "@/lib/sync/books";
+import { afterApplyingRound } from "@/lib/sync/books";
 
 import { applyChange, beginApplying, emptyOutcome, endApplying, heldIdOf, type ApplyOutcome } from "./apply";
 import { makeFullCopy } from "./centre";
@@ -19,6 +19,7 @@ import {
 } from "./exchange";
 import { fetchFiles, sendFiles, type FilesEnv } from "./files";
 import type { RemoteChange } from "./payload";
+import { withRotations } from "./rotation";
 import { stampTransaction, unstampTransaction } from "./session";
 import { readExchange, readReceive, readState, writeState } from "./state";
 
@@ -50,11 +51,55 @@ export interface RoundResult {
 /** How often the books' holder puts a fresh full copy on the mailbox. */
 export const FULL_COPY_EVERY_MS = 7 * 24 * 3_600_000;
 
+/** How often the devices are listed from the mailbox for the status (each listing is a request of the free plan). */
+export const DEVICES_EVERY_MS = 5 * 60_000;
+
+/**
+ * Whether this device puts the weekly full copy (docs/phone/DECISION.md section 6): the laptop holding the books;
+ * while the phone holds them, the director's laptop (slot 0, or the other laptop when slot 0 is gone). Never the
+ * phone.
+ */
+export async function makesFullCopy(env: Pick<FilesEnv, "db" | "deviceId">): Promise<boolean> {
+  const devices = await env.db
+    .selectFrom("SyncDevice")
+    .select(["id", "slot", "kind"])
+    .where("removedAt", "is", null)
+    .orderBy("slot")
+    .execute();
+  const me = devices.find((device) => device.id === env.deviceId);
+  if (!me || me.kind === "PHONE") return false;
+  const books = await env.db
+    .selectFrom("SyncBooks")
+    .select("holderDeviceId")
+    .where("id", "=", "books")
+    .executeTakeFirst();
+  const holder = devices.find((device) => device.id === books?.holderDeviceId);
+  if (holder && holder.kind !== "PHONE") return holder.id === me.id;
+  // The phone holds the books (or their holder is gone): the first laptop by slot.
+  return devices.find((device) => device.kind !== "PHONE")?.id === me.id;
+}
+
 async function fullCopyDue(env: FilesEnv): Promise<boolean> {
-  const books = await booksState(env.db, syncContext(env));
-  if (!books?.heldHere) return false;
+  if (!(await makesFullCopy(env))) return false;
   const copy = await readState(env.db, "copy");
   return !copy || env.clock.now().getTime() - Date.parse(copy.at) >= FULL_COPY_EVERY_MS;
+}
+
+/** The devices as the mailbox lists them, every few minutes: each one's last contact and last envelope. */
+async function refreshMailboxDevices(env: FilesEnv): Promise<number | null> {
+  const last = await readState(env.db, "mailboxDevices");
+  const nowMs = env.clock.now().getTime();
+  if (last && nowMs - Date.parse(last.at) < DEVICES_EVERY_MS) return null;
+  const listed = await env.mailbox.devices();
+  await writeState(env.db, "mailboxDevices", {
+    at: new Date(nowMs).toISOString(),
+    devices: listed.devices.map((device) => ({
+      id: device.id,
+      lastSeenAt: device.lastSeenAt === null ? null : new Date(device.lastSeenAt).toISOString(),
+      lastSeq: device.lastSeq,
+    })),
+  });
+  return listed.relayTime;
 }
 
 export class NeedsFullCopy extends Error {
@@ -108,7 +153,9 @@ export async function runRound(env: FilesEnv, options: RoundOptions = {}): Promi
       });
     }
     try {
-      const caught = await receiveEnvelopes(env, { includeOwn: true, onProgress: options.onProgress });
+      const caught = await withRotations(env, () =>
+        receiveEnvelopes(env, { includeOwn: true, onProgress: options.onProgress }),
+      );
       merge(result, caught.outcome);
       result.received += caught.transactions;
       note(caught.relayTime);
@@ -125,7 +172,8 @@ export async function runRound(env: FilesEnv, options: RoundOptions = {}): Promi
   }
 
   try {
-    const sent = await sendOutbox(env);
+    // A device behind a key rotation (another device was removed) takes the new key, then sends under it.
+    const sent = await withRotations(env, () => sendOutbox(env));
     result.sent += sent.transactions;
     note(sent.relayTime);
   } catch (error) {
@@ -144,7 +192,7 @@ export async function runRound(env: FilesEnv, options: RoundOptions = {}): Promi
   result.filesSent += await sendFiles(env);
 
   try {
-    const received = await receiveEnvelopes(env, { onProgress: options.onProgress });
+    const received = await withRotations(env, () => receiveEnvelopes(env, { onProgress: options.onProgress }));
     merge(result, received.outcome);
     result.received += received.transactions;
     result.waiting = received.waiting;
@@ -161,7 +209,7 @@ export async function runRound(env: FilesEnv, options: RoundOptions = {}): Promi
   // The books and the number blocks answer what the other laptop asked; their answers go at once.
   const answered = await answerLedger(env);
   if (answered) {
-    const sent = await sendOutbox(env);
+    const sent = await withRotations(env, () => sendOutbox(env));
     result.sent += sent.transactions;
   }
 
@@ -169,8 +217,9 @@ export async function runRound(env: FilesEnv, options: RoundOptions = {}): Promi
   result.filesReceived += fetched.received;
   result.filesMissing += fetched.missing;
 
-  // The laptop holding the books refreshes the full copy weekly (DECISION section 6).
+  // The laptop holding the books refreshes the full copy weekly (DECISION section 6; never the phone).
   if (await fullCopyDue(env)) await makeFullCopy(env);
+  note(await refreshMailboxDevices(env));
 
   // Acknowledged only when it moved: every request counts against the free plan.
   const { cursor } = await readReceive(env.db);

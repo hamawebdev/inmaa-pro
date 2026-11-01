@@ -18,6 +18,11 @@ export {
   BOOKS_ARRIVING,
   BOOKS_ELSEWHERE,
   BOOKS_LEFT_BEHIND,
+  BOOKS_ON_ANOTHER_DEVICE,
+  BOOKS_ON_DIRECTORS_LAPTOP,
+  BOOKS_ON_DIRECTORS_PHONE,
+  BOOKS_ON_SECOND_LAPTOP,
+  booksElsewhere,
   CATCHING_UP,
   deviceOf,
   holdsBooks,
@@ -65,8 +70,8 @@ export const BOOKS_TABLES = [
   "CashReconciliation",
 ] as const;
 
-export const BOOKS_ALREADY_HERE = "The books are already on this laptop.";
-export const BOOKS_NOT_ON_THAT_LAPTOP = "The books are not on that laptop.";
+export const BOOKS_ALREADY_HERE = "The books are already on this device.";
+export const BOOKS_NOT_ON_THAT_LAPTOP = "The books are not on that device.";
 export const DECLARED_NUMBER_INVALID = "Type the last number seen on paper, from 0 to 999999.";
 
 export interface BooksState {

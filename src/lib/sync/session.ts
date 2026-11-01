@@ -26,12 +26,25 @@ import { nextHlc } from "./hlc";
  * wraps the three lines for a path that has none of its own.
  */
 
-/** This laptop's identity in sync (`SyncState` key "device"). */
+/** What a device of the centre is: one of the two laptops, or the director's phone (docs/phone/DECISION.md). */
+export type SyncDeviceKind = "LAPTOP" | "PHONE";
+
+/** A device's slot: 0 the director's laptop, 1 the second laptop, 2 the director's phone. */
+export type SyncSlot = 0 | 1 | 2;
+
+/** This device's identity in sync (`SyncState` key "device"). */
 export interface SyncDeviceIdentity {
   id: string;
-  slot: 0 | 1;
+  slot: SyncSlot;
   centreId: string;
   name: string;
+  /** Left out by 1.1.0, which knew laptops only: read as LAPTOP (`identityKind`). */
+  kind?: SyncDeviceKind;
+}
+
+/** The kind of a device by its identity: a 1.1.0 identity has none and was a laptop. */
+export function identityKind(identity: Pick<SyncDeviceIdentity, "kind" | "slot">): SyncDeviceKind {
+  return identity.kind ?? (identity.slot === 2 ? "PHONE" : "LAPTOP");
 }
 
 /** The clock's correction (`SyncState` key "clock"): the mailbox's time minus this PC's. */

@@ -34,8 +34,17 @@ import type { RelayClient } from "@/lib/sync/relay";
 import type { SyncEnv } from "./exchange";
 import { queueAllFiles, type FilesEnv, type SyncFiles } from "./files";
 import { mailboxFailureOf, refusalCodeOf } from "./mailbox";
-import type { NewAssistantAccount, PairingCodeAnswer } from "./services/types";
-import { stampTransaction, unstampTransaction, withStampedTransaction, type SyncDeviceIdentity } from "./session";
+import { putRotation } from "./rotation";
+import type { NewAssistantAccount, PairDeviceInput, PairingCodeAnswer } from "./services/types";
+import {
+  identityKind,
+  stampTransaction,
+  unstampTransaction,
+  withStampedTransaction,
+  type SyncDeviceIdentity,
+  type SyncDeviceKind,
+  type SyncSlot,
+} from "./session";
 import {
   listFileStates,
   readReceive,
@@ -47,10 +56,10 @@ import {
 } from "./state";
 
 /**
- * A centre on the mailbox, and the laptops in it (DECISION sections 2 and 7):
- * setting sync up on the director's laptop, pairing the second laptop,
- * joining from the first screen, the full copy, starting from a copy, taking
- * a laptop out.
+ * A centre on the mailbox, and the devices in it (DECISION sections 2 and 7;
+ * docs/phone/DECISION.md sections 2 and 3): setting sync up on the director's
+ * laptop, pairing the second laptop or the director's phone, joining from the
+ * first screen, the full copy, starting from a copy, taking a device out.
  *
  * The network is reached outside any database transaction, and the database
  * is written in stamped transactions of its own: the window's one connection
@@ -62,10 +71,15 @@ export interface SyncVaultData {
   centreId: string;
   deviceId: string;
   token: string;
-  slot: 0 | 1;
+  slot: SyncSlot;
   deviceName: string;
   keyRing: KeyRing;
+  /** Left out by 1.1.0 (laptops only): read with `vaultKind`. */
+  kind?: SyncDeviceKind;
 }
+
+/** The kind of the device a vault speaks for. */
+export const vaultKind = (vault: Pick<SyncVaultData, "kind" | "slot">): SyncDeviceKind => identityKind(vault);
 
 export interface SyncVault {
   read(): Promise<SyncVaultData | null>;
@@ -74,24 +88,32 @@ export interface SyncVault {
 }
 
 export const SYNC_ERRORS = {
-  alreadySetUp: "Sync is already set up on this laptop.",
-  notSetUp: "Sync is not set up on this laptop.",
+  alreadySetUp: "Sync is already set up on this device.",
+  notSetUp: "Sync is not set up on this device.",
   setupKey: "The mailbox refused this setup key.",
   notMailbox: "No mailbox answers at this address. Check the address the developer gave.",
   offline: "The mailbox cannot be reached. Check the internet connection and try again.",
   limit: "The mailbox has reached its daily limit. Try again after 01:00.",
   full: "The mailbox is full. Ask the developer to free some room.",
   twoLaptops: "The centre already has its two laptops. Remove one first.",
+  phoneTaken: "The centre already has the director's phone. Remove it first.",
+  codeForLaptop:
+    "This code was made for a laptop. On the laptop, choose “Add the director's phone” to get a code for the phone.",
+  codeForPhone:
+    "This code was made for the director's phone. On the other laptop, choose “Add the second laptop” to get a code for a laptop.",
+  outdated: "This program is too old for the mailbox. Install the latest version on this device.",
+  phoneSetUp: "A phone cannot set up sync. Set it up on the director's laptop, then add the phone from there.",
+  phonePairs: "A phone cannot add a device. Add it from a laptop.",
   codeUnknown: "This code is not valid, or was already used, or has expired. Ask for a new code.",
   codeTypo: "This code is mistyped. Check each group of four characters.",
-  hasWork: "This laptop already holds work. A laptop joins a centre only when it is freshly installed.",
+  hasWork: "This device already holds work. A device joins a centre only when it is freshly installed.",
   noCopy: "The mailbox holds no full copy of the centre yet. Try again in a few minutes.",
   managerRole: "The assistant's account cannot have the manager's role.",
   accountUnknown: "This account does not exist or is not active.",
-  deviceUnknown: "This laptop is not part of the centre.",
-  deviceThis: "This laptop cannot remove itself. Remove it from the other laptop.",
+  deviceUnknown: "This device is not part of the centre.",
+  deviceThis: "This device cannot remove itself. Remove it from another device of the centre.",
   reasonRequired: "A reason is required.",
-  revoked: "This laptop was removed from the centre.",
+  revoked: "This device was removed from the centre.",
 } as const;
 
 /** The mailbox's failure in the words of the screens: a ServiceError, or the error itself (a fault). */
@@ -103,9 +125,14 @@ export function mailboxError(error: unknown): Error {
   if (kind === "limit") return new ServiceError(SYNC_ERRORS.limit);
   if (kind === "full") return new ServiceError(SYNC_ERRORS.full);
   if (kind === "revoked") return new ServiceError(SYNC_ERRORS.revoked);
+  if (kind === "outdated") return new ServiceError(SYNC_ERRORS.outdated);
   if (code === "SETUP_KEY") return new ServiceError(SYNC_ERRORS.setupKey);
   if (code === "NOT_RELAY" || code === "TRANSPORT") return new ServiceError(SYNC_ERRORS.notMailbox);
   if (code === "TWO_DEVICES") return new ServiceError(SYNC_ERRORS.twoLaptops);
+  if (code === "PHONE_TAKEN") return new ServiceError(SYNC_ERRORS.phoneTaken);
+  if (code === "TICKET_FOR_LAPTOP") return new ServiceError(SYNC_ERRORS.codeForLaptop);
+  if (code === "TICKET_FOR_PHONE") return new ServiceError(SYNC_ERRORS.codeForPhone);
+  if (code === "PHONE_CANNOT_CREATE") return new ServiceError(SYNC_ERRORS.phoneSetUp);
   if (code === "TICKET_UNKNOWN" || code === "TICKET_USED" || code === "TICKET_EXPIRED")
     return new ServiceError(SYNC_ERRORS.codeUnknown);
   return error instanceof Error ? error : new Error(String(error));
@@ -160,6 +187,7 @@ export function envFor(env: CentreEnv, vault: SyncVaultData, anchor: SyncEnv["an
     deviceId: vault.deviceId,
     ring: vault.keyRing,
     anchor,
+    vault: env.vault,
   };
 }
 
@@ -172,9 +200,11 @@ export function envFor(env: CentreEnv, vault: SyncVaultData, anchor: SyncEnv["an
 export async function setUpCentre(
   env: CentreEnv,
   ctx: ServiceContext,
-  input: { setupKey: string; deviceName: string },
+  input: { setupKey: string; deviceName: string; kind?: SyncDeviceKind },
 ): Promise<SyncVaultData> {
   requireCapability(ctx, "sync.manage");
+  // The phone is never the first device: a centre starts on the director's laptop (docs/phone/DECISION.md section 3).
+  if (input.kind === "PHONE") throw new ServiceError(SYNC_ERRORS.phoneSetUp);
   if (await deviceIdentity(env.db)) throw new ServiceError(SYNC_ERRORS.alreadySetUp);
   const deviceName = input.deviceName.trim() || "1";
   const joined = await onMailbox(() => env.mailbox.createCentre(input.setupKey.trim(), deviceName));
@@ -185,6 +215,7 @@ export async function setUpCentre(
     slot: 0,
     deviceName,
     keyRing: await newKeyRing(),
+    kind: "LAPTOP",
   };
   // The key first: without it nothing on the mailbox can ever be opened again.
   await env.vault.write(vault);
@@ -222,6 +253,7 @@ async function startCapture(
     slot: vault.slot,
     centreId: vault.centreId,
     name: vault.deviceName,
+    kind: vaultKind(vault),
   };
   await writeState(ex, "device", identity);
   if (offsetMs !== null) await writeState(ex, "clock", { offsetMs, measuredAt: ctx.now });
@@ -251,6 +283,7 @@ async function insertDevice(
       replacesDeviceId,
       createdAt: ctx.now,
       updatedAt: ctx.now,
+      kind: vaultKind(vault),
     })
     .onConflict((oc) => oc.column("id").doNothing())
     .execute();
@@ -260,8 +293,14 @@ async function insertDevice(
 
 const COPY_NAME = "full-copy.db";
 
-/** Puts a full copy of this database on the mailbox: at set-up, before a pairing, weekly by the books' holder. */
+/**
+ * Puts a full copy of this database on the mailbox: at set-up, before a pairing, weekly by the books' holder (the
+ * director's laptop while the phone holds them). Never from the phone: the copy is large, and not for a phone's data
+ * plan (docs/phone/DECISION.md section 6); the mailbox refuses it too.
+ */
 export async function makeFullCopy(env: FilesEnv): Promise<{ blobId: string; parts: number; covers: number }> {
+  const identity = await deviceIdentity(env.db);
+  if (identity && identityKind(identity) === "PHONE") throw new Error("sync: a phone never makes the full copy");
   // Read before the snapshot: the cursor only moves forward, so the copy holds at least this much.
   const covers = (await readReceive(env.db)).cursor;
   const snapshot = await env.files.snapshot(COPY_NAME);
@@ -305,11 +344,12 @@ export async function downloadFullCopy(
   return path;
 }
 
-// ─── Pairing the second laptop ───────────────────────────────────────────────
+// ─── Pairing the second laptop or the director's phone ─────────────────────
 
 /** What the pairing ticket carries beside the centre key. */
 interface TicketExtra {
   accountId: string;
+  kind: SyncDeviceKind;
 }
 
 /**
@@ -322,10 +362,34 @@ export async function pairSecondLaptop(
   ctx: ServiceContext,
   input: { accountId: string } | { newAccount: NewAssistantAccount },
 ): Promise<PairingCodeAnswer> {
+  return pairDevice(env, ctx, { kind: "LAPTOP", ...input });
+}
+
+/**
+ * «إضافة الحاسوب الثاني» or «إضافة هاتف المدير» (docs/phone/BUILD.md 2.2), from a
+ * laptop where sync is set up: a laptop's ticket with the assistant's account,
+ * or the phone's, on which the director signs in with his own manager account.
+ * The same 20-character code, 30 minutes, once; the mailbox gives the ticket
+ * only to a device of its kind. A fresh full copy is put first, so the new
+ * device starts from today.
+ */
+export async function pairDevice(
+  env: CentreEnv,
+  ctx: ServiceContext,
+  input: PairDeviceInput,
+): Promise<PairingCodeAnswer> {
   requireCapability(ctx, "sync.manage");
   const vault = await env.vault.read();
-  if (!vault || !(await deviceIdentity(env.db))) throw new ServiceError(SYNC_ERRORS.notSetUp);
+  const identity = await deviceIdentity(env.db);
+  if (!vault || !identity) throw new ServiceError(SYNC_ERRORS.notSetUp);
+  // Pairing puts a fresh full copy on the mailbox: a laptop's work (docs/phone/DECISION.md section 6).
+  if (identityKind(identity) === "PHONE") throw new ServiceError(SYNC_ERRORS.phonePairs);
   const accountId = await withStampedTransaction(env.db, ctx, async (ex) => {
+    if (input.kind === "PHONE") {
+      // The director signs in on his phone with his own account (docs/phone/DECISION.md section 4).
+      if (!ctx.userId) throw new Error("sync: pairing the phone needs the manager signed in");
+      return ctx.userId;
+    }
     if ("accountId" in input) {
       const account = await ex
         .selectFrom("User")
@@ -352,15 +416,15 @@ export async function pairSecondLaptop(
   await onMailbox(() => sendOutbox(engine));
   await onMailbox(() => makeFullCopy(engine));
   const code = newPairingCode();
-  const extra: TicketExtra = { accountId };
+  const extra: TicketExtra = { accountId, kind: input.kind };
   const { ticketId, sealed } = await sealForTicket(code, {
     centreId: vault.centreId,
     keyRing: vault.keyRing,
     extra: { ...extra },
   });
-  const answer = await onMailbox(() => engine.mailbox.createTicket(ticketId, sealed, TICKET_TTL_SEC));
+  const answer = await onMailbox(() => engine.mailbox.createTicket(ticketId, sealed, TICKET_TTL_SEC, input.kind));
   const offset = answer.relayTime - env.clock.now().getTime();
-  return { code, expiresAt: new Date(answer.expiresAt - offset).toISOString(), accountId };
+  return { kind: input.kind, code, expiresAt: new Date(answer.expiresAt - offset).toISOString(), accountId };
 }
 
 // ─── Joining from the first screen ───────────────────────────────────────────
@@ -368,10 +432,12 @@ export async function pairSecondLaptop(
 /** What the program writes beside the copy it installs, and reads at the next start (native's install note). */
 export interface InstallNote {
   v: 1;
-  /** JOIN: a new laptop; CATCH_UP / REJOIN: this laptop again, after a restore or weeks away. */
+  /** JOIN: a new device; CATCH_UP / REJOIN: this device again, after a restore or weeks away. */
   mode: "JOIN" | "CATCH_UP" | "REJOIN";
   deviceId: string;
-  slot: 0 | 1;
+  slot: SyncSlot;
+  /** Left out by 1.1.0 (laptops only). */
+  kind?: SyncDeviceKind;
   deviceName: string;
   centreId: string;
   /** The laptop this one replaces (a lost one), if the centre had removed one in that slot. */
@@ -391,7 +457,7 @@ export interface InstallNote {
  */
 export async function redeemAndDownload(
   env: CentreEnv,
-  input: { code: string; deviceName: string },
+  input: { code: string; deviceName: string; kind?: SyncDeviceKind },
   onProgress?: (phase: "TICKET" | "COPY", done: number, total: number | null) => void,
 ): Promise<{ path: string; note: InstallNote }> {
   if (!(await mayJoin(env.db))) throw new ServiceError(SYNC_ERRORS.hasWork);
@@ -402,16 +468,21 @@ export async function redeemAndDownload(
     throw new ServiceError(SYNC_ERRORS.codeTypo);
   }
   onProgress?.("TICKET", 0, 1);
-  const deviceName = input.deviceName.trim() || "2";
-  const joined = await onMailbox(async () => env.mailbox.redeemTicket(await ticketIdFor(code), deviceName));
+  const kind: SyncDeviceKind = input.kind ?? "LAPTOP";
+  const deviceName = input.deviceName.trim() || (kind === "PHONE" ? "3" : "2");
+  const joined = await onMailbox(async () => env.mailbox.redeemTicket(await ticketIdFor(code), deviceName, kind));
+  // The mailbox gave the ticket to a device of its kind only; a mailbox that says otherwise is not believed.
+  if (joined.kind !== kind || (kind === "PHONE") !== (joined.slot === 2) || ![0, 1, 2].includes(joined.slot))
+    throw new Error("sync: the mailbox joined this device in a slot of the other kind");
   const ticket = await openTicket(code, joined.sealed);
   const vault: SyncVaultData = {
     centreId: joined.centreId,
     deviceId: joined.deviceId,
     token: joined.token,
-    slot: joined.slot === 0 ? 0 : 1,
+    slot: joined.slot as SyncSlot,
     deviceName,
     keyRing: await checkKeyRing(ticket.keyRing),
+    kind,
   };
   await env.vault.write(vault);
   onProgress?.("TICKET", 1, 1);
@@ -427,6 +498,7 @@ export async function redeemAndDownload(
       mode: "JOIN",
       deviceId: vault.deviceId,
       slot: vault.slot,
+      kind,
       deviceName,
       centreId: vault.centreId,
       replacesDeviceId: replaced?.id ?? null,
@@ -510,6 +582,7 @@ export async function finishInstall(db: Kysely<DB>, clock: Clock, note: InstallN
       slot: note.slot,
       deviceName: note.deviceName,
       keyRing: { current: "", keys: {} },
+      kind: note.kind ?? identityKind(note),
     };
     await startCapture(trx, ctx, vault, note.offsetMs ?? null);
     if (note.mode !== "JOIN") {
@@ -537,14 +610,25 @@ export async function finishInstall(db: Kysely<DB>, clock: Clock, note: InstallN
   });
 }
 
-// ─── Removing a laptop ───────────────────────────────────────────────────────
+// ─── Removing a device ───────────────────────────────────────────────────────
 
 /**
- * The manager removes the other laptop (lost, broken, replaced), with her
- * reason: its token revoked, the centre key replaced (the new ring saved
- * first), the laptop marked removed, and the books taken from it when it held
- * them, the last numbers seen on paper declared.
+ * The manager removes another device of the centre (a lost, broken or
+ * replaced laptop, or the director's phone: case 9), with a reason: its token
+ * revoked, the centre key replaced (the new ring saved first), the device
+ * marked removed, its waiting block claims refused, and the books taken from
+ * it when it held them, the last numbers seen on paper declared. From any
+ * other device of the centre; a device never removes itself.
  */
+export async function removeDevice(
+  env: CentreEnv,
+  ctx: ServiceContext,
+  input: { deviceId: string; reason: string; lastInvoice?: number | null; lastReceipt?: number | null },
+): Promise<void> {
+  return removeOtherLaptop(env, ctx, input);
+}
+
+/** 1.1.0's name for `removeDevice`. */
 export async function removeOtherLaptop(
   env: CentreEnv,
   ctx: ServiceContext,
@@ -560,17 +644,18 @@ export async function removeOtherLaptop(
   const engine = envFor(env, vault);
   let device = await env.db
     .selectFrom("SyncDevice")
-    .select(["id", "name", "slot", "joinedAt", "removedAt"])
+    .select(["id", "name", "slot", "kind", "joinedAt", "removedAt"])
     .where("id", "=", input.deviceId)
     .executeTakeFirst();
   if (!device) {
-    // A laptop lost before its first exchange: the mailbox knows it, this database not yet.
+    // A device lost before its first exchange: the mailbox knows it, this database not yet.
     const known = (await onMailbox(() => engine.mailbox.devices())).devices.find((d) => d.id === input.deviceId);
     if (!known) throw new ServiceError(SYNC_ERRORS.deviceUnknown);
     device = {
       id: known.id,
       name: known.name,
       slot: known.slot,
+      kind: known.kind === "PHONE" ? "PHONE" : "LAPTOP",
       joinedAt: new Date(known.joinedAt).toISOString(),
       removedAt: null,
     };
@@ -578,6 +663,9 @@ export async function removeOtherLaptop(
 
   await onMailbox(() => engine.mailbox.removeDevice(input.deviceId));
   const ring = await rotateKeyRing(vault.keyRing);
+  // The devices that stay take the new key from the mailbox, sealed under the one it replaces (rotation.ts); it is
+  // left there before anything is sealed under it, and after the removed device's token was revoked.
+  await onMailbox(() => putRotation(engine.mailbox, vault.centreId, vault.keyRing, ring));
   await env.vault.write({ ...vault, keyRing: ring });
   await onMailbox(() => engine.mailbox.rotateKey(ring.current));
 
@@ -595,6 +683,7 @@ export async function removeOtherLaptop(
         replacesDeviceId: null,
         createdAt: ctx.now,
         updatedAt: ctx.now,
+        kind: lost.kind,
       })
       .onConflict((oc) => oc.column("id").doNothing())
       .execute();
@@ -661,7 +750,14 @@ export async function leaveCentre(env: CentreEnv, ctx: ServiceContext, input: { 
     await trx.deleteFrom("SyncOutbox").execute();
     await trx.deleteFrom("SyncState").execute();
     // Which laptop this was: ledger keeps its books state by it (it never issues again until it rejoins).
-    if (identity) await writeState(trx, "left", { deviceId: identity.id, slot: identity.slot, leftAt: ctx.now });
+    if (identity) {
+      await writeState(trx, "left", {
+        deviceId: identity.id,
+        slot: identity.slot,
+        kind: identityKind(identity),
+        leftAt: ctx.now,
+      });
+    }
   });
   await env.vault.clear();
 }
@@ -704,6 +800,7 @@ export async function downloadForRejoin(
       mode,
       deviceId: vault.deviceId,
       slot: vault.slot,
+      kind: vaultKind(vault),
       deviceName: vault.deviceName,
       centreId: vault.centreId,
     },

@@ -32,7 +32,10 @@ const REFUSED_EVERY_MS = 5 * 60_000;
 
 export type RoundOutcome =
   | { kind: "OK"; result: RoundResult }
-  | { kind: "OFFLINE" | "LIMIT" | "FULL" | "REVOKED" | "REFUSED" | "REJOIN" | "NOT_SET_UP"; error?: unknown };
+  | {
+      kind: "OFFLINE" | "LIMIT" | "FULL" | "REVOKED" | "OUTDATED" | "REFUSED" | "REJOIN" | "NOT_SET_UP";
+      error?: unknown;
+    };
 
 export interface SyncLoopDeps {
   db: Kysely<DB>;
@@ -102,6 +105,7 @@ export async function runOnce(
     if (kind === "limit") return { kind: "LIMIT", error };
     if (kind === "full") return { kind: "FULL", error };
     if (kind === "revoked") return { kind: "REVOKED", error };
+    if (kind === "outdated") return { kind: "OUTDATED", error };
     if (kind === "refused" || kind === "conflict") return { kind: "REFUSED", error };
     throw error;
   }
@@ -148,6 +152,7 @@ export function createSyncLoop(deps: SyncLoopDeps) {
         checkRestore = true;
         return REFUSED_EVERY_MS;
       case "REVOKED":
+      case "OUTDATED": // until the program is updated on this device (it restarts then)
       case "REJOIN":
       case "NOT_SET_UP":
         return null; // nothing more to do until the office acts

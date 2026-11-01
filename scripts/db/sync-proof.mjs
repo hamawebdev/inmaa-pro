@@ -1,5 +1,5 @@
-// The sync proof: what migration 0005 promises (DESIGN.md section 20), tried on the
-// database every migration makes, as the program opens it.
+// The sync proof: what migrations 0005 and 0006 promise (DESIGN.md section 20), tried on
+// the database every migration makes, as the program opens it.
 //
 //   node scripts/db/sync-proof.mjs            run it, rewrite the tape and the log
 //   node scripts/db/sync-proof.mjs --check    run it and fail if the tape on disk is stale
@@ -178,8 +178,23 @@ refuses(
   "CHECK",
 );
 refuses("a third laptop slot", () => ins("SyncDevice", { slot: 2 }), "CHECK");
+// 0006: the director's phone, slot 2 and kind PHONE, the one going with the other (docs/phone/DECISION.md section 2).
+refuses("a fourth slot", () => ins("SyncDevice", { slot: 3, kind: "PHONE" }), "CHECK");
+refuses("a phone in a laptop's slot", () => ins("SyncDevice", { slot: 0, kind: "PHONE" }), "CHECK");
+refuses("a device of an unknown kind", () => ins("SyncDevice", { slot: 1, kind: "TABLET" }), "CHECK");
 const deviceA = ins("SyncDevice", { id: "dev-a", slot: 0 });
+ok(
+  "a laptop's row is a LAPTOP by default",
+  get(`SELECT "kind" FROM "SyncDevice" WHERE "id" = 'dev-a'`).kind === "LAPTOP",
+);
 refuses("two active laptops in one slot", () => ins("SyncDevice", { id: "dev-c", slot: 0 }), "UNIQUE");
+accepts("the director's phone in slot 2", () => ins("SyncDevice", { id: "dev-p", slot: 2, kind: "PHONE" }));
+refuses("a second active phone", () => ins("SyncDevice", { id: "dev-q", slot: 2, kind: "PHONE" }), "UNIQUE");
+refuses(
+  "the phone turned into a laptop",
+  () => run(`UPDATE "SyncDevice" SET "kind" = 'LAPTOP' WHERE "id" = 'dev-p'`),
+  "CHECK",
+);
 refuses(
   "a laptop removed without a reason",
   () => run(`UPDATE "SyncDevice" SET "removedAt" = ? WHERE "id" = 'dev-a'`, NOW),

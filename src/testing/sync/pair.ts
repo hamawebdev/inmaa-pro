@@ -182,7 +182,8 @@ export function memoryVault(): SyncVault & { data: SyncVaultData | null } {
 // ─── A laptop ────────────────────────────────────────────────────────────────
 
 export interface SyncLaptop {
-  name: "a" | "b";
+  /** "a" and "b" in a pair; "a", "b" and "phone" in a trio (trio.ts). */
+  name: string;
   test: TestDatabase;
   clock: FixedClock;
   /** The laptop's data folder: `uploads/` and `sync-tmp/` inside. */
@@ -301,30 +302,30 @@ function sharedRows(test: TestDatabase): Map<string, Map<string, string>> {
   return out;
 }
 
-export function compareShared(a: TestDatabase, b: TestDatabase): string | null {
+export function compareShared(a: TestDatabase, b: TestDatabase, names: [string, string] = ["a", "b"]): string | null {
   const left = sharedRows(a);
   const right = sharedRows(b);
   for (const table of new Set([...left.keys(), ...right.keys()])) {
     const l = left.get(table);
     const r = right.get(table);
-    if (!l || !r) return `${table}: only on ${l ? "a" : "b"}`;
+    if (!l || !r) return `${table}: only on ${l ? names[0] : names[1]}`;
     for (const id of new Set([...l.keys(), ...r.keys()])) {
       const x = l.get(id);
       const y = r.get(id);
       if (x === y) continue;
-      if (x === undefined) return `${table} ${id}: only on b ${y}`;
-      if (y === undefined) return `${table} ${id}: only on a ${x}`;
+      if (x === undefined) return `${table} ${id}: only on ${names[1]} ${y}`;
+      if (y === undefined) return `${table} ${id}: only on ${names[0]} ${x}`;
       const xo = JSON.parse(x) as Record<string, unknown>;
       const yo = JSON.parse(y) as Record<string, unknown>;
       const cols = Object.keys(xo).filter((col) => JSON.stringify(xo[col]) !== JSON.stringify(yo[col]));
-      return `${table} ${id}: ${cols.map((col) => `${col} a=${JSON.stringify(xo[col])} b=${JSON.stringify(yo[col])}`).join(", ")}`;
+      return `${table} ${id}: ${cols.map((col) => `${col} ${names[0]}=${JSON.stringify(xo[col])} ${names[1]}=${JSON.stringify(yo[col])}`).join(", ")}`;
     }
   }
   return null;
 }
 
-function makeLaptop(
-  name: "a" | "b",
+export function makeLaptop(
+  name: string,
   test: TestDatabase,
   clock: FixedClock,
   root: string,
@@ -355,7 +356,7 @@ function makeLaptop(
       };
     },
     env() {
-      if (!vault.data) throw new Error(`pair: laptop ${name} is not in the centre`);
+      if (!vault.data) throw new Error(`pair: device ${name} is not in the centre`);
       return envFor(laptop.centre(), vault.data, laptop.test.anchor);
     },
     async sync() {
@@ -370,7 +371,7 @@ function makeLaptop(
 }
 
 /** What native's `sync_install_copy` does with a downloaded copy, then the next start (`finishInstall`). */
-async function installCopy(laptop: SyncLaptop, path: string, note: InstallNote): Promise<void> {
+export async function installCopy(laptop: SyncLaptop, path: string, note: InstallNote): Promise<void> {
   const installed = join(laptop.root, `inmaa-${Date.now()}-${Math.random().toString(36).slice(2)}.db`);
   copyFileSync(join(laptop.root, path), installed);
   rmSync(join(laptop.root, path), { force: true });

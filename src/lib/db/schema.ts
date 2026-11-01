@@ -2388,6 +2388,7 @@ export interface SyncDeviceTable {
   replacesDeviceId: string | null;
   createdAt: string;
   updatedAt: string;
+  kind: Generated<string>;
 }
 
 export interface SyncBooksTable {

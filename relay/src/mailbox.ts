@@ -2,7 +2,7 @@
  * One centre's mailbox: a SQLite-backed Durable Object, so every request of a centre is served one at a time.
  *
  * It holds sealed envelopes it cannot open, in the order it received them (`mseq`, its own sequence), with the
- * laptops' acknowledgements, the full copies, the key rotations, and the index of file parts (the bytes are in the
+ * devices' acknowledgements (two laptops and the director's phone at most), the full copies, the key rotations, and the index of file parts (the bytes are in the
  * part shards, parts.ts). It never parses a payload: every request is a few indexed statements, far under
  * Cloudflare's 10 ms of CPU.
  *
@@ -13,7 +13,7 @@
  * Routes (the Worker strips `/v1/centres/:centreId`; all but the first two need the device's bearer token):
  *   POST   /create                       internal: the first device, after the setup key was checked
  *   POST   /join                         internal: a device, after its ticket was claimed
- *   POST   /tickets/:ticketId            file a pairing ticket (body: sealed bytes)
+ *   POST   /tickets/:ticketId?ttl=&kind= file a pairing ticket for a LAPTOP or the PHONE (body: sealed bytes)
  *   PUT    /envelopes/:seq?key=&kind=    store an envelope (idempotent on identical bytes)
  *   GET    /envelopes?after=&limit=      a page of envelopes, every device's, by mseq (frames.ts)
  *   GET    /envelopes/by-device/:id/:seq one envelope
@@ -32,10 +32,27 @@
 import type { DurableObjectState, Env, SqlStorage } from "./cf";
 import { encodeFrames, type EnvelopeHead } from "./frames";
 import { TICKET_MAX_TTL_SEC, TICKET_MIN_TTL_SEC } from "./directory";
-import { bytes, HEX_ID, intParam, json, limited, now, randomHex, refuse, sha256Hex, STATUS } from "./http";
+import {
+  bytes,
+  HEX_ID,
+  intParam,
+  isDeviceKind,
+  json,
+  limited,
+  now,
+  randomHex,
+  refuse,
+  sha256Hex,
+  STATUS,
+  type DeviceKind,
+} from "./http";
 import { shardName, shardOf } from "./parts";
 
-export const MAX_DEVICES = 2;
+/** Active devices of each kind a centre may have, and their slots (docs/phone/DECISION.md section 2). */
+export const MAX_ACTIVE: Record<DeviceKind, number> = { LAPTOP: 2, PHONE: 1 };
+export const SLOTS: Record<DeviceKind, readonly number[]> = { LAPTOP: [0, 1], PHONE: [2] };
+/** What a centre full of one kind answers: `TWO_DEVICES` (1.1.0's code, kept for the laptops) or `PHONE_TAKEN`. */
+const FULL_CODE: Record<DeviceKind, string> = { LAPTOP: "TWO_DEVICES", PHONE: "PHONE_TAKEN" };
 /** Envelopes are cut below 1.5 MB by the laptops; a SQLite row holds 2 MB. */
 export const MAX_ENVELOPE_BYTES = 1_900_000;
 /** Parts are 1 MiB plain, plus the seal. */
@@ -64,6 +81,7 @@ interface DeviceRow {
   id: string;
   name: string;
   slot: number;
+  kind: string;
   joinedAt: number;
   removedAt: number | null;
   lastSeq: number;
@@ -71,12 +89,14 @@ interface DeviceRow {
   lastSeenAt: number | null;
 }
 
+const DEVICE_COLUMNS = "id, name, slot, kind, joinedAt, removedAt, lastSeq, ackedUpTo, lastSeenAt";
+
 const SCHEMA = [
   `CREATE TABLE meta (key TEXT PRIMARY KEY, value)`,
   `CREATE TABLE device (
     id TEXT PRIMARY KEY, tokenHash TEXT NOT NULL UNIQUE, name TEXT NOT NULL, slot INTEGER NOT NULL,
     joinedAt INTEGER NOT NULL, removedAt INTEGER, lastSeq INTEGER NOT NULL DEFAULT 0,
-    ackedUpTo INTEGER NOT NULL DEFAULT 0, lastSeenAt INTEGER
+    ackedUpTo INTEGER NOT NULL DEFAULT 0, lastSeenAt INTEGER, kind TEXT NOT NULL DEFAULT 'LAPTOP'
   )`,
   `CREATE TABLE envelope (
     mseq INTEGER PRIMARY KEY, deviceId TEXT NOT NULL, seq INTEGER NOT NULL, keyId TEXT NOT NULL,
@@ -145,15 +165,16 @@ export class Mailbox {
   }
 
   private activeDevices(): DeviceRow[] {
-    return this.sql
-      .exec<DeviceRow>(
-        `SELECT id, name, slot, joinedAt, removedAt, lastSeq, ackedUpTo, lastSeenAt FROM device WHERE removedAt IS NULL`,
-      )
-      .toArray();
+    return this.sql.exec<DeviceRow>(`SELECT ${DEVICE_COLUMNS} FROM device WHERE removedAt IS NULL`).toArray();
   }
 
-  /** A new device in the free slot, with a fresh token whose hash alone is kept. */
-  private async addDevice(name: string, slot: number | null) {
+  /** Whether a centre already has every active device of this kind it may have. */
+  private kindFull(kind: DeviceKind): boolean {
+    return this.activeDevices().filter((device) => device.kind === kind).length >= MAX_ACTIVE[kind];
+  }
+
+  /** A new device of its kind in a free slot of that kind, with a fresh token whose hash alone is kept. */
+  private async addDevice(name: string, kind: DeviceKind) {
     const token = randomHex(32);
     const tokenHash = await sha256Hex(token);
     const id = randomHex(8);
@@ -161,20 +182,20 @@ export class Mailbox {
     return {
       token,
       write: () => {
-        const active = this.activeDevices();
-        if (active.length >= MAX_DEVICES) return null;
-        const taken = new Set(active.map((d) => d.slot));
-        const free = slot ?? [0, 1].find((s) => !taken.has(s))!;
+        if (this.kindFull(kind)) return null;
+        const taken = new Set(this.activeDevices().map((d) => d.slot));
+        const free = SLOTS[kind].find((s) => !taken.has(s))!;
         this.sql.exec(
-          `INSERT INTO device (id, tokenHash, name, slot, joinedAt, lastSeenAt) VALUES (?, ?, ?, ?, ?, ?)`,
+          `INSERT INTO device (id, tokenHash, name, slot, kind, joinedAt, lastSeenAt) VALUES (?, ?, ?, ?, ?, ?, ?)`,
           id,
           tokenHash,
           name,
           free,
+          kind,
           at,
           at,
         );
-        return { deviceId: id, slot: free };
+        return { deviceId: id, slot: free, kind };
       },
     };
   }
@@ -197,10 +218,7 @@ export class Mailbox {
     if (!HEX_ID.token.test(token)) return refuse(this.env, 401, "TOKEN_UNKNOWN");
     const tokenHash = await sha256Hex(token);
     const device = this.sql
-      .exec<DeviceRow>(
-        `SELECT id, name, slot, joinedAt, removedAt, lastSeq, ackedUpTo, lastSeenAt FROM device WHERE tokenHash = ?`,
-        tokenHash,
-      )
+      .exec<DeviceRow>(`SELECT ${DEVICE_COLUMNS} FROM device WHERE tokenHash = ?`, tokenHash)
       .toArray()[0];
     if (!device) return refuse(this.env, 401, "TOKEN_UNKNOWN");
     if (device.removedAt !== null) return refuse(this.env, STATUS.revoked, "REVOKED");
@@ -249,7 +267,8 @@ export class Mailbox {
   private async create(request: Request, centreId: string): Promise<Response> {
     if (this.hasSchema()) return refuse(this.env, 409, "CENTRE_EXISTS");
     const { deviceName } = (await request.json()) as { deviceName: string };
-    const device = await this.addDevice(deviceName, 0);
+    // The first device is the director's laptop, slot 0 (the Worker refuses a phone before it gets here).
+    const device = await this.addDevice(deviceName, "LAPTOP");
     return this.state.storage.transactionSync(() => {
       for (const statement of SCHEMA) this.sql.exec(statement);
       this.setMeta("centreId", centreId);
@@ -263,8 +282,9 @@ export class Mailbox {
   }
 
   private async join(request: Request): Promise<Response> {
-    const { deviceName } = (await request.json()) as { deviceName: string };
-    const device = await this.addDevice(deviceName, null);
+    const { deviceName, kind } = (await request.json()) as { deviceName: string; kind?: unknown };
+    const joining: DeviceKind = isDeviceKind(kind) ? kind : "LAPTOP";
+    const device = await this.addDevice(deviceName, joining);
     const at = now(this.env);
     return this.state.storage.transactionSync(() => {
       this.sql.exec(`DELETE FROM joinLog WHERE at < ?`, at - DAY_MS);
@@ -273,18 +293,14 @@ export class Mailbox {
         .toArray()[0];
       if (joins.n >= JOINS_PER_DAY) return limited(this.env, "TOO_MANY_JOINS", Number(joins.first) + DAY_MS);
       const added = device.write();
-      if (!added) return refuse(this.env, 409, "TWO_DEVICES");
+      if (!added) return refuse(this.env, 409, FULL_CODE[joining]);
       this.sql.exec(`INSERT INTO joinLog (at) VALUES (?)`, at);
       return json(this.env, { centreId: this.meta("centreId"), ...added, token: device.token }, 201);
     });
   }
 
   private devices(): Response {
-    const devices = this.sql
-      .exec<DeviceRow>(
-        `SELECT id, name, slot, joinedAt, removedAt, lastSeq, ackedUpTo, lastSeenAt FROM device ORDER BY rowid`,
-      )
-      .toArray();
+    const devices = this.sql.exec<DeviceRow>(`SELECT ${DEVICE_COLUMNS} FROM device ORDER BY rowid`).toArray();
     return json(this.env, { devices, keyId: this.meta("keyId") });
   }
 
@@ -316,8 +332,9 @@ export class Mailbox {
   private async fileTicket(request: Request, centreId: string, ticketId: string | undefined, url: URL) {
     if (!ticketId || !HEX_ID.ticket.test(ticketId)) return refuse(this.env, 400, "BAD_REQUEST");
     const ttl = intParam(url.searchParams.get("ttl"), 1, 1_000_000);
-    if (ttl === null) return refuse(this.env, 400, "BAD_REQUEST");
-    if (this.activeDevices().length >= MAX_DEVICES) return refuse(this.env, 409, "TWO_DEVICES");
+    const kind = url.searchParams.get("kind") ?? "LAPTOP";
+    if (ttl === null || !isDeviceKind(kind)) return refuse(this.env, 400, "BAD_REQUEST");
+    if (this.kindFull(kind)) return refuse(this.env, 409, FULL_CODE[kind]);
     const sealed = await request.arrayBuffer();
     if (sealed.byteLength === 0 || sealed.byteLength > 64 * 1024) return refuse(this.env, 413, "TOO_LARGE");
     const ttlSec = Math.min(TICKET_MAX_TTL_SEC, Math.max(TICKET_MIN_TTL_SEC, ttl));
@@ -325,7 +342,7 @@ export class Mailbox {
     return directory.fetch(
       new Request(`http://directory/tickets/${ticketId}`, {
         method: "PUT",
-        headers: { "x-centre": centreId, "x-ttl": String(ttlSec) },
+        headers: { "x-centre": centreId, "x-ttl": String(ttlSec), "x-kind": kind },
         body: sealed,
       }),
     );
@@ -590,6 +607,8 @@ export class Mailbox {
   // ---- full copies ----------------------------------------------------------------------------------------------
 
   private async putFullCopy(request: Request, device: DeviceRow): Promise<Response> {
+    // The full copy is made by a laptop, never over the phone's data plan (docs/phone/DECISION.md section 6).
+    if (device.kind === "PHONE") return refuse(this.env, 403, "PHONE_NO_COPY");
     const input = (await request.json()) as Partial<{
       blobId: string;
       parts: number;

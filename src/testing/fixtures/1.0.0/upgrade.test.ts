@@ -56,7 +56,7 @@ describe("the 1.0.0 fixture", () => {
       tablesOf(copy.db).map((table) => [table, read(copy.db, `SELECT * FROM "${table}" ORDER BY rowid`)]),
     );
 
-    expect(upgradeInPlace(copy.db)).toEqual(["0004_staff_trial_and_fixed_term.sql", "0005_sync.sql"]);
+    expect(upgradeInPlace(copy.db)).toEqual(["0004_staff_trial_and_fixed_term.sql", "0005_sync.sql", "0006_phone.sql"]);
 
     for (const [table, rows] of before) {
       const after = read(copy.db, `SELECT * FROM "${table}" ORDER BY rowid`) as Array<Record<string, unknown>>;

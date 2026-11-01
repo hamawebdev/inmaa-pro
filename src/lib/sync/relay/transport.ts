@@ -10,7 +10,7 @@ export interface RelayRequest {
   method: RelayMethod;
   /** Starts with `/v1/`; may carry a query. The origin is the transport's (saved in the vault). */
   path: string;
-  /** Only `authorization`, `content-type`, `x-setup-key` and `x-relay-*` (native forwards no other). */
+  /** Only `authorization`, `content-type`, `x-setup-key`, `x-inmaa-protocol` and `x-relay-*` (native forwards no other). */
   headers: Record<string, string>;
   body?: Uint8Array;
 }

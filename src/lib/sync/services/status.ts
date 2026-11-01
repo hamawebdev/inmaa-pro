@@ -4,9 +4,9 @@ import type { Executor, ServiceContext } from "@/lib/service/context";
 import { booksState } from "@/lib/sync/books";
 
 import { outboxTransactionCount } from "../payload";
-import { isCapturing, readDeviceIdentity } from "../session";
+import { identityKind, isCapturing, readDeviceIdentity } from "../session";
 import { listFileStates, readExchange, readReceive, readSend, readState } from "../state";
-import type { SyncExchange, SyncProblem, SyncSeverity, SyncStatus } from "./types";
+import type { DeviceKind, DeviceSlot, SyncExchange, SyncProblem, SyncSeverity, SyncStatus } from "./types";
 
 /**
  * What the bar, Settings › المزامنة and the alert tile show (BUILD 2.7).
@@ -27,6 +27,7 @@ const OFFLINE_NOTICE_MS = 30 * 60_000;
 const ORDER: readonly SyncProblem[] = [
   "LEGAL_INCIDENT",
   "REVOKED",
+  "OUTDATED",
   "FULL",
   "REJOIN",
   "CATCH_UP_OFFLINE",
@@ -41,6 +42,7 @@ const ORDER: readonly SyncProblem[] = [
 const SEVERITY: Readonly<Record<SyncProblem, SyncSeverity>> = {
   LEGAL_INCIDENT: "danger",
   REVOKED: "danger",
+  OUTDATED: "danger",
   FULL: "danger",
   REJOIN: "danger",
   CATCH_UP_OFFLINE: "danger",
@@ -88,7 +90,7 @@ export async function syncStatus(ex: Executor, ctx: ServiceContext, live: LiveSy
     if (!live.rejoin) return OFF;
     return { ...OFF, exchange: "REJOIN", problem: "REJOIN", problems: ["REJOIN"], severity: "danger" };
   }
-  const [exchange, send, receive, catchUp, clock, files, waitingCount] = await Promise.all([
+  const [exchange, send, receive, catchUp, clock, files, waitingCount, listed] = await Promise.all([
     readExchange(ex),
     readSend(ex),
     readReceive(ex),
@@ -96,6 +98,7 @@ export async function syncStatus(ex: Executor, ctx: ServiceContext, live: LiveSy
     readState(ex, "clock"),
     listFileStates(ex),
     outboxTransactionCount(ex),
+    readState(ex, "mailboxDevices"),
   ]);
   void send;
   const books = await booksState(ex, { ...ctx, syncDeviceId: identity.id });
@@ -136,6 +139,7 @@ export async function syncStatus(ex: Executor, ctx: ServiceContext, live: LiveSy
 
   if (incidentCount > 0) problems.push("LEGAL_INCIDENT");
   if (exchange.lastOutcome === "REVOKED") problems.push("REVOKED");
+  if (exchange.lastOutcome === "OUTDATED") problems.push("OUTDATED");
   if (exchange.lastOutcome === "FULL") problems.push("FULL");
   if (exchange.lastOutcome === "REJOIN") problems.push("REJOIN");
   if (catchUp && exchange.lastOutcome === "OFFLINE") problems.push("CATCH_UP_OFFLINE");
@@ -156,6 +160,7 @@ export async function syncStatus(ex: Executor, ctx: ServiceContext, live: LiveSy
 
   let state: SyncExchange;
   if (exchange.lastOutcome === "REVOKED") state = "REVOKED";
+  else if (exchange.lastOutcome === "OUTDATED") state = "OUTDATED";
   else if (problems.includes("REJOIN") || live.rejoin) state = "REJOIN";
   else if (catchUp) state = "CATCHING_UP";
   else if (exchange.lastOutcome === "FULL") state = "FULL";
@@ -171,18 +176,29 @@ export async function syncStatus(ex: Executor, ctx: ServiceContext, live: LiveSy
     problem,
     problems,
     severity: problem ? SEVERITY[problem] : "ok",
-    thisDevice: { id: identity.id, name: identity.name, slot: identity.slot },
+    thisDevice: { id: identity.id, name: identity.name, slot: identity.slot, kind: identityKind(identity) },
     devices: devices
-      .map((device) => ({
-        id: device.id,
-        name: device.name,
-        slot: (device.slot === 0 ? 0 : 1) as 0 | 1,
-        isThis: device.id === identity.id,
-        joinedAt: device.joinedAt,
-        lastExchangeAt: device.id === identity.id ? exchange.lastExchangeAt : (receive.origins[device.id]?.at ?? null),
-        removedAt: device.removedAt,
-        holdsBooks: books?.holderDeviceId === device.id,
-      }))
+      .map((device) => {
+        const isThis = device.id === identity.id;
+        const atMailbox = listed?.devices.find((entry) => entry.id === device.id) ?? null;
+        return {
+          id: device.id,
+          name: device.name,
+          slot: device.slot as DeviceSlot,
+          kind: device.kind as DeviceKind,
+          isThis,
+          joinedAt: device.joinedAt,
+          lastExchangeAt: isThis ? exchange.lastExchangeAt : (receive.origins[device.id]?.at ?? null),
+          lastSeenAt: isThis ? exchange.lastExchangeAt : (atMailbox?.lastSeenAt ?? null),
+          waitingFromIt: isThis
+            ? 0
+            : atMailbox
+              ? Math.max(0, atMailbox.lastSeq - (receive.origins[device.id]?.env ?? 0))
+              : null,
+          removedAt: device.removedAt,
+          holdsBooks: books?.holderDeviceId === device.id,
+        };
+      })
       .sort((a, b) => Number(b.isThis) - Number(a.isThis)),
     lastExchangeAt: exchange.lastExchangeAt,
     offlineSince: exchange.offlineSince,
