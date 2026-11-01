@@ -55,10 +55,12 @@ export function HoursView({
       {
         id: "name",
         header: t("Table.Worker"),
+        // On a phone the name stays in view while the hours scroll sideways, on one line.
+        meta: { sticky: true },
         cell: ({ row }) => (
           <Link
             to={`/dashboard/hours-pay/workers/${row.original.workerId}?month=${month}`}
-            className="font-bold hover:underline"
+            className="font-bold hover:underline narrow:whitespace-nowrap"
           >
             {staffName(row.original)}
           </Link>

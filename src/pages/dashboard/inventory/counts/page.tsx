@@ -104,7 +104,7 @@ export default function CountsPage() {
                     </p>
                   </TableCell>
                   <TableCell>{kindLabel(count.kind)}</TableCell>
-                  <TableCell className="tabular-nums">
+                  <TableCell className="tabular-nums narrow:whitespace-nowrap">
                     {t("Typed", { typed: count.typed, lines: count.lines })}
                   </TableCell>
                   <TableCell>

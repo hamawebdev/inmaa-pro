@@ -156,7 +156,7 @@ export function WeekProgrammeView({ tabs }: { tabs?: ReactNode } = {}) {
             go({ zone: value === ALL_ZONES ? "" : value });
           }}
         >
-          <SelectTrigger className="w-56" aria-label={t("Zone")}>
+          <SelectTrigger className="w-full md:w-56" aria-label={t("Zone")}>
             <SelectValue placeholder={t("Zone")} />
           </SelectTrigger>
           <SelectContent>
@@ -169,15 +169,28 @@ export function WeekProgrammeView({ tabs }: { tabs?: ReactNode } = {}) {
           </SelectContent>
         </Select>
 
-        <div className="flex min-w-0 flex-wrap items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => go({ week: addDays(weekStart, -7) })}>
+        {/* On a phone the week's two buttons keep their arrows only, on one row with the week between them. */}
+        <div className="flex w-full min-w-0 items-center gap-2 md:w-auto md:flex-wrap">
+          <Button
+            variant="outline"
+            size="sm"
+            aria-label={t("PreviousWeek")}
+            onClick={() => go({ week: addDays(weekStart, -7) })}
+          >
             {/* "Previous" points left in English and right in Arabic. */}
             <ChevronLeft className="rtl:rotate-180" />
-            {t("PreviousWeek")}
+            <span className="narrow:hidden">{t("PreviousWeek")}</span>
           </Button>
-          <span className="min-w-56 text-center text-base font-bold">{weekLabel}</span>
-          <Button variant="outline" size="sm" onClick={() => go({ week: addDays(weekStart, 7) })}>
-            {t("NextWeek")}
+          <span className="min-w-0 flex-1 text-center text-base font-bold md:min-w-56 md:flex-initial">
+            {weekLabel}
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            aria-label={t("NextWeek")}
+            onClick={() => go({ week: addDays(weekStart, 7) })}
+          >
+            <span className="narrow:hidden">{t("NextWeek")}</span>
             <ChevronRight className="rtl:rotate-180" />
           </Button>
         </div>

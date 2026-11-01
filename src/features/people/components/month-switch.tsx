@@ -30,15 +30,23 @@ export function MonthSwitch({
   const dates = usePeopleDates();
   return (
     <div className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-3">
-      <div className="flex min-w-0 flex-wrap items-center gap-2">
-        <Button variant="outline" size="sm" onClick={() => onChange(shiftMonth(month, -1))}>
+      {/* On a phone: one row, the arrows alone at either end and the month between them. */}
+      <div className="flex min-w-0 flex-wrap items-center gap-2 narrow:w-full narrow:flex-nowrap">
+        <Button
+          variant="outline"
+          size="sm"
+          aria-label={t("PreviousMonth")}
+          onClick={() => onChange(shiftMonth(month, -1))}
+        >
           {/* "Previous" points left in English and right in Arabic. */}
           <ChevronLeft className="rtl:rotate-180" />
-          {t("PreviousMonth")}
+          <span className="narrow:hidden">{t("PreviousMonth")}</span>
         </Button>
-        <span className="min-w-44 text-center text-base font-bold">{dates.month(month)}</span>
-        <Button variant="outline" size="sm" onClick={() => onChange(shiftMonth(month, 1))}>
-          {t("NextMonth")}
+        <span className="min-w-44 text-center text-base font-bold narrow:min-w-0 narrow:flex-1">
+          {dates.month(month)}
+        </span>
+        <Button variant="outline" size="sm" aria-label={t("NextMonth")} onClick={() => onChange(shiftMonth(month, 1))}>
+          <span className="narrow:hidden">{t("NextMonth")}</span>
           <ChevronRight className="rtl:rotate-180" />
         </Button>
       </div>

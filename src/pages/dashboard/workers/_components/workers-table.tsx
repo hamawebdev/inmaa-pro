@@ -95,6 +95,8 @@ export function WorkersTable({
       {
         id: "name",
         header: t("Table.Name"),
+        // Kept in view when the table scrolls sideways on a phone: the tick box before it says nothing alone.
+        meta: { sticky: true },
         cell: ({ row }) => (
           // Her phone on the second line: one column less, so a French row fits at 1024 px (S-07).
           <div className="leading-5">
@@ -228,9 +230,10 @@ export function WorkersTable({
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-center">
+      {/* On a phone the four filters stand two to a row under the search. */}
+      <div className="grid grid-cols-2 gap-3 md:flex md:flex-col lg:flex-row lg:flex-wrap lg:items-center">
         <TableSearch
-          className="w-full lg:max-w-sm lg:flex-1"
+          className="col-span-2 w-full lg:max-w-sm lg:flex-1"
           placeholder={t("Table.SearchPlaceholder")}
           value={search}
           onChange={(value) => {

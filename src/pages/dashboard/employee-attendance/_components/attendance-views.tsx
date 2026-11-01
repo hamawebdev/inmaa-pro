@@ -50,8 +50,13 @@ export function RecordsView({
       {
         id: "name",
         header: t("Table.Employee"),
+        // On a phone the name stays in view while the month's figures scroll sideways, on one line.
+        meta: { sticky: true },
         cell: ({ row }) => (
-          <Link to={historyHref(row.original.staffId, month)} className="font-bold hover:underline">
+          <Link
+            to={historyHref(row.original.staffId, month)}
+            className="font-bold hover:underline narrow:whitespace-nowrap"
+          >
             {nameOf(row.original)}
           </Link>
         ),

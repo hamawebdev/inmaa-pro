@@ -45,9 +45,13 @@ export function WorkerLoad({
         <p className="text-base text-muted-foreground">{t("Load.NoWorker")}</p>
       ) : (
         <div className="min-w-0">
-          {/* The ruler: the two legal marks, above the bars' column. */}
-          <div className="grid min-w-0 grid-cols-[minmax(9rem,15rem)_minmax(0,1fr)_7rem] gap-x-4 pb-1" aria-hidden>
-            <span />
+          {/* The ruler: the two legal marks, above the bars' column. On a phone the bars take the
+              whole width under the name, and so does the ruler. */}
+          <div
+            className="grid min-w-0 grid-cols-[minmax(9rem,15rem)_minmax(0,1fr)_7rem] gap-x-4 pb-1 narrow:grid-cols-1 narrow:px-2"
+            aria-hidden
+          >
+            <span className="narrow:hidden" />
             <div className="relative h-5">
               {[weeklyLegalMin, weeklyCapMin].map((mark) => (
                 <span
@@ -59,7 +63,7 @@ export function WorkerLoad({
                 </span>
               ))}
             </div>
-            <span />
+            <span className="narrow:hidden" />
           </div>
           <ul className="min-w-0 divide-y divide-border">
             {week.workers.map((worker) => (
@@ -109,6 +113,8 @@ function WorkerLine({
     <li
       className={cn(
         "grid min-w-0 grid-cols-[minmax(9rem,15rem)_minmax(0,1fr)_7rem] items-center gap-x-4 gap-y-2 rounded-lg px-2 py-3",
+        // On a phone: the name and the hours on one line, the bar under them, the findings under it.
+        "narrow:grid-cols-[minmax(0,1fr)_auto]",
         focused && "bg-accent/60",
       )}
     >
@@ -141,7 +147,7 @@ function WorkerLine({
         aria-valuemax={Math.max(worker.capacityMin, worker.loadMin)}
         aria-valuenow={worker.loadMin}
         aria-valuetext={`${hoursAndMinutes(worker.loadMin)} / ${hoursAndMinutes(worker.capacityMin)}`}
-        className="relative h-3 min-w-0 rounded-full bg-muted"
+        className="relative h-3 min-w-0 rounded-full bg-muted narrow:col-span-2 narrow:row-start-2"
       >
         <div className={cn("absolute inset-y-0 start-0 rounded-full", fill)} style={{ width: at(worker.loadMin) }} />
         {worker.capacityMin !== rules.weeklyLegalMin && (
@@ -168,7 +174,7 @@ function WorkerLine({
       </span>
 
       {(chips.length > 0 || worker.sanctioned) && (
-        <div className="col-span-2 col-start-2 flex min-w-0 flex-wrap gap-1.5">
+        <div className="col-span-2 col-start-2 flex min-w-0 flex-wrap gap-1.5 narrow:col-start-1">
           {worker.sanctioned && <StatusChip tone="danger" label={t("Load.Sanctioned")} />}
           {chips.map((chip) => (
             <StatusChip

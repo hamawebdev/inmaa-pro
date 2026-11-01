@@ -11,12 +11,15 @@ import { useDateText } from "@/features/money/components/use-money-text";
 import { ACCOUNTANT_FILES, buildAccountantExportAction, type AccountantFile } from "@/features/money/services/exports";
 import { useCan } from "@/hooks/use-session";
 import { useErrorMessage } from "@/i18n/errors";
+import { useDevice } from "@/lib/device";
 import { saveTextFile } from "@/server/exports";
 
 /**
  * «ملفات المحاسب» (feature 48): the four files of the period on screen, each
  * saved where the accountant says, as the log screen saves its own export
  * (`saveTextFile`). For who holds `export.run`; anybody else sees nothing.
+ * Not on the phone: a file saved outside leaves the office's control (the
+ * phone's decision, section 6), so the section is left out there.
  */
 export function AccountantExport({ from, to }: { from: string; to: string }) {
   const t = useTranslations("AccountantExport");
@@ -24,7 +27,8 @@ export function AccountantExport({ from, to }: { from: string; to: string }) {
   const dates = useDateText();
   const errorMessage = useErrorMessage();
   const [busy, setBusy] = React.useState<AccountantFile | null>(null);
-  if (!exports) return null;
+  const { isPhone } = useDevice();
+  if (!exports || isPhone) return null;
 
   async function save(kind: AccountantFile) {
     setBusy(kind);

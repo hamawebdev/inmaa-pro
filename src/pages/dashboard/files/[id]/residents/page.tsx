@@ -104,13 +104,18 @@ export default function FileResidentsPage() {
               <p className="text-muted-foreground">{t("Empty")}</p>
             ) : (
               // His four columns, one fixed cell each, so an empty phone or date keeps its own place (B-072).
+              // On a phone the name takes the first line and the phone and date the second, under it.
               <div role="table" className="min-w-0 divide-y rounded-lg border">
                 <div
                   role="row"
-                  className="grid grid-cols-[4rem_minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)] gap-4 bg-muted/50 px-4 py-3 text-sm font-semibold"
+                  className="grid grid-cols-[4rem_minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)] gap-4 bg-muted/50 px-4 py-3 text-sm font-semibold narrow:grid-cols-[2.5rem_minmax(0,1fr)_minmax(0,1fr)] narrow:gap-x-3 narrow:gap-y-1"
                 >
-                  <span role="columnheader">{tForm("Number")}</span>
-                  <span role="columnheader">{tForm("Name")}</span>
+                  <span role="columnheader" className="narrow:row-span-2">
+                    {tForm("Number")}
+                  </span>
+                  <span role="columnheader" className="narrow:col-span-2">
+                    {tForm("Name")}
+                  </span>
                   <span role="columnheader">{tForm("Phone")}</span>
                   <span role="columnheader">{tForm("RegisteredDate")}</span>
                 </div>
@@ -118,12 +123,12 @@ export default function FileResidentsPage() {
                   <div
                     key={resident.id}
                     role="row"
-                    className="grid grid-cols-[4rem_minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)] items-center gap-4 px-4 py-3"
+                    className="grid grid-cols-[4rem_minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)] items-center gap-4 px-4 py-3 narrow:grid-cols-[2.5rem_minmax(0,1fr)_minmax(0,1fr)] narrow:gap-x-3 narrow:gap-y-1"
                   >
-                    <Ltr role="cell" className="font-bold tabular-nums">
+                    <Ltr role="cell" className="font-bold tabular-nums narrow:row-span-2">
                       {resident.number}
                     </Ltr>
-                    <span role="cell" className="truncate font-medium">
+                    <span role="cell" className="truncate font-medium narrow:col-span-2">
                       {resident.name}
                     </span>
                     <span role="cell" className="truncate text-muted-foreground">

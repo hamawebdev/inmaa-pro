@@ -190,13 +190,14 @@ function CandidatesTable({
   };
 
   return (
-    <Table>
+    // On a phone the client stays in view while the table scrolls sideways: the tick box alone says nothing.
+    <Table stickyColumn="marked">
       <TableHeader>
         <TableRow>
           <TableHead className="w-12">
             <span className="sr-only">{t("Table.Choose")}</span>
           </TableHead>
-          <TableHead>{t("Table.Client")}</TableHead>
+          <TableHead data-sticky>{t("Table.Client")}</TableHead>
           <TableHead>{t("Table.What")}</TableHead>
           <TableHead>{t("Table.Visits")}</TableHead>
           <TableHead>{t("Table.Amount")}</TableHead>
@@ -220,9 +221,9 @@ function CandidatesTable({
                     aria-label={t("Table.ChooseDue", { client: candidate.clientName })}
                   />
                 </TableCell>
-                <TableCell>
+                <TableCell data-sticky>
                   <label htmlFor={id} className="block min-w-0 cursor-pointer">
-                    <span className="block font-bold">{candidate.clientName}</span>
+                    <span className="block font-bold narrow:whitespace-nowrap">{candidate.clientName}</span>
                     <span className="block text-sm text-muted-foreground">
                       {divisionLabel(candidate.division)} · <Ltr>{candidate.fileNumber}</Ltr>
                     </span>

@@ -57,8 +57,13 @@ export function EmployeesTable({ rows }: { rows: EmployeeListRow[] }) {
       {
         id: "name",
         header: t("Table.Name"),
+        // On a phone the name stays in view while the table scrolls sideways, on one line.
+        meta: { sticky: true },
         cell: ({ row }) => (
-          <Link to={`/dashboard/employees/${row.original.id}`} className="font-bold hover:underline">
+          <Link
+            to={`/dashboard/employees/${row.original.id}`}
+            className="font-bold hover:underline narrow:whitespace-nowrap"
+          >
             {staffName(row.original)}
           </Link>
         ),

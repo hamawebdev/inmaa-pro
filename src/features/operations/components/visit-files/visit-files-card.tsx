@@ -11,6 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useCan, useSectionLevel } from "@/hooks/use-session";
 import { useErrorMessage } from "@/i18n/errors";
 import { pathKey } from "@/lib/compat/revalidate";
+import { useDevice } from "@/lib/device";
 import { PHOTO_UPLOAD_RULE, RECEIPT_UPLOAD_RULE, isPdfUrl } from "@/lib/uploads";
 import { useUploadSrc } from "@/lib/use-upload-src";
 import { saveManagedUpload, saveUploadCopy } from "@/server/uploads";
@@ -178,6 +179,7 @@ function ScanRow({
 }) {
   const t = useTranslations("VisitFiles");
   const input = React.useRef<HTMLInputElement>(null);
+  const { isPhone } = useDevice();
   const src = useUploadSrc(url && !isPdfUrl(url) ? url : null);
   return (
     <div className="space-y-2 rounded-xl border p-3">
@@ -192,7 +194,8 @@ function ScanRow({
         <p className="text-sm text-muted-foreground">{t("NoScan")}</p>
       )}
       <div className="flex flex-wrap gap-2">
-        {url && (
+        {/* No copy saved outside on the phone (its decision, section 6). */}
+        {url && !isPhone && (
           <Button type="button" variant="outline" size="sm" onClick={() => void saveUploadCopy(url, label)}>
             <Download />
             {t("SaveCopy")}

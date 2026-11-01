@@ -60,8 +60,13 @@ export function AdvancesView({
       {
         id: "name",
         header: t("Table.Person"),
+        // On a phone the name stays in view while the amounts scroll sideways.
+        meta: { sticky: true },
         cell: ({ row }) => (
-          <Link to={`/dashboard/hours-pay/people/${row.original.staffId}`} className="font-bold hover:underline">
+          <Link
+            to={`/dashboard/hours-pay/people/${row.original.staffId}`}
+            className="font-bold hover:underline narrow:whitespace-nowrap"
+          >
             {row.original.name}
           </Link>
         ),
