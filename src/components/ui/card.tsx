@@ -43,6 +43,8 @@ function CardHeader({ className, ...props }: React.ComponentProps<"div">) {
         "group/card-header @container/card-header grid min-w-0 auto-rows-min items-start gap-1.5 rounded-t-xl px-5 tall:px-7",
         "group-data-[size=sm]/card:px-4",
         "has-data-[slot=card-action]:grid-cols-[1fr_auto] has-data-[slot=card-description]:grid-rows-[auto_auto]",
+        // On a phone (under 768px wide) the action goes under the title, which keeps the width.
+        "narrow:has-data-[slot=card-action]:grid-cols-1",
         "[.border-b]:pb-5 tall:[.border-b]:pb-6 group-data-[size=sm]/card:[.border-b]:pb-4",
         className,
       )}
@@ -81,7 +83,11 @@ function CardAction({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="card-action"
-      className={cn("col-start-2 row-span-2 row-start-1 self-start justify-self-end", className)}
+      className={cn(
+        "col-start-2 row-span-2 row-start-1 self-start justify-self-end",
+        "narrow:col-start-1 narrow:row-span-1 narrow:row-start-auto narrow:justify-self-start",
+        className,
+      )}
       {...props}
     />
   );

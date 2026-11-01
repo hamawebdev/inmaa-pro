@@ -6,6 +6,7 @@ import { useLocale } from "use-intl";
 import { AlertNotifier } from "@/components/alert-notifier";
 import { BottomNav } from "@/components/bottom-nav";
 import { CommandPalette } from "@/components/command-palette";
+import { PhoneNav } from "@/components/phone-nav";
 import { RouteGate } from "@/components/security/route-gate";
 import { Toaster } from "@/components/ui/sonner";
 import { directionFor } from "@/i18n/config";
@@ -65,7 +66,9 @@ export default function DashboardLayout() {
         // rather than as a stray scroll in production. Children that genuinely
         // cannot fit their width (a wide table) carry their own inner scroller,
         // which still works.
-        className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto outline-none"
+        // On a phone, the status bar's inset (0 on a laptop, and on Android, whose window
+        // already sits between the bars: docs/phone/ANDROID-BUILD.md).
+        className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto outline-none narrow:pt-[max(env(safe-area-inset-top),var(--inmaa-inset-top,0px))]"
         onKeyDown={handleScrollKeyDown}
       >
         <RouteGate>
@@ -73,7 +76,10 @@ export default function DashboardLayout() {
         </RouteGate>
       </main>
 
-      <BottomNav pathname={pathname} />
+      {/* The bar follows the window's width (docs/phone/DECISION.md section 5): the laptop's
+          from 768px up, exactly as it was; under that, the phone's, with «المزيد». */}
+      <BottomNav pathname={pathname} className="narrow:hidden" />
+      <PhoneNav pathname={pathname} className="hidden narrow:block" />
 
       {/* Ctrl+K. Renders nothing until it is opened. */}
       <CommandPalette />

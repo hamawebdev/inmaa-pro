@@ -1,6 +1,6 @@
 import * as React from "react";
 
-import { BookLock, Laptop, MonitorSmartphone, MonitorX } from "lucide-react";
+import { BookLock, Laptop, MonitorSmartphone, MonitorX, Smartphone } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslations } from "use-intl";
 
@@ -13,29 +13,33 @@ import { syncApi } from "@/features/sync/api";
 import { useInstantText } from "@/features/sync/use-instant-text";
 import { isolate } from "@/features/sync/view";
 import { useErrorMessage } from "@/i18n/errors";
+import { useDevice } from "@/lib/device";
 import type { SyncDeviceView, SyncStatus } from "@/lib/sync/services/types";
 
 import { PairDialog } from "./pair-dialog";
 import { RemoveDialog } from "./remove-dialog";
 
 /**
- * The two laptops, this one first: which is which, when each was last heard
- * from, and where the books are (DECISION section 5). The manager adds the
- * second laptop here, and removes one that is lost; anybody who may write
- * invoices or payments asks for the books.
+ * The centre's devices, this one first: the two laptops and the director's
+ * phone at most (docs/phone/DECISION.md section 2), which is which, when each
+ * was last heard from, and where the books are (DECISION section 5). The
+ * manager adds the second laptop and the phone here, from a laptop, and
+ * removes a device that is lost; anybody who may write invoices or payments
+ * asks for the books.
  */
 export function DevicesCard({
   status,
   manages,
   mayAskBooks,
-  addOpen,
-  onAddOpenChange,
+  adding,
+  onAddingChange,
 }: {
   status: SyncStatus;
   manages: boolean;
   mayAskBooks: boolean;
-  addOpen: boolean;
-  onAddOpenChange: (open: boolean) => void;
+  /** Which pairing dialog is open, if any. */
+  adding: "LAPTOP" | "PHONE" | null;
+  onAddingChange: (adding: "LAPTOP" | "PHONE" | null) => void;
 }) {
   const t = useTranslations("Sync.Devices");
   const instant = useInstantText();
@@ -44,10 +48,17 @@ export function DevicesCard({
   const [removing, setRemoving] = React.useState<SyncDeviceView | null>(null);
   const [asking, setAsking] = React.useState(false);
 
+  const { isPhone } = useDevice();
   const active = status.devices.filter((device) => device.removedAt === null);
-  const other = active.find((device) => !device.isThis) ?? null;
+  const laptops = active.filter((device) => device.kind === "LAPTOP").length;
+  const hasPhone = active.some((device) => device.kind === "PHONE");
   const books = status.books;
   const thisRevoked = status.exchange === "REVOKED";
+  // A device is added from a laptop: a phone cannot pair another (the engine refuses it too).
+  const mayAdd = manages && !thisRevoked && !isPhone && status.thisDevice?.kind !== "PHONE";
+  const addLaptop = mayAdd && laptops < 2;
+  const addPhone = mayAdd && !hasPhone;
+  const thisIsPhone = status.thisDevice?.kind === "PHONE";
 
   async function askForBooks() {
     if (!books?.holderName) return;
@@ -71,7 +82,7 @@ export function DevicesCard({
     <Card data-sync-devices>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <Laptop className="size-5" />
+          <MonitorSmartphone className="size-5" />
           {t("Title")}
         </CardTitle>
         <CardDescription>{t("Description")}</CardDescription>
@@ -80,24 +91,33 @@ export function DevicesCard({
         <ul className="flex min-w-0 flex-col">
           {status.devices.map((device) => {
             const last = device.lastExchangeAt ? instant(device.lastExchangeAt) : null;
+            const seen = !device.isThis && device.lastSeenAt ? instant(device.lastSeenAt) : null;
+            const KindIcon = device.kind === "PHONE" ? Smartphone : Laptop;
             return (
               <li
                 key={device.id}
                 data-sync-device={device.isThis ? "this" : "other"}
+                data-sync-device-kind={device.kind}
                 className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-2 border-b border-border/60 py-3 last:border-b-0"
               >
                 <div className="flex min-w-0 flex-1 flex-col gap-1">
                   <div className="flex min-w-0 flex-wrap items-center gap-2">
                     <span className="truncate text-lg font-bold">{device.name}</span>
                     <StatusChip
-                      tone={device.isThis ? "info" : "neutral"}
-                      label={device.isThis ? t("This") : t("Other")}
+                      tone="neutral"
+                      icon={KindIcon}
+                      label={device.kind === "PHONE" ? t("Phone") : t("Laptop")}
                     />
+                    {device.isThis && <StatusChip tone="info" label={t("This")} />}
                     {device.removedAt && (
                       <StatusChip tone="danger" label={t("RemovedOn", { date: instant(device.removedAt).date })} />
                     )}
                     {device.holdsBooks && device.removedAt === null && (
-                      <StatusChip tone="success" icon={BookLock} label={t("HoldsBooks")} />
+                      <StatusChip
+                        tone="success"
+                        icon={BookLock}
+                        label={device.isThis ? t("HoldsBooks") : t("HoldsBooksThere")}
+                      />
                     )}
                   </div>
                   <p className="text-base text-muted-foreground">
@@ -110,9 +130,19 @@ export function DevicesCard({
                       t("Never")
                     )}
                   </p>
+                  {seen && (
+                    <p className="text-sm text-muted-foreground">
+                      {t("LastSeen")}: {seen.date} <Ltr>{seen.time}</Ltr>
+                    </p>
+                  )}
+                  {!device.isThis && device.removedAt === null && device.waitingFromIt !== null && (
+                    <p className="text-sm text-muted-foreground">
+                      {t("WaitingFromIt", { count: device.waitingFromIt })}
+                    </p>
+                  )}
                 </div>
                 {manages && !device.isThis && device.removedAt === null && (
-                  <Button variant="outline" onClick={() => setRemoving(device)}>
+                  <Button variant="outline" className="narrow:w-full" onClick={() => setRemoving(device)}>
                     <MonitorX />
                     {t("Remove")}
                   </Button>
@@ -129,6 +159,10 @@ export function DevicesCard({
                 ? t("BooksOn", { name: books.holderName, date: instant(books.since).date })
                 : t("BooksNowhere")}
             </p>
+            {/* What the phone issues prints from a laptop (docs/phone/DECISION.md section 6). */}
+            {thisIsPhone && books.heldHere && (
+              <p className="text-base leading-relaxed text-muted-foreground">{t("PhoneBooksHint")}</p>
+            )}
             {books.requestedAt && !books.heldHere && (
               <p className="text-base leading-relaxed text-muted-foreground" data-sync-books-requested>
                 {t("Requested", {
@@ -149,20 +183,32 @@ export function DevicesCard({
           </div>
         )}
 
-        {active.length < 2 && !thisRevoked && (
+        {(active.length < 2 || addLaptop || addPhone) && !thisRevoked && (
           <div className="flex min-w-0 flex-wrap items-center gap-3">
-            <p className="text-base text-muted-foreground">{t("OnlyOne")}</p>
-            {manages && (
-              <Button variant="add" onClick={() => onAddOpenChange(true)}>
+            {active.length < 2 && <p className="text-base text-muted-foreground">{t("OnlyOne")}</p>}
+            {addLaptop && (
+              <Button variant="add" data-sync-add="LAPTOP" onClick={() => onAddingChange("LAPTOP")}>
                 <MonitorSmartphone />
                 {t("Add")}
+              </Button>
+            )}
+            {addPhone && (
+              <Button variant="add" data-sync-add="PHONE" onClick={() => onAddingChange("PHONE")}>
+                <Smartphone />
+                {t("AddPhone")}
               </Button>
             )}
           </div>
         )}
       </CardContent>
 
-      {manages && <PairDialog open={addOpen && !other} onOpenChange={onAddOpenChange} />}
+      {mayAdd && (
+        <PairDialog
+          kind={adding ?? "LAPTOP"}
+          open={(adding === "LAPTOP" && addLaptop) || (adding === "PHONE" && addPhone)}
+          onOpenChange={(open) => onAddingChange(open ? adding : null)}
+        />
+      )}
       {manages && <RemoveDialog device={removing} onClose={() => setRemoving(null)} />}
       {confirmDialog}
     </Card>

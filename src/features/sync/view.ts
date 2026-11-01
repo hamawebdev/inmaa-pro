@@ -11,6 +11,7 @@ import type { SyncProblem, SyncStatus } from "@/lib/sync/services/types";
 export const ATTENTION_PROBLEMS: readonly SyncProblem[] = [
   "LEGAL_INCIDENT",
   "REVOKED",
+  "OUTDATED",
   "FULL",
   "REJOIN",
   "CATCH_UP_OFFLINE",
@@ -19,7 +20,7 @@ export const ATTENTION_PROBLEMS: readonly SyncProblem[] = [
   "CONFLICTS",
 ];
 
-export type SyncBarState = "SYNCED" | "SENDING" | "OFFLINE" | "LIMIT" | "CATCHING_UP" | "ATTENTION";
+export type SyncBarState = "SYNCED" | "SENDING" | "OFFLINE" | "LIMIT" | "CATCHING_UP" | "ATTENTION" | "OUTDATED";
 
 /** Offline for longer than this, with changes waiting, is worth a warning colour. */
 const LONG_OFFLINE_MS = 24 * 60 * 60 * 1000;
@@ -27,6 +28,8 @@ const LONG_OFFLINE_MS = 24 * 60 * 60 * 1000;
 /** Null while sync is not set up: the bar shows nothing then. */
 export function barState(status: SyncStatus, nowMs: number): { state: SyncBarState; tone: StatusTone } | null {
   if (status.state !== "ON") return null;
+  // The mailbox refuses this version (docs/phone/DECISION.md section 2): the bar says what to do, «حدّث البرنامج».
+  if (status.exchange === "OUTDATED") return { state: "OUTDATED", tone: "danger" };
   if (needsAttention(status)) return { state: "ATTENTION", tone: "danger" };
   switch (status.exchange) {
     case "CATCHING_UP":
@@ -74,6 +77,7 @@ export function problemTone(problem: SyncProblem): StatusTone {
   switch (problem) {
     case "LEGAL_INCIDENT":
     case "REVOKED":
+    case "OUTDATED":
     case "FULL":
     case "REJOIN":
     case "CATCH_UP_OFFLINE":
@@ -104,6 +108,7 @@ export function exchangeTone(exchange: SyncStatus["exchange"]): StatusTone {
       return "warning";
     case "FULL":
     case "REVOKED":
+    case "OUTDATED":
     case "REJOIN":
       return "danger";
   }

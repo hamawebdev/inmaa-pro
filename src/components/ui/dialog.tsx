@@ -51,6 +51,9 @@ function DialogOverlay({
   )
 }
 
+const DIALOG_FULL_SCREEN_ON_PHONE =
+  "narrow:inset-0 narrow:top-0 narrow:left-0 narrow:h-dvh narrow:max-h-none narrow:w-full narrow:max-w-none narrow:translate-x-0 narrow:translate-y-0 narrow:rounded-none narrow:border-0 narrow:px-4 narrow:pt-[max(1.25rem,env(safe-area-inset-top),var(--inmaa-inset-top,0px))] narrow:pb-[max(1.25rem,env(safe-area-inset-bottom),var(--inmaa-inset-bottom,0px))] narrow:data-open:zoom-in-100 narrow:data-closed:zoom-out-100"
+
 function DialogContent({
   className,
   children,
@@ -74,7 +77,10 @@ function DialogContent({
         // same WebKitGTK reason the shell needs it.
         className={cn(
           "border-app fixed top-1/2 left-1/2 z-50 flex max-h-[calc(100dvh-3rem)] w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 flex-col gap-5 overflow-y-auto rounded-xl border-border-strong bg-popover p-5 text-popover-foreground shadow-xl duration-150 outline-none sm:max-w-lg tall:gap-6 tall:p-7 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
-          className
+          className,
+          // On a phone (under 768px wide, never a laptop's window) a dialog takes the whole
+          // screen, whatever width its caller asked for, clear of the system bars.
+          DIALOG_FULL_SCREEN_ON_PHONE
         )}
         onKeyDown={handleScrollKeyDown}
         {...props}
@@ -86,7 +92,7 @@ function DialogContent({
                 edge, which is the left one in Arabic. */}
             <Button
               variant="ghost"
-              className="absolute end-4 top-4"
+              className="absolute end-4 top-4 narrow:end-2 narrow:top-[max(0.75rem,env(safe-area-inset-top),var(--inmaa-inset-top,0px))]"
               size="icon-sm"
             >
               <XIcon
@@ -125,7 +131,8 @@ function DialogFooter({
     <div
       data-slot="dialog-footer"
       className={cn(
-        "flex shrink-0 flex-col-reverse gap-3 border-t-2 border-border pt-5 sm:flex-row sm:justify-end",
+        // On a phone the dialog is the whole screen: its buttons sit at the foot, under the thumb.
+        "flex shrink-0 flex-col-reverse gap-3 border-t-2 border-border pt-5 sm:flex-row sm:justify-end narrow:mt-auto",
         className
       )}
       {...props}

@@ -51,6 +51,16 @@
 @custom-variant short (@media (max-height: 1000px));
 @custom-variant tight (@media (max-height: 820px));
 
+/* The phone's layout (docs/phone/DECISION.md section 5): under 768px of WIDTH, which the
+   Tauri window on a laptop never reaches (it opens at 1024px or more), so nothing written
+   with it can change a laptop's screen. It follows the width, not the device: a narrow
+   window gets it too. What the phone may *do* follows the device (src/lib/device).
+
+   Declared after `tight` on purpose, for the reason above: a phone 800px tall is also
+   `short` and `tight`, and a `narrow:` rule must win over theirs. Tailwind's own `max-md:`
+   is not used, because it is emitted before these custom variants and would lose to them. */
+@custom-variant narrow (@media (max-width: 767.98px));
+
 :root {
   /* ---- Radius scale (squircle-friendly) -------------------------------- */
   --radius: 0.875rem;
@@ -796,5 +806,17 @@ body,
     max-height: none !important;
     overflow: visible !important;
     display: block !important;
+  }
+}
+
+/* A picker's panel on a phone (src/components/pickers/picker-shell.tsx): Radix places the
+   panel's wrapper beside its field with an inline transform; under 768px wide the wrapper is
+   pinned across the bottom of the screen instead, and the panel fills it. Never on a laptop. */
+@media (max-width: 767.98px) {
+  [data-radix-popper-content-wrapper]:has(> [data-picker-panel]) {
+    inset: auto 0 0 0 !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    transform: none !important;
   }
 }

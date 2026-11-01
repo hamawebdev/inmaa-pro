@@ -1,7 +1,7 @@
 import * as React from "react";
 
 import { useQuery } from "@tanstack/react-query";
-import { KeyRound, MonitorSmartphone } from "lucide-react";
+import { KeyRound, MonitorSmartphone, Smartphone } from "lucide-react";
 import { toast } from "sonner";
 import { useLocale, useTranslations } from "use-intl";
 
@@ -38,8 +38,21 @@ const ASSISTANT_ROLES = ROLE_CODES.filter((role) => role !== MANAGER_ROLE);
  * second laptop, then the pairing code, read aloud to the assistant. A centre
  * with no account but the manager's creates hers here (section 9); her role
  * and rights are changed later in Settings › المستخدمون والصلاحيات, as today.
+ *
+ * «إضافة هاتف المدير» (docs/phone/DECISION.md section 3): the same code, the same
+ * 30 minutes, marked for a phone. No account to choose: on the phone the director
+ * signs in with his own.
  */
-export function PairDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
+export function PairDialog({
+  kind = "LAPTOP",
+  open,
+  onOpenChange,
+}: {
+  kind?: "LAPTOP" | "PHONE";
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const phone = kind === "PHONE";
   const t = useTranslations("Sync.Pair");
   const tCommon = useTranslations("Common");
   const locale = useLocale() as "ar" | "fr" | "en";
@@ -49,7 +62,7 @@ export function PairDialog({ open, onOpenChange }: { open: boolean; onOpenChange
   const accounts = useQuery({
     queryKey: [...pathKey(USERS_PATH)],
     queryFn: () => listAccountsQuery(undefined),
-    enabled: open,
+    enabled: open && !phone,
   });
   // The manager's own account never signs in on the assistant's laptop.
   const others = (accounts.data ?? []).filter((account) => account.isActive && account.roleId !== MANAGER_ROLE);
@@ -90,19 +103,26 @@ export function PairDialog({ open, onOpenChange }: { open: boolean; onOpenChange
     onOpenChange(false);
   }
 
-  const ready = creating
-    ? displayName.trim() !== "" && username.trim() !== "" && isPasswordLongEnough(password)
-    : accountId !== "";
+  const ready = phone
+    ? true
+    : creating
+      ? displayName.trim() !== "" && username.trim() !== "" && isPasswordLongEnough(password)
+      : accountId !== "";
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
     if (busy || !ready) return;
     setBusy(true);
     try {
-      const result = await syncApi.addSecondLaptop(
-        creating
-          ? { newAccount: { displayName: displayName.trim(), username: username.trim(), roleId, password } }
-          : { accountId },
+      const result = await syncApi.pairDevice(
+        phone
+          ? { kind: "PHONE" }
+          : creating
+            ? {
+                kind: "LAPTOP",
+                newAccount: { displayName: displayName.trim(), username: username.trim(), roleId, password },
+              }
+            : { kind: "LAPTOP", accountId },
       );
       if (!result.success) return void toast.error(errorMessage(result.error, t("Failed")));
       setPassword("");
@@ -114,13 +134,15 @@ export function PairDialog({ open, onOpenChange }: { open: boolean; onOpenChange
 
   return (
     <Dialog open={open} onOpenChange={close}>
-      <DialogContent className="sm:max-w-xl" data-sync-pair={answer ? "code" : "account"}>
+      <DialogContent className="sm:max-w-xl" data-sync-pair={answer ? "code" : "account"} data-sync-pair-kind={kind}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <MonitorSmartphone className="size-5" />
-            {t("Title")}
+            {phone ? <Smartphone className="size-5" /> : <MonitorSmartphone className="size-5" />}
+            {phone ? t("PhoneTitle") : t("Title")}
           </DialogTitle>
-          <DialogDescription>{answer ? t("CodeHint") : t("Description")}</DialogDescription>
+          <DialogDescription>
+            {answer ? (phone ? t("PhoneCodeHint") : t("CodeHint")) : phone ? t("PhoneDescription") : t("Description")}
+          </DialogDescription>
         </DialogHeader>
 
         {answer ? (
@@ -147,8 +169,11 @@ export function PairDialog({ open, onOpenChange }: { open: boolean; onOpenChange
             <p className={expired ? "text-base font-bold text-destructive" : "text-base"}>
               {expired ? t("Expired") : t("Expires", { time: isolate(instant(answer.expiresAt).time) })}
             </p>
-            {signsInAs && <p className="text-base">{t("SignInAs", { name: signsInAs })}</p>}
+            {signsInAs && !phone && <p className="text-base">{t("SignInAs", { name: signsInAs })}</p>}
           </div>
+        ) : phone ? (
+          // Nothing to fill in: the button below makes the phone's code.
+          <form id="sync_pair_form" onSubmit={submit} />
         ) : (
           <form id="sync_pair_form" className="flex min-w-0 flex-col gap-5" onSubmit={submit}>
             {accounts.isSuccess && others.length === 0 ? (
@@ -247,7 +272,7 @@ export function PairDialog({ open, onOpenChange }: { open: boolean; onOpenChange
               </Button>
               <Button type="submit" form="sync_pair_form" variant="success" loading={busy} disabled={!ready}>
                 <KeyRound />
-                {t("Next")}
+                {phone ? t("PhoneMake") : t("Next")}
               </Button>
             </>
           )}

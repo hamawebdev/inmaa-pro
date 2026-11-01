@@ -46,7 +46,7 @@ export function TodayTiles() {
   const value = (count: number) => (board.isPending ? "…" : count);
 
   return (
-    <div className="grid min-w-0 grid-cols-1 gap-5 md:grid-cols-3 tall:gap-6">
+    <div className="grid min-w-0 grid-cols-1 gap-5 md:grid-cols-3 tall:gap-6 narrow:grid-cols-2 narrow:gap-3">
       <StatCard
         label={t("TodayVisits")}
         value={value(counts.total)}

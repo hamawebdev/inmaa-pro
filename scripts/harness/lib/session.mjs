@@ -25,6 +25,8 @@ export const HARNESS_DIR = path.join(PROJECT_ROOT, ".harness");
 export const REFERENCE_ROOT = path.join(PROJECT_ROOT, ".reference-scratch");
 
 export const DEFAULT_SIZE = { width: 1440, height: 900 };
+/** The director's phone (`--phone`): a 6.3-inch Android phone's window, in CSS pixels. */
+export const PHONE_SIZE = { width: 412, height: 915 };
 /** The two window sizes every screen is checked at: Tauri's default and its minimum. */
 export const WINDOW_SIZES = [
   { width: 1440, height: 900 },
@@ -93,6 +95,8 @@ function buildUrl(origin, view) {
   for (const key of ["locale", "theme", "now"]) {
     if (view[key]) query.set(key, view[key]);
   }
+  // The stub's plugin-os answers "android": the program's `useDevice()` says phone (src/lib/device).
+  if (view.phone) query.set("platform", "android");
   const page = view.page && view.page !== "index.html" ? view.page : "";
   const route = view.route ? `#${view.route.startsWith("/") ? view.route : `/${view.route}`}` : "";
   const search = query.toString();
@@ -115,6 +119,8 @@ function buildUrl(origin, view) {
  * @property {string} [scrollTo] CSS selector: scroll until that element is at the top
  * @property {string} [clip]    CSS selector: shoot only that element
  * @property {string} [evaluate] JavaScript evaluated in the page once settled; its value is returned
+ * @property {boolean} [phone]  the director's phone: the platform answers android, touch on, a phone's
+ *                              pixel density (the size is the caller's: PHONE_SIZE by default)
  */
 
 /**
@@ -263,7 +269,7 @@ export async function openHarness({
     const page = await chrome.newPage();
     await page.prepare({ origin: server.origin, timezone });
     await page.setColorScheme(view.theme === "dark" ? "dark" : "light");
-    await page.setViewport(firstSize.width, firstSize.height);
+    await page.setViewport(firstSize.width, firstSize.height, { phone: Boolean(view.phone) });
     const url = buildUrl(server.origin, { ...view, now: continuousNow(view.now) });
     await page.goto(url);
     // The program opens on its sign-in window: what `view.wait` names is behind it.
@@ -349,7 +355,7 @@ export async function openHarness({
       const shots = [];
       for (const [index, size] of sizes.entries()) {
         if (index > 0) {
-          await page.setViewport(size.width, size.height);
+          await page.setViewport(size.width, size.height, { phone: Boolean(view.phone) });
           await page.waitUntilSettled({ quietMs: 250 });
         }
         let clip;

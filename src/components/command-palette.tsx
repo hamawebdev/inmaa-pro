@@ -13,6 +13,7 @@ import {
   CommandList,
   CommandSeparator,
 } from "@/components/ui/command";
+import { OPEN_EVENT } from "@/components/command-palette-open";
 import { useSession } from "@/hooks/use-session";
 import { mayOpenSection, sectionCodeOf, sectionLevel } from "@/lib/access/session";
 import { QUICK_ACTIONS } from "@/navigation/quick-actions";
@@ -61,8 +62,13 @@ export function CommandPalette() {
         setOpen((prev) => !prev);
       }
     };
+    const show = () => setOpen(true);
     document.addEventListener("keydown", down);
-    return () => document.removeEventListener("keydown", down);
+    window.addEventListener(OPEN_EVENT, show);
+    return () => {
+      document.removeEventListener("keydown", down);
+      window.removeEventListener(OPEN_EVENT, show);
+    };
   }, []);
 
   function go(url: string) {

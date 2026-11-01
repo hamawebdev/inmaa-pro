@@ -43,38 +43,43 @@ export function StatCard({
 
   const body = (
     <>
-      <div className="flex min-w-0 items-start gap-4">
+      {/* On a phone the tile is one line: the icon, the word, and the number at the end. */}
+      <div className="flex min-w-0 items-start gap-4 narrow:items-center narrow:gap-3">
         {Icon && (
           <span
             aria-hidden
             className={cn(
-              "border-app grid size-11 shrink-0 place-content-center rounded-lg tall:size-12",
+              "border-app grid size-11 shrink-0 place-content-center rounded-lg tall:size-12 narrow:size-10",
               accent ? cn(accent.fill, accent.border, accent.text) : "border-border bg-muted text-muted-foreground",
             )}
           >
             <Icon className="size-5 tall:size-6" />
           </span>
         )}
-        <div className="min-w-0 flex-1">
-          <p className="min-w-0 truncate text-base font-bold tracking-tight text-muted-foreground tall:text-lg">
+        <div className="min-w-0 flex-1 narrow:flex narrow:flex-wrap narrow:items-center narrow:gap-x-3">
+          <p className="min-w-0 truncate text-base font-bold tracking-tight text-muted-foreground tall:text-lg narrow:flex-[1_1_7rem]">
             {label}
           </p>
           <p
             className={cn(
-              "mt-1 min-w-0 truncate text-3xl leading-none font-bold tabular-nums tall:text-5xl short:text-4xl",
+              "mt-1 min-w-0 truncate text-3xl leading-none font-bold tabular-nums tall:text-5xl short:text-4xl narrow:mt-0 narrow:text-2xl",
               accent?.text,
             )}
           >
             {value}
           </p>
-          {hint && <p className="mt-2 min-w-0 truncate text-base text-muted-foreground short:hidden">{hint}</p>}
+          {hint && (
+            <p className="mt-2 min-w-0 truncate text-base text-muted-foreground short:hidden narrow:basis-full">
+              {hint}
+            </p>
+          )}
         </div>
       </div>
     </>
   );
 
   const shell = cn(
-    "border-app block min-w-0 rounded-xl border-border bg-card p-5 shadow-sm transition-colors tall:p-6",
+    "border-app block min-w-0 rounded-xl border-border bg-card p-5 shadow-sm transition-colors tall:p-6 narrow:p-4",
     href && "hover:border-ring/50 hover:bg-accent/30 focus-visible:ring-[3px] focus-visible:ring-ring/30 outline-none",
     className,
   );

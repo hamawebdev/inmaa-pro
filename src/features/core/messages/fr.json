@@ -177,6 +177,7 @@
     "AccountHasPassword": "Ce compte a déjà un mot de passe.",
     "PasswordIsTooShort": "Le mot de passe est trop court.",
     "PasswordSameAsGiven": "Choisissez un mot de passe différent de celui qui vous a été donné.",
+    "PhoneManagerOnly": "Seul le compte du directeur se connecte sur le téléphone.",
     "RecoveryManagerOnly": "Seul le directeur possède un code de récupération.",
     "ManagerPasswordOwn": "Le mot de passe d'un directeur est changé par lui-même, ou avec son code de récupération.",
     "SettingEndAfterStart": "La fin doit venir après le début.",
@@ -1142,7 +1143,7 @@
     "settings_rules": "Modifier قواعد العمل",
     "log_read": "Lire le journal des accès et modifications",
     "backup_run": "Faire une sauvegarde maintenant",
-    "sync_manage": "Configurer la synchronisation des deux ordinateurs, ajouter ou retirer un ordinateur, régler les conflits de synchronisation",
+    "sync_manage": "Configurer la synchronisation des appareils du centre, ajouter ou retirer un ordinateur ou le téléphone du directeur, régler les conflits de synchronisation",
     "backup_restore": "Restaurer une sauvegarde (le directeur seul)"
   },
   "AnchorScreen": {
@@ -1473,5 +1474,14 @@
     "NameEn": "Nom en anglais",
     "Divisions": "Proposé sur les formulaires de",
     "RenameNote": "Le nouveau nom apparaît sur chaque dossier qui a ce service, contrats signés compris. Pour proposer un autre service, ajoutez-en un nouveau et supprimez celui-ci."
+  },
+  "Phone": {
+    "More": "Plus",
+    "MoreHint": "Les autres sections, la recherche, l'échange entre les appareils et le verrouillage du programme.",
+    "Search": "Rechercher un écran",
+    "PrintFromComputer": "S'imprime depuis l'ordinateur",
+    "PrintFromComputerHint": "Le téléphone n'imprime pas : cette feuille s'imprime depuis un ordinateur portable, sur le papier à en-tête du centre.",
+    "NotOnPhone": "Pas sur le téléphone",
+    "BackupNotOnPhone": "Le téléphone ne fait pas de sauvegarde : les ordinateurs en font une chaque jour, et un téléphone perdu rejoint le centre à partir de sa copie complète."
   }
 }

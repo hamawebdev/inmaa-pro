@@ -14,6 +14,7 @@ import {
   HARNESS_DIR,
   openHarness,
   parseSize,
+  PHONE_SIZE,
   printReport,
   PROJECT_ROOT,
   REFERENCE_ROOT,
@@ -30,6 +31,8 @@ const USAGE = `Usage: node scripts/harness/shot.mjs --route <path> [options]
   --theme <mode>      light | dark | system   (default: the app's own default, shown as light)
   --size <WxH>        window size; repeat for several (default 1440x900)
   --both-sizes        shorthand for --size 1440x900 --size 1024x640
+  --phone             the director's phone: 412x915 unless --size says otherwise (--size 360x800 --phone for a
+                      small one), the platform answering android, touch on, a phone's pixel density
   --out <file.png>    where to save (one size only)
   --out-dir <dir>     folder to save into (default .harness/shots)
   --seed <file.sql>   SQL applied after the migrations; repeat for several
@@ -56,7 +59,7 @@ const USAGE = `Usage: node scripts/harness/shot.mjs --route <path> [options]
 async function main() {
   const args = parseArgs(process.argv.slice(2), {
     lists: ["size", "seed"],
-    flags: ["reference", "both-sizes", "keep", "demo", "signed-out", "help"],
+    flags: ["reference", "both-sizes", "keep", "demo", "signed-out", "phone", "help"],
   });
   if (args.help || (!args.route && !args.page && !args["signed-out"])) {
     process.stdout.write(USAGE);
@@ -70,7 +73,7 @@ async function main() {
     ? [parseSize("1440x900"), parseSize("1024x640")]
     : args.size.length
       ? args.size.map(parseSize)
-      : [DEFAULT_SIZE];
+      : [args.phone ? PHONE_SIZE : DEFAULT_SIZE];
   if (args.out && sizes.length > 1) throw new Error("--out names one file; use --out-dir with several sizes");
 
   const view = {
@@ -87,6 +90,7 @@ async function main() {
     evaluate: args.eval,
     scroll: args.scroll === undefined ? undefined : args.scroll === "bottom" ? "bottom" : Number(args.scroll),
     scrollTo: args["scroll-to"],
+    phone: Boolean(args.phone),
   };
 
   const harness = await openHarness({
@@ -108,7 +112,8 @@ async function main() {
         ...(view.user && !view.signedOut ? [`as-${view.user}`] : []),
         view.locale ?? "default",
         view.theme ?? "default",
-        sizeLabel(shot.size),
+        // A phone's picture is not the same window at the same size: `412x915-phone`.
+        `${sizeLabel(shot.size)}${view.phone ? "-phone" : ""}`,
       ].join("__");
       const file = args.out ? path.resolve(args.out) : path.join(outDir, `${name}.png`);
       fs.mkdirSync(path.dirname(file), { recursive: true });

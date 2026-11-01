@@ -156,6 +156,12 @@ export interface PickerPanelProps {
   onKeyDown?: React.KeyboardEventHandler<HTMLDivElement>;
 }
 
+const PANEL_AS_SHEET_ON_PHONE = cn(
+  "narrow:w-full narrow:max-w-none narrow:min-w-0 narrow:max-h-[85dvh] narrow:rounded-b-none narrow:border-x-0 narrow:border-b-0",
+  "narrow:shadow-[0_0_0_100vmax_rgb(0_0_0/0.45)] narrow:data-[state=open]:zoom-in-100 narrow:data-[state=open]:slide-in-from-bottom-10",
+  "narrow:pb-[max(env(safe-area-inset-bottom),var(--inmaa-inset-bottom,0px))]",
+);
+
 /** The panel: its body, then the foot with «إلغاء» and «تأكيد». */
 export function PickerPanel({
   children,
@@ -196,6 +202,7 @@ export function PickerPanel({
       <PopoverPrimitive.Content
         ref={placePanel}
         data-slot="popover-content"
+        data-picker-panel
         role="dialog"
         aria-label={label}
         dir={dir}
@@ -208,6 +215,10 @@ export function PickerPanel({
           "border-app z-50 flex max-h-(--radix-popover-content-available-height) min-w-(--radix-popover-trigger-width) flex-col overflow-hidden rounded-xl border-border-strong bg-popover text-popover-foreground shadow-lg outline-hidden",
           "origin-(--radix-popover-content-transform-origin) duration-100 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95",
           className,
+          // On a phone (under 768px wide) the panel is a sheet across the bottom of the screen,
+          // where the thumb is, over a dimmed page: there is no room beside a field. The
+          // wrapper Radix places it in is pinned to the bottom in index.css.
+          PANEL_AS_SHEET_ON_PHONE,
         )}
         onOpenAutoFocus={(event) => {
           const target = initialFocus?.current;
@@ -233,7 +244,7 @@ export function PickerPanel({
         <div className={cn("min-h-0 flex-1 overflow-y-auto p-3", bodyClassName)}>{children}</div>
         <div className="flex flex-wrap items-center gap-2 border-t border-border px-3 py-2.5">
           {extra}
-          <div className="ms-auto flex gap-2">
+          <div className="ms-auto flex gap-2 narrow:ms-0 narrow:w-full narrow:*:flex-1">
             <Button type="button" variant="outline" size="sm" onClick={onCancel}>
               {t("Cancel")}
             </Button>

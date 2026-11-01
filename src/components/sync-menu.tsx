@@ -69,7 +69,7 @@ export function SyncMenu({
       <DropdownMenuContent side="top" align="end" sideOffset={10} className="w-80" data-sync-menu>
         <DropdownMenuLabel className="flex flex-col items-start gap-2">
           <StatusChip tone={tone} label={t(`Bar.${state}`)} />
-          {status.problem && state === "ATTENTION" && (
+          {status.problem && (state === "ATTENTION" || state === "OUTDATED") && (
             <span className="text-sm font-bold">{t(`ProblemTitles.${status.problem}`)}</span>
           )}
           <span className="text-sm font-normal text-muted-foreground">

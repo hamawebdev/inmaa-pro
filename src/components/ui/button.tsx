@@ -82,14 +82,15 @@ const buttonVariants = cva(
        * Padding and text stay in `rem`, so a button still grows with its label.
        */
       size: {
-        xs: "h-[38px] gap-1.5 rounded-md px-3 text-sm tall:h-[42px] has-[>svg]:px-2.5",
+        // On a phone (under 768px wide) nothing is under the 44px a fingertip needs.
+        xs: "h-[38px] gap-1.5 rounded-md px-3 text-sm tall:h-[42px] has-[>svg]:px-2.5 narrow:h-11",
         sm: "h-[46px] gap-2 px-4 text-base tall:h-[50px] has-[>svg]:px-3.5",
         default: "h-[52px] px-6 text-base short:h-[56px] tall:h-[60px] tall:px-7 has-[>svg]:px-5",
         lg: "h-[58px] rounded-xl px-7 text-lg short:h-[62px] tall:h-[66px] tall:px-9 has-[>svg]:px-6",
         /** The one you never miss: SAVE, PRINT — the primary action of a screen. */
         xl: "h-[62px] gap-3 rounded-xl px-8 text-lg short:h-[68px] tall:h-[74px] tall:px-9 tall:text-xl has-[>svg]:px-7",
         icon: "size-[52px] rounded-lg short:size-[56px] tall:size-[60px]",
-        "icon-xs": "size-[38px] rounded-md tall:size-[42px]",
+        "icon-xs": "size-[38px] rounded-md tall:size-[42px] narrow:size-11",
         "icon-sm": "size-[46px] rounded-lg tall:size-[50px]",
         "icon-lg": "size-[58px] rounded-xl tall:size-[62px]",
       },

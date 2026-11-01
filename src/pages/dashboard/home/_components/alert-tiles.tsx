@@ -35,7 +35,7 @@ export function AlertTiles() {
   if (raised.length === 0) return <p className="text-base text-muted-foreground tall:text-lg">{t("NoAlerts")}</p>;
 
   return (
-    <div className="grid min-w-0 grid-cols-1 gap-5 md:grid-cols-3 tall:gap-6">
+    <div className="grid min-w-0 grid-cols-1 gap-5 md:grid-cols-3 tall:gap-6 narrow:gap-3">
       {raised.map((alert) => (
         <StatCard
           key={alert.key}

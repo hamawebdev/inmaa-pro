@@ -14,6 +14,9 @@ export const SYNC_PREVIEWS = [
   "OFF",
   "ONE",
   "TWO",
+  "THREE",
+  "PHONE",
+  "OUTDATED",
   "SENDING",
   "OFFLINE",
   "LIMIT",
@@ -28,8 +31,19 @@ export const SYNC_PREVIEWS = [
 export type SyncPreview = (typeof SYNC_PREVIEWS)[number];
 
 const NOW = "2026-10-31T09:40:00.000Z";
-const director = { id: "device-director", name: "حاسوب المدير", slot: 0 as const };
-const assistant = { id: "device-assistant", name: "حاسوب المساعدة", slot: 1 as const };
+const director = { id: "device-director", name: "حاسوب المدير", slot: 0 as const, kind: "LAPTOP" as const };
+const assistant = { id: "device-assistant", name: "حاسوب المساعدة", slot: 1 as const, kind: "LAPTOP" as const };
+const phone = { id: "device-phone", name: "هاتف المدير", slot: 2 as const, kind: "PHONE" as const };
+const phoneRow = {
+  ...phone,
+  isThis: false,
+  joinedAt: "2026-10-31T08:00:00.000Z",
+  lastExchangeAt: "2026-10-31T09:30:00.000Z",
+  lastSeenAt: "2026-10-31T09:31:00.000Z",
+  waitingFromIt: 2,
+  removedAt: null,
+  holdsBooks: false,
+};
 
 const base: SyncStatus = {
   state: "ON",
@@ -44,6 +58,8 @@ const base: SyncStatus = {
       isThis: true,
       joinedAt: "2026-10-20T08:00:00.000Z",
       lastExchangeAt: NOW,
+      lastSeenAt: null,
+      waitingFromIt: 0,
       removedAt: null,
       holdsBooks: true,
     },
@@ -52,6 +68,8 @@ const base: SyncStatus = {
       isThis: false,
       joinedAt: "2026-10-20T08:30:00.000Z",
       lastExchangeAt: "2026-10-31T09:38:00.000Z",
+      lastSeenAt: "2026-10-31T09:39:00.000Z",
+      waitingFromIt: 0,
       removedAt: null,
       holdsBooks: false,
     },
@@ -95,6 +113,29 @@ export function previewStatus(preview: SyncPreview): SyncStatus {
       return { ...base, devices: [base.devices[0]!] };
     case "TWO":
       return base;
+    case "THREE":
+      return { ...base, devices: [...base.devices, phoneRow] };
+    case "PHONE":
+      // As the director's phone sees it: this device first, the two laptops after.
+      return {
+        ...base,
+        thisDevice: phone,
+        devices: [
+          { ...phoneRow, isThis: true, lastSeenAt: null, waitingFromIt: 0 },
+          ...base.devices.map((device) => ({ ...device, isThis: false })),
+        ],
+        books: { ...base.books!, heldHere: false },
+      };
+    case "OUTDATED":
+      return {
+        ...base,
+        exchange: "OUTDATED",
+        problem: "OUTDATED",
+        problems: ["OUTDATED"],
+        severity: "danger",
+        waitingCount: 4,
+        devices: [...base.devices, phoneRow],
+      };
     case "SENDING":
       return { ...base, exchange: "SENDING", waitingCount: 3, filesToSend: 1 };
     case "OFFLINE":
@@ -254,5 +295,10 @@ export function previewStartup(preview: SyncPreview): SyncStartupState | null {
 }
 
 export function previewPairing(): PairingCodeAnswer {
-  return { code: "7K3M9QX2AB4CDEFGH5JK", expiresAt: "2026-10-31T10:10:00.000Z", accountId: "demo-core-0001" };
+  return {
+    code: "7K3M9QX2AB4CDEFGH5JK",
+    expiresAt: "2026-10-31T10:10:00.000Z",
+    accountId: "demo-core-0001",
+    kind: "LAPTOP",
+  };
 }

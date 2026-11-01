@@ -8,7 +8,10 @@ import {
 } from "@/lib/access/catalogue";
 import type { Executor, Session } from "@/lib/service/context";
 import { ServiceError } from "@/lib/service/errors";
+import { thisDeviceKind } from "@/lib/sync/device";
 import { staffName } from "@/lib/text/names";
+
+import { maySignInOnPhone } from "./phone";
 
 /**
  * Who may do what.
@@ -156,10 +159,11 @@ export function sameSession(a: Session, b: Session): boolean {
 }
 
 /**
- * The signed-in session after the other laptop's changes were applied here
+ * The signed-in session after another device's changes were applied here
  * (two-laptop sync, docs/sync/DECISION.md section 7, case 10): read again when
  * one of `SESSION_TABLES` moved. `signedOut` when the account or its role was
- * switched off; `reloaded` with the new session when its access changed.
+ * switched off, or, on the phone, its role is no longer one that signs in there;
+ * `reloaded` with the new session when its access changed.
  */
 export async function sessionAfterSync(
   ex: Executor,
@@ -175,6 +179,12 @@ export async function sessionAfterSync(
   } catch (error) {
     if (error instanceof ServiceError) return { outcome: "signedOut", session: null };
     throw error;
+  }
+  // On the director's phone only a role of PHONE_ROLES stays signed in (docs/phone/DECISION.md
+  // section 4): an account whose role was changed on a laptop is signed out here, as a new
+  // sign-in by it would be refused.
+  if (!maySignInOnPhone(next.roleId) && (await thisDeviceKind(ex)) === "PHONE") {
+    return { outcome: "signedOut", session: null };
   }
   return sameSession(current, next) ? { outcome: "same", session: current } : { outcome: "reloaded", session: next };
 }

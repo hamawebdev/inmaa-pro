@@ -1,4 +1,4 @@
-import { CloudAlert, CloudCheck, CloudDownload, CloudOff, CloudUpload, type LucideIcon } from "lucide-react";
+import { CloudAlert, CloudCheck, CloudDownload, CloudOff, CloudUpload, Download, type LucideIcon } from "lucide-react";
 
 import type { StatusTone } from "@/components/status-chip";
 import { useSyncStatus } from "@/features/sync/api";
@@ -13,6 +13,7 @@ const BAR_ICONS: Record<SyncBarState, LucideIcon> = {
   LIMIT: CloudAlert,
   CATCHING_UP: CloudDownload,
   ATTENTION: CloudAlert,
+  OUTDATED: Download,
 };
 
 /** The word and the icon wear the tone's own ink, as `StatusChip` does. */

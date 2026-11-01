@@ -1,4 +1,5 @@
 import { MANAGER_ROLE } from "@/lib/access/catalogue";
+import { maySignInOnPhone, PHONE_ROLE_REFUSED } from "@/lib/access/phone";
 import { accountName, loadSession } from "@/lib/access/session";
 import {
   generateRecoveryCode,
@@ -14,6 +15,7 @@ import { action, asProgram, query } from "@/lib/service/action";
 import type { Executor, ServiceContext, Session } from "@/lib/service/context";
 import { ServiceError } from "@/lib/service/errors";
 import { getSetting } from "@/lib/settings";
+import { thisDeviceKind } from "@/lib/sync/device";
 
 /**
  * Sign-in (plan feature 23, DESIGN.md section 12).
@@ -87,6 +89,16 @@ export async function listSignInAccounts(ex: Executor): Promise<SignInAccount[]>
     isManager: row.roleId === MANAGER_ROLE,
     needsPassword: row.passwordHash.trim() === "",
   }));
+}
+
+/**
+ * The director's phone: only an account of `PHONE_ROLES` signs in on it (docs/phone/DECISION.md
+ * section 4). Decided by what this device joined as, never by the platform. Checked before the
+ * password, so the refusal says nothing about whether it was right, and nothing is counted.
+ */
+async function refuseOffPhoneRoles(ex: Executor, account: { roleId: string }): Promise<void> {
+  if (maySignInOnPhone(account.roleId)) return;
+  if ((await thisDeviceKind(ex)) === "PHONE") throw new ServiceError(PHONE_ROLE_REFUSED);
 }
 
 /** The log's own name for the account: the entry is written under the person, not under the program. */
@@ -191,6 +203,7 @@ export async function signIn(
   input: { userId: string; password: string; newPassword?: string } & NewPasswordOptions,
 ): Promise<SignInResult> {
   const account = await activeAccount(ex, input.userId);
+  await refuseOffPhoneRoles(ex, account);
   const stored = account.passwordHash.trim();
   if (!stored) return { ok: false, reason: "NO_PASSWORD_YET" };
 
@@ -268,6 +281,7 @@ export async function setFirstPassword(
   input: { userId: string; password: string } & NewPasswordOptions,
 ): Promise<PasswordChosen> {
   const account = await activeAccount(ex, input.userId);
+  await refuseOffPhoneRoles(ex, account);
   if (account.passwordHash.trim() !== "") throw new ServiceError("This account already has a password.");
   const clock = await clockAtSignIn(ex, ctx, account);
   const { recoveryCode } = await writePassword(ex, ctx, account, input.password, "FIRST", {

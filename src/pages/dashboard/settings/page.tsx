@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import { useTranslations } from "use-intl";
 
 import { Ltr } from "@/components/ltr";
+import { useDevice } from "@/lib/device";
 import { SectionScreen } from "@/components/section-screen";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -43,6 +44,7 @@ export default function SettingsPage() {
 
   // plugin-os exposes platform()/version() synchronously under Tauri.
   const osInfo = `${platform()} ${version()}`;
+  const device = useDevice();
 
   return (
     <SectionScreen
@@ -62,7 +64,8 @@ export default function SettingsPage() {
         <AppearanceCard />
         <SettingsGroups tab="general" only={["program"]} />
 
-        <BackupCard />
+        {/* Not on the director's phone: no backup and no restore there (docs/phone/DECISION.md section 6). */}
+        {!device.isPhone && <BackupCard />}
 
         <Card>
           <CardHeader>

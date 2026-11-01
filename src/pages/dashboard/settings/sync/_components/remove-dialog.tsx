@@ -27,7 +27,8 @@ function paperNumber(text: string): number | null {
 }
 
 /**
- * «إزالة حاسوب» (DECISION section 7, case 9): the manager's act, with her
+ * «إزالة جهاز»: a laptop or the director's phone (DECISION section 7, case 9;
+ * docs/phone/DECISION.md section 2): the manager's act, with her
  * reason typed. When the laptop held the books she declares the last invoice
  * and receipt numbers seen on paper, so that the numbers it may have issued
  * are never issued again here.
@@ -57,7 +58,7 @@ export function RemoveDialog({ device, onClose }: { device: SyncDeviceView | nul
     if (!device || busy || !ready) return;
     setBusy(true);
     try {
-      const result = await syncApi.removeLaptop({
+      const result = await syncApi.removeDevice({
         deviceId: device.id,
         reason: reason.trim(),
         ...(heldBooks ? { lastInvoice: paperNumber(lastInvoice), lastReceipt: paperNumber(lastReceipt) } : {}),

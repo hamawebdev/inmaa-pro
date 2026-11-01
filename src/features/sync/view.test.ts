@@ -18,6 +18,12 @@ describe("the bar", () => {
     expect(barState(previewStatus("CATCH_UP"), NOW)).toEqual({ state: "CATCHING_UP", tone: "progress" });
   });
 
+  it("says «حدّث البرنامج» when the mailbox refuses this version", () => {
+    expect(barState(previewStatus("OUTDATED"), NOW)).toEqual({ state: "OUTDATED", tone: "danger" });
+    expect(attentionCount(previewStatus("OUTDATED"))).toBe(1);
+    expect(barState(previewStatus("THREE"), NOW)).toEqual({ state: "SYNCED", tone: "success" });
+  });
+
   it("turns offline into a warning after a day with changes waiting", () => {
     expect(barState(previewStatus("OFFLINE"), NOW + 25 * 3600_000)).toEqual({ state: "OFFLINE", tone: "warning" });
   });

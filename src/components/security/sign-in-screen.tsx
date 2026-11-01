@@ -22,7 +22,9 @@ import {
 } from "@/features/core/services/sign-in";
 import { mayJoin, useSyncStartup } from "@/features/sync/api";
 import { useErrorMessage } from "@/i18n/errors";
+import { maySignInOnPhone } from "@/lib/access/phone";
 import { formatRecoveryCode, isPasswordLongEnough, MIN_PASSWORD_LENGTH } from "@/lib/auth";
+import { useDevice } from "@/lib/device";
 import type { Session } from "@/lib/service/context";
 import { cn } from "@/lib/utils";
 
@@ -90,8 +92,12 @@ export function SignInScreen() {
   const syncStartup = useSyncStartup();
   const rejoin = syncStartup?.rejoin ?? false;
   const [joining, setJoining] = React.useState(false);
+  // The director's phone (docs/phone/DECISION.md sections 3 and 4): it joins a centre and
+  // never starts one, and only the manager's accounts sign in on it. The service refuses the
+  // others too; this only leaves out what could not be used.
+  const { isPhone } = useDevice();
 
-  const list = accounts.data ?? [];
+  const list = (accounts.data ?? []).filter((account) => !isPhone || maySignInOnPhone(account.roleId));
   // One account (a new installation has only the manager): there is nothing to choose.
   const chosen = list.find((account) => account.id === chosenId) ?? (list.length === 1 ? list[0] : undefined);
 
@@ -182,6 +188,22 @@ export function SignInScreen() {
     } finally {
       setBusy(false);
     }
+  }
+
+  // On a phone that has not joined yet, joining is all there is: no first password, no back.
+  if (isPhone && (joinable.data === true || rejoin)) {
+    return (
+      <Shell step="join">
+        <JoinCentrePanel rejoin={rejoin} />
+      </Shell>
+    );
+  }
+  if (isPhone && joinable.isPending) {
+    return (
+      <Shell step="accounts">
+        <Skeleton className="h-16 w-full" />
+      </Shell>
+    );
   }
 
   if (joining) {
@@ -568,7 +590,7 @@ function RecoveryCodePanel({ code, first, onContinue }: { code: string; first: b
 function Shell({ step, children }: { step: string; children: React.ReactNode }) {
   return (
     <div data-signin={step} className="flex h-dvh flex-col overflow-hidden bg-background text-foreground">
-      <main className="mx-auto flex min-h-0 w-full max-w-lg flex-1 flex-col gap-6 px-6 py-10 tight:gap-4 tight:py-6">
+      <main className="mx-auto flex min-h-0 w-full max-w-lg flex-1 flex-col gap-6 px-6 py-10 tight:gap-4 tight:py-6 narrow:px-4 narrow:pt-[max(1.5rem,env(safe-area-inset-top),var(--inmaa-inset-top,0px))] narrow:pb-[max(1.5rem,env(safe-area-inset-bottom),var(--inmaa-inset-bottom,0px))]">
         {children}
       </main>
     </div>

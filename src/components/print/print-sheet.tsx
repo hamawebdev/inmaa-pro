@@ -7,6 +7,7 @@ import { useTranslations } from "use-intl";
 
 import { LETTERHEAD, type FormFamily, type PlacedPicture } from "@/assets/letterhead/placement";
 import { Button } from "@/components/ui/button";
+import { useDevice } from "@/lib/device";
 import { cn } from "@/lib/utils";
 
 import "./print-sheet.css";
@@ -153,6 +154,22 @@ export function PrintSheet({
   }, []);
 
   const paper = landscape ? PAPER_MM.landscape : PAPER_MM.portrait;
+
+  // On a phone the preview is scaled down to the screen's width (print-sheet.css reads the
+  // factor under 768px only, so a laptop's preview is exactly as it was). The sheet's own
+  // layout is untouched: it is the same A4 picture, smaller.
+  const frameRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const frame = frameRef.current;
+    if (!frame || typeof ResizeObserver === "undefined") return;
+    const sheetPx = (paper.width * 96) / 25.4;
+    const fit = () => frame.style.setProperty("--sheet-preview-zoom", String(Math.min(1, frame.clientWidth / sheetPx)));
+    fit();
+    const observer = new ResizeObserver(fit);
+    observer.observe(frame);
+    return () => observer.disconnect();
+  }, [paper.width]);
+
   const pictures = letterhead ? LETTERHEAD[letterhead] : null;
   const box = letterhead
     ? clearOfLetterhead(letterhead, margins ?? SHEET_BODY[letterhead])
@@ -223,7 +240,9 @@ export function PrintSheet({
       {/* The paper. No page margin: the sheet draws its own, so that the
           letterhead can reach the edges. One sheet is printed at a time. */}
       <style>{`@page { size: A4 ${landscape ? "landscape" : "portrait"}; margin: 0; }`}</style>
-      <div className="sheet-preview-frame">{sheet("preview")}</div>
+      <div ref={frameRef} className="sheet-preview-frame">
+        {sheet("preview")}
+      </div>
       {printRoot && createPortal(sheet("print"), printRoot)}
     </>
   );
@@ -245,7 +264,30 @@ export function PrintSheet({
  * printed at all (`installPrintGuard`). A hook that throws stops the print
  * (src/components/print/print-flow.ts).
  */
-export function PrintButton({ label, onPrint }: { label?: string; onPrint?: OnPrint }) {
+export function PrintButton(props: { label?: string; onPrint?: OnPrint }) {
+  const device = useDevice();
+  // The director's phone does not print (docs/phone/DECISION.md section 6): Android's window
+  // has no print, and his forms go on his letterhead from the office. The sheet stays to be
+  // looked at; in the button's place, where it is printed. Ctrl+P finds no printer here.
+  if (device.isPhone) return <PrintedFromComputer />;
+  return <PrintButtonHere {...props} />;
+}
+
+function PrintedFromComputer() {
+  const t = useTranslations("Phone");
+  return (
+    <span
+      data-print-elsewhere
+      title={t("PrintFromComputerHint")}
+      className="inline-flex min-h-11 items-center gap-2 rounded-lg border-2 border-dashed border-border-strong px-4 text-base font-semibold text-muted-foreground"
+    >
+      <Printer className="size-5 shrink-0" aria-hidden />
+      {t("PrintFromComputer")}
+    </span>
+  );
+}
+
+function PrintButtonHere({ label, onPrint }: { label?: string; onPrint?: OnPrint }) {
   const t = useTranslations("Print");
   const [busy, setBusy] = useState(false);
 

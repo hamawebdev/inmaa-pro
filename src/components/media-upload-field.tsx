@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { intlLocaleFor } from "@/i18n/config";
 import { useErrorMessage } from "@/i18n/errors";
 import { useUploadSrc } from "@/lib/use-upload-src";
+import { useDevice } from "@/lib/device";
 import { saveUploadCopy, type UploadCopyLog } from "@/server/uploads";
 import {
   type UploadRule,
@@ -109,6 +110,7 @@ export function MediaUploadField({
   // A just-picked file is already a blob: URL; a stored one is a managed
   // upload path that has to be resolved to the asset protocol first.
   const resolvedExistingUrl = useUploadSrc(existingUrl);
+  const device = useDevice();
   const previewSrc = showSelectedFile ? selectedPreviewUrl : resolvedExistingUrl;
   const displayName = showSelectedFile ? getMediaFileName(value.file) : getMediaFileName(existingUrl);
 
@@ -187,7 +189,9 @@ export function MediaUploadField({
           </div>
           {/* No "open" link: nothing leaves the window. A stored file is read
               by saving a copy; a stored image is also shown above. */}
-          {showExistingFile && existingUrl && mayCopy ? (
+          {/* No copy saved outside on the director's phone: a file in its Downloads leaves the
+              office's control (docs/phone/DECISION.md section 6). */}
+          {showExistingFile && existingUrl && mayCopy && !device.isPhone ? (
             <Button type="button" variant="outline" size="sm" onClick={handleSaveCopy}>
               {saveCopyLabel ?? t("SaveCopy")}
             </Button>

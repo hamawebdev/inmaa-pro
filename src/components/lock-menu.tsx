@@ -16,6 +16,7 @@ import {
 import { leaveSession } from "@/features/core/services/session";
 import { useCan, useSession } from "@/hooks/use-session";
 import { ROLE_CODES, ROLE_LABELS, type RoleCode } from "@/lib/access/catalogue";
+import { useDevice } from "@/lib/device";
 import { backupDatabase } from "@/server/backup";
 
 /**
@@ -39,7 +40,9 @@ export function LockMenu({ children }: { children: React.ReactNode }) {
   const session = useSession();
   const [passwordOpen, setPasswordOpen] = React.useState(false);
   const tBackup = useTranslations("Settings.Backup");
-  const mayBackUp = useCan("backup.run");
+  // The phone keeps no backup (docs/phone/DECISION.md section 6): the laptops do, every day.
+  const device = useDevice();
+  const mayBackUp = useCan("backup.run") && !device.isPhone;
 
   async function backUpNow() {
     const outcome = await backupDatabase({ title: tBackup("BackUpNow"), filterName: tBackup("Title") });

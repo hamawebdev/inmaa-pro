@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { leaveSession } from "@/features/core/services/session";
 import { joinCentre, rejoinFromFullCopy, syncApi } from "@/features/sync/api";
 import { useErrorMessage } from "@/i18n/errors";
+import { useDevice } from "@/lib/device";
 import { ServiceError } from "@/lib/service/errors";
 import type { JoinProgress, SyncStartupState } from "@/lib/sync/services/types";
 import { cn } from "@/lib/utils";
@@ -37,12 +38,17 @@ function percent(done: number, total: number | null): number | null {
  * program restarts on the sign-in window with the centre's accounts. Drawn
  * inside the sign-in window's frame, before anybody signs in.
  */
-export function JoinCentrePanel({ onBack, rejoin = false }: { onBack: () => void; rejoin?: boolean }) {
+export function JoinCentrePanel({ onBack, rejoin = false }: { onBack?: () => void; rejoin?: boolean }) {
   const t = useTranslations("SyncJoin");
   const errorMessage = useErrorMessage();
+  // The director's phone joins on a phone's code, and is never the first device of a centre
+  // (docs/phone/DECISION.md section 3): it has nothing to go back to.
+  const { isPhone } = useDevice();
   const [origin, setOrigin] = React.useState("");
   const [code, setCode] = React.useState("");
-  const [deviceName, setDeviceName] = React.useState(() => t("DeviceNameDefault"));
+  const [deviceName, setDeviceName] = React.useState(() =>
+    isPhone ? t("PhoneDeviceNameDefault") : t("DeviceNameDefault"),
+  );
   const [progress, setProgress] = React.useState<JoinProgress | null>(null);
   const [error, setError] = React.useState("");
   const [busy, setBusy] = React.useState(false);
@@ -56,7 +62,11 @@ export function JoinCentrePanel({ onBack, rejoin = false }: { onBack: () => void
     try {
       // On success the program restarts: what follows is only seen if it does not.
       if (rejoin) await rejoinFromFullCopy(setProgress);
-      else await joinCentre({ origin: origin.trim(), code, deviceName: deviceName.trim() }, setProgress);
+      else
+        await joinCentre(
+          { kind: isPhone ? "PHONE" : "LAPTOP", origin: origin.trim(), code, deviceName: deviceName.trim() },
+          setProgress,
+        );
     } catch (failure) {
       setProgress(null);
       setError(
@@ -77,8 +87,11 @@ export function JoinCentrePanel({ onBack, rejoin = false }: { onBack: () => void
         </div>
         <h1 className="text-3xl font-bold tight:text-2xl">{rejoin ? t("Rejoin.Title") : t("Title")}</h1>
         <p className="text-lg leading-relaxed text-balance text-muted-foreground">
-          {rejoin ? t("Rejoin.Hint") : t("Description")}
+          {rejoin ? t("Rejoin.Hint") : isPhone ? t("PhoneDescription") : t("Description")}
         </p>
+        {isPhone && !rejoin && (
+          <p className="text-base leading-relaxed text-balance text-muted-foreground">{t("PhoneOnlyHint")}</p>
+        )}
       </div>
 
       <form data-sync-join className="-mx-1 flex min-h-0 flex-col gap-4 overflow-y-auto px-1 pb-1" onSubmit={submit}>
@@ -153,16 +166,18 @@ export function JoinCentrePanel({ onBack, rejoin = false }: { onBack: () => void
           {!busy && <MonitorSmartphone />}
           {rejoin ? t("Rejoin.Submit") : t("Submit")}
         </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          className="text-muted-foreground"
-          disabled={busy}
-          onClick={onBack}
-        >
-          {t("Back")}
-        </Button>
+        {onBack && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="text-muted-foreground"
+            disabled={busy}
+            onClick={onBack}
+          >
+            {t("Back")}
+          </Button>
+        )}
       </form>
     </>
   );
@@ -172,7 +187,9 @@ export function JoinCentrePanel({ onBack, rejoin = false }: { onBack: () => void
 function SyncFrame({ state, children }: { state: string; children: React.ReactNode }) {
   return (
     <div data-sync-screen={state} className="flex h-dvh flex-col overflow-y-auto bg-background text-foreground">
-      <main className="mx-auto flex w-full max-w-xl flex-col justify-center gap-6 px-6 py-10">{children}</main>
+      <main className="mx-auto flex w-full max-w-xl flex-col justify-center gap-6 px-6 py-10 narrow:px-4 narrow:py-6">
+        {children}
+      </main>
     </div>
   );
 }

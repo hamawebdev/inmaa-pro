@@ -99,7 +99,7 @@ function accentClasses(accent: SectionAccent | undefined, active: boolean) {
  * scroller, not a `position: fixed` overlay, so it never covers content and
  * never needs a spacer under the page.
  */
-export function BottomNav({ pathname }: { pathname: string }) {
+export function BottomNav({ pathname, className }: { pathname: string; className?: string }) {
   const t = useTranslations("Nav");
   const tSync = useTranslations("Sync.Bar");
   const session = useSession();
@@ -115,7 +115,10 @@ export function BottomNav({ pathname }: { pathname: string }) {
   const utility = "w-28 shrink-0 tall:w-32";
 
   return (
-    <nav aria-label={t("Sections")} className="flex shrink-0 border-t-[3px] border-border-strong bg-card">
+    <nav
+      aria-label={t("Sections")}
+      className={cn("flex shrink-0 border-t-[3px] border-border-strong bg-card", className)}
+    >
       {/* NavLink's own `isActive` is deliberately unused for the lit state: it
           compares the location against *this item's* href, and a section owns
           several paths (Staff owns /teachers, /rent-teachers and /employees).

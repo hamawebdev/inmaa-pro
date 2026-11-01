@@ -36,7 +36,10 @@ export default function HomePage() {
   const seesVisits = session ? sectionLevel(session, "REQUESTS") !== null : false;
 
   return (
-    <Screen className="space-y-8 tall:space-y-10">
+    // On a phone (under 768px wide) what waits for him comes first: the alert tiles, then
+    // today's tiles, then the board (docs/phone/DECISION.md section 5). The order is the
+    // flex order, so a laptop's page is the same page, in the same order, as before.
+    <Screen className="space-y-8 tall:space-y-10 narrow:flex narrow:flex-col narrow:gap-6 narrow:space-y-0">
       <ScreenHeader
         section="home"
         icon={getSection("home").icon}
@@ -45,19 +48,19 @@ export default function HomePage() {
       />
 
       {seesVisits && (
-        <section className="space-y-4 tall:space-y-5">
+        <section className="space-y-4 tall:space-y-5 narrow:order-2 narrow:space-y-3">
           <SectionHeading>{t("Today")}</SectionHeading>
           <Today />
         </section>
       )}
 
-      <section className="space-y-4 tall:space-y-5">
+      <section className="space-y-4 tall:space-y-5 narrow:order-1 narrow:space-y-3">
         <SectionHeading>{t("Alerts")}</SectionHeading>
         <AlertTiles />
       </section>
 
       {seesVisits && (
-        <section className="space-y-4 tall:space-y-5">
+        <section className="space-y-4 tall:space-y-5 narrow:order-3 narrow:space-y-3">
           <SectionHeading>{t("DayBoard")}</SectionHeading>
           <Board />
         </section>

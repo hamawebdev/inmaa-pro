@@ -40,24 +40,38 @@ node scripts/harness/csp-check.mjs --route /dashboard/home --route /dashboard/se
 
 `--help` on any of them lists every option. The ones used most:
 
-| Option                                      | Meaning                                                                                        |
-| ------------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| `--route <path>`                            | the hash-router path, as in the address after `#`                                              |
-| `--reference`                               | use the scratch copy of the academy app                                                        |
-| `--locale ar\|fr\|en`                       | language; left out, the app's own default applies                                              |
-| `--theme light\|dark`                       | theme; left out, the app's own default applies (shown as light)                                |
-| `--size 1440x900`, `--both-sizes`           | window size; `--both-sizes` is 1440x900 and 1024x640 from one load                             |
-| `--seed <file.sql>`                         | SQL run after the migrations; repeatable                                                       |
-| `--demo`                                    | start from the demo data (`npm run demo`); see below                                           |
-| `--now <datetime>`                          | a fixed clock that still ticks, in the centre's time zone (Africa/Algiers)                     |
-| `--user <name>`                             | the account to sign in as, by sign-in name; `manager` when left out                            |
-| `--signed-out`                              | stay on the sign-in window (`shot` only; the file is named `sign-in__…`)                       |
-| `--before <js>`                             | evaluate this once settled, then settle again, before the picture                              |
-| `--scroll bottom`, `--scroll-to <selector>` | scroll the main area before shooting                                                           |
-| `--clip <selector>`                         | shoot one element                                                                              |
-| `--eval <js>`                               | print the value of an expression evaluated in the page                                         |
-| `--sync-vault <json>`                       | the sync vault the program reads (JSON text or a .json file); left out, empty: sync not set up |
-| `--keep`                                    | keep the run's database and browser profile, for looking inside                                |
+| Option                                      | Meaning                                                                                                                                       |
+| ------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--route <path>`                            | the hash-router path, as in the address after `#`                                                                                             |
+| `--reference`                               | use the scratch copy of the academy app                                                                                                       |
+| `--locale ar\|fr\|en`                       | language; left out, the app's own default applies                                                                                             |
+| `--theme light\|dark`                       | theme; left out, the app's own default applies (shown as light)                                                                               |
+| `--size 1440x900`, `--both-sizes`           | window size; `--both-sizes` is 1440x900 and 1024x640 from one load                                                                            |
+| `--phone`                                   | the director's phone: 412x915 (or `--size 360x800 --phone`), plugin-os answering `android`, touch on, pixel density 2; files end `-phone.png` |
+| `--seed <file.sql>`                         | SQL run after the migrations; repeatable                                                                                                      |
+| `--demo`                                    | start from the demo data (`npm run demo`); see below                                                                                          |
+| `--now <datetime>`                          | a fixed clock that still ticks, in the centre's time zone (Africa/Algiers)                                                                    |
+| `--user <name>`                             | the account to sign in as, by sign-in name; `manager` when left out                                                                           |
+| `--signed-out`                              | stay on the sign-in window (`shot` only; the file is named `sign-in__…`)                                                                      |
+| `--before <js>`                             | evaluate this once settled, then settle again, before the picture                                                                             |
+| `--scroll bottom`, `--scroll-to <selector>` | scroll the main area before shooting                                                                                                          |
+| `--clip <selector>`                         | shoot one element                                                                                                                             |
+| `--eval <js>`                               | print the value of an expression evaluated in the page                                                                                        |
+| `--sync-vault <json>`                       | the sync vault the program reads (JSON text or a .json file); left out, empty: sync not set up                                                |
+| `--keep`                                    | keep the run's database and browser profile, for looking inside                                                                               |
+
+## The director's phone
+
+`--phone` shows a screen as the director's Android phone shows it (docs/phone/DECISION.md): a 412x915 window (a
+6.3-inch phone; `--size 360x800 --phone` for a small one), touch instead of a mouse (`pointer: coarse`), a pixel
+density of 2, and the Tauri OS plugin answering `android`, so the program's `useDevice()` (src/lib/device) says phone:
+no print button, no backup card, manager accounts only on the sign-in window. The layout follows the width, not the
+device: `--size 412x915` without `--phone` shows the phone's layout with a laptop's rules.
+
+```sh
+npm run shot -- --phone --demo --route /dashboard/home --locale ar --theme dark
+npm run shot -- --phone --demo --route /dashboard/home --before "document.querySelector('[data-phone-more]').click()"
+```
 
 ## Signing in
 

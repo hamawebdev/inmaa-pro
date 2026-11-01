@@ -4,6 +4,7 @@ import { CAPABILITIES, DEFAULT_SECTION_LEVELS, ROLE_CODES, ROLE_LABELS, type Rol
 import { can, requireSection, sectionLevel } from "@/lib/access/session";
 import { verifyChains } from "@/lib/chain";
 import { SYSTEM_SESSION, type Session } from "@/lib/service/context";
+import { writeState } from "@/lib/sync/state";
 import { createTestDatabase, type TestDatabase } from "@/testing/database";
 
 import { FIRST_MANAGER_ID } from "./first-run";
@@ -203,6 +204,76 @@ describe("signing in", () => {
     await expect(asProgram((ex, ctx) => signIn(ex, ctx, { userId: id, password: "reception-pass" }))).rejects.toThrow(
       "This account does not exist or is not active.",
     );
+  });
+});
+
+describe("on the director's phone", () => {
+  /** This copy joined the centre as its phone (what `joinCentre` with kind PHONE leaves behind). */
+  async function becomePhone(kind: "PHONE" | "LAPTOP" = "PHONE") {
+    await test.transact((ex) =>
+      writeState(ex, "device", {
+        id: "device-test",
+        slot: kind === "PHONE" ? 2 : 1,
+        centreId: "centre-test",
+        name: "test",
+        kind,
+      }),
+    );
+  }
+
+  async function accountOf(role: Exclude<RoleCode, "MANAGER">, password?: string) {
+    const username = role.toLowerCase();
+    const { id } = await test.transact((ex, ctx) =>
+      createAccount(ex, ctx, { username, displayName: ROLE_LABELS[role].ar, roleId: role }),
+    );
+    if (password) await asProgram((ex, ctx) => setFirstPassword(ex, ctx, { userId: id, password, ...FAST }));
+    return id;
+  }
+
+  it("lets the manager in and refuses every other role, before the password is even looked at", async () => {
+    await managerWithPassword();
+    const accountant = await accountOf("ACCOUNTANT", "accountant-pass");
+    const fresh = await accountOf("SUPERVISOR");
+    await becomePhone();
+    test.clock.advance({ minutes: 5 });
+
+    const manager = await asProgram<{ ok: boolean }>((ex, ctx) =>
+      signIn(ex, ctx, { userId: FIRST_MANAGER_ID, password: "manager-pass" }),
+    );
+    expect(manager.ok).toBe(true);
+
+    for (const password of ["accountant-pass", "wrong"]) {
+      await expect(asProgram((ex, ctx) => signIn(ex, ctx, { userId: accountant, password }))).rejects.toThrow(
+        "Only the manager's account signs in on the phone.",
+      );
+    }
+    // Nothing counted: the phone did not ask for a password it would refuse anyway.
+    const tried = await test.db
+      .selectFrom("User")
+      .select("failedSignInCount")
+      .where("id", "=", accountant)
+      .executeTakeFirstOrThrow();
+    expect(tried.failedSignInCount).toBe(0);
+
+    // An account with no password yet does not choose one on the phone either.
+    await expect(
+      asProgram((ex, ctx) => setFirstPassword(ex, ctx, { userId: fresh, password: "supervisor-pass", ...FAST })),
+    ).rejects.toThrow("Only the manager's account signs in on the phone.");
+  });
+
+  it("changes nothing on a laptop, or before this copy has joined a centre", async () => {
+    await managerWithPassword();
+    const accountant = await accountOf("ACCOUNTANT", "accountant-pass");
+    const before = await asProgram<{ ok: boolean }>((ex, ctx) =>
+      signIn(ex, ctx, { userId: accountant, password: "accountant-pass" }),
+    );
+    expect(before.ok).toBe(true);
+
+    await becomePhone("LAPTOP");
+    const onLaptop = await asProgram<{ ok: boolean }>((ex, ctx) =>
+      signIn(ex, ctx, { userId: accountant, password: "accountant-pass" }),
+    );
+    expect(onLaptop.ok).toBe(true);
   });
 });
 

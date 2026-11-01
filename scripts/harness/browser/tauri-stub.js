@@ -180,16 +180,28 @@
     plugins: { path: { sep: "/", delimiter: ":" } },
   };
   window.__TAURI_EVENT_PLUGIN_INTERNALS__ = { unregisterListener: function () {} };
-  // The client's PCs run Windows; the Settings screen prints these.
-  window.__TAURI_OS_PLUGIN_INTERNALS__ = {
-    eol: "\r\n",
-    platform: "windows",
-    version: "10.0.19045",
-    family: "windows",
-    os_type: "windows",
-    arch: "x86_64",
-    exe_extension: "exe",
-  };
+  // The client's PCs run Windows; the Settings screen prints these. `--phone` makes it the
+  // director's Android phone, which is what the program's `useDevice()` reads (src/lib/device).
+  window.__TAURI_OS_PLUGIN_INTERNALS__ =
+    params.get("platform") === "android"
+      ? {
+          eol: "\n",
+          platform: "android",
+          version: "14",
+          family: "unix",
+          os_type: "android",
+          arch: "aarch64",
+          exe_extension: "",
+        }
+      : {
+          eol: "\r\n",
+          platform: "windows",
+          version: "10.0.19045",
+          family: "windows",
+          os_type: "windows",
+          arch: "x86_64",
+          exe_extension: "exe",
+        };
   window.isTauri = true;
 
   // ── 3. Things a headless browser would otherwise swallow or block ───────

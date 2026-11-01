@@ -32,6 +32,8 @@ export function Screen({ className, children }: { className?: string; children: 
       className={cn(
         "mx-auto w-full max-w-[92rem] min-w-0 px-5 pt-5 pb-16",
         "tall:px-10 tall:pt-8 tall:pb-24 short:px-6 short:pt-6",
+        // A phone (under 768px wide, which no laptop window reaches): the 16px gutter of a phone.
+        "narrow:px-4 narrow:pt-4 narrow:pb-12",
         className,
       )}
     >
@@ -63,10 +65,13 @@ export function PageActions({
   className?: string;
 }) {
   return (
-    <div className={cn("mt-10 border-t-2 border-border pt-8 tall:mt-14 tall:pt-10", className)}>
+    <div className={cn("mt-10 border-t-2 border-border pt-8 tall:mt-14 tall:pt-10 narrow:mt-8 narrow:pt-6", className)}>
       <div className="flex min-w-0 flex-wrap items-center gap-4 tall:gap-5">
         {note}
-        <div className="ms-auto flex min-w-0 flex-wrap items-center justify-end gap-3 tall:gap-4">{children}</div>
+        {/* On a phone the buttons take the whole width, the save first under the thumb. */}
+        <div className="ms-auto flex min-w-0 flex-wrap items-center justify-end gap-3 tall:gap-4 narrow:ms-0 narrow:w-full narrow:flex-col-reverse narrow:items-stretch narrow:*:w-full">
+          {children}
+        </div>
       </div>
     </div>
   );
@@ -127,19 +132,19 @@ export function ScreenHeader({
           <span
             aria-hidden
             className={cn(
-              "border-app grid size-14 shrink-0 place-content-center rounded-xl tall:size-16",
+              "border-app grid size-14 shrink-0 place-content-center rounded-xl tall:size-16 narrow:size-12",
               accent.fill,
               accent.border,
               accent.text,
             )}
           >
-            <Icon className="size-7 tall:size-8" />
+            <Icon className="size-7 tall:size-8 narrow:size-6" />
           </span>
         )}
-        <div className="min-w-0 flex-1 basis-64">
+        <div className="min-w-0 flex-1 basis-64 narrow:basis-0">
           <h1
             className={cn(
-              "min-w-0 truncate text-2xl leading-tight font-bold tracking-tight tall:text-4xl short:text-3xl",
+              "min-w-0 truncate text-2xl leading-tight font-bold tracking-tight tall:text-4xl short:text-3xl narrow:line-clamp-2 narrow:text-2xl narrow:whitespace-normal",
               accent.text,
             )}
           >
@@ -152,7 +157,12 @@ export function ScreenHeader({
             <p className="mt-1 truncate text-base text-muted-foreground tall:text-lg short:hidden">{description}</p>
           )}
         </div>
-        {actions && <div className="ms-auto flex flex-wrap items-center gap-3">{actions}</div>}
+        {/* On a phone the screen's buttons go under the heading, the width of the page. */}
+        {actions && (
+          <div className="ms-auto flex flex-wrap items-center gap-3 narrow:ms-0 narrow:w-full narrow:*:flex-1">
+            {actions}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -164,5 +174,9 @@ export function ScreenHeader({
  * about how big a heading is at a given height.
  */
 export function SectionHeading({ children, className }: { children: React.ReactNode; className?: string }) {
-  return <h2 className={cn("text-xl font-bold tracking-tight tall:text-3xl short:text-2xl", className)}>{children}</h2>;
+  return (
+    <h2 className={cn("text-xl font-bold tracking-tight tall:text-3xl short:text-2xl narrow:text-xl", className)}>
+      {children}
+    </h2>
+  );
 }

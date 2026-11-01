@@ -9,6 +9,7 @@ export const SYNC_EXCHANGES = [
   "LIMIT",
   "FULL",
   "REVOKED",
+  "OUTDATED",
   "CATCHING_UP",
   "REJOIN",
 ] as const;
@@ -16,6 +17,7 @@ export const SYNC_EXCHANGES = [
 export const SYNC_PROBLEMS = [
   "LEGAL_INCIDENT",
   "REVOKED",
+  "OUTDATED",
   "FULL",
   "REJOIN",
   "CATCH_UP_OFFLINE",
@@ -31,7 +33,15 @@ export const SYNC_HELD_REASONS = ["UNIQUE", "MISSING_PARENT", "IN_USE", "RULE", 
 export const SYNC_HELD_ACTIONS = ["RETRY", "KEEP_MINE", "SET_ASIDE"] as const;
 export const SYNC_JOIN_PHASES = ["TICKET", "COPY", "FILES", "INSTALL"] as const;
 /** The bar's words: one per tone it can wear. */
-export const SYNC_BAR_STATES = ["SYNCED", "SENDING", "OFFLINE", "LIMIT", "CATCHING_UP", "ATTENTION"] as const;
+export const SYNC_BAR_STATES = [
+  "SYNCED",
+  "SENDING",
+  "OFFLINE",
+  "LIMIT",
+  "CATCHING_UP",
+  "ATTENTION",
+  "OUTDATED",
+] as const;
 
 export const codeLabelCases: readonly CodeLabelCase[] = [
   ["Sync.Exchange", SYNC_EXCHANGES],

@@ -12,6 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { syncApi, useMayAskForBooks, useSyncStatus } from "@/features/sync/api";
 import { useCan } from "@/hooks/use-session";
 import { useErrorMessage } from "@/i18n/errors";
+import { useDevice } from "@/lib/device";
 
 import { ConflictsCard } from "./_components/conflicts-card";
 import { DevicesCard } from "./_components/devices-card";
@@ -19,7 +20,8 @@ import { ExchangeCard } from "./_components/exchange-card";
 import { SetUpCard } from "./_components/set-up-card";
 
 /**
- * Settings › المزامنة: the centre's two laptops (docs/sync/DECISION.md).
+ * Settings › المزامنة: the centre's devices, its two laptops and the director's
+ * phone (docs/sync/DECISION.md, docs/phone/DECISION.md).
  *
  * Closest academy screen: the academy settings page's backup card
  * (academy-system-desktop: src/pages/dashboard/settings/_components/backup-card.tsx),
@@ -44,15 +46,17 @@ export default function SettingsSyncPage() {
   const manages = useCan("sync.manage");
   const mayAskBooks = useMayAskForBooks();
   const status = useSyncStatus();
+  const { isPhone } = useDevice();
   const [searchParams, setSearchParams] = useSearchParams();
   const [syncing, setSyncing] = React.useState(false);
 
-  // Ctrl+K «إضافة الحاسوب الثاني» arrives with ?add=1.
-  const addOpen = searchParams.get("add") === "1";
-  const setAddOpen = (open: boolean) =>
+  // Ctrl+K «إضافة الحاسوب الثاني» arrives with ?add=1, «إضافة هاتف المدير» with ?add=phone.
+  const add = searchParams.get("add");
+  const adding = add === "1" ? "LAPTOP" : add === "phone" ? "PHONE" : null;
+  const setAdding = (next: "LAPTOP" | "PHONE" | null) =>
     setSearchParams(
       (params) => {
-        if (open) params.set("add", "1");
+        if (next) params.set("add", next === "PHONE" ? "phone" : "1");
         else params.delete("add");
         return params;
       },
@@ -96,7 +100,8 @@ export default function SettingsSyncPage() {
           <Skeleton className="h-40 w-full rounded-xl" />
         </div>
       ) : !on ? (
-        manages ? (
+        // A phone never sets sync up: it joins a centre set up on the director's laptop.
+        manages && !isPhone ? (
           <SetUpCard onDone={() => void status.refetch()} />
         ) : (
           <p className="text-lg text-muted-foreground">{t("NotSetUp")}</p>
@@ -108,8 +113,8 @@ export default function SettingsSyncPage() {
             status={status.data}
             manages={manages}
             mayAskBooks={mayAskBooks}
-            addOpen={addOpen}
-            onAddOpenChange={setAddOpen}
+            adding={adding}
+            onAddingChange={setAdding}
           />
           {manages ? (
             <ConflictsCard />

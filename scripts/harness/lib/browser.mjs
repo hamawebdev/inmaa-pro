@@ -25,6 +25,9 @@ const CDP_TIMEOUT_MS = 90_000;
  */
 const BROKEN_PAGE_MS = 4_000;
 
+/** The pixel density of a phone shot (`--phone`): a common Android phone's is 2 to 3. */
+const PHONE_SCALE = 2;
+
 const CHROME_CANDIDATES = ["/usr/bin/google-chrome", "/usr/bin/google-chrome-stable", "/opt/google/chrome/chrome"];
 
 function findChrome() {
@@ -116,6 +119,7 @@ class Page {
   #sessionId;
   #targetId;
   #allowedOrigin = "";
+  #touch = false;
 
   /** Console errors and warnings, uncaught exceptions, and browser-level errors. */
   problems = [];
@@ -163,8 +167,22 @@ class Page {
     if (timezone) await this.send("Emulation.setTimezoneOverride", { timezoneId: timezone });
   }
 
-  async setViewport(width, height) {
-    await this.send("Emulation.setDeviceMetricsOverride", { width, height, deviceScaleFactor: 1, mobile: false });
+  /**
+   * The window's size. `phone` makes it a phone's: a mobile viewport at a phone's pixel density, and touch on
+   * (so `pointer: coarse` and `hover: none` match, as on the director's phone).
+   */
+  async setViewport(width, height, { phone = false } = {}) {
+    await this.send("Emulation.setDeviceMetricsOverride", {
+      width,
+      height,
+      deviceScaleFactor: phone ? PHONE_SCALE : 1,
+      mobile: phone,
+    });
+    // Only ever switched on: a desktop run sends exactly what it always did.
+    if (phone || this.#touch) {
+      await this.send("Emulation.setTouchEmulationEnabled", { enabled: phone, maxTouchPoints: phone ? 5 : 1 });
+      this.#touch = phone;
+    }
   }
 
   /** What a theme of "system" resolves to. Pinned, so a run never depends on the desktop. */

@@ -48,6 +48,30 @@ function readHScroll(el: HTMLElement, rtl: boolean): HScrollState {
 }
 
 /**
+ * On a phone (under 768px wide, never a laptop's window) a table wider than the screen
+ * scrolls sideways inside its card, and its first column (the name, the number: what the
+ * row is) stays in view while the others pass under it. Its cells take the card's own
+ * background so nothing shows through, and a rule on their trailing edge marks the fold.
+ */
+const STICKY_FIRST_COLUMN_ON_PHONE = cn(
+  "narrow:[&_tr>:first-child:not([colspan])]:sticky narrow:[&_tr>:first-child:not([colspan])]:start-0",
+  "narrow:[&_tr>:first-child:not([colspan])]:z-[1] narrow:[&_tr>:first-child:not([colspan])]:border-e-2",
+  "narrow:[&_tr>:first-child:not([colspan])]:border-border narrow:[&_td:first-child:not([colspan])]:bg-card",
+  "narrow:[&_th:first-child:not([colspan])]:bg-muted",
+);
+
+/**
+ * The same for a table whose first column does not say what the row is (a photo, a tick box):
+ * the column whose cells carry `data-sticky` stays in view instead. `DataTable` marks it from
+ * the column's `meta: { sticky: true }`.
+ */
+const STICKY_MARKED_COLUMN_ON_PHONE = cn(
+  "narrow:[&_[data-sticky]]:sticky narrow:[&_[data-sticky]]:start-0 narrow:[&_[data-sticky]]:z-[1]",
+  "narrow:[&_[data-sticky]]:border-x-2 narrow:[&_[data-sticky]]:border-border",
+  "narrow:[&_td[data-sticky]]:bg-card narrow:[&_th[data-sticky]]:bg-muted",
+);
+
+/**
  * The app's one data table.
  *
  * A real `<table>`, not a grid of divs: a student roster is tabular data, and
@@ -84,7 +108,15 @@ function readHScroll(el: HTMLElement, rtl: boolean): HScrollState {
  * there is something to scroll to and disable themselves at the edge they would
  * otherwise scroll past; holding one down repeats it.
  */
-function Table({ className, children, ...props }: React.ComponentProps<"table">) {
+function Table({
+  className,
+  children,
+  stickyColumn = "first",
+  ...props
+}: React.ComponentProps<"table"> & {
+  /** On a phone, which column stays in view while the table scrolls sideways: the first, or the cells marked `data-sticky`. */
+  stickyColumn?: "first" | "marked"
+}) {
   const t = useTranslations("Table");
   const locale = useLocale();
   const rtl = directionFor(locale) === "rtl";
@@ -181,7 +213,15 @@ function Table({ className, children, ...props }: React.ComponentProps<"table">)
         className="border-app relative w-full min-w-0 overflow-x-auto rounded-xl border-border bg-card shadow-sm"
         onKeyDown={handleScrollKeyDown}
       >
-        <table data-slot="table" className={cn("w-full caption-bottom border-collapse", className)} {...props}>
+        <table
+          data-slot="table"
+          className={cn(
+            "w-full caption-bottom border-collapse",
+            stickyColumn === "first" ? STICKY_FIRST_COLUMN_ON_PHONE : STICKY_MARKED_COLUMN_ON_PHONE,
+            className,
+          )}
+          {...props}
+        >
           {children}
         </table>
       </div>

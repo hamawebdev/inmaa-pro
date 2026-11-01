@@ -47,7 +47,18 @@ export function TableSearch({
   );
 }
 
-/** The rendered table body for a TanStack table, including its empty state. */
+/** Whether a column says it is the one to keep in view on a phone: `meta: { sticky: true }`. */
+function isSticky(meta: unknown): boolean {
+  return typeof meta === "object" && meta !== null && (meta as { sticky?: unknown }).sticky === true;
+}
+
+/**
+ * The rendered table body for a TanStack table, including its empty state.
+ *
+ * On a phone the table scrolls sideways inside its card with one column kept in view: the
+ * first, or the one whose definition says `meta: { sticky: true }` (the name, where the first
+ * column is a photo or a tick box).
+ */
 export function DataTable<T>({
   table,
   columnCount,
@@ -57,13 +68,16 @@ export function DataTable<T>({
   columnCount: number;
   emptyMessage: string;
 }) {
+  const marked = table.getAllLeafColumns().some((column) => isSticky(column.columnDef.meta));
   return (
-    <Table>
+    <Table stickyColumn={marked ? "marked" : "first"}>
       <TableHeader>
         {table.getHeaderGroups().map((hg) => (
           <TableRow key={hg.id}>
             {hg.headers.map((h) => (
-              <TableHead key={h.id}>{flexRender(h.column.columnDef.header, h.getContext())}</TableHead>
+              <TableHead key={h.id} data-sticky={isSticky(h.column.columnDef.meta) || undefined}>
+                {flexRender(h.column.columnDef.header, h.getContext())}
+              </TableHead>
             ))}
           </TableRow>
         ))}
@@ -75,7 +89,9 @@ export function DataTable<T>({
           table.getRowModel().rows.map((row) => (
             <TableRow key={row.id}>
               {row.getVisibleCells().map((cell) => (
-                <TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
+                <TableCell key={cell.id} data-sticky={isSticky(cell.column.columnDef.meta) || undefined}>
+                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                </TableCell>
               ))}
             </TableRow>
           ))

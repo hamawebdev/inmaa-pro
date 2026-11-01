@@ -1,3 +1,5 @@
+import * as React from "react";
+
 import type { LucideIcon } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
@@ -62,6 +64,15 @@ export function ScreenTabs({
 }) {
   const navigate = useNavigate();
   const accent = SECTION_ACCENT[section];
+  const stripRef = React.useRef<HTMLDivElement>(null);
+
+  // On a phone the strip scrolls sideways (below): the lit segment is brought into view. Only
+  // when the strip overflows, which it never does at a laptop's width, where it wraps.
+  React.useEffect(() => {
+    const strip = stripRef.current;
+    if (!strip || strip.scrollWidth <= strip.clientWidth + 1) return;
+    strip.querySelector<HTMLElement>("[data-state=on]")?.scrollIntoView({ block: "nearest", inline: "center" });
+  }, [value]);
 
   return (
     <ToggleGroup
@@ -77,13 +88,23 @@ export function ScreenTabs({
         if (target) navigate(target.href);
       }}
       aria-label={ariaLabel}
-      className={cn("max-w-full min-w-0 flex-wrap", className)}
+      ref={stripRef}
+      // Under 768px wide (a phone) one row that scrolls sideways, without a scrollbar: the
+      // segments keep their words, and the thumb moves the row.
+      className={cn(
+        "max-w-full min-w-0 flex-wrap",
+        "narrow:w-full narrow:[scrollbar-width:none] narrow:flex-nowrap narrow:justify-start narrow:overflow-x-auto narrow:py-1",
+        className,
+      )}
     >
       {items.map(({ id, label, icon: Icon }) => (
         <ToggleGroupItem
           key={id}
           value={id}
-          className={cn("min-w-0 px-5 font-semibold data-[state=on]:font-bold tall:px-7", accent.segment)}
+          className={cn(
+            "min-w-0 px-5 font-semibold data-[state=on]:font-bold tall:px-7 narrow:shrink-0 narrow:px-4",
+            accent.segment,
+          )}
         >
           {Icon && <Icon />}
           <span className="min-w-0 truncate">{label}</span>

@@ -14,11 +14,12 @@ import { syncStatus } from "@/lib/sync/services/status";
 import {
   addSecondLaptopAction,
   joinCentre as engineJoinCentre,
+  pairDeviceAction,
+  removeDeviceAction,
   leaveSyncAction,
   mayJoinQuery,
   prepareSync as enginePrepareSync,
   rejoinFromFullCopy as engineRejoinFromFullCopy,
-  removeLaptopAction,
   setUpSyncAction,
   startSync as engineStartSync,
   subscribeSyncStartup,
@@ -37,8 +38,9 @@ import type {
   JoinCentreInput,
   JoinProgress,
   ListConflictsInput,
+  PairDeviceInput,
   PairingCodeAnswer,
-  RemoveLaptopInput,
+  RemoveDeviceInput,
   ResolveConflictInput,
   ResolveHeldInput,
   RetryHeldInput,
@@ -113,7 +115,13 @@ export const syncApi = {
   setUp: (input: SetUpSyncInput) => setUpSyncAction(input),
   addSecondLaptop: (input: AddSecondLaptopInput): Promise<ActionResult<PairingCodeAnswer>> =>
     preview ? Promise.resolve({ success: true, data: previewPairing() }) : addSecondLaptopAction(input),
-  removeLaptop: (input: RemoveLaptopInput) => removeLaptopAction(input),
+  /** «إضافة الحاسوب الثاني» or «إضافة هاتف المدير»: the code is for that kind of device only. */
+  pairDevice: (input: PairDeviceInput): Promise<ActionResult<PairingCodeAnswer>> =>
+    preview
+      ? Promise.resolve({ success: true, data: { ...previewPairing(), kind: input.kind } })
+      : pairDeviceAction(input),
+  /** «إزالة جهاز»: a laptop or the phone, from another device of the centre. */
+  removeDevice: (input: RemoveDeviceInput) => removeDeviceAction(input),
   resolveConflict: (input: ResolveConflictInput) => resolveConflictAction(input),
   retryHeld: (input: RetryHeldInput) => retryHeldAction(input),
   resolveHeld: (input: ResolveHeldInput) => resolveHeldAction(input),

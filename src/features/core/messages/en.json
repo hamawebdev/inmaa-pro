@@ -177,6 +177,7 @@
     "AccountHasPassword": "This account already has a password.",
     "PasswordIsTooShort": "The password is too short.",
     "PasswordSameAsGiven": "Choose a password different from the one you were given.",
+    "PhoneManagerOnly": "Only the manager's account signs in on the phone.",
     "RecoveryManagerOnly": "Only the manager has a recovery code.",
     "ManagerPasswordOwn": "A manager's password is changed by himself, or with his recovery code.",
     "SettingEndAfterStart": "The end must come after the start.",
@@ -1142,7 +1143,7 @@
     "settings_rules": "Change قواعد العمل",
     "log_read": "Read the access and change log",
     "backup_run": "Make a backup now",
-    "sync_manage": "Set up sync between the two laptops, add or remove a laptop, settle sync conflicts",
+    "sync_manage": "Set up sync between the centre's devices, add or remove a laptop or the director's phone, settle sync conflicts",
     "backup_restore": "Restore a backup (the manager only)"
   },
   "AnchorScreen": {
@@ -1473,5 +1474,14 @@
     "NameEn": "Name in English",
     "Divisions": "Offered on the forms of",
     "RenameNote": "The new name shows on every file that has this service, signed contracts included. To offer a different service, add a new one and remove this one."
+  },
+  "Phone": {
+    "More": "More",
+    "MoreHint": "The other sections, the search, the exchange between the devices, and locking the program.",
+    "Search": "Search for a screen",
+    "PrintFromComputer": "Printed from the computer",
+    "PrintFromComputerHint": "This phone does not print: the sheet is printed on a laptop, on the centre's letterhead.",
+    "NotOnPhone": "Not on the phone",
+    "BackupNotOnPhone": "The phone keeps no backup: the laptops back up every day, and a lost phone joins again from the centre's full copy."
   }
 }
