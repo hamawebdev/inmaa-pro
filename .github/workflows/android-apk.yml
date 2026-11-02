@@ -44,15 +44,16 @@ jobs:
           node-version: 24
           cache: npm
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: "17"
 
-      - uses: android-actions/setup-android@v3
-
+      # GitHub's Ubuntu image carries the Android SDK (ANDROID_HOME) and its command-line tools.
       - name: Install the NDK and the platform
-        run: sdkmanager --install "ndk;${INMAA_NDK_VERSION}" "platforms;android-36" "build-tools;35.0.0"
+        run: |
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install "ndk;${INMAA_NDK_VERSION}" "platforms;android-36" "build-tools;35.0.0"
 
       - uses: dtolnay/rust-toolchain@stable
         with:
