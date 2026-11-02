@@ -80,6 +80,23 @@ export interface RelayDevice {
   /** The mseq up to which this device said it applied. */
   ackedUpTo: number;
   lastSeenAt: number | null;
+  /** The device that removed it (null for a removal before the mailbox kept it). */
+  removedBy?: string | null;
+  /** When it first used its token; null while it never did (a ghost after a lost redeem answer, once 10 min old). */
+  firstUsedAt?: number | null;
+  /** The centre key recorded after its removal; null while that replacement is owed (or it was never removed). */
+  keyAfter?: string | null;
+}
+
+/** One replacement of the centre key, as the mailbox records them (`GET /keys`), oldest first. */
+export interface KeyLink {
+  /** The key it replaced; null only for a first link recorded without it (the key the centre started with). */
+  from: string | null;
+  to: string;
+  /** The key part that hands `to` on, sealed under `from`, when the remover named it. */
+  blobId: string | null;
+  deviceId: string;
+  at: number;
 }
 
 export interface FullCopyRecord {
@@ -104,7 +121,8 @@ export interface RelayUsage extends Timed {
   nearFull: boolean;
 }
 
-export type PartKind = "file" | "copy";
+/** A file's part, a full copy's, or a key ring handed on at a rotation (src/lib/sync/rotation.ts). */
+export type PartKind = "file" | "copy" | "key";
 
 export interface RelayClient {
   readonly credentials: RelayCredentials | null;
@@ -145,7 +163,11 @@ export interface RelayClient {
   /** This device has applied every envelope up to `upTo` (an mseq). Never moves back. */
   ack(upTo: number): Promise<Timed & { ackedUpTo: number }>;
 
-  /** Content-addressed: a part already stored answers `existed` whatever the bytes. */
+  /**
+   * A part stored once stays as it is. The same bytes again answer `existed`. Other bytes at a stored id: for a file
+   * or a full copy (content-addressed: another sealing of the same plain part) `existed` too; for a key part,
+   * `RelayRefused` code PART_DIFFERS.
+   */
   putPart(input: {
     blobId: string;
     part: number;
@@ -162,10 +184,24 @@ export interface RelayClient {
   latestFullCopy(): Promise<Timed & { copy: FullCopyRecord | null }>;
 
   devices(): Promise<Timed & { devices: RelayDevice[]; keyId: string | null }>;
-  /** Revokes a device's token: its later calls fail with `RelayRevoked`. */
+  /**
+   * Revokes a device's token: its later calls fail with `RelayRevoked`. A laptop only (PHONE_CANNOT_REMOVE). Every
+   * unused pairing code of the centre is void afterwards.
+   */
   removeDevice(deviceId: string): Promise<Timed>;
-  /** The centre key was replaced: the mailbox then refuses envelopes under any other key id (code OLD_KEY). */
-  rotateKey(keyId: string): Promise<Timed>;
+  /**
+   * The key in force (null until the first replacement), every replacement, oldest first, and whether one is owed
+   * (a device was removed and no key has been recorded since: a removal not finished).
+   */
+  keys(): Promise<Timed & { current: string | null; links: KeyLink[]; owed: boolean }>;
+  /**
+   * The centre key was replaced by `keyId`: the mailbox then refuses envelopes under any other key id (code
+   * OLD_KEY). `from` is the key replaced (default: the key in force), `blobId` the stored key part that hands the
+   * new one on. Refused codes: ROTATION_NOT_DUE (a phone, or no replacement owed: no device removed since the last),
+   * KEY_NOT_CURRENT (`from` is not the key in force), KEY_REPLACED (`keyId` was in force before), PARTS_MISSING.
+   * The same replacement again answers `existed`.
+   */
+  rotateKey(keyId: string, link?: { from: string; blobId?: string | null }): Promise<Timed & { existed: boolean }>;
   usage(): Promise<RelayUsage>;
 }
 
@@ -403,8 +439,17 @@ export function createRelayClient(
     },
 
     async putPart({ blobId, part, kind, body }) {
-      const path = `${centre()}/parts/${segment(blobId, ID.blob, "the blob id")}/${wholeNumber(part, "part")}?kind=${kind === "copy" ? "copy" : "file"}`;
-      return sendJson<{ existed: boolean }>("PUT", path, { body });
+      const named = kind === "copy" || kind === "key" ? kind : "file";
+      const path = `${centre()}/parts/${segment(blobId, ID.blob, "the blob id")}/${wholeNumber(part, "part")}?kind=${named}`;
+      try {
+        return await sendJson<{ existed: boolean }>("PUT", path, { body });
+      } catch (error) {
+        // A file's id is its plain bytes' keyed hash: another sealing of them, already stored, is the same part.
+        if (named !== "key" && error instanceof RelayRefused && error.code === "PART_DIFFERS") {
+          return { existed: true, relayTime: error.relayTime ?? now() };
+        }
+        throw error;
+      }
     },
 
     async getPart({ blobId, part }) {
@@ -448,9 +493,16 @@ export function createRelayClient(
       return { relayTime };
     },
 
-    async rotateKey(keyId) {
-      const { relayTime } = await send("POST", `${centre()}/keys/${segment(keyId, ID.key, "the key id")}`);
-      return { relayTime };
+    async keys() {
+      return sendJson<{ current: string | null; links: KeyLink[]; owed: boolean }>("GET", `${centre()}/keys`);
+    },
+
+    async rotateKey(keyId, link) {
+      const query: string[] = [];
+      if (link) query.push(`from=${segment(link.from, ID.key, "the key id")}`);
+      if (link?.blobId) query.push(`blob=${segment(link.blobId, ID.blob, "the blob id")}`);
+      const path = `${centre()}/keys/${segment(keyId, ID.key, "the key id")}${query.length ? `?${query.join("&")}` : ""}`;
+      return sendJson<{ existed: boolean }>("POST", path);
     },
 
     async usage() {

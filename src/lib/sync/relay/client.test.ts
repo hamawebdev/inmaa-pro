@@ -164,8 +164,38 @@ describe("the relay client on the real Worker", () => {
     await director.putFullCopy({ blobId, parts: 1, bytes: 6, keyId: "k1", covers: 0 });
     expect((await assistant.latestFullCopy()).copy).toMatchObject({ blobId, parts: 1, covers: 0 });
     expect(await director.usage()).toMatchObject({ bytes: 6, parts: 1, full: false, nearFull: false });
+    // The copy in force is never deleted; a replaced one may be.
+    expect(await failure(director.deleteBlob(blobId))).toMatchObject({ kind: "refused", code: "COPY_CURRENT" });
+    const next = "cd".repeat(32);
+    await director.putPart({ blobId: next, part: 0, kind: "copy", body: utf8("part 0'") });
+    await director.putFullCopy({ blobId: next, parts: 1, bytes: 7, keyId: "k1", covers: 0 });
     await director.deleteBlob(blobId);
     expect((await director.blobParts(blobId)).parts).toEqual([]);
+  });
+
+  it("says when a key part's id holds other bytes, and records the key's chain", async () => {
+    const { director, assistant } = await setUp();
+    const blobId = "ef".repeat(32);
+    expect(await director.putPart({ blobId, part: 0, kind: "key", body: utf8("ring") })).toMatchObject({
+      existed: false,
+    });
+    expect(await director.putPart({ blobId, part: 0, kind: "key", body: utf8("ring") })).toMatchObject({
+      existed: true,
+    });
+    expect(await failure(assistant.putPart({ blobId, part: 0, kind: "key", body: utf8("evil") }))).toMatchObject({
+      kind: "refused",
+      code: "PART_DIFFERS",
+    });
+    expect(await failure(assistant.rotateKey("k2", { from: "k1", blobId }))).toMatchObject({
+      code: "ROTATION_NOT_DUE",
+    });
+    await director.removeDevice(assistant.credentials!.deviceId);
+    expect(await director.rotateKey("k2", { from: "k1", blobId })).toMatchObject({ existed: false });
+    expect(await director.rotateKey("k2", { from: "k1", blobId })).toMatchObject({ existed: true });
+    expect(await director.keys()).toMatchObject({
+      current: "k2",
+      links: [{ from: "k1", to: "k2", blobId, deviceId: director.credentials!.deviceId }],
+    });
   });
 
   it("maps a removed laptop to RelayRevoked, and a rotated key to OLD_KEY", async () => {

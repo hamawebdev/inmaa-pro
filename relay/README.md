@@ -135,7 +135,16 @@ Neither goes into the repository, a commit, an issue or a message. If the setup 
 
 - **Update the mailbox** after a change in `relay/src/`: `npx wrangler@4 deploy` again, from `relay/`. The stored
   envelopes stay. Never edit an existing `migrations` entry in `wrangler.jsonc`; a new Durable Object class is a new
-  entry with a new tag.
+  entry with a new tag. A change inside a class's own tables needs no entry: each centre's storage is upgraded in
+  place the first time it is reached after the update (`UPGRADES` in `src/mailbox.ts`; tables and columns are only
+  ever added).
+- **The update of 2 November 2026** (same protocol 2, same address, nothing to do on the devices beyond installing
+  the program built with it): the centre key's replacements are recorded as a chain the devices follow, and one may
+  be recorded only after a device was removed (from either laptop); a phone can no longer make a pairing code or remove a device;
+  removing a device voids every unused pairing code of the centre; the copy in force and the key parts cannot be
+  deleted; a passing Cloudflare failure is answered «try again shortly» instead of «until 01:00». A centre created on
+  the mailbox before this update whose key was already replaced cannot hand that replacement on (it was never
+  recorded): remove that test centre's devices and set sync up again.
 - **Watch the free allowance**: dashboard › **Workers & Pages** › `inmaa-relay` › **Metrics** (requests a day,
   against 100,000), and **Storage & Databases** › **Durable Objects** (stored bytes, against 5 GB). The program
   shows the same: its sync page warns from 80% of storage, and refuses to send at 4.5 GB (`FULL_AT_BYTES` in

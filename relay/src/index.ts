@@ -10,6 +10,9 @@
  *   POST   /v1/tickets/:ticketId/redeem      join a centre with a pairing ticket
  *   *      /v1/centres/:centreId/...         a device's requests (mailbox.ts), with `authorization: Bearer <token>`
  *
+ * A body above 2 MB (by its `content-length`) is refused (413 TOO_LARGE) before it is read; a body is streamed on to
+ * the centre's mailbox, which stops reading past what the route takes.
+ *
  * Every request says the sync protocol it speaks (`x-inmaa-protocol: 2`); one that says none, or an older one, is
  * answered 426 UPDATE_REQUIRED whatever it asked.
  */
@@ -20,6 +23,7 @@ import {
   isDeviceKind,
   json,
   limited,
+  MAX_REQUEST_BYTES,
   nextUtcMidnight,
   now,
   PROTOCOL,
@@ -97,23 +101,28 @@ async function redeemTicket(request: Request, env: Env, ticketId: string): Promi
   );
   if (!claimed.ok) return claimed;
   const centreId = claimed.headers.get("x-centre") ?? "";
+  const filedBy = claimed.headers.get("x-filed-by");
   const sealed = await claimed.arrayBuffer();
+  const ticket = (verb: "release" | "spent") =>
+    directory(env).fetch(new Request(`${INTERNAL}/tickets/${ticketId}/${verb}`, { method: "POST" }));
+  const headers: Record<string, string> = { "x-centre": centreId, "content-type": "application/json" };
+  // The mailbox refuses a ticket whose maker was removed since (its removal voided it).
+  if (filedBy) headers["x-filed-by"] = filedBy;
   const joined = await mailbox(env, centreId)
     .fetch(
-      new Request(`${INTERNAL}/join`, {
-        method: "POST",
-        headers: { "x-centre": centreId, "content-type": "application/json" },
-        body: JSON.stringify({ deviceName: name, kind }),
-      }),
+      new Request(`${INTERNAL}/join`, { method: "POST", headers, body: JSON.stringify({ deviceName: name, kind }) }),
     )
     .catch(async (error: unknown) => {
-      await directory(env).fetch(new Request(`${INTERNAL}/tickets/${ticketId}/release`, { method: "POST" }));
+      await ticket("release");
       throw error;
     });
   if (!joined.ok) {
-    await directory(env).fetch(new Request(`${INTERNAL}/tickets/${ticketId}/release`, { method: "POST" }));
+    // A void ticket stays spent; one refused for a while (the centre full, too many joins today) is given back.
+    await ticket(joined.headers.get("x-relay-error") === "TICKET_USED" ? "spent" : "release");
     return joined;
   }
+  // The device has its token: the ticket's sealed key ring is no longer kept.
+  await ticket("spent");
   const device = (await joined.json()) as {
     centreId: string;
     deviceId: string;
@@ -140,6 +149,11 @@ async function route(request: Request, env: Env): Promise<Response> {
   const path = url.pathname.split("/").slice(1);
   if (path[0] !== "v1") return refuse(env, 404, "NOT_FOUND");
   if (!speaksProtocol(request)) return refuse(env, STATUS.outdated, "UPDATE_REQUIRED", {}, { protocol: PROTOCOL });
+  // A body larger than any route takes is refused before a byte of it is read.
+  const length = request.headers.get("content-length");
+  if (length !== null && (!/^\d{1,15}$/.test(length) || Number(length) > MAX_REQUEST_BYTES)) {
+    return refuse(env, 413, "TOO_LARGE");
+  }
   const [, root, id, ...rest] = path;
 
   if (root === "time" && path.length === 2 && request.method === "GET") return json(env, { now: now(env) });
@@ -155,28 +169,32 @@ async function route(request: Request, env: Env): Promise<Response> {
     if (auth) headers.authorization = auth;
     const contentType = request.headers.get("content-type");
     if (contentType) headers["content-type"] = contentType;
-    const hasBody = request.method === "PUT" || request.method === "POST";
+    const hasBody = (request.method === "PUT" || request.method === "POST") && request.body !== null;
+    // The body is streamed on, never held here; the mailbox reads it up to what the route allows.
     return mailbox(env, id).fetch(
       new Request(`${INTERNAL}/${rest.join("/")}${url.search}`, {
         method: request.method,
         headers,
-        body: hasBody ? await request.arrayBuffer() : undefined,
-      }),
+        body: hasBody ? request.body : undefined,
+        duplex: "half",
+      } as RequestInit),
     );
   }
   return refuse(env, 404, "NOT_FOUND");
 }
 
 /**
- * What a Durable Object's failure means. Past a free allowance Cloudflare refuses until 00:00 UTC; past the
- * account's storage it refuses writes. Anything else is passing: the laptop tries again later.
+ * What a Durable Object's failure means, read from Cloudflare's own messages only. Past the account's storage
+ * SQLite answers `SQLITE_FULL` ("database or disk is full"): 507, until something is deleted. Past a daily free
+ * allowance Cloudflare answers "Exceeded allowed … in Durable Objects free tier." until 00:00 UTC: 429 with that
+ * time (its stored-data allowance is not daily: 507). Anything else (an object overloaded, reset, out of memory, a
+ * lost connection) is passing: 503, and the devices try again shortly rather than stop syncing for a day.
  */
 export function failureAnswer(env: Env, error: unknown): Response {
   const message = error instanceof Error ? error.message : String(error);
-  if (/SQLITE_FULL|storage.*(limit|exceed|full)|exceeded.*storage/i.test(message)) {
-    return refuse(env, STATUS.full, "FULL");
-  }
-  if (/exceed|limit|quota|too many/i.test(message)) {
+  if (/\bSQLITE_FULL\b|database or disk is full/i.test(message)) return refuse(env, STATUS.full, "FULL");
+  if (/^Exceeded allowed .* in Durable Objects free tier\.?$/i.test(message.trim())) {
+    if (/\bstorage\b|\bstored\b/i.test(message)) return refuse(env, STATUS.full, "FULL");
     return limited(env, "DAILY_LIMIT", nextUtcMidnight(now(env)));
   }
   return refuse(env, 503, "UNAVAILABLE");

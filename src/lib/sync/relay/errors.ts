@@ -94,7 +94,10 @@ export class RelayOutdated extends RelayError {
  * `TICKET_USED`, `TICKET_EXPIRED` (the code is not, or no longer, valid), `TWO_DEVICES` (the centre has its two
  * laptops), `PHONE_TAKEN` (it has its phone), `TICKET_FOR_LAPTOP` / `TICKET_FOR_PHONE` (the code was made for the
  * other kind of device), `PHONE_CANNOT_CREATE`, `PHONE_NO_COPY`, `TOKEN_UNKNOWN`, `CENTRE_UNKNOWN`, `OLD_KEY`, `PARTS_MISSING`, `NOT_FOUND`, `TOO_LARGE`,
- * `BAD_REQUEST`; and `NOT_RELAY` when what answered at that address is not a mailbox (a wrong address), and
+ * `BAD_REQUEST`, `PHONE_PAIRS` (a phone filed a pairing code), `PHONE_CANNOT_REMOVE`, `PART_DIFFERS` (a key part's id
+ * holds other bytes), `ROTATION_NOT_DUE`, `KEY_NOT_CURRENT`, `KEY_REPLACED` (rotations, src/lib/sync/rotation.ts),
+ * `COPY_TOO_OLD` (a full copy that does not reach the oldest envelope kept), `COPY_CURRENT` / `KEY_PART` (a blob
+ * that may not be deleted); and `NOT_RELAY` when what answered at that address is not a mailbox (a wrong address), and
  * `TRANSPORT` when the laptop's own HTTP command refused the request (no address set, a path not allowed).
  */
 export class RelayRefused extends RelayError {

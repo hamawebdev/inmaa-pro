@@ -80,6 +80,30 @@ export interface FakeNamespace<T> extends DurableObjectNamespace {
 
 type DurableClass<T> = new (state: DurableObjectState, env: Env) => T & { fetch(request: Request): Promise<Response> };
 
+/** A Durable Object's state over a fresh in-memory database, for a test that builds an object by hand. */
+export function fakeState(db = new DatabaseSync(":memory:")): { db: DatabaseSync; state: DurableObjectState } {
+  const sql = new NodeSqlStorage(db);
+  return {
+    db,
+    state: {
+      storage: {
+        sql,
+        transactionSync<R>(fn: () => R): R {
+          db.exec("BEGIN");
+          try {
+            const result = fn();
+            db.exec("COMMIT");
+            return result;
+          } catch (error) {
+            db.exec("ROLLBACK");
+            throw error;
+          }
+        },
+      },
+    },
+  };
+}
+
 function namespace<T>(Class: DurableClass<T>, env: () => Env): FakeNamespace<T> {
   const objects = new Map<string, FakeObject<T & { fetch(request: Request): Promise<Response> }>>();
   const ns: FakeNamespace<T> = {
@@ -95,25 +119,8 @@ function namespace<T>(Class: DurableClass<T>, env: () => Env): FakeNamespace<T> 
           if (ns.fault) throw ns.fault;
           let object = objects.get(name);
           if (!object) {
-            const db = new DatabaseSync(":memory:");
-            const sql = new NodeSqlStorage(db);
-            const state: DurableObjectState = {
-              storage: {
-                sql,
-                transactionSync<R>(fn: () => R): R {
-                  db.exec("BEGIN");
-                  try {
-                    const result = fn();
-                    db.exec("COMMIT");
-                    return result;
-                  } catch (error) {
-                    db.exec("ROLLBACK");
-                    throw error;
-                  }
-                },
-              },
-            };
-            object = { name, instance: new Class(state, env()), sql };
+            const { state } = fakeState();
+            object = { name, instance: new Class(state, env()), sql: state.storage.sql as NodeSqlStorage };
             objects.set(name, object);
           }
           return object.instance.fetch(request);

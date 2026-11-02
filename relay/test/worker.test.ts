@@ -2,10 +2,44 @@ import { beforeEach, describe, expect, it } from "vitest";
 
 import { decodeFrames } from "../src/frames";
 import { TICKET_MAX_ATTEMPTS, UNKNOWN_TICKET_MAX } from "../src/directory";
-import { GC_EVERY_MS, JOINS_PER_DAY, KEEP_MS, LIST_BUDGET_BYTES, MAX_ENVELOPE_BYTES } from "../src/mailbox";
+import { sha256Hex } from "../src/http";
+import {
+  GC_EVERY_MS,
+  GHOST_AFTER_MS,
+  JOINS_PER_DAY,
+  KEEP_MS,
+  LIST_BUDGET_BYTES,
+  Mailbox,
+  MAX_ENVELOPE_BYTES,
+} from "../src/mailbox";
 import worker from "../src/index";
 import { PART_SHARDS, shardOf } from "../src/parts";
-import { fakeEnv, type FakeEnv } from "./fake-env";
+import { fakeEnv, fakeState, type FakeEnv } from "./fake-env";
+
+/** The mailbox's tables as the first deployment (tag v1, 2026-11-01) created them: a fixture, never changed. */
+const V1_SCHEMA = [
+  `CREATE TABLE meta (key TEXT PRIMARY KEY, value)`,
+  `CREATE TABLE device (
+    id TEXT PRIMARY KEY, tokenHash TEXT NOT NULL UNIQUE, name TEXT NOT NULL, slot INTEGER NOT NULL,
+    joinedAt INTEGER NOT NULL, removedAt INTEGER, lastSeq INTEGER NOT NULL DEFAULT 0,
+    ackedUpTo INTEGER NOT NULL DEFAULT 0, lastSeenAt INTEGER, kind TEXT NOT NULL DEFAULT 'LAPTOP'
+  )`,
+  `CREATE TABLE envelope (
+    mseq INTEGER PRIMARY KEY, deviceId TEXT NOT NULL, seq INTEGER NOT NULL, keyId TEXT NOT NULL,
+    kind TEXT NOT NULL, at INTEGER NOT NULL, hash TEXT NOT NULL, size INTEGER NOT NULL, body BLOB NOT NULL,
+    UNIQUE (deviceId, seq)
+  )`,
+  `CREATE TABLE part (
+    blobId TEXT NOT NULL, part INTEGER NOT NULL, kind TEXT NOT NULL, size INTEGER NOT NULL, at INTEGER NOT NULL,
+    PRIMARY KEY (blobId, part)
+  )`,
+  `CREATE TABLE fullCopy (
+    id INTEGER PRIMARY KEY, blobId TEXT NOT NULL, parts INTEGER NOT NULL, bytes INTEGER NOT NULL,
+    keyId TEXT NOT NULL, covers INTEGER NOT NULL, deviceId TEXT NOT NULL, at INTEGER NOT NULL, supersededAt INTEGER
+  )`,
+  `CREATE TABLE keyRotation (keyId TEXT PRIMARY KEY, deviceId TEXT NOT NULL, at INTEGER NOT NULL, mseq INTEGER NOT NULL)`,
+  `CREATE TABLE joinLog (at INTEGER NOT NULL)`,
+];
 
 const ORIGIN = "http://relay.test";
 const DAY = 24 * 60 * 60 * 1000;
@@ -515,8 +549,10 @@ describe("envelopes", () => {
   it("after a key rotation, refuses new envelopes under another key", async () => {
     const device = await createCentre();
     await put(device, 1, bytesOf(10), "k1");
-    const rotated = await call("POST", `/v1/centres/${device.centreId}/keys/k2`, { token: device.token });
-    expect(rotated.status).toBe(200);
+    const lost = await pair(device);
+    await call("DELETE", `/v1/centres/${device.centreId}/devices/${lost.deviceId}`, { token: device.token });
+    const rotated = await call("POST", `/v1/centres/${device.centreId}/keys/k2?from=k1`, { token: device.token });
+    expect(rotated.status).toBe(201);
     expect(errorOf(await put(device, 2, bytesOf(10), "k1"))).toBe("OLD_KEY");
     // A resend of an envelope stored before the rotation is still the same envelope.
     expect((await put(device, 1, bytesOf(10), "k1")).status).toBe(200);
@@ -662,9 +698,15 @@ describe("file parts", () => {
     expect(shardOf(blobId, 1)).toBe((0x0f + 1) % PART_SHARDS);
     const again = await call("PUT", `/v1/centres/${device.centreId}/parts/${blobId}/3`, {
       token: device.token,
-      body: bytesOf(1000, 99),
+      body: bytesOf(1000, 3),
     });
     expect(await again.json()).toEqual({ existed: true });
+    // Other bytes at a stored id are said, never dropped silently (the client takes them as stored for a file).
+    const other = await call("PUT", `/v1/centres/${device.centreId}/parts/${blobId}/3`, {
+      token: device.token,
+      body: bytesOf(1000, 99),
+    });
+    expect([other.status, errorOf(other)]).toEqual([409, "PART_DIFFERS"]);
     const got = await call("GET", `/v1/centres/${device.centreId}/parts/${blobId}/3`, { token: device.token });
     expect(new Uint8Array(await got.arrayBuffer())).toEqual(bytesOf(1000, 3));
     const listed = await call("GET", `/v1/centres/${device.centreId}/blobs/${blobId}`, { token: device.token });
@@ -726,5 +768,270 @@ describe("limits", () => {
     const passing = await put(device, 1, bytesOf(10));
     expect([passing.status, errorOf(passing)]).toEqual([503, "UNAVAILABLE"]);
     expect(passing.headers.get("x-relay-time")).toBe(String(clock));
+  });
+});
+
+describe("the centre key's chain", () => {
+  const keys = async (device: Device) =>
+    (await (await call("GET", `/v1/centres/${device.centreId}/keys`, { token: device.token })).json()) as {
+      current: string | null;
+      links: { from: string | null; to: string; blobId: string | null; deviceId: string }[];
+      owed: boolean;
+    };
+  const rotate = (device: Device, query: string, keyId = "k2") =>
+    call("POST", `/v1/centres/${device.centreId}/keys/${keyId}${query}`, { token: device.token });
+  const remove = (by: Device, target: Device) =>
+    call("DELETE", `/v1/centres/${by.centreId}/devices/${target.deviceId}`, { token: by.token });
+  const keyPart = (device: Device, blobId: string, fill = 5) =>
+    call("PUT", `/v1/centres/${device.centreId}/parts/${blobId}/0?kind=key`, {
+      token: device.token,
+      body: bytesOf(80, fill),
+    });
+
+  it("records a replacement only while one is owed, from an active laptop", async () => {
+    const director = await createCentre();
+    const assistant = await pair(director, hex(32, "1"));
+    const phone = await pair(director, hex(32, "2"), "PHONE");
+    expect(await keys(director)).toEqual({ current: null, links: [], owed: false });
+    // Nobody removed anybody: no device may replace the key at will (a stolen one not yet removed, say).
+    for (const device of [director, assistant, phone]) {
+      const refused = await rotate(device, "?from=k1");
+      expect([refused.status, errorOf(refused)]).toEqual([403, "ROTATION_NOT_DUE"]);
+    }
+    await remove(director, phone);
+    expect((await keys(director)).owed).toBe(true);
+    // The removed phone's token is refused.
+    expect((await rotate(phone, "?from=k1")).status).toBe(410);
+    await keyPart(director, hex(64, "7"));
+    const done = await rotate(director, `?from=k1&blob=${hex(64, "7")}`);
+    expect(done.status).toBe(201);
+    expect(await keys(assistant)).toEqual({
+      current: "k2",
+      links: [expect.objectContaining({ from: "k1", to: "k2", blobId: hex(64, "7"), deviceId: director.deviceId })],
+      owed: false,
+    });
+    // The same replacement again (its answer was lost) is answered as stored; another one is not due any more.
+    expect(await (await rotate(director, `?from=k1&blob=${hex(64, "7")}`)).json()).toEqual({
+      keyId: "k2",
+      existed: true,
+    });
+    expect(errorOf(await rotate(director, "?from=k2", "k3"))).toBe("ROTATION_NOT_DUE");
+    // The key part is kept for good.
+    const deleted = await call("DELETE", `/v1/centres/${director.centreId}/blobs/${hex(64, "7")}`, {
+      token: director.token,
+    });
+    expect([deleted.status, errorOf(deleted)]).toEqual([409, "KEY_PART"]);
+  });
+
+  it("lets the other laptop finish a removal whose replacement is owed, and records which key answered it", async () => {
+    const director = await createCentre();
+    const assistant = await pair(director, hex(32, "1"));
+    const phone = await pair(director, hex(32, "2"), "PHONE");
+    // The director's laptop revokes the phone, then loses its connection before replacing the key.
+    await remove(director, phone);
+    expect((await rotate(assistant, "?from=k1")).status).toBe(201);
+    const listed = await call("GET", `/v1/centres/${director.centreId}/devices`, { token: director.token });
+    const { devices } = (await listed.json()) as { devices: { id: string; keyAfter: string | null }[] };
+    expect(devices.find((device) => device.id === phone.deviceId)!.keyAfter).toBe("k2");
+    // Nothing is owed any more: no laptop may change the key at will.
+    expect(errorOf(await rotate(director, "?from=k2", "k3"))).toBe("ROTATION_NOT_DUE");
+  });
+
+  it("refuses a replacement from a key no longer in force, or one whose key part is not stored", async () => {
+    const director = await createCentre();
+    const assistant = await pair(director, hex(32, "1"));
+    await remove(director, assistant);
+    expect(errorOf(await rotate(director, `?from=k1&blob=${hex(64, "7")}`))).toBe("PARTS_MISSING");
+    expect((await rotate(director, "?from=k1")).status).toBe(201);
+    const replacement = await pair(director, hex(32, "2"));
+    await remove(director, replacement);
+    const stale = await rotate(director, "?from=k1", "k3");
+    expect([stale.status, errorOf(stale)]).toEqual([409, "KEY_NOT_CURRENT"]);
+    expect(await stale.json()).toMatchObject({ current: "k2" });
+    expect((await rotate(director, "?from=k2", "k3")).status).toBe(201);
+    expect((await keys(director)).links.map((link) => [link.from, link.to])).toEqual([
+      ["k1", "k2"],
+      ["k2", "k3"],
+    ]);
+  });
+
+  it("keeps a key part's first bytes and says when other bytes are sent to its id", async () => {
+    const director = await createCentre();
+    expect((await keyPart(director, hex(64, "8"), 1)).status).toBe(201);
+    expect(await (await keyPart(director, hex(64, "8"), 1)).json()).toEqual({ existed: true });
+    const other = await keyPart(director, hex(64, "8"), 2);
+    expect([other.status, errorOf(other)]).toEqual([409, "PART_DIFFERS"]);
+  });
+});
+
+describe("a device that never received its token", () => {
+  it("does not hold its slot against the next pairing, and collection does not wait for it", async () => {
+    const director = await createCentre();
+    // The phone redeems, and the answer never reaches it: it never uses its token.
+    await pair(director, hex(32, "1"), "PHONE");
+    expect(errorOf(await fileTicket(director, hex(32, "2"), 1800, "PHONE"))).toBe("PHONE_TAKEN");
+    clock += GHOST_AFTER_MS + 1;
+    expect((await fileTicket(director, hex(32, "2"), 1800, "PHONE")).status).toBe(201);
+    const phone = await redeem(hex(32, "2"), "phone", "PHONE");
+    expect([phone.status, phone.headers.get("x-relay-slot")]).toEqual([200, "2"]);
+    const listed = await call("GET", `/v1/centres/${director.centreId}/devices`, { token: director.token });
+    const { devices } = (await listed.json()) as { devices: { kind: string; removedAt: number | null }[] };
+    // The ghost's row is gone (it sent nothing): one phone, the one that joined.
+    expect(devices.filter((device) => device.kind === "PHONE")).toHaveLength(1);
+  });
+
+  it("is not waited for by collection", async () => {
+    const director = await createCentre();
+    await pair(director, hex(32, "1")); // its answer lost: the assistant's laptop never uses the token
+    await put(director, 1, bytesOf(10));
+    clock += GHOST_AFTER_MS + 1;
+    await call("PUT", `/v1/centres/${director.centreId}/parts/${hex(64, "c")}/0?kind=copy`, {
+      token: director.token,
+      body: bytesOf(50, 9),
+    });
+    await call("POST", `/v1/centres/${director.centreId}/full-copies`, {
+      token: director.token,
+      body: JSON.stringify({ blobId: hex(64, "c"), parts: 1, bytes: 50, keyId: "k1", covers: 1 }),
+    });
+    clock += KEEP_MS + GC_EVERY_MS;
+    await call("POST", `/v1/centres/${director.centreId}/ack?upTo=1`, { token: director.token });
+    expect((await list(director)).envelopes).toHaveLength(0);
+  });
+});
+
+describe("what one device may send", () => {
+  it("refuses a body larger than any route takes, by its length, before reading it", async () => {
+    const device = await createCentre();
+    const response = await call("PUT", `/v1/centres/${device.centreId}/envelopes/1?key=k1&kind=tx`, {
+      token: device.token,
+      body: bytesOf(10),
+      headers: { "content-length": "2000001" },
+    }).catch(() => null);
+    // Node's own fetch may refuse a length that does not match the body before the Worker sees it; when it does
+    // reach the Worker, the answer is 413.
+    if (response) expect([response.status, errorOf(response)]).toEqual([413, "TOO_LARGE"]);
+    const streamed = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(bytesOf(1_000_000));
+        controller.enqueue(bytesOf(1_000_000));
+        controller.close();
+      },
+    });
+    const unsized = await worker.fetch(
+      new Request(`http://relay.test/v1/centres/${device.centreId}/envelopes/1?key=k1&kind=tx`, {
+        method: "PUT",
+        headers: { "x-inmaa-protocol": "2", authorization: `Bearer ${device.token}` },
+        body: streamed,
+        duplex: "half",
+      } as RequestInit),
+      env,
+    );
+    expect([unsized.status, errorOf(unsized)]).toEqual([413, "TOO_LARGE"]);
+  });
+
+  it("answers malformed JSON on a full copy as a bad request", async () => {
+    const device = await createCentre();
+    const response = await call("POST", `/v1/centres/${device.centreId}/full-copies`, {
+      token: device.token,
+      body: "{not json",
+    });
+    expect([response.status, errorOf(response)]).toEqual([400, "BAD_REQUEST"]);
+  });
+
+  it("refuses an envelope whose device was removed while its body arrived", async () => {
+    const director = await createCentre();
+    const assistant = await pair(director);
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => (release = resolve));
+    const slow = new ReadableStream<Uint8Array>({
+      async pull(controller) {
+        await gate;
+        controller.enqueue(bytesOf(10));
+        controller.close();
+      },
+    });
+    const stub = env.MAILBOX.get(env.MAILBOX.idFromName(director.centreId));
+    const pending = stub.fetch(
+      new Request("http://internal/envelopes/1?key=k1&kind=tx", {
+        method: "PUT",
+        headers: { "x-centre": director.centreId, authorization: `Bearer ${assistant.token}` },
+        body: slow,
+        duplex: "half",
+      } as RequestInit),
+    );
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    await call("DELETE", `/v1/centres/${director.centreId}/devices/${assistant.deviceId}`, { token: director.token });
+    release();
+    const answer = await pending;
+    expect([answer.status, answer.headers.get("x-relay-error")]).toEqual([410, "REVOKED"]);
+  });
+
+  it("refuses a full copy that does not reach the oldest envelope kept, and deleting the copy in force", async () => {
+    const device = await createCentre();
+    for (let seq = 1; seq <= 3; seq++) await put(device, seq, bytesOf(10));
+    await call("PUT", `/v1/centres/${device.centreId}/parts/${hex(64, "c")}/0?kind=copy`, {
+      token: device.token,
+      body: bytesOf(50, 9),
+    });
+    const copy = (covers: number) =>
+      call("POST", `/v1/centres/${device.centreId}/full-copies`, {
+        token: device.token,
+        body: JSON.stringify({ blobId: hex(64, "c"), parts: 1, bytes: 50, keyId: "k1", covers }),
+      });
+    expect((await copy(3)).status).toBe(201);
+    clock += KEEP_MS + GC_EVERY_MS;
+    await call("POST", `/v1/centres/${device.centreId}/ack?upTo=3`, { token: device.token });
+    expect((await list(device)).envelopes).toHaveLength(0);
+    const old = await copy(1);
+    expect([old.status, errorOf(old)]).toEqual([409, "COPY_TOO_OLD"]);
+    const del = await call("DELETE", `/v1/centres/${device.centreId}/blobs/${hex(64, "c")}`, { token: device.token });
+    expect([del.status, errorOf(del)]).toEqual([409, "COPY_CURRENT"]);
+  });
+});
+
+describe("a centre created by the first mailbox (v1)", () => {
+  it("is upgraded in place the first time it is reached, its devices and envelopes kept", async () => {
+    const { db, state } = fakeState();
+    // The schema exactly as the first deployment (tag v1, 2026-11-01) created it.
+    for (const statement of V1_SCHEMA) db.exec(statement);
+    const token = "ab".repeat(32);
+    const tokenHash = await sha256Hex(token);
+    db.prepare(`INSERT INTO meta (key, value) VALUES ('centreId', ?), ('mseq', 1), ('bytes', 10), ('keyId', NULL)`).run(
+      hex(32, "c"),
+    );
+    db.prepare(
+      `INSERT INTO device (id, tokenHash, name, slot, joinedAt, lastSeenAt, kind) VALUES (?, ?, 'director', 0, ?, ?, 'LAPTOP')`,
+    ).run(hex(16, "d"), tokenHash, clock - DAY, clock - DAY);
+    db.prepare(
+      `INSERT INTO envelope (mseq, deviceId, seq, keyId, kind, at, hash, size, body) VALUES (1, ?, 1, 'k1', 'tx', ?, 'h', 10, ?)`,
+    ).run(hex(16, "d"), clock, bytesOf(10));
+    db.prepare(`INSERT INTO part (blobId, part, kind, size, at) VALUES (?, 0, 'file', 10, ?)`).run(hex(64, "e"), clock);
+
+    const mailbox = new Mailbox(state, env);
+    const ask = (method: string, path: string, body?: Uint8Array) =>
+      mailbox.fetch(
+        new Request(`http://internal${path}`, {
+          method,
+          headers: { "x-centre": hex(32, "c"), authorization: `Bearer ${token}` },
+          body: body as BodyInit | undefined,
+        }),
+      );
+    const devices = (await (await ask("GET", "/devices")).json()) as { devices: { lastSeq: number }[] };
+    expect(devices.devices).toHaveLength(1);
+    expect((await ask("PUT", "/envelopes/2?key=k1&kind=tx", bytesOf(5))).status).toBe(201);
+    expect(await (await ask("GET", "/keys")).json()).toEqual({ current: null, links: [], owed: false });
+    // A part stored by v1 has no hash: any bytes again are taken as stored.
+    expect(await (await ask("PUT", `/parts/${hex(64, "e")}/0`, bytesOf(3))).json()).toEqual({ existed: true });
+    expect(db.prepare(`SELECT value FROM meta WHERE key = 'schema'`).get()).toEqual({ value: 2 });
+    // A second object over the same storage (the class restarted) applies nothing twice.
+    expect(
+      (
+        await new Mailbox(state, env).fetch(
+          new Request("http://internal/usage", {
+            headers: { "x-centre": hex(32, "c"), authorization: `Bearer ${token}` },
+          }),
+        )
+      ).status,
+    ).toBe(200);
   });
 });

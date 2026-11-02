@@ -126,6 +126,51 @@ export const HEX_ID = {
   token: /^[0-9a-f]{64}$/,
 } as const;
 
+/** No request body is read past this (the largest envelope is under 1.9 MB). */
+export const MAX_REQUEST_BYTES = 2_000_000;
+
+/**
+ * A request's body, read as it streams in and given up past `max` bytes (null), so a body larger than it says, or
+ * one sent without a length, never fills the object's memory.
+ */
+export async function readBody(request: Request, max: number): Promise<ArrayBuffer | null> {
+  const declared = request.headers.get("content-length");
+  if (declared !== null && /^\d+$/.test(declared) && Number(declared) > max) return null;
+  if (!request.body) return new ArrayBuffer(0);
+  const reader = request.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > max) {
+      await reader.cancel().catch(() => undefined);
+      return null;
+    }
+    chunks.push(value);
+  }
+  const out = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    out.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return out.buffer;
+}
+
+/** A small JSON body (a few fields), or null when it is too large or not JSON. */
+export async function readJson<T>(request: Request, max = 16 * 1024): Promise<Partial<T> | null> {
+  const body = await readBody(request, max);
+  if (body === null) return null;
+  try {
+    const value: unknown = JSON.parse(new TextDecoder().decode(body));
+    return typeof value === "object" && value !== null && !Array.isArray(value) ? (value as Partial<T>) : null;
+  } catch {
+    return null;
+  }
+}
+
 /** A whole number from a query or path, within bounds, or null. */
 export function intParam(value: string | null, min: number, max: number): number | null {
   if (value === null || !/^\d{1,15}$/.test(value)) return null;

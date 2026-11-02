@@ -5,12 +5,12 @@
  *
  * Only the centre's mailbox reaches a shard: it has checked the device and keeps the index of parts and the bytes
  * stored. Internal routes:
- *   PUT    /:blobId/:part   store, unless stored (`{ existed }`)
+ *   PUT    /:blobId/:part   store, unless stored (`{ existed }`, with the `hash` and `size` of the bytes it held)
  *   GET    /:blobId/:part   the bytes
  *   DELETE /:blobId         every part of that blob in this shard
  */
 import type { DurableObjectState, Env, SqlStorage } from "./cf";
-import { bytes, json, refuse } from "./http";
+import { bytes, json, refuse, sha256Hex } from "./http";
 
 export const PART_SHARDS = 8;
 
@@ -47,7 +47,12 @@ export class PartStore {
         part,
         body,
       );
-      return json(this.env, { existed: cursor.rowsWritten === 0 });
+      if (cursor.rowsWritten > 0) return json(this.env, { existed: false });
+      // Already held: say what is held, so the mailbox never takes other bytes for these.
+      const held = this.sql
+        .exec<{ body: ArrayBuffer }>(`SELECT body FROM part WHERE blobId = ? AND part = ?`, blobId, part)
+        .toArray()[0];
+      return json(this.env, { existed: true, hash: await sha256Hex(held.body), size: held.body.byteLength });
     }
     if (request.method === "GET") {
       const row = this.sql
