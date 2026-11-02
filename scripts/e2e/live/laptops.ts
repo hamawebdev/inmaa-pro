@@ -4,7 +4,8 @@
  * `httpsTransport` (what native's `sync_request` does). Not the desktop window: the window's part of a laptop is
  * covered by the harness and the desktop comparison; the Rust HTTP command by its own tests.
  */
-import { mkdirSync, rmSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { mkdirSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
 
 import { FIRST_MANAGER_ID } from "@/features/core/services/first-run";
@@ -43,6 +44,7 @@ export async function freshLaptop(
   mkdirSync(root, { recursive: true });
   const clock = realClock();
   const test = await createTestDatabase({ clock, file: join(root, "inmaa.db") });
+  recordMigrations(test.raw);
   const transport = httpsTransport(origin, (line) => log(`[${name}] ${line}`));
   // `makeLaptop` asks its relay only for a client; this one is the real mailbox over HTTPS.
   const relay = {
@@ -50,4 +52,41 @@ export async function freshLaptop(
       createRelayClient(transport, credentials, { now: () => clock.now().getTime(), ...options }),
   } as unknown as MemoryRelay;
   return makeLaptop(name, test, clock, root, relay, memoryVault(), await loadSession(test.db, FIRST_MANAGER_ID));
+}
+
+const MIGRATIONS = join(import.meta.dirname, "../../../src-tauri/migrations");
+
+/**
+ * What the program's migrator (sqlx 0.8) writes when it builds a database, which the test database leaves out: one
+ * row per migration, its checksum the SHA-384 of the file's text. A real laptop's full copy carries them, and the
+ * phone refuses to install a copy without them («This file is not a backup of this program's data»), as it should.
+ */
+function recordMigrations(db: {
+  exec(sql: string): void;
+  prepare(sql: string): { run(...values: unknown[]): unknown };
+}) {
+  db.exec(`CREATE TABLE IF NOT EXISTS _sqlx_migrations (
+    version BIGINT PRIMARY KEY,
+    description TEXT NOT NULL,
+    installed_on TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    success BOOLEAN NOT NULL,
+    checksum BLOB NOT NULL,
+    execution_time BIGINT NOT NULL
+  )`);
+  const insert = db.prepare(
+    "INSERT OR IGNORE INTO _sqlx_migrations (version, description, installed_on, success, checksum, execution_time) VALUES (?, ?, CURRENT_TIMESTAMP, 1, ?, 0)",
+  );
+  for (const name of readdirSync(MIGRATIONS)
+    .filter((entry) => entry.endsWith(".sql"))
+    .sort()) {
+    const [, version, words] = /^(\d+)_(.+)\.sql$/.exec(name) ?? [];
+    if (!version || !words) throw new Error(`live: ${name} is not a migration name`);
+    insert.run(
+      Number(version),
+      words.replace(/_/g, " "),
+      createHash("sha384")
+        .update(readFileSync(join(MIGRATIONS, name)))
+        .digest(),
+    );
+  }
 }

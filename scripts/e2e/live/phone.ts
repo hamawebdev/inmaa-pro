@@ -106,6 +106,25 @@ async function open(url: string): Promise<Cdp> {
 const HELPERS = `(() => {
   if (window.__live) return true;
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  // Every Tauri command the window calls, with its failure: what went wrong when the window only says «تعذّر».
+  const internals = window.__TAURI_INTERNALS__;
+  window.__liveCalls = window.__liveCalls ?? [];
+  if (internals && !internals.__liveWrapped) {
+    const invoke = internals.invoke.bind(internals);
+    internals.invoke = async (cmd, args, options) => {
+      const size = args instanceof Uint8Array ? args.byteLength : args instanceof ArrayBuffer ? args.byteLength : null;
+      try {
+        const answer = await invoke(cmd, args, options);
+        window.__liveCalls.push({ cmd, size, ok: true, path: options?.headers?.["x-sync-path"] });
+        return answer;
+      } catch (error) {
+        window.__liveCalls.push({ cmd, size, ok: false, path: options?.headers?.["x-sync-path"], error: String(error?.message ?? JSON.stringify(error)) });
+        throw error;
+      }
+    };
+    internals.__liveWrapped = true;
+  }
+  window.addEventListener("unhandledrejection", (event) => window.__liveCalls.push({ unhandled: String(event.reason?.stack ?? event.reason) }));
   window.__live = {
     async until(test, ms = 60000) {
       const end = Date.now() + ms;
@@ -168,6 +187,17 @@ export async function joinOnPhone(input: {
   log: Log;
 }): Promise<void> {
   const { log, out } = input;
+  // Android asks, once, whether the program may show notifications (its alerts). On a phone the director answers
+  // «Allow»; here the answer is given beforehand, so the system's dialog does not cover the pictures.
+  execFileSync(
+    "bash",
+    [
+      "-c",
+      `. scripts/android/env.sh && adb -s ${SERIAL} shell pm grant com.hamawebdev.inmaa_pro android.permission.POST_NOTIFICATIONS`,
+    ],
+    { cwd: REPO, encoding: "utf8" },
+  );
+  log("[phone] notifications allowed (as the director would answer the system's question)");
   let cdp = await connect(log);
   const first = await inPage<{ step: string | null; joinOffered: boolean; joinForm: boolean; text: string }>(
     cdp,
@@ -203,7 +233,23 @@ export async function joinOnPhone(input: {
      if (!button) throw new Error("the join button stayed disabled");
      button.click(); return true;`,
   );
-  // The download's progress, then the restart.
+  // The download's progress, then the restart. A refusal stays on the join screen: say what failed.
+  for (let i = 0; i < 120; i++) {
+    await sleep(2_000);
+    const state = await inPage<{ alert: string | null; calls: unknown[] } | null>(
+      cdp,
+      `return document.querySelector("[data-sync-join]") ? { alert: L.alert(), calls: window.__liveCalls } : null;`,
+    ).catch(() => null);
+    if (!state) break;
+    if (state.alert && !/جارٍ/.test(state.alert)) {
+      log(`[phone] the join failed: ${state.alert}`);
+      log(
+        `[phone] commands: ${JSON.stringify((state.calls ?? []).filter((call) => !(call as { ok?: boolean }).ok || true).slice(-25))}`,
+      );
+      shot(out, "03-join-failed", log);
+      throw new Error(`live: the phone's join failed: ${state.alert}`);
+    }
+  }
   try {
     await sleep(4_000);
     const progress = await inPage<string | null>(
@@ -243,7 +289,8 @@ export async function joinOnPhone(input: {
   );
   log(`[phone] signed in: ${JSON.stringify(signedIn)}`);
   if (signedIn.step !== "app") throw new Error(`live: the director could not sign in on the phone: ${signedIn.alert}`);
-  await sleep(3_000);
+  await inPage(cdp, `await L.until(() => document.querySelector("[data-app-main] h1"), 60000); return true;`);
+  await sleep(6_000);
   shot(out, "05-home", log);
   cdp.close();
 }

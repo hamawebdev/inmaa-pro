@@ -440,3 +440,13 @@ The decision, every case and its outcome: `docs/sync/DECISION.md`; who built wha
 - The letterhead pictures are the bundled ones: `letterhead.headerUrl` and `letterhead.footerUrl` have no upload field.
 - The log screen names a record by its table (`StaffMember`) beside its label: the tables have no words of their own yet.
 - Sync has not yet run against the deployed Cloudflare mailbox or on Windows: its tests run the mailbox's own code in memory (`src/testing/sync/memory-relay.ts`).
+
+### The director's phone
+
+Decided and built 2026-11-01 (`docs/phone/DECISION.md`; the build brief `BUILD.md`, the checks `VERIFY.md`, the developer's remaining steps `HANDOVER.md`, the toolchain and signing `ANDROID-BUILD.md`). In short:
+
+- The same program, built for Android with Tauri 2 (`src-tauri/gen/android`, `npm run android:build`, `npm run android:build:test`): the same window, services, migrations and sync. It is a third device of the centre: two laptops (slots 0, 1) and one phone (slot 2, `SyncDevice.kind = 'PHONE'`, migration 0006). The mailbox requires sync protocol 2 (`x-inmaa-protocol: 2`).
+- A service asks `thisDeviceKind(ex)` (`src/lib/sync/device.ts`); the window asks `useDevice().isPhone` (`src/lib/device`). Only manager accounts sign in on a phone (`PHONE_ROLES`, `src/lib/access/phone.ts`). The phone does not print, back up, restore or save copies outside; it never starts a centre or makes the full copy.
+- Phone layout is the `narrow:` variant (under 768 px) only: nothing may change at desktop sizes. Look at a page as on a phone with `npm run shot -- --phone --route …` (`--size 360x800 --phone` for a small one).
+- Ordinary number blocks: block `i` belongs to slot `i % 3`, whose device is its warden (DECISION section 2).
+- The release key is outside the repository, in `~/.inmaa-android/`; never commit it.
