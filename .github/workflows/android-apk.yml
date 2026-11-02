@@ -1,6 +1,6 @@
 # Builds the director's phone app (docs/phone/) on GitHub's machines and keeps the APK as a download of the run.
 #
-# Runs on every push to the branch `phone-app` and from the Actions tab ("Android APK" › Run workflow) once this
+# Runs on every push to `main` or `phone-app` and from the Actions tab ("Android APK" › Run workflow) once this
 # file is on the default branch. It runs scripts/android/build.sh, the same script as on a PC, so the APK gets the
 # same checks: its signature, its package name and exactly its three permissions.
 #
@@ -19,7 +19,7 @@ on:
         type: boolean
         default: false
   push:
-    branches: [phone-app]
+    branches: [main, phone-app]
 
 permissions:
   contents: read

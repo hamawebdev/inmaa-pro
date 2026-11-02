@@ -38,6 +38,7 @@ export const FROZEN_MIGRATIONS = {
   "0003_service_catalogue.sql": "4c5088f113f3171e6afcd544639c61bf963e229daa6605beb73caebaa605f4be",
   "0004_staff_trial_and_fixed_term.sql": "c6e3855d6db2460a6dc5267b2e89a10060cd052a3f7c63786db7fcc52317ebe4",
   "0005_sync.sql": "9e6235c86b77bfa5ed9c5b9087ab62975ccf2b46933b35aa86124786c6885209",
+  "0006_phone.sql": "ff35e60b7701c9ec7787f4421ee0409799ae539ef5535509a0a68ea5a4bd42d0",
 };
 
 /**
