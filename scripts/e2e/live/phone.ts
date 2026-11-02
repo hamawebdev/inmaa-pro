@@ -9,8 +9,25 @@ import { join } from "node:path";
 
 const REPO = join(import.meta.dirname, "../../..");
 const SERIAL = process.env.INMAA_EMULATOR_SERIAL ?? "emulator-5554";
+// The installed program's package: the release's, or the test build's (`com.hamawebdev.inmaa_pro.test`).
+const PACKAGE = process.env.LIVE_PACKAGE ?? "com.hamawebdev.inmaa_pro";
 
 type Log = (line: string) => void;
+
+/** adb on the emulator, with the SDK's paths (scripts/android/env.sh). */
+function adb(command: string): string {
+  return execFileSync("bash", ["-c", `. scripts/android/env.sh >/dev/null && adb -s ${SERIAL} ${command}`], {
+    cwd: REPO,
+    encoding: "utf8",
+  });
+}
+
+/** Forwards 127.0.0.1:9222 to the program's WebView (test builds), as `emulator.sh devtools` does, for PACKAGE. */
+function forwardDevtools() {
+  const pid = adb(`shell pidof ${PACKAGE}`).trim();
+  if (!pid) throw new Error(`live: ${PACKAGE} is not running`);
+  adb(`forward tcp:9222 localabstract:webview_devtools_remote_${pid}`);
+}
 
 function emulator(...args: string[]): string {
   return execFileSync("bash", [join(REPO, "scripts/android/emulator.sh"), ...args], {
@@ -39,7 +56,7 @@ async function connect(log: Log, timeoutMs = 180_000): Promise<Cdp> {
   const end = Date.now() + timeoutMs;
   for (;;) {
     try {
-      emulator("devtools");
+      forwardDevtools();
       const targets = (await (await fetch("http://127.0.0.1:9222/json")).json()) as Array<{
         type: string;
         url: string;
@@ -183,20 +200,15 @@ export async function joinOnPhone(input: {
   origin: string;
   code: string;
   password: string;
+  /** The name the phone gives itself among the centre's devices; the field's own default when left out. */
+  deviceName?: string;
   out: string;
   log: Log;
 }): Promise<void> {
   const { log, out } = input;
   // Android asks, once, whether the program may show notifications (its alerts). On a phone the director answers
   // «Allow»; here the answer is given beforehand, so the system's dialog does not cover the pictures.
-  execFileSync(
-    "bash",
-    [
-      "-c",
-      `. scripts/android/env.sh && adb -s ${SERIAL} shell pm grant com.hamawebdev.inmaa_pro android.permission.POST_NOTIFICATIONS`,
-    ],
-    { cwd: REPO, encoding: "utf8" },
-  );
+  adb(`shell pm grant ${PACKAGE} android.permission.POST_NOTIFICATIONS`);
   log("[phone] notifications allowed (as the director would answer the system's question)");
   let cdp = await connect(log);
   const first = await inPage<{ step: string | null; joinOffered: boolean; joinForm: boolean; text: string }>(
@@ -221,7 +233,9 @@ export async function joinOnPhone(input: {
     cdp,
     `L.type("#join_origin", ${JSON.stringify(input.origin)});
      L.type("#join_code", ${JSON.stringify(input.code)});
-     if (!document.querySelector("#join_device").value.trim()) L.type("#join_device", "هاتف المدير");
+     const deviceName = ${JSON.stringify(input.deviceName ?? null)};
+     if (deviceName) L.type("#join_device", deviceName);
+     else if (!document.querySelector("#join_device").value.trim()) L.type("#join_device", "هاتف المدير");
      await new Promise((r) => setTimeout(r, 300));
      return { device: document.querySelector("#join_device").value };`,
   );
@@ -296,10 +310,10 @@ export async function joinOnPhone(input: {
 }
 
 /** On the phone, signed in: Settings › عام, the centre's name changed and saved. Returns the new name. */
-export async function changeOnPhone(input: { out: string; log: Log }): Promise<{ centreName: string }> {
+export async function changeOnPhone(input: { label?: string; out: string; log: Log }): Promise<{ centreName: string }> {
   const { log, out } = input;
   const cdp = await connect(log);
-  const centreName = `مركز إنماء برو (من الهاتف ${new Date().toISOString().slice(11, 16)})`;
+  const centreName = `${input.label ?? ""}مركز إنماء برو (من الهاتف ${new Date().toISOString().slice(11, 16)})`;
   const saved = await inPage<{ value: string; toast: string | null }>(
     cdp,
     `location.hash = "#/dashboard/settings";

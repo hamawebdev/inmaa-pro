@@ -1,43 +1,39 @@
 # The director's phone: what is left for you
 
-For the developer. Everything else is built and checked (`docs/phone/VERIFY.md`). What is left needs your Cloudflare account and the director's real phone, which we do not have here:
+For the developer. Everything else is built and checked (`docs/phone/VERIFY.md`). **The mailbox is deployed on your Cloudflare account** (section 1, done on 2026-11-02, and checked end to end with two laptop copies and the APK on the emulator). What is left needs the director's laptops and his real phone, which we do not have here:
 
-1. Deploy the mailbox on Cloudflare (once, about twenty minutes).
+1. ~~Deploy the mailbox on Cloudflare.~~ Done: section 1.
 2. Publish the 1.2.0 Windows installer (push and run the workflow; nothing was pushed from here) and install it on both laptops.
 3. Set sync up on the director's laptop, then add the assistant's laptop.
 4. Install the APK on the director's phone and pair it.
 5. Check that a change goes both ways.
 
-Nothing you create here goes into the repository: not the mailbox address, not the setup key, not your account id, not the release key.
+The setup key, the Cloudflare token, your account id and the release key never go into the repository. The mailbox address is written below because you will type it on three devices; it lets nobody in without the setup key or a pairing code.
 
-## 1. Deploy the mailbox
+## 1. The mailbox (deployed)
 
-The full steps, with what each command prints, are in `relay/README.md`. In short, from the repository's `relay/` folder, on a computer with internet and Node.js 20 or later:
+| | |
+|---|---|
+| Mailbox address | `https://inmaa-relay.ayoubwass404.workers.dev` |
+| Worker | `inmaa-relay` on the account whose workers.dev subdomain is `ayoubwass404`, deployed from `relay/` with wrangler 4.156.0 on 2026-11-02; the version live is `fb8bac76` (11:19 UTC), with the day's mailbox fixes |
+| Setup key | on this PC only, in `~/.inmaa-cloudflare/setup-key` (mode 600, 64 hex characters); set on the Worker as the secret `SETUP_KEY`. **Copy it to paper** and keep it with the backup of `~/.inmaa-android/` |
+| Cloudflare token | `~/.inmaa-cloudflare/env` (mode 600): `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`, for wrangler without a browser sign-in |
 
-```sh
-npx wrangler@4 login                 # the browser opens on Cloudflare: Allow
-npx wrangler@4 whoami                # prints your e-mail and account
-npx wrangler@4 deploy                # prints the address: https://inmaa-relay.<your-name>.workers.dev
-node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"   # the setup key: write it down
-npx wrangler@4 secret put SETUP_KEY  # paste it
-npx wrangler@4 secret list           # lists SETUP_KEY
-```
+The three checks of `relay/README.md` step 6 answered as they should (200 with `x-relay-time` within a second of the PC's clock, 426 `UPDATE_REQUIRED`, 403 `SETUP_KEY`); `docs/phone/VERIFY.md` section 7 has them and the live test.
 
-Check it answers (on Windows PowerShell write `curl.exe`):
+**Updating the mailbox later** (after a change in `relay/src/`), from `relay/`, with no browser:
 
 ```sh
-curl -i -H "x-inmaa-protocol: 2" https://inmaa-relay.<your-name>.workers.dev/v1/time
-#   200, a line x-relay-time: …, and {"now":…}
-curl -i https://inmaa-relay.<your-name>.workers.dev/v1/time
-#   426 with x-relay-error: UPDATE_REQUIRED (an older program is refused)
-curl -i -X POST -H "x-inmaa-protocol: 2" -H "x-setup-key: wrong" -d '{"deviceName":"test"}' \
-  https://inmaa-relay.<your-name>.workers.dev/v1/centres
-#   403 with x-relay-error: SETUP_KEY
+set -a; . ~/.inmaa-cloudflare/env; set +a
+npx wrangler@4 deploy        # the address and the stored envelopes stay
+rm -rf .wrangler             # wrangler's scratch folder (git-ignored)
 ```
 
-These three answers were seen from the same Worker code running locally in Cloudflare's runtime and reached over real HTTPS (`docs/phone/VERIFY.md`, "The live test"); on your account they should be identical.
+A new setup key, if the old one leaks: `node -e "process.stdout.write(require('crypto').randomBytes(32).toString('hex'))" > ~/.inmaa-cloudflare/setup-key`, then `npx wrangler@4 secret put SETUP_KEY < ~/.inmaa-cloudflare/setup-key`. The devices already in the centre keep working.
 
-Keep the **mailbox address** and the **setup key** on paper. Back the setup key up together with the folder `~/.inmaa-android/` (the phone's release key, section 4).
+**From Algerian networks.** On the line used here (a mobile connection in Algeria), the addresses that ordinary DNS gives for `*.workers.dev` are filtered; Cloudflare's resolver gives others that work. Version 1.2.0 handles it by itself (`docs/phone/DECISION.md` section 10): when the usual addresses fail it asks Cloudflare's resolver and remembers the address that answered. The first exchange on a filtered line therefore takes longer; the next ones go straight to the address that answered. Seen working here on the phone (the APK on the emulator with its ordinary DNS joined, synced both ways) and with the desktop's own HTTP code (`docs/phone/VERIFY.md` section 7); an APK or a laptop program from before this fallback cannot reach the mailbox from such a line. For good, a domain of your own on Cloudflare (about 10 USD a year) gives the mailbox addresses that work here directly; the devices then only need the new address typed in Settings › المزامنة.
+
+**Test centres on the mailbox.** The live test created test centres on this mailbox, their devices named «اختبار حاسوب المدير», «اختبار حاسوب المساعدة», «اختبار هاتف المدير». They are separate from the centre the director will create (each centre is its own sealed mailbox; nobody can read one with another's keys), and hold a few hundred kilobytes of the free plan's 5 GB. Nothing to do; the mailbox has no command to delete a whole centre.
 
 ## 2. Install 1.2.0 on both laptops
 
@@ -109,8 +105,8 @@ Switch USB debugging off afterwards.
 
 - The phone syncs **while the app is open** (when opened, after each save, then every 15 to 60 seconds). Android stops apps in the background; opening the app is enough to catch up.
 - **Printing, backups and saving copies are done from a laptop.** A sheet can be looked at on the phone; its print button says «تُطبع من الحاسوب».
-- He may take the books on the phone («طلب الدفاتر») to issue an invoice or record a payment away from the office; the originals print from a laptop once the books are back there.
-- **If the phone is lost or stolen:** on a laptop, Settings › المزامنة › «إزالة جهاز», choose the phone, type the reason. Its access to the mailbox is revoked at once and the centre key is replaced. If it held the books, he types the last invoice and receipt numbers he saw on paper. A new phone then joins as in "Pair it" above.
+- **Invoices, receipts and payments are issued from a laptop.** The books never go to the phone (`docs/phone/DECISION.md` section 6): money must never exist only on a device that is easily lost. On the phone he approves, answers, registers, corrects and follows everything else.
+- **If the phone is lost or stolen:** on a laptop, Settings › المزامنة › «إزالة جهاز», choose the phone, type the reason. Its access to the mailbox is revoked at once and the centre key is replaced. Pairing codes made before the removal no longer work; make a new one. A new phone then joins as in "Pair it" above.
 - **Updating the app later:** install the new APK over the old one, signed with the same key; the data stays. If the release key is ever lost, the app must be removed and the phone paired again (nothing is lost on the centre's side).
 
 ## 5. If something goes wrong
@@ -119,6 +115,7 @@ Switch USB debugging off afterwards.
 |---|---|---|
 | «حدّث البرنامج على هذا الجهاز», or «هذا البرنامج أقدم من أن يتبادل مع صندوق البريد…» | this device's program is older than the mailbox | install 1.2.0 on it |
 | «غير متصل» and a number of changes waiting | no internet on this device, or the mailbox cannot be reached | nothing: they go when the network returns |
+| «تعذّر الوصول إلى صندوق البريد» on a device whose internet works | the line filters the mailbox's addresses and the program is older than this fallback, or the line filters Cloudflare's resolver too | make sure the device has the 1.2.0 of 2026-11-02 or later; if it persists, a domain of your own on Cloudflare for the mailbox (section 1) |
 | «الخدمة بلغت حدّها اليومي» | the free plan's daily allowance is spent | nothing: it resumes after 01:00 |
 | «هذا الرمز مُعدّ لحاسوب…» on the phone | a laptop's code was typed on the phone | make the code with «إضافة هاتف المدير» |
 | the phone refuses the assistant's account | by design: only the manager's role signs in on the phone | |

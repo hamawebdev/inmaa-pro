@@ -68,7 +68,7 @@ Not captured: `Sequence`, `ChainHead`, `BackupRun`, the six local sync tables, `
 
 ### 2.5 Native commands (native builds; engine calls them from `src/server/sync*.ts`)
 
-- `sync_request(method, path, body: bytes) -> { status, headers, body }`: HTTPS to the origin saved in the vault, path must start with `/v1/`, nothing else reachable, a 30 s timeout. `sync_set_origin(origin)` (https only, no path) is the only way to choose the address.
+- `sync_request(method, path, body: bytes) -> { status, headers, body }`: HTTPS to the origin saved in the vault, path must start with `/v1/`, nothing else reachable; connect at most 60 s across its attempts, 30 s for the answer to start and of silence per read or write, 10 minutes for the whole request (changed 2026-11-02: a fixed 30 s cut slow mobile links); when the system resolver's addresses fail, the mailbox's name is resolved through Cloudflare's resolver (`docs/phone/DECISION.md` section 10). `sync_set_origin(origin)` (https only, no path) is the only way to choose the address.
 - The vault, outside the database and the backups (application config folder): `sync_vault_read`, `sync_vault_write(json)`, `sync_vault_clear`. Holds the origin, centre id, device id, token, key ring, slot.
 - `db_snapshot(path)` (`VACUUM INTO` a file in the program's temp folder), `file_read_part(path, offset, len)`, `file_write_part(path, offset, bytes)`, `file_commit(tmpPath, finalPath, sha256)` (checks, then renames), all inside the program's own folders.
 - `sync_install_copy(path)`: installs a received full copy as `restore_from` installs a backup (checks, staging, swap, relaunch), without the checks that tie a copy to this machine's previous database, and writes a note the next start reads.

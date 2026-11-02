@@ -5,8 +5,13 @@
  *   LIVE_ORIGIN=https://….trycloudflare.com LIVE_SETUP_KEY=… \
  *     npx vitest run --config scripts/e2e/live/vitest.config.ts
  *
+ * Against the deployed mailbox (docs/phone/VERIFY.md, "The live test on Cloudflare"): LIVE_ORIGIN is its address,
+ * LIVE_SETUP_KEY its setup key, LIVE_LABEL="اختبار " names the test devices, LIVE_DNS=1.1.1.1 resolves its name
+ * through Cloudflare's DNS (scripts/e2e/live/node-transport.ts), LIVE_OUT is where the log and pictures go.
+ *
  * With LIVE_PHONE=1 the director's phone is the real APK on the emulator (scripts/e2e/live/phone.ts drives its
- * window over the Chrome DevTools Protocol); without it, the laptops' half runs alone.
+ * window over the Chrome DevTools Protocol; LIVE_PACKAGE names its package when it is the test build's,
+ * `com.hamawebdev.inmaa_pro.test`); without it, the laptops' half runs alone.
  */
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -28,6 +33,8 @@ const ORIGIN = process.env.LIVE_ORIGIN ?? "";
 const SETUP_KEY = process.env.LIVE_SETUP_KEY ?? "";
 const PHONE = process.env.LIVE_PHONE === "1";
 const OUT = process.env.LIVE_OUT ?? "/mnt/data/inmaa-phone-verify/live";
+// Put before every device's name (e.g. "اختبار "), so a test centre on the real mailbox is told from the real one.
+const LABEL = process.env.LIVE_LABEL ?? "";
 const DIRECTOR_PASSWORD = "director-live-1";
 const ASSISTANT_PASSWORD = "assistant-live-1";
 
@@ -66,7 +73,7 @@ describe.skipIf(!ORIGIN || !SETUP_KEY)("the live test, over real HTTPS to the re
     );
     const vault = await setUpCentre(a.centre(), buildContext(a.manager, a.clock), {
       setupKey: SETUP_KEY,
-      deviceName: "حاسوب المدير",
+      deviceName: `${LABEL}حاسوب المدير`,
     });
     log(`centre ${vault.centreId}: director's laptop ${vault.deviceId}, slot ${vault.slot}`);
     expect(vault.slot).toBe(0);
@@ -83,7 +90,7 @@ describe.skipIf(!ORIGIN || !SETUP_KEY)("the live test, over real HTTPS to the re
     log(`laptop code ${code.code} (expires ${code.expiresAt})`);
     const { path, note } = await redeemAndDownload(b.centre(), {
       code: code.code,
-      deviceName: "حاسوب المساعدة",
+      deviceName: `${LABEL}حاسوب المساعدة`,
       kind: "LAPTOP",
     });
     await installCopy(b, path, note);
@@ -117,7 +124,14 @@ describe.skipIf(!ORIGIN || !SETUP_KEY)("the live test, over real HTTPS to the re
       writeFileSync(join(OUT, "phone-code.txt"), `${code.code}\n`);
       log(`phone code ${code.code} (expires ${code.expiresAt})`);
       const { joinOnPhone } = await import("./phone");
-      await joinOnPhone({ origin: ORIGIN, code: code.code, password: DIRECTOR_PASSWORD, out: OUT, log });
+      await joinOnPhone({
+        origin: ORIGIN,
+        code: code.code,
+        password: DIRECTOR_PASSWORD,
+        deviceName: `${LABEL}هاتف المدير`,
+        out: OUT,
+        log,
+      });
       // The laptops learn of the third device.
       await syncRound(a);
       await syncRound(b);
@@ -131,7 +145,7 @@ describe.skipIf(!ORIGIN || !SETUP_KEY)("the live test, over real HTTPS to the re
 
     it("a change on the phone shows on the director's laptop and on the assistant's", async () => {
       const { changeOnPhone } = await import("./phone");
-      const made = await changeOnPhone({ out: OUT, log });
+      const made = await changeOnPhone({ label: LABEL, out: OUT, log });
       const nameOn = async (device: SyncLaptop) =>
         (
           await device.test.db

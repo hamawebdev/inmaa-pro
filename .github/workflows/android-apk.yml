@@ -1,0 +1,114 @@
+# Builds the director's phone app (docs/phone/) on GitHub's machines and keeps the APK as a download of the run.
+#
+# Runs on every push to the branch `phone-app` and from the Actions tab ("Android APK" › Run workflow) once this
+# file is on the default branch. It runs scripts/android/build.sh, the same script as on a PC, so the APK gets the
+# same checks: its signature, its package name and exactly its three permissions.
+#
+# The release key is never in the repository. It comes from four repository secrets (Settings › Secrets and
+# variables › Actions), made from ~/.inmaa-android/ (docs/phone/ANDROID-BUILD.md, "Signing"):
+#   ANDROID_KEYSTORE_BASE64   base64 of inmaa-release.jks
+#   ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD   the values in keystore.properties
+# Without them the run stops before building: an APK signed with another key could never update the phone's app.
+name: Android APK
+
+on:
+  workflow_dispatch:
+    inputs:
+      test:
+        description: Also build the test APK (adds the emulator, WebView debugging on; never for the director's phone)
+        type: boolean
+        default: false
+  push:
+    branches: [phone-app]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-apk-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      INMAA_NDK_VERSION: "27.3.13750724"
+      # Gradle's cache where setup-gradle saves and restores it (scripts/android/env.sh would put it beside the SDK).
+      GRADLE_USER_HOME: /home/runner/.gradle
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Install the NDK and the platform
+        run: sdkmanager --install "ndk;${INMAA_NDK_VERSION}" "platforms;android-36" "build-tools;35.0.0"
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android,armv7-linux-androideabi,x86_64-linux-android
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+          key: android
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Install the JavaScript dependencies
+        run: npm ci
+
+      - name: Put the release key in place
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          STORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          if [ -z "$KEYSTORE_BASE64" ] || [ -z "$STORE_PASSWORD" ] || [ -z "$KEY_ALIAS" ] || [ -z "$KEY_PASSWORD" ]; then
+            echo "::error::The release key's secrets are missing (see the top of this file)."
+            exit 1
+          fi
+          dir="$RUNNER_TEMP/inmaa-android"
+          mkdir -p "$dir" && chmod 700 "$dir"
+          echo "$KEYSTORE_BASE64" | base64 -d > "$dir/inmaa-release.jks"
+          {
+            echo "storeFile=$dir/inmaa-release.jks"
+            echo "storePassword=$STORE_PASSWORD"
+            echo "keyAlias=$KEY_ALIAS"
+            echo "keyPassword=$KEY_PASSWORD"
+          } > "$dir/keystore.properties"
+          chmod 600 "$dir"/*
+          echo "INMAA_ANDROID_KEYSTORE_PROPERTIES=$dir/keystore.properties" >> "$GITHUB_ENV"
+
+      - name: Build the release APK (arm64-v8a and armeabi-v7a)
+        run: |
+          export NDK_HOME="$ANDROID_HOME/ndk/$INMAA_NDK_VERSION"
+          bash scripts/android/build.sh build
+
+      - name: Build the test APK
+        if: ${{ inputs.test }}
+        run: |
+          export NDK_HOME="$ANDROID_HOME/ndk/$INMAA_NDK_VERSION"
+          bash scripts/android/build.sh build-test
+
+      - name: Remove the release key
+        if: always()
+        run: rm -rf "$RUNNER_TEMP/inmaa-android"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: inmaa-pro-apk
+          path: src-tauri/target/android/*.apk
+          if-no-files-found: error
+          retention-days: 30

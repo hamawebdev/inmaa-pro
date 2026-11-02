@@ -121,5 +121,84 @@ Run on 2026-11-02 on the working tree after every teammate reported done (HEAD 7
 ## 6. What could not be checked here
 
 - **A real phone.** Everything ran on the emulator (x86_64, Android 15, WebView 124; the release APK's arm64 code only through the emulator's translator). Not seen: the ARM build on real hardware, an older Android (the floor is 7.0) or an old WebView, real mobile data, the battery and background behaviour of a particular phone maker, installing by copying the APK through the Files app. `docs/phone/HANDOVER.md` section 4 gives the steps and the checks to make on the director's phone.
-- **The real Cloudflare deploy.** The Worker ran in Cloudflare's runtime on this machine (`wrangler dev --local`), reached through Cloudflare's network over HTTPS, but not deployed on an account: the free plan's limits (requests a day, CPU per request, storage), `workers.dev`'s address and certificate, and `secret put` were not exercised. `docs/phone/HANDOVER.md` section 1.
-- **The desktop window talking to the real mailbox.** The laptops of the live test are the program's engine in Node; the Windows program's own HTTP command reaching the mailbox is proven by the Rust tests and by the two-laptop work of 1.1.0, not end to end here.
+- ~~**The real Cloudflare deploy.**~~ Done since: section 7 (the deploy, `secret put`, `workers.dev`'s address and certificate, the whole live test on the deployed mailbox). Not reached: the free plan's daily limits and storage, far above what a test uses.
+- **The desktop window talking to the real mailbox.** The laptops of the live test are the program's engine in Node; the program's own HTTP code (`http.rs`) reached the deployed mailbox on this line through its fallback (section 7), but the Windows program's window, on Windows and its resolver, was not run against it here. Nor were other Algerian networks (the centre's own line, another mobile operator): what the fallback meets there is unknown until the laptops and the phone are set up.
+
+## 7. The live test on Cloudflare
+
+On 2026-11-02 the mailbox was deployed on the developer's Cloudflare account and the live test of section 4 was run against it. Evidence: `/mnt/data/inmaa-phone-verify/live-cloudflare/`.
+
+### The deploy
+
+From `relay/`, with the developer's API token (`~/.inmaa-cloudflare/env`; no browser sign-in), wrangler 4.156.0:
+
+```sh
+set -a; . ~/.inmaa-cloudflare/env; set +a
+npx wrangler@4 deploy                                    # Deployed inmaa-relay … https://inmaa-relay.ayoubwass404.workers.dev
+npx wrangler@4 secret put SETUP_KEY < ~/.inmaa-cloudflare/setup-key   # 32 random bytes as hex, mode 600, never printed
+npx wrangler@4 secret list                               # SETUP_KEY, secret_text
+```
+
+`relay/wrangler.jsonc` was used as it is. Wrangler's scratch folder `relay/.wrangler/` (git-ignored) was removed afterwards. Log: `deploy.log` (no account id in it).
+
+The same day the mailbox was deployed twice more with the relay reviewers' fixes (the key chain, the replacement owed after a removal, tickets, the error mapping), `wrangler.jsonc` and its migrations unchanged, the new tables and columns added inside each Durable Object when first reached: version `5faea5cf` at 10:55 UTC, then `fb8bac76` at 11:19 UTC (48.13 KiB). After each, the three checks below answered the same (`checks-after-redeploy.txt`, `checks-after-redeploy2.txt`; the sha256 of the `relay/src` files deployed: `redeploy2-relay-src.sha256`). Run 3 ran on `fb8bac76`.
+
+### The three checks, and a finding: the line filters `workers.dev`'s usual addresses
+
+From this PC (a mobile connection in Algeria), with the system's resolver (8.8.8.8), every request timed out: the addresses it gives for the mailbox (Cloudflare's 188.114.96.x / 188.114.97.x; also Quad9's answer) are filtered on the line, either no TCP answer or the connection reset right after the TLS ClientHello. Cloudflare's own resolver (1.1.1.1, also over DNS-over-HTTPS at `https://1.1.1.1/dns-query` and `https://1.0.0.1/dns-query`, both reachable in 0.3–0.6 s) gives 104.21.39.37 and 172.67.142.233, which answer. The same name and SNI reach the Worker through 188.114.96.1 too, so the filtering is on addresses, not on the name. Over 4 min 20 s, every 15 s: 104.21.39.37 20/20 and 172.67.142.233 20/20 answered 200 (mean 0.45 s, certificate `CN=ayoubwass404.workers.dev`, SAN `*.ayoubwass404.workers.dev`, Let's Encrypt YE1, verified); 188.114.96.12 and 188.114.97.12 20/20 reset (`stability.txt`, `doh.txt`). What was decided: `docs/phone/DECISION.md` section 10.
+
+The checks of `relay/README.md` step 6, through 104.21.39.37 (`curl --resolve`; `checks.txt`):
+
+| Request | Answer |
+|---|---|
+| `GET /v1/time`, `x-inmaa-protocol: 2` | `HTTP/2 200`, `x-relay-time: 1793611750899`, `{"now":1793611750899}`; the PC's clock (NTP-synchronised) read 1793611750021 just after: the mailbox's time is within a second |
+| `GET /v1/time`, no header | `HTTP/2 426`, `x-relay-error: UPDATE_REQUIRED` |
+| `POST /v1/centres`, `x-setup-key: wrong` | `HTTP/2 403`, `x-relay-error: SETUP_KEY` |
+
+**The program's own Rust client.** A probe compiled outside the repository (`ureq-probe.txt`) with `send()` of `src-tauri/src/sync/http.rs` as it was before the fallback, on the same lock versions (ureq 3.5.0, rustls 0.23.46, webpki-roots 1.0.11): with the system resolver, `OFFLINE: io: Connection reset by peer (os error 104)` after 0.2 s, then `OFFLINE: io: Network is unreachable (os error 101)` after 24 s (the IPv4 addresses timed out, then IPv6, which this line has none of); with the name pinned to 104.21.39.37 (a hosts file in a private mount namespace), the same binary got 200 / 426 `UPDATE_REQUIRED` / 403 `SETUP_KEY` in about 0.3 s each, so rustls with the built-in webpki roots accepts the `workers.dev` certificate.
+
+**The desktop's fallback, on this line** (`http-rs-fallback.txt`). After the fallback of `docs/phone/DECISION.md` section 10 was built, the program's own `src-tauri/src/sync/http.rs`, compiled unchanged (`#[path]`) into a small binary outside the repository with the same lock versions, sent the three checks and a fourth request to the deployed mailbox (`fb8bac76`) through `send()` with the program's limits, the system resolver giving only 188.114.96.12 and 188.114.97.12. With no remembered address: `GET /v1/time` 200 `{"now":…}` in 0.95 s (the filtered addresses refused, then DNS-over-HTTPS at 1.1.1.1, then 172.67.142.233), 426 `UPDATE_REQUIRED`, 403 `SETUP_KEY`, 200, each about 0.35 s; the address file then held `{"address":"172.67.142.233:443","host":"inmaa-relay.ayoubwass404.workers.dev"}`. A new process with that file: all four in 0.3–0.4 s each, straight to the remembered address. This is the code the Windows program runs; only its window and Windows' own resolver were not part of it.
+
+### Run 1: the phone on the emulator's default DNS (`run1-phone-default-dns/`)
+
+The laptops through 1.1.1.1 (below), the test APK of 2026-11-02 01:24 (before the fallback) on the emulator with its default DNS, which resolved the mailbox to 188.114.97.12. The laptops' half passed: the director's laptop created the centre (`POST /v1/centres` 201 with the real setup key), paired the assistant's laptop, a change on each reached the other, chains verified, shared rows equal; 60 requests. **The phone could not join**: 2.6 s after «انضمام», «تعذّر الوصول إلى صندوق البريد. تحقّقوا من الاتصال بالإنترنت وأعيدوا المحاولة.» (`phone-03-join-failed.png`). This is what the director's phone would have done on such a line.
+
+### Run 2: everything through Cloudflare's resolver (`run2-dns-1111/`)
+
+The same APK, the emulator started with `-dns-server 1.1.1.1,1.0.0.1` (the mailbox resolved to 172.67.142.233), the laptops through 1.1.1.1. **6 of 6 passed** (09:52–09:56 UTC, 79 requests from the laptops):
+
+1. The director's laptop («اختبار حاسوب المدير») set the centre up with the real setup key and paired the assistant's laptop («اختبار حاسوب المساعدة», slot 1), which joined from the full copy and signed in; a worker registered on each laptop reached the other.
+2. The director's laptop made a phone's code; on the emulator the first screen offered only «الانضمام إلى مركز موجود»; the address and the code were typed, the phone («اختبار هاتف المدير») downloaded the full copy from Cloudflare, restarted, listed only the manager's account, and the director signed in with his password. Both laptops then listed LAPTOP 0, LAPTOP 1, PHONE 2.
+3. Phone → laptops: the centre's name changed on the phone at 09:54 (toast «تم حفظ بيانات المركز.») was on both laptops 25 s later.
+4. Laptop → phone: a worker «من الحاسوب إلى الهاتف» registered on the director's laptop showed in the phone's workers list within 30 s (`phone-07-laptop-change-on-phone.png`).
+5. Both laptops' chains verified and their shared rows were equal.
+
+### Run 3, the final run: the phone on the emulator's default DNS, with the fallback (`run3-final-phone-default-dns/`)
+
+The test APK of 13:11 (package `com.hamawebdev.inmaa_pro.test`, «إنماء برو (اختبار)», with the DNS fallback and the day's sync fixes), installed fresh on the emulator started by `scripts/android/emulator.sh start` with **no DNS override**: the emulator resolved the mailbox to the filtered 188.114.96.12, the condition under which run 1's phone could not join. A fresh centre on the mailbox `fb8bac76`; the laptops through 1.1.1.1 as before. **6 of 6 passed** (13:45–13:51 UTC, 80 requests from the laptops):
+
+1. The director's laptop set the centre up (`POST /v1/centres` 201) and paired the assistant's laptop (slot 1), which joined and signed in; a worker registered on each laptop reached the other.
+2. A phone's code made on the director's laptop; on the phone the first screen offered only «الانضمام إلى مركز موجود»; the address and the code typed at 13:47:29, the full copy downloaded and installed, the sign-in window at 13:48:27 listing only the manager's account, the director signed in. The laptops then listed LAPTOP 0, LAPTOP 1, PHONE 2.
+3. Phone → laptops: the centre's name saved on the phone at 13:49:54 was on both laptops at 13:50:15.
+4. Laptop → phone: the worker «من الحاسوب إلى الهاتف» sent from the director's laptop at 13:50:16 showed in the phone's workers list at 13:50:41 (`phone-08-after-run-clean.png`).
+5. Both laptops' chains verified; their shared rows were equal.
+
+The pictures `phone-04` to `phone-07` show the emulator's own «System UI isn't responding» dialog over the program (its launcher under this machine's load, as in section 5); `phone-08-after-run-clean.png` is the same screen after the dialog was dismissed. Receipts and invoices were not issued on the phone: the phone no longer holds the books (`docs/phone/DECISION.md`).
+
+### Which half used which path
+
+- **The laptops** are the Node program copies of section 4; they never run `http.rs`. They reached the mailbox through `scripts/e2e/live/node-transport.ts`, which with `LIVE_DNS=1.1.1.1,1.0.0.1` resolves the name through Cloudflare's resolver and connects with the mailbox's own name and certificate check. Without it they cannot reach the mailbox from this line.
+- **The phone** is the real APK and its own Rust client (`sync_request`, `http.rs`). In run 2 the emulator's DNS was set to 1.1.1.1 (an APK without the fallback); **in run 3 it had its default DNS, and the program's fallback found the mailbox by itself.**
+- **The desktop's own client** (`http.rs` on Linux, the code the Windows build compiles) was proven separately on this line with the system resolver: above, "The desktop's fallback, on this line".
+
+```sh
+LIVE_ORIGIN=https://inmaa-relay.ayoubwass404.workers.dev LIVE_SETUP_KEY="$(cat ~/.inmaa-cloudflare/setup-key)" \
+LIVE_DNS=1.1.1.1,1.0.0.1 LIVE_LABEL="اختبار " LIVE_PHONE=1 LIVE_OUT=/mnt/data/inmaa-phone-verify/live-cloudflare/<run> \
+  npx vitest run --config scripts/e2e/live/vitest.config.ts
+```
+
+(`LIVE_PACKAGE=com.hamawebdev.inmaa_pro.test` when the emulator holds the test build under its own package id. Without `LIVE_DNS` the laptops use the system's resolver, which does not reach the mailbox from this line.)
+
+### Usage
+
+Each full run made 60 to 80 requests from the laptops and a few dozen from the phone; with the checks, the four-minute stability probe and the Rust probes, the day's total stayed under a thousand, against the free plan's 100,000.
