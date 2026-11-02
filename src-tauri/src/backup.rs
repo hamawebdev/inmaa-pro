@@ -14,6 +14,15 @@ use tauri::Manager;
 
 use crate::CommandError;
 
+/// Backup, restore and copies saved outside are not on the phone
+/// (docs/phone/DECISION.md section 6): Android lets an app write outside its
+/// private storage only through the system's document picker. The window hides
+/// their buttons on a phone; the commands refuse anyway.
+#[cfg(target_os = "android")]
+fn not_on_the_phone() -> CommandError {
+    CommandError::new("REFUSED: not on the phone: backups, restores and saved copies are made on a laptop")
+}
+
 fn app_data_dir(app: &tauri::AppHandle) -> Result<PathBuf, CommandError> {
     app.path()
         .app_data_dir()
@@ -70,7 +79,10 @@ pub(crate) fn sha256_of(path: &Path) -> std::io::Result<String> {
 /// a USB stick).
 #[tauri::command]
 #[specta::specta]
+#[cfg_attr(target_os = "android", allow(unreachable_code, unused_variables))]
 pub async fn backup_to(app: tauri::AppHandle, target: String) -> Result<BackupCopy, CommandError> {
+    #[cfg(target_os = "android")]
+    return Err(not_on_the_phone());
     let dir = app_data_dir(&app)?;
     let target = PathBuf::from(target);
     // Every copy, whoever asks for it: a backup in a synchronised folder is the centre's data leaving the PC.
@@ -232,7 +244,10 @@ fn is_auto_backup(name: &str) -> bool {
 /// restore (`inmaa-pre-restore-…`). Answers the names removed.
 #[tauri::command]
 #[specta::specta]
+#[cfg_attr(target_os = "android", allow(unreachable_code, unused_variables))]
 pub async fn backup_rotate(dir: String, keep: u32) -> Result<Vec<String>, CommandError> {
+    #[cfg(target_os = "android")]
+    return Err(not_on_the_phone());
     let dir = PathBuf::from(dir);
     let mut autos: Vec<String> = std::fs::read_dir(&dir)
         .map_err(|error| CommandError::new(format!("could not read the backup folder: {error}")))?
@@ -399,12 +414,15 @@ pub(crate) fn swap_in(dir: &Path, staged: &Path, staged_uploads: Option<&Path>) 
 /// must restart either way. The caller relaunches afterwards.
 #[tauri::command]
 #[specta::specta]
+#[cfg_attr(target_os = "android", allow(unreachable_code, unused_variables))]
 pub async fn restore_from(
     app: tauri::AppHandle,
     db: tauri::State<'_, crate::db::Db>,
     source: String,
     note: Option<String>,
 ) -> Result<(), CommandError> {
+    #[cfg(target_os = "android")]
+    return Err(not_on_the_phone());
     let dir = app_data_dir(&app)?;
     let source = PathBuf::from(source);
 
@@ -445,7 +463,7 @@ pub async fn restore_from(
     }
 
     // From here the open connection is closed: whatever happens, the window starts again.
-    db.0.close().await;
+    db.pool().close().await;
     if let Err(error) = swap_in(&dir, &staged, with_uploads.then_some(staged_uploads.as_path())) {
         clean();
         // Nothing was restored: the note would tell the next start a restore happened.
@@ -468,11 +486,14 @@ pub async fn restore_from(
 /// crafted value must not be able to name a file outside the uploads folder.
 #[tauri::command]
 #[specta::specta]
+#[cfg_attr(target_os = "android", allow(unreachable_code, unused_variables))]
 pub async fn export_upload(
     app: tauri::AppHandle,
     segments: Vec<String>,
     target: String,
 ) -> Result<(), CommandError> {
+    #[cfg(target_os = "android")]
+    return Err(not_on_the_phone());
     let source = upload_path(&app_data_dir(&app)?.join("uploads"), &segments)
         .ok_or_else(|| CommandError::new("invalid upload path"))?;
     if !source.is_file() {
@@ -493,10 +514,13 @@ pub async fn export_upload(
 /// is given, byte order mark included.
 #[tauri::command]
 #[specta::specta]
+#[cfg_attr(target_os = "android", allow(unreachable_code, unused_variables))]
 pub async fn save_text_file(
     target: String,
     contents: String,
 ) -> Result<(), CommandError> {
+    #[cfg(target_os = "android")]
+    return Err(not_on_the_phone());
     let target = PathBuf::from(target);
     if target.as_os_str().is_empty() {
         return Err(CommandError::new("no file was chosen"));

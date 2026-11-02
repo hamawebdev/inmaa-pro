@@ -3,8 +3,9 @@
  * (DECISION section 9). The window never connects anywhere; the Rust side sends the request to the origin saved
  * in the vault, under /v1/ only.
  *
- * The bytes cross the IPC raw, never as JSON arrays: the request body is the invoke payload and the method, path
- * and headers ride in the invoke's headers; the answer is
+ * The bytes cross the IPC raw on a laptop: the request body is the invoke payload and the method, path and headers
+ * ride in the invoke's headers. On Android, Tauri carries every invoke as text, so the same Uint8Array arrives as a
+ * JSON array of numbers, which the command takes too (`invoke_bytes`, src-tauri/src/sync/mod.rs). The answer is
  *
  *     [u32 BE: head length] [head: UTF-8 JSON {"status": n, "headers": {lower-case name: value}}] [body]
  *

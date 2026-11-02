@@ -76,7 +76,7 @@ Arabic is the default and reads right to left; French and English are there; eve
 ## 7. Offline, privacy and security on the phone
 
 - **Offline first, as the laptops.** The whole database and the stored files are on the phone. With no network it works alone; the bar says «غير متصل» and how many changes wait; they go when the network returns. The content security policy is the desktop's; the window still connects nowhere; the one HTTP client in Rust reaches only the mailbox, over HTTPS. The Android manifest asks for `INTERNET` and `ACCESS_NETWORK_STATE` (for the mailbox) and `POST_NOTIFICATIONS` (alerts), nothing else; clear-text traffic is refused by the network security configuration.
-- **Data stays in the app's private storage**, which Android encrypts on any phone since Android 10. `android:allowBackup="false"` and no data-extraction rules, so neither Google's cloud backup nor a cable backup copies the database or the sync key.
+- **Data stays in the app's private storage**, which Android encrypts on any phone since Android 10. `android:allowBackup="false"`, and data-extraction rules that exclude every folder from cloud backup and from a transfer to a new phone (on Android 12 and later `allowBackup` alone does not stop the transfer), so neither Google's cloud backup nor a cable backup copies the database or the sync key.
 - **A lost phone**: the passwords protect the program; removing the phone from a laptop revokes it on the mailbox and replaces the centre key (section 2). We recommend a screen lock on the phone.
 - **The idle lock** works as on the laptops (`security.idleLockMinutes`).
 

@@ -130,9 +130,10 @@ fn normalise_origin(typed: &str) -> Result<String, CommandError> {
 }
 
 /// Allowed request header names: the device token, the body's type, the setup
-/// key (creating a centre), and the mailbox's own `x-relay-…` headers.
+/// key (creating a centre), the sync protocol's version (`x-inmaa-protocol`,
+/// docs/phone/BUILD.md 2.3), and the mailbox's own `x-relay-…` headers.
 fn allowed_header(name: &str) -> bool {
-    matches!(name, "authorization" | "content-type" | "x-setup-key") || name.starts_with("x-relay-")
+    matches!(name, "authorization" | "content-type" | "x-setup-key" | "x-inmaa-protocol") || name.starts_with("x-relay-")
 }
 
 /// Checks a request the window asks for; the error says which part is wrong.
@@ -185,6 +186,24 @@ fn frame(answer: &http::Answer) -> Vec<u8> {
     out
 }
 
+/// The bytes an invoke carries. On a laptop the window sends them raw. On
+/// Android, Tauri's IPC goes through the WebView's `postMessage`, which carries
+/// text only, so the same `Uint8Array` arrives as a JSON array of numbers
+/// (headers kept). Both are taken; anything else (a number above 255, a string,
+/// an object) is not bytes. No body at all is an empty one.
+fn invoke_bytes(body: &tauri::ipc::InvokeBody) -> Option<Vec<u8>> {
+    match body {
+        tauri::ipc::InvokeBody::Raw(bytes) => Some(bytes.clone()),
+        tauri::ipc::InvokeBody::Json(serde_json::Value::Null) => Some(Vec::new()),
+        tauri::ipc::InvokeBody::Json(serde_json::Value::Object(map)) if map.is_empty() => Some(Vec::new()),
+        tauri::ipc::InvokeBody::Json(serde_json::Value::Array(items)) => items
+            .iter()
+            .map(|item| item.as_u64().and_then(|n| u8::try_from(n).ok()))
+            .collect(),
+        tauri::ipc::InvokeBody::Json(_) => None,
+    }
+}
+
 fn header_text<'a>(headers: &'a tauri::http::HeaderMap, name: &str) -> Option<&'a str> {
     headers.get(name).and_then(|value| value.to_str().ok())
 }
@@ -199,12 +218,7 @@ pub async fn sync_request(
     app: tauri::AppHandle,
     request: tauri::ipc::Request<'_>,
 ) -> Result<tauri::ipc::Response, CommandError> {
-    let body = match request.body() {
-        tauri::ipc::InvokeBody::Raw(bytes) => bytes.clone(),
-        tauri::ipc::InvokeBody::Json(serde_json::Value::Null) => Vec::new(),
-        tauri::ipc::InvokeBody::Json(serde_json::Value::Object(map)) if map.is_empty() => Vec::new(),
-        tauri::ipc::InvokeBody::Json(_) => return Err(refused("the body must be bytes")),
-    };
+    let body = invoke_bytes(request.body()).ok_or_else(|| refused("the body must be bytes"))?;
     let incoming = request.headers();
     let method = header_text(incoming, "x-sync-method")
         .unwrap_or("")
@@ -414,7 +428,7 @@ pub async fn db_snapshot(
     db: tauri::State<'_, crate::db::Db>,
     name: String,
 ) -> Result<FileInfo, CommandError> {
-    snapshot(&db.0, &app_data_dir(&app)?, &name).await
+    snapshot(&db.pool(), &app_data_dir(&app)?, &name).await
 }
 
 /// Size and SHA-256 of a stored or temporary file, or nothing when it is not there.
@@ -488,8 +502,9 @@ fn write_part(base: &Path, relative: &str, offset: u64, bytes: &[u8]) -> Result<
 /// `x-file-offset`. `sync-tmp/` only.
 #[tauri::command]
 pub async fn file_write_part(app: tauri::AppHandle, request: tauri::ipc::Request<'_>) -> Result<(), CommandError> {
-    let tauri::ipc::InvokeBody::Raw(bytes) = request.body() else {
-        return Err(refused("the part must be bytes"));
+    let bytes = match invoke_bytes(request.body()) {
+        Some(bytes) if !bytes.is_empty() => bytes,
+        _ => return Err(refused("the part must be bytes")),
     };
     let headers = request.headers();
     let path = header_text(headers, "x-file-path")
@@ -498,7 +513,7 @@ pub async fn file_write_part(app: tauri::AppHandle, request: tauri::ipc::Request
     let offset = header_text(headers, "x-file-offset")
         .and_then(|text| text.parse::<u64>().ok())
         .ok_or_else(|| refused("x-file-offset is missing"))?;
-    write_part(&app_data_dir(&app)?, &path, offset, bytes)
+    write_part(&app_data_dir(&app)?, &path, offset, &bytes)
 }
 
 fn percent_decode(text: &str) -> Option<String> {
@@ -684,7 +699,7 @@ pub async fn sync_install_copy(
     path: String,
     note: Option<String>,
 ) -> Result<(), CommandError> {
-    install_copy(&db.0, &app_data_dir(&app)?, &path, note, std::time::SystemTime::now())
+    install_copy(&db.pool(), &app_data_dir(&app)?, &path, note, std::time::SystemTime::now())
         .await
         .map(|_| ())
 }

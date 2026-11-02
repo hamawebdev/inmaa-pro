@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Behind the status and navigation bars, and while the window loads. -->
+    <color name="window_background">#FFFFFFFF</color>
+</resources>

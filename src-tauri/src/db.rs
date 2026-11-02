@@ -37,7 +37,31 @@ use tauri::{Manager, State};
 use crate::CommandError;
 
 /// Live connection pool (max 1 connection — see module docs).
-pub struct Db(pub SqlitePool);
+///
+/// Held behind a lock so that it can be replaced while the program runs. A
+/// desktop never does: installing a full copy or restoring a backup closes the
+/// connection and the process restarts. Android cannot restart its own
+/// process, so there the program's `process` plugin (src/mobile.rs) opens a new
+/// connection on the installed file and reloads the window instead.
+pub struct Db(std::sync::RwLock<SqlitePool>);
+
+impl Db {
+    pub fn new(pool: SqlitePool) -> Self {
+        Self(std::sync::RwLock::new(pool))
+    }
+
+    /// The connection, as it is now. A clone of the pool is the same connection.
+    pub fn pool(&self) -> SqlitePool {
+        self.0.read().unwrap_or_else(|poisoned| poisoned.into_inner()).clone()
+    }
+
+    /// Puts a newly opened connection in place of the old one, and answers the old one.
+    #[cfg_attr(not(target_os = "android"), allow(dead_code))]
+    pub fn replace(&self, pool: SqlitePool) -> SqlitePool {
+        let mut slot = self.0.write().unwrap_or_else(|poisoned| poisoned.into_inner());
+        std::mem::replace(&mut *slot, pool)
+    }
+}
 
 /// The database file inside the app data directory. Named once, here: backup,
 /// restore and the sync commands all ask for this constant.
@@ -294,8 +318,9 @@ pub async fn db_select(
 ) -> Result<Vec<serde_json::Value>, CommandError> {
     check_statement(&sql)?;
 
+    let pool = db.pool();
     let rows = bind_all(sqlx::query(&sql), &params)
-        .fetch_all(&db.0)
+        .fetch_all(&pool)
         .await?;
 
     rows.iter().map(row_to_json).collect()
@@ -312,8 +337,9 @@ pub async fn db_execute(
 ) -> Result<ExecuteResult, CommandError> {
     check_statement(&sql)?;
 
+    let pool = db.pool();
     let result = bind_all(sqlx::query(&sql), &params)
-        .execute(&db.0)
+        .execute(&pool)
         .await?;
 
     Ok(ExecuteResult {
@@ -328,7 +354,7 @@ pub async fn db_execute(
 #[specta::specta]
 pub async fn db_checkpoint(db: State<'_, Db>) -> Result<(), CommandError> {
     sqlx::query("PRAGMA wal_checkpoint(TRUNCATE);")
-        .execute(&db.0)
+        .execute(&db.pool())
         .await?;
     Ok(())
 }
@@ -502,6 +528,90 @@ mod tests {
                 sqlx::migrate!("./migrations").iter().count() as i64,
                 "every embedded migration applied"
             );
+            pool.close().await;
+        });
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// A database of 1.1.0 (0001 to 0005, the version of the two laptops)
+    /// takes 0006, the phone's, in place on the shipped engine: its laptops
+    /// stay laptops, and a laptop that replaced a removed one keeps that link.
+    /// The link is a self-reference with RESTRICT, which SQLite checks row by
+    /// row even inside the DROP TABLE that rebuilds the table.
+    #[test]
+    fn a_database_of_the_two_laptops_takes_the_phone_in_place() {
+        let dir = temp_dir("db-upgrade-1.1.0");
+        let path = dir.join(DB_FILE);
+        let shipped = dir.join("shipped");
+        std::fs::create_dir_all(&shipped).expect("dir");
+        for (name, text) in [
+            ("0001_init.sql", include_str!("../migrations/0001_init.sql")),
+            ("0002_seed.sql", include_str!("../migrations/0002_seed.sql")),
+            ("0003_service_catalogue.sql", include_str!("../migrations/0003_service_catalogue.sql")),
+            ("0004_staff_trial_and_fixed_term.sql", include_str!("../migrations/0004_staff_trial_and_fixed_term.sql")),
+            ("0005_sync.sql", include_str!("../migrations/0005_sync.sql")),
+        ] {
+            std::fs::write(shipped.join(name), text).expect(name);
+        }
+
+        tauri::async_runtime::block_on(async {
+            let options = SqliteConnectOptions::from_str(&format!("sqlite:{}", path.to_string_lossy()))
+                .expect("path")
+                .create_if_missing(true)
+                .foreign_keys(true)
+                .pragma("recursive_triggers", "ON");
+            let pool = SqlitePoolOptions::new().max_connections(1).connect_with(options).await.expect("connect");
+            sqlx::migrate::Migrator::new(shipped.as_path())
+                .await
+                .expect("1.1.0's migrations")
+                .run(&pool)
+                .await
+                .expect("1.1.0's database");
+            // The assistant's first laptop, lost and removed; its replacement; the director's.
+            for row in [
+                "('laptop-a', 'حاسوب المدير', 0, '2026-10-20T08:00:00.000Z', NULL, NULL, NULL, '2026-10-20T08:00:00.000Z', '2026-10-20T08:00:00.000Z')",
+                "('laptop-b', 'حاسوب المساعدة', 1, '2026-10-20T09:00:00.000Z', '2026-10-25T09:00:00.000Z', 'سُرق', NULL, '2026-10-20T09:00:00.000Z', '2026-10-25T09:00:00.000Z')",
+                "('laptop-c', 'حاسوب المساعدة الجديد', 1, '2026-10-26T09:00:00.000Z', NULL, NULL, 'laptop-b', '2026-10-26T09:00:00.000Z', '2026-10-26T09:00:00.000Z')",
+            ] {
+                sqlx::query(&format!("INSERT INTO \"SyncDevice\" (\"id\", \"name\", \"slot\", \"joinedAt\", \"removedAt\", \"removedReason\", \"replacesDeviceId\", \"createdAt\", \"updatedAt\") VALUES {row}"))
+                    .execute(&pool)
+                    .await
+                    .expect("a laptop of 1.1.0");
+            }
+            pool.close().await;
+
+            let pool = open(&path).await.expect("the 1.1.0 database upgrades");
+            let rows: Vec<(String, String, Option<String>)> =
+                sqlx::query_as("SELECT \"id\", \"kind\", \"replacesDeviceId\" FROM \"SyncDevice\" ORDER BY \"id\"")
+                    .fetch_all(&pool)
+                    .await
+                    .expect("0006: SyncDevice has a kind");
+            assert_eq!(
+                rows,
+                vec![
+                    ("laptop-a".to_string(), "LAPTOP".to_string(), None),
+                    ("laptop-b".to_string(), "LAPTOP".to_string(), None),
+                    ("laptop-c".to_string(), "LAPTOP".to_string(), Some("laptop-b".to_string())),
+                ],
+                "0006: the laptops stay laptops, and the replacement keeps its link"
+            );
+            sqlx::query("INSERT INTO \"SyncDevice\" (\"id\", \"name\", \"slot\", \"kind\", \"joinedAt\", \"createdAt\", \"updatedAt\") VALUES ('phone-a', 'هاتف المدير', 2, 'PHONE', '2026-10-31T09:00:00.000Z', '2026-10-31T09:00:00.000Z', '2026-10-31T09:00:00.000Z')")
+                .execute(&pool)
+                .await
+                .expect("0006: the director's phone takes slot 2");
+            assert!(
+                sqlx::query("INSERT INTO \"SyncDevice\" (\"id\", \"name\", \"slot\", \"kind\", \"joinedAt\", \"createdAt\", \"updatedAt\") VALUES ('laptop-d', 'حاسوب ثالث', 3, 'LAPTOP', '2026-10-31T09:00:00.000Z', '2026-10-31T09:00:00.000Z', '2026-10-31T09:00:00.000Z')")
+                    .execute(&pool)
+                    .await
+                    .is_err(),
+                "0006: there is no fourth slot"
+            );
+            let foreign: Vec<(String,)> = sqlx::query_as("SELECT \"table\" FROM pragma_foreign_key_check")
+                .fetch_all(&pool)
+                .await
+                .expect("foreign key check");
+            assert!(foreign.is_empty(), "no broken reference after 0006: {foreign:?}");
             pool.close().await;
         });
 

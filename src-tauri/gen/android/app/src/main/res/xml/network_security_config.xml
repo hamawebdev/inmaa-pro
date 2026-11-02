@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  No clear text, anywhere: the one address the program reaches is the mailbox, over HTTPS
+  (docs/sync/DECISION.md section 9). The window's own pages (http://tauri.localhost) are served
+  by the program itself and never reach a network. User-installed certificates are not trusted.
+  src/lib/offline.test.ts checks this file.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

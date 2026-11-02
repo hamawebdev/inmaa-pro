@@ -4,6 +4,8 @@ use tauri_specta::{collect_commands, Builder};
 mod anchor;
 mod backup;
 mod db;
+#[cfg(target_os = "android")]
+mod mobile;
 mod sync;
 
 /// A serializable error type for fallible Tauri commands.
@@ -161,6 +163,13 @@ pub fn run() {
             .plugin(tauri_plugin_process::init());
     }
 
+    // Android: no process plugin exists there; the program's own takes its
+    // name, so that the window's `relaunch()` restarts it (src/mobile.rs).
+    #[cfg(target_os = "android")]
+    {
+        app = app.plugin(mobile::process_plugin());
+    }
+
     // No opener plugin: nothing in this program opens a browser, a mail client
     // or a dialler. See `is_app_url` above and src/lib/offline.test.ts.
     app.plugin(tauri_plugin_dialog::init())
@@ -182,12 +191,16 @@ pub fn run() {
         .setup(move |app| {
             builder.mount_events(app);
 
+            // Android keeps the anchor in the app's private folder (anchor.rs).
+            #[cfg(target_os = "android")]
+            anchor::set_private_dir(app.path().app_data_dir()?);
+
             // Open the database and run migrations before the webview can issue
             // any query. Failing here is fatal: without storage there is no app.
             let handle = app.handle().clone();
             let pool = tauri::async_runtime::block_on(db::init(&handle))
                 .expect("failed to initialise the database");
-            app.manage(db::Db(pool));
+            app.manage(db::Db::new(pool));
 
             // The program opens straight on its window: no licence, no trial.
             build_window(app.handle(), MAIN_WINDOW)?;

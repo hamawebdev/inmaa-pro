@@ -69,7 +69,28 @@ fn folders() -> Vec<PathBuf> {
         .collect()
 }
 
-#[cfg(not(windows))]
+/// Android: the app's private storage is the only place an app may keep a
+/// file without asking for storage permissions, and it is outside every backup
+/// (`android:allowBackup="false"`; the phone makes none). `run()` gives the
+/// folder at start ([`set_private_dir`]).
+#[cfg(target_os = "android")]
+fn folders() -> Vec<PathBuf> {
+    PRIVATE_DIR
+        .get()
+        .map(|dir| vec![dir.join(FOLDER)])
+        .unwrap_or_default()
+}
+
+#[cfg(target_os = "android")]
+static PRIVATE_DIR: std::sync::OnceLock<PathBuf> = std::sync::OnceLock::new();
+
+/// Where the anchor is kept on Android: the app's private data folder.
+#[cfg(target_os = "android")]
+pub(crate) fn set_private_dir(dir: PathBuf) {
+    let _ = PRIVATE_DIR.set(dir);
+}
+
+#[cfg(all(not(windows), not(target_os = "android")))]
 fn folders() -> Vec<PathBuf> {
     let Some(home) = std::env::var_os("HOME").map(PathBuf::from) else {
         return Vec::new();

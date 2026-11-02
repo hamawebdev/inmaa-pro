@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The program on the director's phone (docs/phone/DECISION.md section 7, docs/phone/ANDROID-BUILD.md).
+  Three permissions and no other: the mailbox (INTERNET, ACCESS_NETWORK_STATE) and the alerts
+  (POST_NOTIFICATIONS). The notification plugin's own two are removed. src/lib/offline.test.ts checks this file.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" tools:node="remove" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" tools:node="remove" />
+
+    <!-- Neither Google's backup, a cable backup nor a transfer to a new phone copies the database, the sync
+         key or the anchor: allowBackup="false" stops the first two, and on Android 12 and later the
+         extraction rules exclude every folder from both (a new phone rejoins from the full copy). -->
+    <application
+        android:allowBackup="false"
+        android:fullBackupContent="false"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:networkSecurityConfig="@xml/network_security_config"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.inmaa_pro"
+        android:usesCleartextTraffic="${usesCleartextTraffic}"
+        tools:replace="android:allowBackup">
+        <activity
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode"
+            android:launchMode="singleTask"
+            android:label="@string/main_activity_title"
+            android:name=".MainActivity"
+            android:exported="true"
+            android:windowSoftInputMode="adjustResize">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        <!-- The notification plugin's receiver for scheduled notifications after a restart of the phone:
+             the program schedules none, and its permission is removed above. -->
+        <receiver android:name="app.tauri.notification.LocalNotificationRestoreReceiver" tools:node="remove" />
+    </application>
+</manifest>

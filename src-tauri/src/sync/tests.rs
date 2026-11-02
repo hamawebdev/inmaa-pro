@@ -49,6 +49,7 @@ fn only_paths_under_v1_methods_and_headers_of_the_list_are_sent() {
     let none: Vec<(String, String)> = Vec::new();
     let auth = vec![
         ("authorization".to_string(), "Bearer x".to_string()),
+        ("x-inmaa-protocol".to_string(), "2".to_string()),
         ("x-relay-seq".to_string(), "3".to_string()),
     ];
     assert!(check_request("GET", "/v1/time", &none, 0).is_ok());
@@ -435,4 +436,25 @@ fn a_full_copy_of_another_database_replaces_this_one_and_the_old_one_is_kept() {
     });
     let _ = std::fs::remove_dir_all(&base);
     let _ = std::fs::remove_dir_all(&other);
+}
+
+#[test]
+fn bytes_arrive_raw_from_a_laptop_and_as_numbers_from_a_phone() {
+    use tauri::ipc::InvokeBody;
+    assert_eq!(invoke_bytes(&InvokeBody::Raw(vec![0, 1, 255])), Some(vec![0, 1, 255]));
+    assert_eq!(invoke_bytes(&InvokeBody::Json(serde_json::json!([0, 1, 255]))), Some(vec![0, 1, 255]));
+    assert_eq!(invoke_bytes(&InvokeBody::Json(serde_json::json!([]))), Some(vec![]));
+    assert_eq!(invoke_bytes(&InvokeBody::Json(serde_json::Value::Null)), Some(vec![]));
+    assert_eq!(invoke_bytes(&InvokeBody::Json(serde_json::json!({}))), Some(vec![]));
+    for not_bytes in [
+        serde_json::json!([256]),
+        serde_json::json!([-1]),
+        serde_json::json!([1.5]),
+        serde_json::json!(["1"]),
+        serde_json::json!("AAEC"),
+        serde_json::json!({ "0": 1 }),
+        serde_json::json!(7),
+    ] {
+        assert_eq!(invoke_bytes(&InvokeBody::Json(not_bytes.clone())), None, "{not_bytes}");
+    }
 }
