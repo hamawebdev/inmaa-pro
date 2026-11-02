@@ -102,21 +102,27 @@ Log: `/mnt/data/inmaa-phone-verify/live/live-with-phone.log`; pictures of the ph
 
 ## 5. The final gates
 
-Run on 2026-11-02 on the working tree after every teammate reported done (HEAD 7fc7eca plus android's last uncommitted changes); logs in `/mnt/data/inmaa-phone-verify/gates/`.
+**Second run, 2026-11-02 15:07–17:10 local time.** These are the final results. They were run on the working tree after the review team's fixes, uncommitted on top of 1dd5ad3. The fixes are the DNS fallback in `http.rs`, Rust crash safety, the relay's key chain and tickets, the sync engine fixes, the rule that the phone never holds the books, and `SyncBooks.handover` in 0006. Logs are in `/mnt/data/inmaa-phone-verify/gates2/`. The machine's load average was 20–45 throughout.
 
 | Gate | Result |
 |---|---|
-| `npx tsc --noEmit` | passed (no error) |
+| `npx tsc --noEmit` | passed |
 | `npm run lint` | passed: 0 errors, the 17 known warnings of the academy shell |
-| `npm run format:check` | passed: all files in Prettier's style |
-| `npm test` | passed: 239 files, 1993 tests (with the 27 phone scenarios and the two-laptop ones) |
-| `npm run build` | passed (type-check and Vite) |
-| `npm run csp:check` | passed: the built program opened under the written policy, no violation |
-| `npm run db:verify` | passed: frozen migrations unchanged, generated files equal, the model's proof 157/157, the sync proof 70/70, the documents 0 problems |
-| `cargo check --offline`, `cargo test --lib --offline` | passed, run by android (it rewrites `src/lib/bindings.ts`): 37 tests, 0 failed, including the 1.1.0 → 0006 upgrade in place and the Android byte bodies; `src/lib/bindings.ts` unchanged |
-| The desktop program with no network | passed: the release binary of `npm run tauri build` (`src-tauri/target/release/inmaa-pro`, 1.2.0) started inside `unshare -rn` (a network namespace whose only interface, `lo`, is down), on a private Xvfb display, with its data in a scratch folder; after 60 seconds it was running and showed its first window, «اختر كلمة المرور» with «الانضمام إلى مركز موجود» (`/mnt/data/inmaa-phone-verify/desktop-offline/window.png`, log `app.log`) |
-| The desktop comparison | passed with explanations: section 1 |
-| The signed release APK | `src-tauri/target/android/inmaa-pro-1.2.0.apk` (arm64-v8a and armeabi-v7a, signed with the centre's key, `apksigner verify` by android): the emulator's image runs arm64 code through its translator, so it installed (`primaryCpuAbi=arm64-v8a`, version 1.2.0) and opened on «الانضمام إلى مركز موجود» (`/mnt/data/inmaa-phone-verify/live/release-apk-first-screen.png`; the «System UI isn't responding» dialog over it is the emulator's own launcher under this machine's load). The live test (section 4) ran the test APK, which is the same build with x86_64 added and WebView debugging on |
+| `npm run format:check` | passed. The first run failed on one file, `cloudflare-workers.json` at the root: the developer's Cloudflare token template, untracked and not program code. The coordinator moved it to `~/.inmaa-cloudflare/`, and the rerun passed |
+| `npm test` | 2046 of 2048 passed in 256 files. The other 2 hit vitest's 30 s limit under this load. Both are `src/features/money/services/two-laptops.test.ts` › "an invoice printed on the laptop without the books…" and `src/lib/sync/tests/units.test.ts` › "a transaction larger than an envelope is cut into parts…". Rerun with `--testTimeout=300000`, both files passed: 5 of 5 tests in 101 s. No assertion failed |
+| `npm run build` | passed |
+| `npm run csp:check` | passed: no violation on the screens opened |
+| `npm run db:verify` | passed. Model proof 157/157, sync proof 70/70, the documents with 0 problems |
+| `cargo check --offline` | passed |
+| `cargo test --lib --offline` | passed: 56 tests, 0 failed, 1 ignored. `src/lib/bindings.ts` unchanged (same md5 before and after, and after the three builds) |
+| `npm run android:build` | passed. Output: `src-tauri/target/android/inmaa-pro-1.2.0.apk` (arm64-v8a and armeabi-v7a), package `com.hamawebdev.inmaa_pro`. It asks for `INTERNET`, `ACCESS_NETWORK_STATE` and `POST_NOTIFICATIONS`. The only other permission in its manifest is the app's own `…DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION`, the signature-level permission AndroidX declares for its internal receivers. The signature verifies with the centre's certificate, SHA-256 `d9d63405…53533977` |
+| `npm run android:build:test` | passed. Output: `inmaa-pro-1.2.0-test.apk`, package **`com.hamawebdev.inmaa_pro.test`**, version `1.2.0-test`, same certificate |
+| `npm run tauri build` | passed. Outputs: `src-tauri/target/release/inmaa-pro` and `bundle/deb/Inmaa Pro_1.2.0_amd64.deb` |
+| The desktop program with no network | passed. The new release binary ran inside `unshare -rn`, whose only interface `lo` is down, on its own Xvfb with its data in a scratch folder. After 60 s it was running and showing «اختر كلمة المرور» with «الانضمام إلى مركز موجود» (`/mnt/data/inmaa-phone-verify/desktop-offline/window.png`). It was stopped afterwards |
+| The release APK on `inmaa-phone` | passed. It installed through the emulator's arm64 translation (`primaryCpuAbi=arm64-v8a`, version 1.2.0, versionCode 1002000) and opened on its first screen, «الانضمام إلى مركز موجود» (`gates2/release-apk-first-screen.png`). The test APK then installed **beside** it as a separate app: both `com.hamawebdev.inmaa_pro` and `com.hamawebdev.inmaa_pro.test` were listed, and the test one ran x86_64 and opened on the same first screen (`gates2/test-apk-first-screen.png`). The «System UI isn't responding» dialog over both pictures is the emulator's own launcher under load. The emulator was stopped afterwards. The Cloudflare mailbox was not called |
+| The desktop comparison, sample | passed. Home, workers, invoices and Settings › المزامنة, with their detail and print pages (20 pictures): every 1440×900 picture is identical to the pixel to the baseline. At 1024×640, 3 pictures differ by 8–24 px with a colour difference of at most 3, in places the full comparison of section 1 already showed as noise (`/mnt/data/inmaa-phone-verify/sample-compare.txt`) |
+
+**First run, 2026-11-02 01:30, on the tree before the review fixes.** It passed in full: `npm test` 239 files / 1993 tests, `cargo test` 37/37 (run by android), the release binary offline, and the release APK on the emulator. Logs are in `/mnt/data/inmaa-phone-verify/gates/`.
 
 ## 6. What could not be checked here
 
