@@ -390,8 +390,13 @@ export async function answerBlockClaims(
   return { accepted, refused };
 }
 
+/** Restored and catching up, or just joined and not yet up to the mailbox: no block is claimed or answered meanwhile. */
 async function catchingUp(ex: Executor): Promise<boolean> {
-  const row = await ex.selectFrom("SyncState").select("key").where("key", "=", "catchUp").executeTakeFirst();
+  const row = await ex
+    .selectFrom("SyncState")
+    .select("key")
+    .where("key", "in", ["catchUp", "joining"])
+    .executeTakeFirst();
   return row !== undefined;
 }
 

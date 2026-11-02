@@ -83,12 +83,13 @@ export const LATER_MIGRATIONS = [
   // The director's phone, a third device (docs/phone/DECISION.md section 2, 2026-10-31): SyncDevice
   // rebuilt with slot 2 and its kind (0005's CHECK allowed slots 0 and 1, and a check cannot be
   // altered), and the two tables that reference it rebuilt with it; their capture triggers written again.
+  // SyncBooks gains `handover`: the legal chains' heads a hand-over carries (fix-sync, 2026-11-02).
   {
     file: "0006_phone.sql",
     models: [],
     rebuilds: [
       { model: "SyncDevice", added: ["kind"] },
-      { model: "SyncBooks", added: [] },
+      { model: "SyncBooks", added: ["handover"] },
       { model: "NumberBlock", added: [] },
     ],
   },

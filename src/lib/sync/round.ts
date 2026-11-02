@@ -4,7 +4,15 @@ import type { DB } from "@/lib/db/schema";
 import type { Executor, ServiceContext } from "@/lib/service/context";
 import { afterApplyingRound } from "@/lib/sync/books";
 
-import { applyChange, beginApplying, emptyOutcome, endApplying, heldIdOf, type ApplyOutcome } from "./apply";
+import {
+  applyChange,
+  beginApplying,
+  emptyOutcome,
+  endApplying,
+  heldIdOf,
+  placeWaitingLines,
+  type ApplyOutcome,
+} from "./apply";
 import { makeFullCopy } from "./centre";
 import { emitSyncApplied } from "./events";
 import {
@@ -91,6 +99,10 @@ async function refreshMailboxDevices(env: FilesEnv): Promise<number | null> {
   const nowMs = env.clock.now().getTime();
   if (last && nowMs - Date.parse(last.at) < DEVICES_EVERY_MS) return null;
   const listed = await env.mailbox.devices();
+  // A removed device with no key recorded after it: the mailbox says whether a replacement is still owed (a device
+  // revoked before the mailbox kept `keyAfter` has none either). One more request, only then.
+  const unanswered = listed.devices.filter((device) => device.removedAt !== null && device.keyAfter === null);
+  const owed = unanswered.length > 0 && (await env.mailbox.keys()).owed;
   await writeState(env.db, "mailboxDevices", {
     at: new Date(nowMs).toISOString(),
     devices: listed.devices.map((device) => ({
@@ -98,6 +110,7 @@ async function refreshMailboxDevices(env: FilesEnv): Promise<number | null> {
       lastSeenAt: device.lastSeenAt === null ? null : new Date(device.lastSeenAt).toISOString(),
       lastSeq: device.lastSeq,
     })),
+    keyOwed: owed ? unanswered.map((device) => device.id) : [],
   });
   return listed.relayTime;
 }
@@ -197,6 +210,8 @@ export async function runRound(env: FilesEnv, options: RoundOptions = {}): Promi
     result.received += received.transactions;
     result.waiting = received.waiting;
     note(received.relayTime);
+    // A device that has just joined numbers once it has received what the mailbox holds (centre.ts, finishInstall).
+    if (!received.waiting) await writeState(env.db, "joining", null);
   } catch (error) {
     if (error instanceof BehindMailbox) throw new NeedsFullCopy("BEHIND");
     throw error;
@@ -205,6 +220,9 @@ export async function runRound(env: FilesEnv, options: RoundOptions = {}): Promi
   if (await hasHeld(env.db)) {
     merge(result, await retryHeldChanges(env.db, syncContext(env)));
   }
+
+  // Lines placed away from their number take it back where it is free again (apply.ts, `placeLines`).
+  await env.db.transaction().execute((trx) => placeWaitingLines(trx));
 
   // The books and the number blocks answer what the other laptop asked; their answers go at once.
   const answered = await answerLedger(env);

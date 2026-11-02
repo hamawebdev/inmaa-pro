@@ -156,7 +156,9 @@ export async function listConflicts(
     for (const [col, value] of Object.entries(change.data)) {
       values[col] = change.op === "U" ? ((value as [SqlValue, unknown])[0] ?? null) : (value as SqlValue);
     }
-    const legal = booksTables.has(row.tbl) && removed.has(row.originDeviceId);
+    const legal =
+      booksTables.has(row.tbl) &&
+      books.isLegalIncident({ reason: row.reason, originRemoved: removed.has(row.originDeviceId) });
     conflicts.push(
       ...(legal
         ? [

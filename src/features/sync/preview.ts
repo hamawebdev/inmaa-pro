@@ -27,6 +27,7 @@ export const SYNC_PREVIEWS = [
   "CATCH_UP",
   "CATCH_UP_OFFLINE",
   "REJOIN",
+  "REMOVAL_UNFINISHED",
 ] as const;
 export type SyncPreview = (typeof SYNC_PREVIEWS)[number];
 
@@ -43,6 +44,7 @@ const phoneRow = {
   waitingFromIt: 2,
   removedAt: null,
   holdsBooks: false,
+  removalUnfinished: false,
 };
 
 const base: SyncStatus = {
@@ -62,6 +64,7 @@ const base: SyncStatus = {
       waitingFromIt: 0,
       removedAt: null,
       holdsBooks: true,
+      removalUnfinished: false,
     },
     {
       ...assistant,
@@ -72,6 +75,7 @@ const base: SyncStatus = {
       waitingFromIt: 0,
       removedAt: null,
       holdsBooks: false,
+      removalUnfinished: false,
     },
   ],
   lastExchangeAt: NOW,
@@ -94,6 +98,7 @@ const base: SyncStatus = {
   conflictCount: 0,
   incidentCount: 0,
   catchUp: null,
+  joining: false,
 };
 
 export function previewStatus(preview: SyncPreview): SyncStatus {
@@ -218,6 +223,17 @@ export function previewStatus(preview: SyncPreview): SyncStatus {
       };
     case "REJOIN":
       return { ...base, exchange: "REJOIN", problem: "REJOIN", problems: ["REJOIN"], severity: "danger" };
+    case "REMOVAL_UNFINISHED":
+      return {
+        ...base,
+        problem: "REMOVAL_UNFINISHED",
+        problems: ["REMOVAL_UNFINISHED"],
+        severity: "danger",
+        devices: [
+          ...base.devices,
+          { ...phoneRow, removedAt: "2026-10-31T09:00:00.000Z", waitingFromIt: null, removalUnfinished: true },
+        ],
+      };
   }
 }
 

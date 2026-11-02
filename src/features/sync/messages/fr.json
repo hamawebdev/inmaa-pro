@@ -43,7 +43,8 @@
       "LIMIT": "Le service a atteint sa limite du jour",
       "OFFLINE": "Pas de connexion",
       "FILES_MISSING": "Des fichiers enregistrés ne sont pas encore arrivés",
-      "OUTDATED": "Mettez le programme à jour sur cet appareil"
+      "OUTDATED": "Mettez le programme à jour sur cet appareil",
+      "REMOVAL_UNFINISHED": "Retrait inachevé"
     },
     "ProblemHints": {
       "LEGAL_INCIDENT": "{count, plural, one {# document a été émis} other {# documents ont été émis}} sur un appareil après qu'on lui a pris les livres. Ils sont conservés en entier ci-dessous, hors de la chaîne : le directeur décide de leur sort sur papier.",
@@ -57,7 +58,8 @@
       "LIMIT": "Le service gratuit reprend à {time}. Chaque appareil continue de travailler ; ce qui attend partira alors.",
       "OFFLINE": "{count, plural, =0 {Rien n'attend.} one {# modification attend et partira au retour d'internet.} other {# modifications attendent et partiront au retour d'internet.}}",
       "FILES_MISSING": "{count, plural, one {# fichier doit encore arriver} other {# fichiers doivent encore arriver}}. Ils sont redemandés aux prochains échanges.",
-      "OUTDATED": "La boîte aux lettres n'accepte plus cette version du programme. Rien n'est perdu : cet appareil garde ses modifications et les envoie dès que la dernière version y est installée."
+      "OUTDATED": "La boîte aux lettres n'accepte plus cette version du programme. Rien n'est perdu : cet appareil garde ses modifications et les envoie dès que la dernière version y est installée.",
+      "REMOVAL_UNFINISHED": "La boîte aux lettres refuse un appareil retiré, mais la clé du centre n'a pas été remplacée après lui. Refaites le retrait depuis un ordinateur portable."
     },
     "SetUp": {
       "Title": "Configurer la synchronisation",
@@ -79,7 +81,8 @@
       "Waiting": "En attente d'envoi",
       "ToSettle": "À régler",
       "Files": "Fichiers à envoyer / à recevoir",
-      "ClockOff": "Écart d'horloge"
+      "ClockOff": "Écart d'horloge",
+      "Joining": "Fin de l'adhésion : aucun numéro n'est donné avant la fin de la première synchronisation."
     },
     "Devices": {
       "Title": "Les appareils du centre",
@@ -108,7 +111,11 @@
       "PhoneBooksHint": "L'original de ce qui est émis ici s'imprime depuis un ordinateur, une fois les livres revenus sur celui-ci.",
       "AddPhone": "Ajouter le téléphone du directeur",
       "LastSeen": "Dernier contact avec la boîte aux lettres",
-      "WaitingFromIt": "{count, plural, =0 {rien de lui n'attend ici} one {# de ses modifications attend d'être appliquée ici} other {# de ses modifications attendent d'être appliquées ici}}"
+      "WaitingFromIt": "{count, plural, =0 {rien de lui n'attend ici} one {# de ses modifications attend d'être appliquée ici} other {# de ses modifications attendent d'être appliquées ici}}",
+      "BooksOnRemoved": "Les livres sont restés sur cet appareil retiré",
+      "TakeBackBooks": "Reprendre les livres",
+      "RemovalUnfinished": "Retrait inachevé",
+      "RetryRemoval": "Le retirer à nouveau"
     },
     "Pair": {
       "Title": "Ajouter le second ordinateur",
@@ -148,7 +155,14 @@
       "LastReceipt": "Dernier numéro de reçu sur papier",
       "Confirm": "Retirer cet appareil",
       "Done": "L'appareil a été retiré.",
-      "Failed": "L'appareil n'a pas pu être retiré."
+      "Failed": "L'appareil n'a pas pu être retiré.",
+      "TakeBackTitle": "Reprendre les livres",
+      "TakeBackDescription": "Les livres ont été remis à cet appareil pendant qu'on le retirait. Ils viennent sur cet appareil, et les numéros jusqu'à ceux que vous saisissez sont mis de côté.",
+      "TakeBackConfirm": "Reprendre les livres",
+      "TakeBackDone": "Les livres sont sur cet appareil.",
+      "TakeBackFailed": "Les livres n'ont pas pu être repris.",
+      "CodesVoided": "Tout code d'appairage créé avant ce retrait ne fonctionne plus. Créez un nouveau code pour ajouter un appareil.",
+      "OfflineWarning": "Un appareil seulement hors ligne, et non perdu, perd tout ce qu'il n'a pas encore envoyé s'il est retiré."
     },
     "Conflicts": {
       "Title": "Conflits de synchronisation",
@@ -296,6 +310,12 @@
     "BooksOnDirectorLaptop": "Les livres sont sur l'ordinateur du directeur. Demandez-les, et réessayez quand ils seront arrivés.",
     "BooksOnSecondLaptop": "Les livres sont sur le second ordinateur. Demandez-les, et réessayez quand ils seront arrivés.",
     "BooksOnDirectorPhone": "Les livres sont sur le téléphone du directeur. Demandez-les, et réessayez quand ils seront arrivés.",
-    "SyncPhoneCannotPair": "Un téléphone ne peut pas ajouter d'appareil. Ajoutez-le depuis un ordinateur."
+    "SyncPhoneCannotPair": "Un téléphone ne peut pas ajouter d'appareil. Ajoutez-le depuis un ordinateur.",
+    "SyncJoiningNoNumbers": "Cet appareil vient de rejoindre le centre et reçoit encore ses dernières modifications. Réessayez une fois la synchronisation faite.",
+    "SyncFirst": "Cet appareil n'a pas encore reçu tout ce que contient la boîte aux lettres. Vérifiez la connexion internet, synchronisez, puis réessayez.",
+    "SyncPhoneRemoves": "Un téléphone ne peut pas retirer un appareil. Retirez-le depuis un ordinateur portable.",
+    "SyncKeyNotReplaced": "La boîte aux lettres refuse l'appareil, mais la clé du centre n'est pas encore remplacée. Refaites le retrait depuis un ordinateur portable.",
+    "BooksStayOnLaptops": "Les livres restent sur les ordinateurs portables : émettez ceci depuis l'ordinateur qui tient les livres.",
+    "BooksHeldHere": "Des documents des livres sont retenus sur cet appareil : réglez-les d'abord dans les conflits de synchronisation, puis réessayez."
   }
 }

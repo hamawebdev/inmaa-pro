@@ -5,7 +5,7 @@ import { booksState } from "@/lib/sync/books";
 
 import { outboxTransactionCount } from "../payload";
 import { identityKind, isCapturing, readDeviceIdentity } from "../session";
-import { listFileStates, readExchange, readReceive, readSend, readState } from "../state";
+import { joiningPending, listFileStates, readExchange, readReceive, readSend, readState } from "../state";
 import type { DeviceKind, DeviceSlot, SyncExchange, SyncProblem, SyncSeverity, SyncStatus } from "./types";
 
 /**
@@ -30,6 +30,7 @@ const ORDER: readonly SyncProblem[] = [
   "OUTDATED",
   "FULL",
   "REJOIN",
+  "REMOVAL_UNFINISHED",
   "CATCH_UP_OFFLINE",
   "CLOCK",
   "HELD",
@@ -45,6 +46,7 @@ const SEVERITY: Readonly<Record<SyncProblem, SyncSeverity>> = {
   OUTDATED: "danger",
   FULL: "danger",
   REJOIN: "danger",
+  REMOVAL_UNFINISHED: "danger",
   CATCH_UP_OFFLINE: "danger",
   CLOCK: "warning",
   HELD: "warning",
@@ -82,6 +84,7 @@ const OFF: SyncStatus = {
   conflictCount: 0,
   incidentCount: 0,
   catchUp: null,
+  joining: false,
 };
 
 export async function syncStatus(ex: Executor, ctx: ServiceContext, live: LiveSyncState = {}): Promise<SyncStatus> {
@@ -116,18 +119,9 @@ export async function syncStatus(ex: Executor, ctx: ServiceContext, live: LiveSy
     // A search key is settled with its field and never counted alone (conflicts.ts).
     .where(sql<boolean>`NOT ("col" GLOB '*[a-z]Key' OR "col" GLOB '*[a-z]Keys')`)
     .executeTakeFirst();
-  const { BOOKS_TABLES } = await import("@/lib/sync/books");
-  const removed = devices.filter((device) => device.removedAt !== null).map((device) => device.id);
-  const incidents =
-    removed.length === 0
-      ? { n: 0 }
-      : await ex
-          .selectFrom("SyncHeld")
-          .select((eb) => eb.fn.countAll<number>().as("n"))
-          .where("resolvedAt", "is", null)
-          .where("tbl", "in", [...BOOKS_TABLES])
-          .where("originDeviceId", "in", removed)
-          .executeTakeFirst();
+  // A legal incident: a removed device's document the chain refused after its books were taken (guard.ts).
+  const { heldBooksRows, isLegalIncident } = await import("@/lib/sync/books");
+  const incidents = { n: (await heldBooksRows(ex)).filter(isLegalIncident).length };
 
   const nowMs = Date.parse(ctx.now);
   const problems: SyncProblem[] = [];
@@ -142,6 +136,8 @@ export async function syncStatus(ex: Executor, ctx: ServiceContext, live: LiveSy
   if (exchange.lastOutcome === "OUTDATED") problems.push("OUTDATED");
   if (exchange.lastOutcome === "FULL") problems.push("FULL");
   if (exchange.lastOutcome === "REJOIN") problems.push("REJOIN");
+  const keyOwed = new Set(listed?.keyOwed ?? []);
+  if (keyOwed.size > 0) problems.push("REMOVAL_UNFINISHED");
   if (catchUp && exchange.lastOutcome === "OFFLINE") problems.push("CATCH_UP_OFFLINE");
   if (clockWrong) problems.push("CLOCK");
   if (heldCount - incidentCount > 0) problems.push("HELD");
@@ -197,6 +193,7 @@ export async function syncStatus(ex: Executor, ctx: ServiceContext, live: LiveSy
               : null,
           removedAt: device.removedAt,
           holdsBooks: books?.holderDeviceId === device.id,
+          removalUnfinished: keyOwed.has(device.id),
         };
       })
       .sort((a, b) => Number(b.isThis) - Number(a.isThis)),
@@ -222,5 +219,6 @@ export async function syncStatus(ex: Executor, ctx: ServiceContext, live: LiveSy
     conflictCount: Number(conflictCount?.n ?? 0),
     incidentCount,
     catchUp: catchUp ? { reason: catchUp.reason, done: catchUp.done, total: catchUp.total } : null,
+    joining: await joiningPending(ex),
   };
 }

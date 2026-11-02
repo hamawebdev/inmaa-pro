@@ -3,6 +3,7 @@ import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
 
 import { useSession } from "@/hooks/use-session";
+import { useDevice } from "@/lib/device";
 import type { Capability } from "@/lib/access/catalogue";
 import { can } from "@/lib/access/session";
 import { pathKey } from "@/lib/compat/revalidate";
@@ -182,7 +183,9 @@ export async function mayJoin(): Promise<boolean> {
  */
 export function useMayAskForBooks(): boolean {
   const session = useSession();
-  return session !== null && BOOKS_CAPABILITIES.some((capability) => can(session, capability));
+  // The books stay on the laptops (docs/phone/DECISION.md section 6): a phone never asks for them.
+  const { isPhone } = useDevice();
+  return !isPhone && session !== null && BOOKS_CAPABILITIES.some((capability) => can(session, capability));
 }
 
 const BOOKS_CAPABILITIES: readonly Capability[] = [

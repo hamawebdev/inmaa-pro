@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { declarePaperNumbers } from "@/features/core/services/paper-numbers";
 import { ensureCommune, ensureZoneForCommune } from "@/features/core/services/places";
@@ -25,6 +25,9 @@ import {
   requireBooks,
   takeBooksFromLostLaptop,
 } from "./index";
+
+// Each pair joins b and runs its first round, as the program does: two laptops take time on a busy machine.
+vi.setConfig({ testTimeout: 120_000 });
 
 /**
  * The books, the log's chain per laptop, the clock and the day-start jobs

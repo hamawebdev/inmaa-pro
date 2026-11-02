@@ -121,6 +121,14 @@ export function createSyncLoop(deps: SyncLoopDeps) {
   let checkRestore = true;
   let stopListening: (() => void) | null = null;
   const waiters: Array<(outcome: RoundOutcome) => void> = [];
+  // One thing at a time on the mailbox and the sync state: a round, or an act of the manager's (pairing, removing a
+  // device, leaving) that receives and decides on its own (`exclusive`).
+  let lock: Promise<unknown> = Promise.resolve();
+  function serially<T>(work: () => Promise<T>): Promise<T> {
+    const run = lock.then(work, work);
+    lock = run.catch(() => undefined);
+    return run;
+  }
 
   function schedule(ms: number): void {
     cancel?.();
@@ -168,13 +176,14 @@ export function createSyncLoop(deps: SyncLoopDeps) {
     deps.onRunning?.(true);
     let outcome: RoundOutcome;
     try {
-      const env = await deps.env();
-      if (!env) outcome = { kind: "NOT_SET_UP" };
-      else {
-        outcome = await (deps.run ?? runOnce)(env, { checkRestore });
-        if (outcome.kind === "OK") checkRestore = false;
-        await recordOutcome(deps.db, deps.clock(), outcome);
-      }
+      outcome = await serially(async () => {
+        const env = await deps.env();
+        if (!env) return { kind: "NOT_SET_UP" } as RoundOutcome;
+        const done = await (deps.run ?? runOnce)(env, { checkRestore });
+        if (done.kind === "OK") checkRestore = false;
+        await recordOutcome(deps.db, deps.clock(), done);
+        return done;
+      });
     } catch (error) {
       console.error("sync: a round failed", error);
       outcome = { kind: "REFUSED", error };
@@ -221,6 +230,14 @@ export function createSyncLoop(deps: SyncLoopDeps) {
     },
     get running(): boolean {
       return running;
+    },
+    /**
+     * Runs `work` while no round runs (waiting for the one under way), and no round starts until it is done: for the
+     * manager's acts that receive from the mailbox and decide on what they received (pairing, removing a device,
+     * leaving the centre). Its failure is the caller's.
+     */
+    exclusive<T>(work: () => Promise<T>): Promise<T> {
+      return serially(work);
     },
   };
 }

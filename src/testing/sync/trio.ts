@@ -18,6 +18,8 @@
  *   refusals; `trio.fresh(name)`: a freshly installed device, not in the centre; `trio.joinWith(device, code, kind)`:
  *   it joins with that code as that kind (`redeemAndDownload`, then the copy installed as native does).
  * - `trio.replace(device)`: after `removeDevice`, a fresh device of the same kind joins in its place (case 9).
+ * - A device that joins runs its first round at once, as the program does; `{ firstRound: false }` on `joinWith`,
+ *   `joinB`, `joinPhone` or `replace` leaves it out (a test of what a device does before it).
  * - `trio.reinstall`, `trio.restore`: as in `pair.ts`, for any of the three.
  * - `createSyncTrio({ joined: { b: false, phone: false } })`: leave b or the phone unjoined (`trio.joinB()`,
  *   `trio.joinPhone()`).
@@ -40,7 +42,7 @@ import { fileAnchorStore } from "@/testing/anchor-file";
 import { upgradedFixtureCopy } from "@/testing/fixtures/1.0.0";
 import { createMemoryRelay, type MemoryRelay } from "@/testing/sync/memory-relay";
 
-import { compareShared, installCopy, makeLaptop, memoryVault, type SyncLaptop } from "./pair";
+import { compareShared, firstRound, installCopy, makeLaptop, memoryVault, type SyncLaptop } from "./pair";
 
 export type TrioName = "a" | "b" | "phone";
 
@@ -61,6 +63,11 @@ export interface SyncTrioOptions {
   assistant?: { username?: string; roleId?: string; password?: string };
 }
 
+/** A device that joins runs its first round at once, as in the program (`pair.ts`, `firstRound`), unless false. */
+export interface JoinOptions {
+  firstRound?: boolean;
+}
+
 export interface SyncTrio {
   a: SyncLaptop;
   b: SyncLaptop;
@@ -75,17 +82,17 @@ export interface SyncTrio {
   devices(): SyncLaptop[];
   advance(by: { minutes?: number; hours?: number; days?: number }): void;
   /** b joins as the second laptop (a new assistant's account, or the one given). */
-  joinB(using?: { accountId: string }): Promise<void>;
+  joinB(using?: { accountId: string }, options?: JoinOptions): Promise<void>;
   /** The phone joins on a phone's code made on laptop a. */
-  joinPhone(): Promise<void>;
+  joinPhone(options?: JoinOptions): Promise<void>;
   /** A pairing code made on `from` (default laptop a) for a device of `kind`. */
   code(kind: DeviceKind, from?: SyncLaptop): Promise<PairingCodeAnswer>;
   /** A freshly installed device, not in the centre, on its own database, clock and folder (closed with the trio). */
   fresh(name: string): Promise<SyncLaptop>;
   /** `device` joins with `code` as `kind`: the code redeemed, the full copy downloaded and installed. */
-  joinWith(device: SyncLaptop, code: string, kind: DeviceKind): Promise<void>;
+  joinWith(device: SyncLaptop, code: string, kind: DeviceKind, options?: JoinOptions): Promise<void>;
   /** Case 9's second half: a fresh device of the same kind joins in place of b or the phone. Returns it. */
-  replace(device: SyncLaptop): Promise<SyncLaptop>;
+  replace(device: SyncLaptop, options?: JoinOptions): Promise<SyncLaptop>;
   reinstall(device: SyncLaptop, mode: "REJOIN" | "CATCH_UP"): Promise<void>;
   /** Rounds on every device (or `only` those) in turn until a round on each moves nothing. Returns the rounds run. */
   syncAll(options?: { maxRounds?: number; only?: SyncLaptop[] }): Promise<number>;
@@ -176,25 +183,26 @@ export async function createSyncTrio(options: SyncTrioOptions = {}): Promise<Syn
             }),
       });
     },
-    async joinWith(device, code, kind) {
+    async joinWith(device, code, kind, joinOptions = {}) {
       const { path, note } = await redeemAndDownload(device.centre(), {
         code,
         deviceName: device.name === "phone" ? "phone" : device.name === "b" ? "assistant" : device.name,
         kind,
       });
       await installCopy(device, path, note);
+      if (joinOptions.firstRound !== false) await firstRound(device);
     },
-    async joinB(using) {
+    async joinB(using, joinOptions) {
       const ctx = buildContext(trio.a.manager, trio.a.clock);
       const code = using
         ? await pairDevice(trio.a.centre(), ctx, { kind: "LAPTOP", ...using })
         : await trio.code("LAPTOP");
       trio.assistantId = code.accountId;
-      await trio.joinWith(trio.b, code.code, "LAPTOP");
+      await trio.joinWith(trio.b, code.code, "LAPTOP", joinOptions);
     },
-    async joinPhone() {
+    async joinPhone(joinOptions) {
       const code = await trio.code("PHONE");
-      await trio.joinWith(trio.phone, code.code, "PHONE");
+      await trio.joinWith(trio.phone, code.code, "PHONE", joinOptions);
     },
     async fresh(name) {
       const clock = fixedClock(mailboxClock.now().toISOString());
@@ -211,13 +219,13 @@ export async function createSyncTrio(options: SyncTrioOptions = {}): Promise<Syn
       extra.push(device);
       return device;
     },
-    async replace(device) {
+    async replace(device, joinOptions) {
       if (device !== trio.b && device !== trio.phone) throw new Error("trio: only b or the phone is replaced");
       const name: TrioName = device === trio.b ? "b" : "phone";
       device.test.close();
       trio[name] = await freshAs(name);
-      if (name === "b") await trio.joinB(trio.assistantId ? { accountId: trio.assistantId } : undefined);
-      else await trio.joinPhone();
+      if (name === "b") await trio.joinB(trio.assistantId ? { accountId: trio.assistantId } : undefined, joinOptions);
+      else await trio.joinPhone(joinOptions);
       return trio[name];
     },
     async reinstall(device, mode) {

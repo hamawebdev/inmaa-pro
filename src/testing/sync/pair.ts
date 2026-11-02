@@ -232,13 +232,14 @@ export interface SyncPair {
   assistantId: string | null;
   advance(by: { minutes?: number; hours?: number; days?: number }): void;
   /** Joins b: a new assistant's account, or the one given. */
-  join(using?: { accountId: string }): Promise<void>;
+  /** b joins; its first round runs at once, as in the program, unless `firstRound: false`. */
+  join(using?: { accountId: string }, options?: { firstRound?: boolean }): Promise<void>;
   /**
    * Case 9's second half: b replaced by a freshly installed laptop (new database, disk and vault) that joins with
    * a new code and a full copy, under a new laptop id and a new log chain. Remove the old one first
    * (`removeOtherLaptop`). Returns the new `pair.b`.
    */
-  replace(laptop: SyncLaptop): Promise<SyncLaptop>;
+  replace(laptop: SyncLaptop, options?: { firstRound?: boolean }): Promise<SyncLaptop>;
   /**
    * The laptop starts again from the full copy under its own identity: case 8 ("REJOIN": its database predates
    * set-up) and case 7 when the mailbox no longer holds what it needs ("CATCH_UP"). Its next round takes back its
@@ -370,6 +371,17 @@ export function makeLaptop(
   return laptop;
 }
 
+/**
+ * What the program does right after a join: it restarts on the copy and its loop runs a round at once
+ * (src/server/sync.ts, `startSync`). A device that has just joined gives no number before that first receive reached
+ * the mailbox's newest envelope (centre.ts, `finishInstall`); a test of that leaves it out (`firstRound: false`).
+ * A round that fails (the mailbox switched off) is left as it is, as the program would.
+ */
+export async function firstRound(laptop: SyncLaptop): Promise<void> {
+  const outcome = await runOnce(laptop.env());
+  await recordOutcome(laptop.test.db, laptop.clock, outcome);
+}
+
 /** What native's `sync_install_copy` does with a downloaded copy, then the next start (`finishInstall`). */
 export async function installCopy(laptop: SyncLaptop, path: string, note: InstallNote): Promise<void> {
   const installed = join(laptop.root, `inmaa-${Date.now()}-${Math.random().toString(36).slice(2)}.db`);
@@ -437,7 +449,7 @@ export async function createSyncPair(options: SyncPairOptions = {}): Promise<Syn
       clockA.advance(by);
       clockB.advance(by);
     },
-    async join(using) {
+    async join(using, joinOptions = {}) {
       const assistant = options.assistant ?? {};
       const a = pair.a;
       const b = pair.b;
@@ -456,12 +468,13 @@ export async function createSyncPair(options: SyncPairOptions = {}): Promise<Syn
       pair.assistantId = code.accountId;
       const { path, note } = await redeemAndDownload(b.centre(), { code: code.code, deviceName: "assistant" });
       await installCopy(b, path, note);
+      if (joinOptions.firstRound !== false) await firstRound(b);
     },
     async reinstall(laptop, mode) {
       const { path, note } = await downloadForRejoin(laptop.centre(), mode);
       await installCopy(laptop, path, note);
     },
-    async replace(laptop) {
+    async replace(laptop, replaceOptions = {}) {
       if (laptop !== pair.b) throw new Error("pair: only the assistant's laptop is replaced");
       pair.b.test.close();
       pair.b = makeLaptop(
@@ -473,7 +486,7 @@ export async function createSyncPair(options: SyncPairOptions = {}): Promise<Syn
         memoryVault(),
         pair.a.manager,
       );
-      await pair.join(pair.assistantId ? { accountId: pair.assistantId } : undefined);
+      await pair.join(pair.assistantId ? { accountId: pair.assistantId } : undefined, replaceOptions);
       return pair.b;
     },
     async syncAll({ maxRounds = 20 } = {}) {

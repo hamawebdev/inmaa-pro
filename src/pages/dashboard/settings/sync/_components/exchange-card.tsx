@@ -44,6 +44,12 @@ export function ExchangeCard({ status }: { status: SyncStatus }) {
         <CardDescription>{t("Status.Description")}</CardDescription>
       </CardHeader>
       <CardContent className="flex min-w-0 flex-col gap-5">
+        {/* A device just joined: its numbers wait for its first sync (centre.ts, finishInstall). */}
+        {status.joining && (
+          <p data-sync-joining className="text-base leading-relaxed text-muted-foreground">
+            {t("Status.Joining")}
+          </p>
+        )}
         {status.problems.length > 0 && (
           <ul className="flex min-w-0 flex-col gap-3">
             {status.problems.map((problem) => (

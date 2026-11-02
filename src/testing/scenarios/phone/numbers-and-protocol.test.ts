@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
 
-import { BOOKS_ELSEWHERE, requestBooks } from "@/lib/sync/books";
+import { BOOKS_ELSEWHERE, BOOKS_STAY_ON_LAPTOPS, requestBooks } from "@/lib/sync/books";
 import { thirdOf } from "@/lib/sync/blocks";
 import { envFor } from "@/lib/sync/centre";
 import { recordOutcome, runOnce } from "@/lib/sync/loop";
@@ -101,31 +101,35 @@ describe("ordinary numbers on three devices", () => {
 });
 
 describe("legal numbers on three devices", () => {
+  // fix-sync (docs/phone/DECISION.md section 6, 2026-11-02): the phone never holds the books. The first case moved
+  // them a → phone → b → a; it now moves them a → b → a with apart periods, the phone refused throughout. The second
+  // had the phone ask too; it now asserts the phone's refusal.
   it(
-    "one unbroken receipt sequence while the books go a → phone → b → a, with apart periods between",
+    "one unbroken receipt sequence while the books go a → b → a, with apart periods between; the phone is refused",
     LONG,
     async () => {
       trio = await createSyncTrio();
       const t = trio;
       await issueReceipts(t.a, 2); // 1, 2
       await t.syncAll();
-      await moveBooksTo(t, t.phone);
+      await expect(t.phone.transact((ex, ctx) => requestBooks(ex, ctx))).rejects.toThrow(BOOKS_STAY_ON_LAPTOPS);
+      await moveBooksTo(t, t.b);
       await expect(issueReceipts(t.a, 1)).rejects.toThrow(BOOKS_ELSEWHERE);
-      await expect(issueReceipts(t.b, 1)).rejects.toThrow(BOOKS_ELSEWHERE);
+      await expect(issueReceipts(t.phone, 1)).rejects.toThrow(BOOKS_STAY_ON_LAPTOPS);
 
-      // The director in the field, without network: the phone issues 3, 4, 5 while the laptops ask and wait.
+      // The assistant, without network: her laptop issues 3, 4, 5 while the director's laptop asks and waits.
       t.relay.offline = true;
-      await issueReceipts(t.phone, 3);
-      await t.b.transact((ex, ctx) => requestBooks(ex, ctx));
-      await expect(issueReceipts(t.b, 1)).rejects.toThrow(BOOKS_ELSEWHERE);
+      await issueReceipts(t.b, 3);
+      await t.a.transact((ex, ctx) => requestBooks(ex, ctx));
       await expect(issueReceipts(t.a, 1)).rejects.toThrow(BOOKS_ELSEWHERE);
+      await expect(issueReceipts(t.phone, 1)).rejects.toThrow(BOOKS_STAY_ON_LAPTOPS);
       t.relay.offline = false;
       await t.syncAll();
-      expect(await booksHolder(t.a)).toBe(deviceIdOf(t.b));
-      await issueReceipts(t.b, 2); // 6, 7
+      expect(await booksHolder(t.phone)).toBe(deviceIdOf(t.a));
+      await issueReceipts(t.a, 2); // 6, 7
       await t.syncAll();
-      await moveBooksTo(t, t.a);
-      await issueReceipts(t.a, 1); // 8
+      await moveBooksTo(t, t.b);
+      await issueReceipts(t.b, 1); // 8
       await t.syncAll();
 
       for (const device of t.devices()) {
@@ -140,23 +144,27 @@ describe("legal numbers on three devices", () => {
     },
   );
 
-  it("the three devices each ask for the books apart: never two holders, no number twice", LONG, async () => {
+  it("the devices each ask for the books apart: never two holders, no number twice", LONG, async () => {
     trio = await createSyncTrio();
     const t = trio;
     await t.syncAll();
     t.relay.offline = true;
     await issueReceipts(t.a, 1);
     await t.b.transact((ex, ctx) => requestBooks(ex, ctx));
-    await t.phone.transact((ex, ctx) => requestBooks(ex, ctx));
-    for (const device of [t.b, t.phone]) await expect(issueReceipts(device, 1)).rejects.toThrow(BOOKS_ELSEWHERE);
+    await expect(t.phone.transact((ex, ctx) => requestBooks(ex, ctx))).rejects.toThrow(BOOKS_STAY_ON_LAPTOPS);
+    await expect(issueReceipts(t.b, 1)).rejects.toThrow(BOOKS_ELSEWHERE);
+    await expect(issueReceipts(t.phone, 1)).rejects.toThrow(BOOKS_STAY_ON_LAPTOPS);
     t.relay.offline = false;
     await t.syncAll();
     const holders = new Set(await Promise.all(t.devices().map((device) => booksHolder(device))));
     expect(holders.size, "one holder, the same on the three").toBe(1);
     const holder = t.devices().find((device) => deviceIdOf(device) === [...holders][0])!;
+    expect(holder).not.toBe(t.phone);
     await issueReceipts(holder, 1);
     for (const device of t.devices().filter((d) => d !== holder)) {
-      await expect(issueReceipts(device, 1)).rejects.toThrow(BOOKS_ELSEWHERE);
+      await expect(issueReceipts(device, 1)).rejects.toThrow(
+        device === t.phone ? BOOKS_STAY_ON_LAPTOPS : BOOKS_ELSEWHERE,
+      );
     }
     await t.syncAll();
     await expectConverged(t);

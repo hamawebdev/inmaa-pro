@@ -6,8 +6,8 @@ import { afterApplyRow, beforeApplyRow } from "@/lib/sync/books";
 
 import { hlcDevice, maxHlc } from "./hlc";
 import type { RemoteChange } from "./payload";
-import { stampTransaction, unstampTransaction } from "./session";
 import type { SqlValue, SyncHeldReason } from "./services/types";
+import { readState, writeState, type LineIntents } from "./state";
 
 /**
  * The merge (docs/sync/DECISION.md section 4): the other laptop's changes,
@@ -26,14 +26,16 @@ import type { SqlValue, SyncHeldReason } from "./services/types";
  * - A change the database refuses is held in `SyncHeld` with its reason, and
  *   the rest goes on. Each change is one statement, so SQLite's own statement
  *   rollback leaves nothing of a refused one.
- * - Two lines given the same number inside one document while apart: the
- *   laptop that added the later line moves it to the next free number; the
- *   other shows it there provisionally until that move arrives.
+ * - Two lines given the same number inside one document while apart: every
+ *   device places the lines of that document by one rule (creation time, then
+ *   id: the earlier keeps its number, the later goes to the next free one), so
+ *   all devices show the same numbers once they hold the same lines, however
+ *   many devices added one (`placeLines`).
  *
  * Everything here runs inside the caller's transaction with
  * `SyncSession.applying = 1` (`beginApplying` / `endApplying`), so nothing it
- * writes is captured again, except the line moves, which are this laptop's own
- * changes and are captured as such.
+ * writes is captured again: not even a line's placement, which every device
+ * works out for itself.
  */
 
 /** Tables that stay on each laptop: never applied, whatever arrives. */
@@ -75,10 +77,10 @@ const BOOKKEEPING = new Set(["createdAt", "updatedAt", "createdByUserId", "updat
 
 /**
  * Numbers of lines inside one document: `(parent…, seq)` unique, filled on
- * both laptops while apart. Only a table whose number can be changed is
- * repaired; on an append-only one (`PurchaseLine`) the clash is held on both
- * laptops for the office, and the books' tables (`InvoiceLine`,
- * `InvoiceVisit`, `StaffDebtEntry`) are written on one laptop only.
+ * several devices while apart. Only a table whose number can be changed is
+ * placed; on an append-only one (`PurchaseLine`) the clash is held on every
+ * device for the office, and the books' tables (`InvoiceLine`,
+ * `InvoiceVisit`, `StaffDebtEntry`) are written on one device only.
  */
 export const LINE_NUMBERS: Readonly<Record<string, { parent: readonly string[]; seq: string }>> = {
   PaymentDue: { parent: ["fileId"], seq: "seq" },
@@ -173,21 +175,6 @@ export async function beginApplying(ex: Executor, hlc: string | null): Promise<v
 
 export async function endApplying(ex: Executor): Promise<void> {
   await ex.updateTable("SyncSession").set({ applying: 0 }).where("id", "=", "session").execute();
-}
-
-/** A change of this laptop's own, in the middle of applying the other's: captured and sent like any other. */
-async function ownChange(ex: Executor, ctx: ServiceContext, work: () => Promise<void>): Promise<void> {
-  const session = await ex.selectFrom("SyncSession").select("txId").where("id", "=", "session").executeTakeFirst();
-  await ex.updateTable("SyncSession").set({ applying: 0 }).where("id", "=", "session").execute();
-  if (session?.txId) {
-    // Inside a stamped transaction already (a service): its stamp carries the change.
-    await work();
-  } else {
-    const stamp = await stampTransaction(ex, ctx);
-    await work();
-    await unstampTransaction(ex, stamp);
-  }
-  await ex.updateTable("SyncSession").set({ applying: 1 }).where("id", "=", "session").execute();
 }
 
 // ─── Outcome ─────────────────────────────────────────────────────────────────
@@ -437,13 +424,17 @@ async function applyInsert(
   if (existing) return mergeInsert(ex, ctx, origin, change, values, existing, outcome);
 
   await beforeApplyRow(ex, ctx, table, values);
+  const line = LINE_NUMBERS[table];
   try {
     await insertRowValues(ex, table, values);
   } catch (error) {
-    const line = LINE_NUMBERS[table];
     if (!line || !isLineClash(messageOf(error), table, line.seq)) throw error;
-    await settleLineClash(ex, ctx, table, values);
+    // Another line holds its number here: in at a free number for now, then the document is placed by the rule.
+    const intended = Number(values[line.seq]);
+    values[line.seq] = (await topLine(ex, table, values)) + 1;
     await insertRowValues(ex, table, values);
+    await noteIntent(ex, table, change.id, intended, Number(values[line.seq]));
+    await placeLines(ex, table, values);
   }
   await afterApplyRow(ex, ctx, table, values);
   touch(ctx, table, values);
@@ -538,40 +529,48 @@ async function applyUpdate(
   if (table === "Setting" && isLocalSettingKey(existing.key)) return "skipped";
 
   const cells = await cellsOf(ex, table, change.id);
+  // The stamp of the row's insert here (a row with an id made from what it is: the later of the inserts that met).
+  const rowStamp = cells.get("*") ?? null;
   const set: Record<string, SqlValue> = {};
   const won = new Map<string, string>();
   const conflicts: ConflictInput[] = [];
   for (const [col, [raw, replaced]] of fields) {
     const value = norm(raw);
     const mine = existing[col];
-    const mineStamp = cells.get(col) ?? null;
-    if (mineStamp === origin.hlc) {
+    const colStamp = cells.get(col) ?? null;
+    if (colStamp === origin.hlc) {
       // Written earlier in this same transaction (or this change replayed): it moves forward, no conflict.
       if (!sameValue(mine, value)) set[col] = value;
       continue;
     }
-    if ((mineStamp ?? null) === (replaced ?? null) || (mineStamp !== null && origin.hlc > mineStamp)) {
-      // Moves forward: the change replaced what is here, or both changed it and this one is later.
-      const concurrent = (mineStamp ?? null) !== (replaced ?? null);
-      if (!sameValue(mine, value)) set[col] = value;
-      won.set(col, origin.hlc);
-      if (concurrent && !sameValue(mine, value) && !BOOKKEEPING.has(col)) {
-        conflicts.push(conflict(table, change.id, col, value, origin.hlc, mine, mineStamp, hlcDevice(mineStamp!)));
+    if (colStamp === null) {
+      // Not changed here since the row's insert. The change moves forward unless an insert here is later than it
+      // (two devices made the same row while apart, and the later insert holds every field it did not see changed).
+      // A change made after seeing that insert is later than it: the hybrid clock never goes back.
+      if (rowStamp === null || origin.hlc > rowStamp) {
+        if (!sameValue(mine, value)) set[col] = value;
+        won.set(col, origin.hlc);
+      } else if (!sameValue(mine, value) && !BOOKKEEPING.has(col)) {
+        conflicts.push(conflict(table, change.id, col, mine, rowStamp, value, origin.hlc, origin.deviceId));
       }
       continue;
     }
-    if (mineStamp === null) {
-      // This laptop never changed the field, yet the change replaced a stamp it does not have (its change was held here).
+    if (colStamp === (replaced ?? null) || origin.hlc > colStamp) {
+      // Moves forward: the change replaced what is here, or both changed it and this one is later.
+      const concurrent = colStamp !== (replaced ?? null);
       if (!sameValue(mine, value)) set[col] = value;
       won.set(col, origin.hlc);
+      if (concurrent && !sameValue(mine, value) && !BOOKKEEPING.has(col)) {
+        conflicts.push(conflict(table, change.id, col, value, origin.hlc, mine, colStamp, hlcDevice(colStamp)));
+      }
       continue;
     }
-    // Both changed it while apart and this laptop's change is the later one: it stays.
+    // Both changed it while apart and this device's change is the later one: it stays.
     if (!sameValue(mine, value) && !BOOKKEEPING.has(col)) {
-      conflicts.push(conflict(table, change.id, col, mine, mineStamp, value, origin.hlc, origin.deviceId));
+      conflicts.push(conflict(table, change.id, col, mine, colStamp, value, origin.hlc, origin.deviceId));
     }
   }
-  await updateRow(ex, table, change.id, set);
+  await updateLineAware(ex, table, change.id, set, existing);
   await writeCells(ex, table, change.id, won);
   for (const input of conflicts) await recordConflict(ex, ctx, input, outcome);
   // A later change of a field settles the conflicts listed on it: both laptops moved on from them.
@@ -619,6 +618,10 @@ async function applyDelete(
     );
   }
   await ex.deleteFrom("SyncCell").where("tbl", "=", table).where("rowId", "=", change.id).execute();
+  if (LINE_NUMBERS[table]) {
+    await dropIntent(ex, table, change.id);
+    await placeLines(ex, table, existing);
+  }
   return "applied";
 }
 
@@ -629,34 +632,158 @@ function isLineClash(message: string, table: string, seq: string): boolean {
 }
 
 /**
- * The incoming line and this laptop's line carry the same number. The later of
- * the two (by creation, then id: the same answer on both laptops) moves to the
- * next free number: this laptop's own line by a change of its own, sent to the
- * other laptop; the incoming line provisionally, until its owner's move arrives.
+ * An update of another device's: a line whose new number another line holds here goes in with its other fields,
+ * and the document is placed by the rule; the number it was given is remembered as the one it wants.
  */
-async function settleLineClash(
+async function updateLineAware(
   ex: Executor,
-  ctx: ServiceContext,
   table: string,
-  values: Record<string, SqlValue>,
+  id: string,
+  set: Record<string, SqlValue>,
+  existing: Record<string, SqlValue>,
 ): Promise<void> {
-  const { parent, seq } = LINE_NUMBERS[table];
-  let query = sql<Record<string, unknown>>`SELECT * FROM ${sql.table(table)} WHERE ${sql.ref(seq)} = ${values[seq]}`;
-  for (const col of parent) query = sql`${query} AND ${sql.ref(col)} = ${values[col]}`;
-  const mine = (await query.execute(ex)).rows[0];
-  if (!mine) throw new Error(`sync: ${table} reported a clash on its line number but no line holds it`);
-  let maxQuery = sql<{ top: number | null }>`SELECT MAX(${sql.ref(seq)}) AS "top" FROM ${sql.table(table)} WHERE 1 = 1`;
-  for (const col of parent) maxQuery = sql`${maxQuery} AND ${sql.ref(col)} = ${values[col]}`;
-  const top = Number((await maxQuery.execute(ex)).rows[0]?.top ?? 0);
-  const next = top + 1;
-  const mineKey = `${String(mine.createdAt ?? "")}\u0000${String(mine.id)}`;
-  const theirsKey = `${String(values.createdAt ?? "")}\u0000${String(values.id)}`;
-  if (mineKey > theirsKey) {
-    const id = String(mine.id);
-    await ownChange(ex, ctx, async () => {
-      await updateRow(ex, table, id, { [seq]: next });
-    });
-  } else {
-    values[seq] = next;
+  const line = LINE_NUMBERS[table];
+  if (!line || !(line.seq in set)) {
+    await updateRow(ex, table, id, set);
+    return;
   }
+  const wanted = Number(set[line.seq]);
+  try {
+    await updateRow(ex, table, id, set);
+    await noteIntent(ex, table, id, wanted, wanted);
+  } catch (error) {
+    if (!isLineClash(messageOf(error), table, line.seq)) throw error;
+    const rest = { ...set };
+    delete rest[line.seq];
+    await updateRow(ex, table, id, rest);
+    await noteIntent(ex, table, id, wanted, Number(existing[line.seq]));
+  }
+  await placeLines(ex, table, { ...existing, ...set });
+}
+
+const intentKey = (table: string, id: string) => `${table}:${id}`;
+
+async function readIntents(ex: Executor): Promise<LineIntents> {
+  return (await readState(ex, "lines")) ?? {};
+}
+
+async function writeIntents(ex: Executor, intents: LineIntents): Promise<void> {
+  await writeState(ex, "lines", Object.keys(intents).length > 0 ? intents : null);
+}
+
+/** The number a line was given by its last change (insert or update), and where it stands here now. */
+async function noteIntent(ex: Executor, table: string, id: string, intended: number, placed: number): Promise<void> {
+  const intents = await readIntents(ex);
+  const key = intentKey(table, id);
+  if (intended === placed) {
+    if (!(key in intents)) return;
+    delete intents[key];
+  } else {
+    intents[key] = { intended, placed };
+  }
+  await writeIntents(ex, intents);
+}
+
+async function dropIntent(ex: Executor, table: string, id: string): Promise<void> {
+  const intents = await readIntents(ex);
+  const key = intentKey(table, id);
+  if (!(key in intents)) return;
+  delete intents[key];
+  await writeIntents(ex, intents);
+}
+
+function documentFilter(table: string, parentValues: Record<string, unknown>) {
+  const { parent } = LINE_NUMBERS[table];
+  let where = sql`1 = 1`;
+  for (const col of parent) where = sql`${where} AND ${sql.ref(col)} = ${norm(parentValues[col])}`;
+  return where;
+}
+
+async function topLine(ex: Executor, table: string, parentValues: Record<string, unknown>): Promise<number> {
+  const { seq } = LINE_NUMBERS[table];
+  const { rows } = await sql<{ top: number | null }>`SELECT MAX(${sql.ref(seq)}) AS "top" FROM ${sql.table(
+    table,
+  )} WHERE ${documentFilter(table, parentValues)}`.execute(ex);
+  return Number(rows[0]?.top ?? 0);
+}
+
+/**
+ * Places the lines of one document by the rule every device applies the same way: in order of creation (then id),
+ * each line takes the number its last change gave it, or the next number above it that no earlier line took. Lines
+ * that do not clash keep their numbers; of two lines given one number while apart, the earlier keeps it. Nothing
+ * here is captured: each device works it out from the same lines, so all show the same numbers once they hold the
+ * same lines. A line not at the number it was given is remembered (`SyncState` "lines"), so that it goes back when
+ * the number is free again. Runs with `applying` set.
+ */
+export async function placeLines(ex: Executor, table: string, parentValues: Record<string, unknown>): Promise<void> {
+  const { seq } = LINE_NUMBERS[table];
+  const { rows } = await sql<{ id: string; createdAt: string | null; at: number }>`SELECT "id", "createdAt", ${sql.ref(
+    seq,
+  )} AS "at" FROM ${sql.table(table)} WHERE ${documentFilter(table, parentValues)}`.execute(ex);
+  if (rows.length === 0) return;
+  const intents = await readIntents(ex);
+  let intentsChanged = false;
+  const lines = rows.map((row) => {
+    const key = intentKey(table, row.id);
+    const intent = intents[key];
+    const at = Number(row.at);
+    // A line moved since it was placed (a change made here, or applied) wants where it now is.
+    const intended = intent && intent.placed === at ? intent.intended : at;
+    return { id: row.id, createdAt: String(row.createdAt ?? ""), at, intended, key };
+  });
+  lines.sort((x, y) => (x.createdAt < y.createdAt ? -1 : x.createdAt > y.createdAt ? 1 : x.id < y.id ? -1 : 1));
+  const taken = new Set<number>();
+  const moves: Array<{ id: string; to: number }> = [];
+  for (const line of lines) {
+    let place = line.intended;
+    while (taken.has(place)) place += 1;
+    taken.add(place);
+    if (place !== line.at) moves.push({ id: line.id, to: place });
+    const had = intents[line.key];
+    if (place === line.intended) {
+      if (had) {
+        delete intents[line.key];
+        intentsChanged = true;
+      }
+    } else if (!had || had.intended !== line.intended || had.placed !== place) {
+      intents[line.key] = { intended: line.intended, placed: place };
+      intentsChanged = true;
+    }
+  }
+  // Out of the way first (below every number), then in place: the unique index never sees two lines on one number.
+  for (let i = 0; i < moves.length; i++) await updateRow(ex, table, moves[i].id, { [seq]: -(i + 1) });
+  for (const move of moves) await updateRow(ex, table, move.id, { [seq]: move.to });
+  if (intentsChanged) await writeIntents(ex, intents);
+}
+
+/**
+ * Every document holding a line that is not at the number it was given is placed again: after a round of applying,
+ * so that a number freed here (a line moved or removed on this device) is taken back by the line that wants it.
+ * In the caller's transaction; sets `applying` itself.
+ */
+export async function placeWaitingLines(ex: Executor): Promise<number> {
+  const intents = await readIntents(ex);
+  const keys = Object.keys(intents);
+  if (keys.length === 0) return 0;
+  await beginApplying(ex, null);
+  const seen = new Set<string>();
+  let documents = 0;
+  for (const key of keys) {
+    const cut = key.indexOf(":");
+    const table = key.slice(0, cut);
+    const id = key.slice(cut + 1);
+    if (!LINE_NUMBERS[table]) continue;
+    const row = await readRow(ex, table, id);
+    if (!row) {
+      await dropIntent(ex, table, id);
+      continue;
+    }
+    const doc = `${table}:${LINE_NUMBERS[table].parent.map((col) => String(row[col])).join("\u0000")}`;
+    if (seen.has(doc)) continue;
+    seen.add(doc);
+    await placeLines(ex, table, row);
+    documents += 1;
+  }
+  await endApplying(ex);
+  return documents;
 }

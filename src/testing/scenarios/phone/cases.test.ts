@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { buildContext } from "@/lib/service/context";
 import { confirmClockJump } from "@/lib/clock/sanity";
 import { makeFullCopy, removeDevice } from "@/lib/sync/centre";
-import { BOOKS_ELSEWHERE, booksState, requestBooks } from "@/lib/sync/books";
+import { BOOKS_ELSEWHERE, BOOKS_STAY_ON_LAPTOPS, booksState, requestBooks } from "@/lib/sync/books";
 import { RelayOffline } from "@/lib/sync/relay";
 import { NeedsFullCopy } from "@/lib/sync/round";
 import { readState } from "@/lib/sync/state";
@@ -140,10 +140,12 @@ describe("case 2: the phone stays off for weeks", () => {
 
       // His phone's own clock check (its own log chain) saw a jump: he confirms the date, then works on.
       await t.phone.transact((ex, ctx) => confirmClockJump(ex, ctx));
-      await moveBooksTo(t, t.phone);
+      // fix-sync (docs/phone/DECISION.md section 6, 2026-11-02): the phone never holds the books, so the receipt
+      // that followed 2027's numbers here is refused on the phone and issued on the books' laptop.
+      await expect(issueReceipts(t.phone, 1)).rejects.toThrow(BOOKS_STAY_ON_LAPTOPS);
       // A hundred days on: the year turned, and 2027's receipts went on from the laptops' numbers.
       const lastOn2027 = (await legalNumbersOf(t.a.test)).filter((n) => n.key === "RECEIPT" && n.year === 2027);
-      const next = await issueReceipts(t.phone, 1);
+      const next = await issueReceipts(t.a, 1);
       expect(next.firstNumber).toBe(`${String(lastOn2027.length + 1).padStart(6, "0")}/2027`);
       await t.syncAll();
       await expectConverged(t);
@@ -305,31 +307,35 @@ describe("case 7: a laptop restores a backup while the phone worked", () => {
   });
 });
 
-describe("case 9: the phone is lost while it holds the books", () => {
+describe("case 9: the assistant's laptop is lost while it holds the books (the phone never does)", () => {
+  // fix-sync (docs/phone/DECISION.md section 6, 2026-11-02): the phone never holds the books. This case had the phone
+  // hold them and be lost; it now checks the phone's refusal and loses the assistant's laptop holding them, removed
+  // from the director's laptop (LOST_DEVICE gap, key replaced), and a new laptop joins in slot 1.
   it(
-    "the manager removes it from a laptop, declaring the last number seen: LOST_DEVICE gap, key replaced, a new phone joins",
+    "the manager removes it from a laptop, declaring the last number seen: LOST_DEVICE gap, key replaced, a new laptop joins",
     LONG,
     async () => {
       trio = await createSyncTrio();
       const t = trio;
+      await expect(t.phone.transact((ex, ctx) => requestBooks(ex, ctx))).rejects.toThrow(BOOKS_STAY_ON_LAPTOPS);
       await issueReceipts(t.a, 2);
       await t.syncAll();
-      await moveBooksTo(t, t.phone);
-      // The director issues 3, 4, 5 on his phone in the field and loses it before it could send them.
+      await moveBooksTo(t, t.b);
+      // The assistant issues 3, 4, 5 and her laptop is lost before it could send them.
       t.relay.offline = true;
-      await issueReceipts(t.phone, 3);
+      await issueReceipts(t.b, 3);
       t.relay.offline = false;
       // Meanwhile it also took fallback blocks of its own third for workers.
-      for (let i = 0; i < 3; i++) await registerAWorker(t.phone);
+      for (let i = 0; i < 3; i++) await registerAWorker(t.b);
 
-      const lost = deviceIdOf(t.phone);
+      const lost = deviceIdOf(t.b);
       const ringBefore = t.a.vault.data!.keyRing.current;
       await expect(
         removeDevice(t.a.centre(), buildContext(t.a.manager, t.a.clock), { deviceId: lost, reason: "  " }),
       ).rejects.toThrow("A reason is required.");
       await removeDevice(t.a.centre(), buildContext(t.a.manager, t.a.clock), {
         deviceId: lost,
-        reason: "ضاع الهاتف في السوق",
+        reason: "سُرق حاسوب المساعدة",
         lastInvoice: null,
         lastReceipt: 5,
       });
@@ -337,35 +343,28 @@ describe("case 9: the phone is lost while it holds the books", () => {
       expect(await booksHolder(t.a)).toBe(deviceIdOf(t.a));
       const gaps = await t.a.test.db.selectFrom("SequenceGap").selectAll().where("kind", "=", "LOST_DEVICE").execute();
       expect(gaps).toMatchObject([{ key: "RECEIPT", fromValue: 3, toValue: 5 }]);
-      await expect(t.phone.sync(), "the lost phone's token is refused").rejects.toThrow();
+      await expect(t.b.sync(), "the lost laptop's token is refused").rejects.toThrow();
       const next = await issueReceipts(t.a, 1);
       expect(next.firstNumber).toContain("6");
-      await t.syncAll({ only: [t.a, t.b] });
-      const removed = (await syncDevicesOn(t.b)).find((row) => row.id === lost);
-      expect(removed?.removedAt, "the assistant's laptop sees the phone removed").not.toBeNull();
-      // The assistant's laptop still cannot issue: the books are on the director's laptop.
-      await expect(issueReceipts(t.b, 1)).rejects.toThrow(BOOKS_ELSEWHERE);
+      await t.syncAll({ only: [t.a, t.phone] });
+      const removed = (await syncDevicesOn(t.phone)).find((row) => row.id === lost);
+      expect(removed?.removedAt, "the phone sees the laptop removed").not.toBeNull();
+      // The phone still cannot issue: the books stay on the laptops.
+      await expect(issueReceipts(t.phone, 1)).rejects.toThrow(BOOKS_STAY_ON_LAPTOPS);
 
-      // A new phone joins with a new code and the full copy, under a new id and a new log chain.
+      // A new laptop joins with a new code and the full copy, under a new id and a new log chain.
       const lostChain = `AuditLog:${lost}`;
-      const phone = await t.replace(t.phone);
-      expect(deviceIdOf(phone)).not.toBe(lost);
-      expect(phone.vault.data).toMatchObject({ kind: "PHONE", slot: 2 });
-      await registerAWorker(phone);
-      for (const device of t.devices()) {
-        await device.sync().catch((error: unknown) => {
-          throw new Error(`verifier: the first round after the new phone joined failed on ${device.name}`, {
-            cause: error,
-          });
-        });
-      }
+      const laptop = await t.replace(t.b);
+      expect(deviceIdOf(laptop)).not.toBe(lost);
+      expect(laptop.vault.data).toMatchObject({ kind: "LAPTOP", slot: 1 });
+      await registerAWorker(laptop);
       await t.syncAll();
-      const chains = (await phone.test.db.selectFrom("AuditLog").select("chain").distinct().execute()).map(
+      const chains = (await laptop.test.db.selectFrom("AuditLog").select("chain").distinct().execute()).map(
         (row) => row.chain,
       );
-      expect(chains, "the new phone writes its own log chain").toContain(`AuditLog:${deviceIdOf(phone)}`);
-      expect(`AuditLog:${deviceIdOf(phone)}`, "the lost phone's chain is not reused").not.toBe(lostChain);
-      expect(await receiptSeqs(phone)).toEqual([1, 2, 6]);
+      expect(chains, "the new laptop writes its own log chain").toContain(`AuditLog:${deviceIdOf(laptop)}`);
+      expect(`AuditLog:${deviceIdOf(laptop)}`, "the lost laptop's chain is not reused").not.toBe(lostChain);
+      expect(await receiptSeqs(laptop)).toEqual([1, 2, 6]);
       await expectConverged(t);
     },
   );
@@ -432,53 +431,49 @@ describe("case 9 with a device away: the key replaced while it was off", () => {
   );
 });
 
-describe("case 11: the assistant's laptop and the phone ask for the books at once", () => {
+describe("case 11: the books between the laptops, and the phone that may not ask", () => {
+  // fix-sync (docs/phone/DECISION.md section 6, 2026-11-02): the phone never holds the books. These cases had the
+  // phone ask for them beside the assistant's laptop, and hold them while switched off; they now check the phone's
+  // refusal and keep the hand-over and the wait between the two laptops.
+  it("only the holder hands over; the phone is refused, and every device is told where they are", LONG, async () => {
+    trio = await createSyncTrio();
+    const t = trio;
+    await issueReceipts(t.a, 1);
+    await t.syncAll();
+    await t.b.transact((ex, ctx) => requestBooks(ex, ctx));
+    await expect(t.phone.transact((ex, ctx) => requestBooks(ex, ctx))).rejects.toThrow(BOOKS_STAY_ON_LAPTOPS);
+    await t.syncAll();
+    for (const device of t.devices()) expect(await booksHolder(device)).toBe(deviceIdOf(t.b));
+    await issueReceipts(t.b, 1);
+    await expect(issueReceipts(t.phone, 1)).rejects.toThrow(BOOKS_STAY_ON_LAPTOPS);
+    await expect(issueReceipts(t.a, 1)).rejects.toThrow(BOOKS_ELSEWHERE);
+    const state = await booksState(t.phone.test.db, t.phone.test.ctx());
+    expect(state).toMatchObject({ holderDeviceId: deviceIdOf(t.b), heldHere: false });
+
+    // The director's laptop asks again: it gets them from the new holder.
+    await moveBooksTo(t, t.a);
+    await issueReceipts(t.a, 1);
+    await t.syncAll();
+    for (const device of t.devices()) expect(await receiptSeqs(device)).toEqual([1, 2, 3]);
+    await expectConverged(t);
+  });
+
   it(
-    "only the holder hands over, to one asker at a time; the other waits and is told where they are",
+    "the assistant's laptop holding the books is switched off: the director's laptop waits, and the screen says where",
     LONG,
     async () => {
       trio = await createSyncTrio();
       const t = trio;
-      await issueReceipts(t.a, 1);
-      await t.syncAll();
-      await t.b.transact((ex, ctx) => requestBooks(ex, ctx));
-      await t.phone.transact((ex, ctx) => requestBooks(ex, ctx));
-      await t.syncAll();
-      const holder = await booksHolder(t.a);
-      expect([deviceIdOf(t.b), deviceIdOf(t.phone)]).toContain(holder);
-      for (const device of t.devices()) expect(await booksHolder(device)).toBe(holder);
-      const [winner, waiting] = holder === deviceIdOf(t.b) ? [t.b, t.phone] : [t.phone, t.b];
-      await issueReceipts(winner, 1);
-      await expect(issueReceipts(waiting, 1)).rejects.toThrow(BOOKS_ELSEWHERE);
-      await expect(issueReceipts(t.a, 1)).rejects.toThrow(BOOKS_ELSEWHERE);
-      const state = await booksState(waiting.test.db, waiting.test.ctx());
-      expect(state).toMatchObject({ holderDeviceId: deviceIdOf(winner), heldHere: false });
-
-      // The one still waiting asks again: it gets them from the new holder.
-      await moveBooksTo(t, waiting);
-      await issueReceipts(waiting, 1);
-      await t.syncAll();
-      for (const device of t.devices()) expect(await receiptSeqs(device)).toEqual([1, 2, 3]);
-      await expectConverged(t);
-    },
-  );
-
-  it(
-    "the phone holding the books is switched off: the laptops wait, and the screen says the phone has them",
-    LONG,
-    async () => {
-      trio = await createSyncTrio();
-      const t = trio;
-      await moveBooksTo(t, t.phone);
+      await moveBooksTo(t, t.b);
       await t.a.transact((ex, ctx) => requestBooks(ex, ctx));
       for (let round = 0; round < 3; round++) {
         t.advance({ minutes: 5 });
-        await t.syncAll({ only: [t.a, t.b] });
+        await t.syncAll({ only: [t.a, t.phone] });
       }
       const state = await booksState(t.a.test.db, t.a.test.ctx());
-      expect(state).toMatchObject({ holderDeviceId: deviceIdOf(t.phone), heldHere: false });
-      await expect(issueReceipts(t.a, 1)).rejects.toThrow(/phone/i);
-      // He opens the app: the books go to the director's laptop.
+      expect(state).toMatchObject({ holderDeviceId: deviceIdOf(t.b), heldHere: false });
+      await expect(issueReceipts(t.a, 1)).rejects.toThrow(/second laptop/i);
+      // She opens her laptop: the books go to the director's laptop.
       await t.syncAll();
       expect(await booksHolder(t.a)).toBe(deviceIdOf(t.a));
       await issueReceipts(t.a, 1);

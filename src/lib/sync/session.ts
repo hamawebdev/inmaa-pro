@@ -122,6 +122,23 @@ const RANDOM_ID_GLOB = "????????-????-????-????-????????????";
  */
 export async function unstampTransaction(ex: Executor, stamp: TransactionStamp): Promise<void> {
   if (!stamp.stamped) return;
+  // A field changed for the first time since its row's insert replaced that insert: the change says so with the
+  // insert's stamp, where the row keeps one (the capture trigger knows only the fields' own stamps).
+  const firstChanges = await sql<{ seq: number; col: string; star: string }>`
+    SELECT o."seq" AS "seq", j."key" AS "col", c."hlc" AS "star"
+    FROM "SyncOutbox" o
+    JOIN "SyncCell" c ON c."tbl" = o."tbl" AND c."rowId" = o."rowId" AND c."col" = '*'
+    JOIN json_each(o."data") j
+    WHERE o."txId" = ${stamp.txId} AND o."op" = 'U' AND json_type(j."value", '$[1]') = 'null'`.execute(ex);
+  const bySeq = new Map<number, Array<{ col: string; star: string }>>();
+  for (const row of firstChanges.rows) {
+    if (!/^[A-Za-z0-9_]+$/.test(row.col)) continue;
+    bySeq.set(row.seq, [...(bySeq.get(row.seq) ?? []), row]);
+  }
+  for (const [seq, cols] of bySeq) {
+    const paths = cols.map(({ col, star }) => sql`${`$."${col}"[1]`}, ${star}`);
+    await sql`UPDATE "SyncOutbox" SET "data" = json_set("data", ${sql.join(paths)}) WHERE "seq" = ${seq}`.execute(ex);
+  }
   await sql`
     INSERT INTO "SyncCell" ("tbl", "rowId", "col", "hlc")
     SELECT o."tbl", o."rowId", '*', o."hlc" FROM "SyncOutbox" o

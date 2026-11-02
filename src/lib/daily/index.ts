@@ -5,7 +5,7 @@ import type { DB } from "@/lib/db/schema";
 import { buildContext, SYSTEM_SESSION, type Executor, type ServiceContext } from "@/lib/service/context";
 import { seedSteps } from "@/lib/seeds";
 import { getSetting, setSetting } from "@/lib/settings";
-import { readBooksRow } from "@/lib/sync/books/guard";
+import { CATCHING_UP, isCatchingUp, readBooksRow } from "@/lib/sync/books/guard";
 import { stampTransaction, unstampTransaction } from "@/lib/sync/session";
 import type { LocalDate } from "@/lib/units";
 
@@ -37,7 +37,11 @@ import type { LocalDate } from "@/lib/units";
  * Two laptops (DECISION section 4): the owners' handlers and seed steps run
  * only on the laptop that holds the books, so they never run twice; the
  * other laptop receives what they wrote. Foundation's own (`core`) run on
- * both. Before sync is set up, every owner runs, as in 1.0.0.
+ * both. Before sync is set up, every owner runs, as in 1.0.0. A device that
+ * catches up after a restore does not know yet where the books are (its
+ * database says where they were at the backup): the owners' days wait, and
+ * are reported as failed (with the catching-up sentence), so the day watch
+ * tries them again within the hour, once it has caught up.
  */
 export interface DayStart {
   /** The centre's date now. */
@@ -126,6 +130,10 @@ export async function runDayStart(db: Kysely<DB>, clock: Clock): Promise<DayStar
         const stamp = await stampTransaction(trx, ctx);
         // The books' laptop alone runs the owners' days (ctx.syncDeviceId is set by the stamp).
         if (!RUNS_ON_BOTH_LAPTOPS.has(owner) && ctx.syncDeviceId !== null) {
+          if (await isCatchingUp(trx)) {
+            await unstampTransaction(trx, stamp);
+            return "waiting" as const;
+          }
           const books = await readBooksRow(trx);
           if (books && books.holderDeviceId !== ctx.syncDeviceId) {
             await unstampTransaction(trx, stamp);
@@ -145,7 +153,8 @@ export async function runDayStart(db: Kysely<DB>, clock: Clock): Promise<DayStar
         await unstampTransaction(trx, stamp);
         return true;
       });
-      (ran === "elsewhere" ? report.elsewhere : ran ? report.ran : report.alreadyDone).push(owner);
+      if (ran === "waiting") report.failed.push({ owner, error: CATCHING_UP });
+      else (ran === "elsewhere" ? report.elsewhere : ran ? report.ran : report.alreadyDone).push(owner);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       console.error(`daily: the day-start handlers of ${owner} failed and were rolled back`, error);

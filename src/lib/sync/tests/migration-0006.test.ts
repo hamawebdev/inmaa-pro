@@ -60,7 +60,10 @@ describe("migration 0006", () => {
     expect(devices.map(({ kind, ...rest }) => ({ ...rest, kindWas: kind }))).toEqual(
       before.devices.map((row) => ({ ...row, kindWas: "LAPTOP" })),
     );
-    expect(db.prepare(`SELECT * FROM "SyncBooks"`).all()).toEqual(before.books);
+    // 0006 also gives SyncBooks its `handover` column (the hand-over's chain heads), null on the row copied.
+    expect(db.prepare(`SELECT * FROM "SyncBooks"`).all()).toEqual(
+      before.books.map((row) => ({ ...(row as Record<string, unknown>), handover: null })),
+    );
     expect(db.prepare(`SELECT * FROM "NumberBlock"`).all()).toEqual(before.blocks);
     expect(db.prepare("PRAGMA foreign_key_check").all()).toEqual([]);
     expect((db.prepare("PRAGMA integrity_check").get() as { integrity_check: string }).integrity_check).toBe("ok");

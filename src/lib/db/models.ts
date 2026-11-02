@@ -2397,6 +2397,7 @@ export interface SyncBooksRow {
   forced: boolean;
   reason: string | null;
   updatedAt: Date;
+  handover: string | null;
 }
 
 export interface NumberBlockRow {

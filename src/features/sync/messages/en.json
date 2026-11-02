@@ -43,7 +43,8 @@
       "LIMIT": "The service has reached its daily limit",
       "OFFLINE": "No connection",
       "FILES_MISSING": "Some stored files have not arrived yet",
-      "OUTDATED": "Update the program on this device"
+      "OUTDATED": "Update the program on this device",
+      "REMOVAL_UNFINISHED": "Removal unfinished"
     },
     "ProblemHints": {
       "LEGAL_INCIDENT": "{count, plural, one {# document was} other {# documents were}} issued on a device after its books were taken. They are kept whole below, outside the chain: the director decides what to do with them on paper.",
@@ -57,7 +58,8 @@
       "LIMIT": "The free service resumes at {time}. Every device keeps working; what waits is sent then.",
       "OFFLINE": "{count, plural, =0 {Nothing waits.} one {# change waits and is sent when the internet returns.} other {# changes wait and are sent when the internet returns.}}",
       "FILES_MISSING": "{count, plural, one {# file is} other {# files are}} still to arrive. They are fetched again at the next exchanges.",
-      "OUTDATED": "The mailbox no longer accepts this version of the program. Nothing is lost: this device keeps its changes and sends them once the latest version is installed on it."
+      "OUTDATED": "The mailbox no longer accepts this version of the program. Nothing is lost: this device keeps its changes and sends them once the latest version is installed on it.",
+      "REMOVAL_UNFINISHED": "A removed device is refused by the mailbox, but the centre key was not replaced after it. Remove it again from a laptop."
     },
     "SetUp": {
       "Title": "Set up sync",
@@ -79,7 +81,8 @@
       "Waiting": "Waiting to be sent",
       "ToSettle": "To settle",
       "Files": "Files to send / to receive",
-      "ClockOff": "Clock difference"
+      "ClockOff": "Clock difference",
+      "Joining": "Finishing joining: no numbers are given until the first sync is complete."
     },
     "Devices": {
       "Title": "The centre's devices",
@@ -108,7 +111,11 @@
       "PhoneBooksHint": "The original of what is issued here prints from a laptop, once the books are back there.",
       "AddPhone": "Add the director's phone",
       "LastSeen": "Last seen by the mailbox",
-      "WaitingFromIt": "{count, plural, =0 {nothing of it waits here} one {# of its changes waits to be applied here} other {# of its changes wait to be applied here}}"
+      "WaitingFromIt": "{count, plural, =0 {nothing of it waits here} one {# of its changes waits to be applied here} other {# of its changes wait to be applied here}}",
+      "BooksOnRemoved": "The books were left on this removed device",
+      "TakeBackBooks": "Take back the books",
+      "RemovalUnfinished": "Removal unfinished",
+      "RetryRemoval": "Remove it again"
     },
     "Pair": {
       "Title": "Add the second laptop",
@@ -148,7 +155,14 @@
       "LastReceipt": "Last receipt number on paper",
       "Confirm": "Remove this device",
       "Done": "The device was removed.",
-      "Failed": "The device could not be removed."
+      "Failed": "The device could not be removed.",
+      "TakeBackTitle": "Take back the books",
+      "TakeBackDescription": "The books were handed to this device while it was being removed. They come to this device, and the numbers up to those you type are set aside.",
+      "TakeBackConfirm": "Take back the books",
+      "TakeBackDone": "The books are on this device.",
+      "TakeBackFailed": "The books could not be taken back.",
+      "CodesVoided": "Any pairing code made before this removal no longer works. Make a new code to add a device.",
+      "OfflineWarning": "A device that is only offline, not lost, loses whatever it has not sent yet if it is removed."
     },
     "Conflicts": {
       "Title": "Sync conflicts",
@@ -296,6 +310,12 @@
     "BooksOnDirectorLaptop": "The books are on the director's laptop. Ask for them, and try again when they have arrived.",
     "BooksOnSecondLaptop": "The books are on the second laptop. Ask for them, and try again when they have arrived.",
     "BooksOnDirectorPhone": "The books are on the director's phone. Ask for them, and try again when they have arrived.",
-    "SyncPhoneCannotPair": "A phone cannot add a device. Add it from a laptop."
+    "SyncPhoneCannotPair": "A phone cannot add a device. Add it from a laptop.",
+    "SyncJoiningNoNumbers": "This device has just joined the centre and is still receiving its latest changes. Try again when it has synced.",
+    "SyncFirst": "This device has not yet received everything the mailbox holds. Check the internet connection, sync, and try again.",
+    "SyncPhoneRemoves": "A phone cannot remove a device. Remove it from a laptop.",
+    "SyncKeyNotReplaced": "The device is refused by the mailbox, but the centre key is not replaced yet. Try the removal again from a laptop.",
+    "BooksStayOnLaptops": "The books stay on the laptops: issue this from the laptop that holds the books.",
+    "BooksHeldHere": "Documents of the books are held on this device: settle them in the sync conflicts first, then try again."
   }
 }

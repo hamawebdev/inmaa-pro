@@ -20,6 +20,7 @@ export const SYNC_PROBLEMS = [
   "OUTDATED",
   "FULL",
   "REJOIN",
+  "REMOVAL_UNFINISHED",
   "CATCH_UP_OFFLINE",
   "CLOCK",
   "HELD",

@@ -228,7 +228,7 @@ describe("a lost laptop's books (case 9, DECISION 5)", () => {
   );
 
   it(
-    "a lost laptop whose documents reached the mailbox after the declared number: kept whole as a legal incident",
+    "a lost laptop whose documents reached the mailbox before it was removed: applied first, the books taken after them",
     LONG,
     async () => {
       pair = await createSyncPair();
@@ -244,16 +244,20 @@ describe("a lost laptop's books (case 9, DECISION 5)", () => {
         lastInvoice: null,
         lastReceipt: 2,
       });
+      // fix-sync (2026-11-02): the removal applies everything the lost laptop put on the mailbox before it decides
+      // (until then this case left receipt 3 outside the chain as a legal incident): its three receipts join the
+      // chain, and the books are taken after them.
       await p.a.sync();
       const incidents = [...(await openConflicts(p.a)), ...(await openHeld(p.a))].filter(
         (row) => "tbl" in row && row.tbl === "Receipt",
       );
-      expect(incidents.length, "the lost laptop's receipts that cannot join the chain are listed").toBeGreaterThan(0);
+      expect(incidents).toEqual([]);
       const { verifyChains } = await import("@/lib/chain");
       expect((await verifyChains(p.a.test.db)).ok).toBe(true);
-      // Its own next number is past the declared one, and its chain holds only one document per number.
+      // Its own next number is past the lost laptop's, and its chain holds only one document per number.
       await issueReceipts(p.a, 1);
       const onA = (await legalNumbersOf(p.a.test)).filter((n) => n.key === "RECEIPT");
+      expect(onA.map((n) => n.seq).sort((x, y) => x - y)).toEqual([1, 2, 3, 4]);
       expect(new Set(onA.map((n) => n.seq)).size).toBe(onA.length);
     },
   );

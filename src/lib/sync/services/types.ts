@@ -56,6 +56,8 @@ export type SyncExchange =
  * - `OUTDATED` (danger): see `SyncExchange`; install the latest version on this device.
  * - `FULL` (danger): the mailbox is full.
  * - `REJOIN` (danger): join again from the full copy.
+ * - `REMOVAL_UNFINISHED` (danger): a device was refused by the mailbox, but the centre key was not replaced after it
+ *   («إزالة غير مكتملة»): remove it again from a laptop.
  * - `CATCH_UP_OFFLINE` (danger): a restored laptop waits for the internet before anyone works; the manager may take it out of sync instead.
  * - `CLOCK` (warning): this PC's clock is more than 2 minutes from the mailbox's: «ساعة هذا الحاسوب غير مضبوطة».
  * - `HELD` (warning): changes from the other laptop were refused by this database and wait for the office.
@@ -70,6 +72,7 @@ export type SyncProblem =
   | "OUTDATED"
   | "FULL"
   | "REJOIN"
+  | "REMOVAL_UNFINISHED"
   | "CATCH_UP_OFFLINE"
   | "CLOCK"
   | "HELD"
@@ -95,6 +98,8 @@ export interface SyncDeviceView {
   waitingFromIt: number | null;
   removedAt: string | null;
   holdsBooks: boolean;
+  /** Removed, but the centre key was not replaced after it: the removal is to be done again from a laptop. */
+  removalUnfinished: boolean;
 }
 
 export interface SyncBooksView {
@@ -140,6 +145,8 @@ export interface SyncStatus {
   incidentCount: number;
   /** While CATCHING_UP: how far it is. */
   catchUp: { reason: "RESTORED" | "BEHIND" | "JOINED"; done: number; total: number | null } | null;
+  /** Just joined from a full copy: no number is given until its first sync reached the mailbox's newest envelope. */
+  joining: boolean;
 }
 
 /** A field changed on both laptops while apart: the later value was kept, the other is here. */

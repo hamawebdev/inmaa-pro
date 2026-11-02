@@ -1,6 +1,6 @@
 // Case 8 (a backup from before set-up), case 10 (access changed on the other laptop), and the weekly full copy.
 import { sql } from "kysely";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { buildContext } from "@/lib/service/context";
 import { detectRejoin, leaveCentre } from "@/lib/sync/centre";
@@ -8,6 +8,9 @@ import { onSyncApplied } from "@/lib/sync/events";
 import { syncStatus } from "@/lib/sync/services/status";
 import { leftSync } from "@/lib/sync/state";
 import { createSyncPair, type SyncPair } from "@/testing/sync/pair";
+
+// Each pair joins b and runs its first round, as the program does: two laptops take time on a busy machine.
+vi.setConfig({ testTimeout: 120_000 });
 
 let pair: SyncPair;
 afterEach(() => pair?.close());

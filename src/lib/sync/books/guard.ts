@@ -1,6 +1,6 @@
 import type { Executor, ServiceContext } from "@/lib/service/context";
 import { ServiceError } from "@/lib/service/errors";
-import { isCapturing, syncDeviceIdOf } from "@/lib/sync/session";
+import { identityKind, isCapturing, readDeviceIdentity, syncDeviceIdOf } from "@/lib/sync/session";
 
 /**
  * Where the books are, checked where a legal row is written (DECISION section 5).
@@ -35,6 +35,55 @@ export function booksElsewhere(holderSlot: number | null): string {
 export const BOOKS_ELSEWHERE =
   /^The books are on (the director's laptop|the second laptop|the director's phone|another device)\. Ask for them, and try again when they have arrived\.$/;
 
+/** The refusal on the director's phone: the books never go there (docs/phone/DECISION.md section 6). */
+export const BOOKS_STAY_ON_LAPTOPS = "The books stay on the laptops: issue this from the laptop that holds the books.";
+
+/** The refusal of a forced take while documents of the books are held on this device for a missing parent. */
+export const BOOKS_HELD_HERE =
+  "Documents of the books are held on this device: settle them in the sync conflicts first, then try again.";
+
+/**
+ * Whether a held change of the books' tables is a legal incident (DECISION section 5): one from a removed device that
+ * the chain refused (out of sequence, a number already given) after its books were taken. A row held only because
+ * its parent is missing here, or behind another held change, is a document of the books still to arrive: it holds
+ * the books back, whoever sent it, until the office settles its parent.
+ */
+export function isLegalIncident(row: { reason: string; originRemoved: boolean }): boolean {
+  if (!row.originRemoved) return false;
+  return row.reason !== "WAITS" && !/FOREIGN KEY constraint failed/i.test(row.reason);
+}
+
+/** The held changes of the books' tables, unresolved, with whether their device was removed. */
+export async function heldBooksRows(
+  ex: Executor,
+): Promise<Array<{ id: string; tbl: string; reason: string; originDeviceId: string; originRemoved: boolean }>> {
+  const rows = await ex
+    .selectFrom("SyncHeld as h")
+    .leftJoin("SyncDevice as d", "d.id", "h.originDeviceId")
+    .select(["h.id", "h.tbl", "h.reason", "h.originDeviceId", "d.removedAt"])
+    .where("h.resolvedAt", "is", null)
+    .where("h.tbl", "in", [...BOOKS_TABLES])
+    .execute();
+  return rows.map((row) => ({
+    id: row.id,
+    tbl: row.tbl,
+    reason: row.reason,
+    originDeviceId: row.originDeviceId,
+    originRemoved: row.removedAt !== null,
+  }));
+}
+
+/** Whether a held change of the books' tables holds the books back here (any held one but a legal incident). */
+export async function booksHeldBack(ex: Executor): Promise<boolean> {
+  return (await heldBooksRows(ex)).some((row) => !isLegalIncident(row));
+}
+
+/** Whether this device is the director's phone, on which the books never are. */
+export async function isPhoneDevice(ex: Executor): Promise<boolean> {
+  const identity = await readDeviceIdentity(ex);
+  return identity !== null && identityKind(identity) === "PHONE";
+}
+
 /** The refusal on a device that holds the books but has not yet received every document issued before the hand-over. */
 export const BOOKS_ARRIVING =
   "The books are on their way to this device: the last invoices and receipts have not all arrived yet. Try again in a minute.";
@@ -43,15 +92,29 @@ export const BOOKS_ARRIVING =
 export const CATCHING_UP =
   "This device is taking back from the mailbox what it did after the backup. Try again when it has caught up.";
 
+/** The refusal on a device that has just joined and has not yet received what the mailbox holds. */
+export const JOINING =
+  "This device has just joined the centre and is still receiving its latest changes. Try again when it has synced.";
+
 /**
  * Refuses while this laptop catches up after a restore (DECISION section 7,
  * case 7: its invoices and its blocks continue as they were, so nothing
  * numbered is given before it has taken back what it had given after the
- * backup). Engine's `SyncState` key "catchUp" is set until then.
+ * backup), and on a device that has just joined from a full copy until its
+ * first receive reached the mailbox's newest envelope (the copy may be older
+ * than what the other devices numbered since). Engine's `SyncState` keys
+ * "catchUp" and "joining" are set until then.
  */
 export async function requireCaughtUp(ex: Executor): Promise<void> {
+  const rows = await ex.selectFrom("SyncState").select("key").where("key", "in", ["catchUp", "joining"]).execute();
+  if (rows.some((row) => row.key === "catchUp")) throw new ServiceError(CATCHING_UP);
+  if (rows.length > 0) throw new ServiceError(JOINING);
+}
+
+/** Whether this device catches up after a restore (`SyncState` "catchUp"): its own log chain waits meanwhile. */
+export async function isCatchingUp(ex: Executor): Promise<boolean> {
   const row = await ex.selectFrom("SyncState").select("key").where("key", "=", "catchUp").executeTakeFirst();
-  if (row) throw new ServiceError(CATCHING_UP);
+  return row !== undefined;
 }
 
 /** The refusal on a device taken out of sync while another device held the books (coordinator's ruling). */
@@ -96,20 +159,59 @@ export function ownLogChain(ctx: ServiceContext): string {
 
 export const logChainOf = (deviceId: string) => `AuditLog:${deviceId}`;
 
+/** The tables only the holder writes. A row of these from a removed laptop that the database refused is a legal incident. */
+export const BOOKS_TABLES = [
+  "Invoice",
+  "InvoiceLine",
+  "InvoiceVisit",
+  "Receipt",
+  "Payment",
+  "PaymentAllocation",
+  "LegalEvent",
+  "SequenceGap",
+  "StaffDebtEntry",
+  "CashReconciliation",
+] as const;
+
+/** The seven legal chains (DECISION section 5). */
+export const LEGAL_CHAINS = [
+  "Invoice",
+  "InvoiceLine",
+  "InvoiceVisit",
+  "Receipt",
+  "Payment",
+  "PaymentAllocation",
+  "LegalEvent",
+] as const;
+
+/** The books' tables that are not chained, counted at a hand-over: only the holder adds to them. */
+export const COUNTED_BOOKS_TABLES = ["SequenceGap", "StaffDebtEntry", "CashReconciliation"] as const;
+
 /** A per-year top of a legal key: what the hand-over carries. */
 export type LegalTops = Record<string, { seq: number; date: string | null }>;
+
+/**
+ * What else the hand-over carries, in `SyncBooks.handover` (migration 0006): the head of each legal chain
+ * and how many rows each unchained table of the books held, when the holder handed them on. The device that takes
+ * the books writes nothing until it holds as much.
+ */
+export interface HandoverHeads {
+  chains: Partial<Record<(typeof LEGAL_CHAINS)[number], { seq: number; hash: string }>>;
+  counts: Partial<Record<(typeof COUNTED_BOOKS_TABLES)[number], number>>;
+}
 
 export interface BooksRow {
   holderDeviceId: string;
   epoch: number;
   lastInvoiceNumber: string | null;
   lastReceiptNumber: string | null;
+  handover: string | null;
 }
 
 export async function readBooksRow(ex: Executor): Promise<BooksRow | null> {
   const row = await ex
     .selectFrom("SyncBooks")
-    .select(["holderDeviceId", "epoch", "lastInvoiceNumber", "lastReceiptNumber"])
+    .select(["holderDeviceId", "epoch", "lastInvoiceNumber", "lastReceiptNumber", "handover"])
     .where("id", "=", "books")
     .executeTakeFirst();
   return row ?? null;
@@ -119,10 +221,60 @@ export function parseTops(text: string | null): LegalTops {
   if (!text) return {};
   try {
     const parsed = JSON.parse(text) as unknown;
-    return parsed && typeof parsed === "object" ? (parsed as LegalTops) : {};
+    if (!parsed || typeof parsed !== "object") return {};
+    // Only the years.
+    return Object.fromEntries(Object.entries(parsed).filter(([key]) => /^\d{4}$/.test(key))) as LegalTops;
   } catch {
     return {};
   }
+}
+
+/** The heads a hand-over carries (`SyncBooks.handover`), or null for one written without them. */
+export function parseHandover(text: string | null): HandoverHeads | null {
+  if (!text) return null;
+  try {
+    const handover = JSON.parse(text) as HandoverHeads | null;
+    return handover && typeof handover === "object" && handover.chains && handover.counts ? handover : null;
+  } catch {
+    return null;
+  }
+}
+
+/** The heads of the books as this database holds them: what a hand-over carries. */
+export async function readHandoverHeads(ex: Executor): Promise<HandoverHeads> {
+  const heads = await ex
+    .selectFrom("ChainHead")
+    .select(["id", "lastSeq", "lastHash"])
+    .where("id", "in", [...LEGAL_CHAINS])
+    .execute();
+  const chains: HandoverHeads["chains"] = {};
+  for (const head of heads)
+    chains[head.id as (typeof LEGAL_CHAINS)[number]] = { seq: head.lastSeq, hash: head.lastHash };
+  const counts: HandoverHeads["counts"] = {};
+  for (const table of COUNTED_BOOKS_TABLES) {
+    const row = await ex
+      .selectFrom(table)
+      .select((eb) => eb.fn.countAll<number>().as("n"))
+      .executeTakeFirst();
+    counts[table] = Number(row?.n ?? 0);
+  }
+  return { chains, counts };
+}
+
+/** Whether this database holds everything a hand-over names: every legal chain up to its head, every counted row. */
+async function holdsHandover(ex: Executor, handover: HandoverHeads): Promise<boolean> {
+  const here = await readHandoverHeads(ex);
+  for (const [chain, head] of Object.entries(handover.chains)) {
+    if (!head) continue;
+    const mine = here.chains[chain as (typeof LEGAL_CHAINS)[number]];
+    if (!mine || mine.seq < head.seq) return false;
+    // At the same place, the same row: anything else is a fork, and nothing is written on it.
+    if (mine.seq === head.seq && mine.hash !== head.hash) return false;
+  }
+  for (const [table, count] of Object.entries(handover.counts)) {
+    if ((here.counts[table as (typeof COUNTED_BOOKS_TABLES)[number]] ?? 0) < (count ?? 0)) return false;
+  }
+  return true;
 }
 
 /**
@@ -145,6 +297,7 @@ export async function requireBooks(ex: Executor, ctx: ServiceContext): Promise<v
   }
   const device = deviceOf(ctx);
   if (device === null) throw new Error("ledger: sync is set up but this context has no device");
+  if (await isPhoneDevice(ex)) throw new ServiceError(BOOKS_STAY_ON_LAPTOPS);
   await requireCaughtUp(ex);
   const books = await readBooksRow(ex);
   if (!books || books.holderDeviceId !== device) {
@@ -154,7 +307,14 @@ export async function requireBooks(ex: Executor, ctx: ServiceContext): Promise<v
     throw new ServiceError(booksElsewhere(holder?.slot ?? null));
   }
 
-  // The hand-over is applied after every document it covers; this only guards a database that skipped some.
+  // The hand-over is applied after every document it covers, but one of them may be held here (its parent was
+  // refused: case 12) or set aside: nothing is written on a chain, a ledger or a counter this device holds short.
+  // A removed device's legal rows the chain refused after the take are a legal incident (DECISION section 5): they
+  // never join the chain. One held for a missing parent is still a document of the books: it holds them back.
+  const held = await booksHeldBack(ex);
+  if (held) throw new ServiceError(BOOKS_ARRIVING);
+  const handover = parseHandover(books.handover);
+  if (handover && !(await holdsHandover(ex, handover))) throw new ServiceError(BOOKS_ARRIVING);
   for (const [key, text] of [
     ["INVOICE", books.lastInvoiceNumber],
     ["RECEIPT", books.lastReceiptNumber],

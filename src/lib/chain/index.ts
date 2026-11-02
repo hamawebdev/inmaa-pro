@@ -2,7 +2,8 @@ import { sql } from "kysely";
 
 import { CHAIN_COLUMNS, CHAINED_TABLES, CURRENT_HASH_VERSION, type ChainedTable } from "@/lib/db/chain-columns";
 import type { Executor, ServiceContext } from "@/lib/service/context";
-import { deviceOf, logChainOf, requireBooks, syncIsSetUp } from "@/lib/sync/books/guard";
+import { deviceOf, isCatchingUp, logChainOf, requireBooks, syncIsSetUp } from "@/lib/sync/books/guard";
+import { readState, writeState } from "@/lib/sync/state";
 
 import { canonical, genesisHash, invoiceContentDigest, rowHash } from "./canonical";
 
@@ -114,6 +115,16 @@ export async function appendChained<T extends ChainedTable>(
   const chain = table === "AuditLog" && device !== null ? logChainOf(device) : null;
   const headId: string = chain ?? table;
 
+  // A restored device catching up has not yet taken back its own log rows the mailbox holds: a row written now
+  // would take a place in its chain that one of them already has. It waits, whole, and joins the chain once the
+  // device has caught up (`appendDeferredLog`). Nothing refers to a log row written while catching up: the legal
+  // gaps that name one are written only with the books, which are refused meanwhile.
+  if (chain !== null && (await isCatchingUp(ex))) {
+    const waiting = (await readState(ex, "deferredLog")) ?? [];
+    await writeState(ex, "deferredLog", [...waiting, row]);
+    return { hashV: CURRENT_HASH_VERSION[table], chainSeq: 0, prevHash: "", hash: "" };
+  }
+
   const found = await ex
     .selectFrom("ChainHead")
     .select(["lastSeq", "lastHash"])
@@ -144,6 +155,20 @@ export async function appendChained<T extends ChainedTable>(
 
   ctx.touchedChains.add(headId);
   return { hashV, chainSeq: full.chainSeq, prevHash: head.lastHash, hash };
+}
+
+/**
+ * The log rows written while this device caught up, appended to its own chain in the order they were written, now
+ * that it has taken back its own rows: in the caller's transaction, stamped (they are sent like any other row), once
+ * the "catchUp" state is cleared. Returns how many.
+ */
+export async function appendDeferredLog(ex: Executor, ctx: ServiceContext): Promise<number> {
+  const waiting = (await readState(ex, "deferredLog")) ?? [];
+  if (waiting.length === 0) return 0;
+  if (await isCatchingUp(ex)) throw new Error("chain: the deferred log rows are appended only once caught up");
+  await writeState(ex, "deferredLog", null);
+  for (const row of waiting) await appendChained(ex, ctx, "AuditLog", row);
+  return waiting.length;
 }
 
 export type ChainHead = { seq: number; hash: string };

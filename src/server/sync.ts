@@ -290,20 +290,28 @@ export function setUpSyncAction(input: SetUpSyncInput): Promise<ActionResult<{ d
   });
 }
 
+/*
+ * Pairing, removing and leaving receive from the mailbox and decide on what they received: they run between two
+ * rounds of the loop, never beside one (`loop.exclusive`), so the cursor and the outbox have one writer at a time.
+ */
+
 /** «إضافة الحاسوب الثاني» (1.1.0's action; the same as `pairDeviceAction({ kind: "LAPTOP", … })`). */
 export function addSecondLaptopAction(input: AddSecondLaptopInput): Promise<ActionResult<PairingCodeAnswer>> {
-  return asAction(() => pairSecondLaptop(centreEnv(), sessionContext(), input));
+  return asAction(() => loop.exclusive(() => pairSecondLaptop(centreEnv(), sessionContext(), input)));
 }
 
 /** «إضافة الحاسوب الثاني» or «إضافة هاتف المدير»: the code for the new device (docs/phone/BUILD.md 2.2). */
 export function pairDeviceAction(input: PairDeviceInput): Promise<ActionResult<PairingCodeAnswer>> {
-  return asAction(() => pairDevice(centreEnv(), sessionContext(), input));
+  return asAction(() => loop.exclusive(() => pairDevice(centreEnv(), sessionContext(), input)));
 }
 
-/** «إزالة جهاز»: another device of the centre (a laptop or the phone), with a reason (case 9). */
+/**
+ * «إزالة جهاز»: another device of the centre (a laptop or the phone), with a reason (case 9). Also «استرجاع الدفاتر»:
+ * the same act on a device already removed that was left holding the books.
+ */
 export function removeDeviceAction(input: RemoveDeviceInput): Promise<ActionResult<{ removed: string }>> {
   return asAction(async () => {
-    await removeDevice(centreEnv(), sessionContext(), input);
+    await loop.exclusive(() => removeDevice(centreEnv(), sessionContext(), input));
     return { removed: input.deviceId };
   });
 }
@@ -315,7 +323,7 @@ export function removeLaptopAction(input: RemoveLaptopInput): Promise<ActionResu
 
 export function leaveSyncAction(input: { reason: string }): Promise<ActionResult<{ left: true }>> {
   return asAction(async () => {
-    await leaveCentre(centreEnv(), sessionContext(), input);
+    await loop.exclusive(() => leaveCentre(centreEnv(), sessionContext(), input));
     loop.stop();
     setStartup(null);
     return { left: true as const };
@@ -337,6 +345,8 @@ export function mayJoinQuery(): Promise<boolean> {
 }
 
 async function install(path: string, note: InstallNote): Promise<void> {
+  // No round may start on the old database while it is replaced, nor on the new one before the restart.
+  stopSync();
   try {
     unwrap(await commands.syncInstallCopy(path, JSON.stringify(note)));
   } catch (error) {

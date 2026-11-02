@@ -1,5 +1,6 @@
 import type { Kysely } from "kysely";
 
+import { appendDeferredLog } from "@/lib/chain";
 import { writeAnchor, type AnchorStore } from "@/lib/chain/anchor";
 import type { Clock } from "@/lib/clock";
 import type { DB } from "@/lib/db/schema";
@@ -19,6 +20,7 @@ import { applyChange, beginApplying, emptyOutcome, endApplying, foldTransaction,
 import { hlcInstant } from "./hlc";
 import type { SyncVault } from "./centre";
 import { mailboxFailureOf, type MailboxClient, type MailboxEnvelope } from "./mailbox";
+import { stampTransaction, unstampTransaction } from "./session";
 import {
   decodePayload,
   encodePayload,
@@ -566,6 +568,7 @@ export async function settleAfterCatchUp(env: SyncEnv, caughtUp: ReceiveResult):
   const answer = await env.mailbox.devices();
   const me = answer.devices.find((device) => device.id === env.deviceId);
   const met = new Set(caughtUp.ownTxIds);
+  const ctx = syncContext(env);
   await env.db.transaction().execute(async (trx) => {
     const send = await readSend(trx);
     const receive = await readReceive(trx);
@@ -595,7 +598,12 @@ export async function settleAfterCatchUp(env: SyncEnv, caughtUp: ReceiveResult):
       skipTxIds: receive.skipTxIds.filter((txId) => !unsent.has(txId)),
     });
     await writeState(trx, "catchUp", null);
+    // What was logged while catching up joins this device's chain now, after its own rows taken back.
+    const stamp = await stampTransaction(trx, ctx);
+    await appendDeferredLog(trx, ctx);
+    await unstampTransaction(trx, stamp);
   });
+  await anchorAfterApply(env, ctx);
 }
 
 export { readState };

@@ -3591,6 +3591,7 @@ model SyncDevice {
 
 /// Where the books are (DECISION section 5): one row, id 'books'. Only the holder writes the seven legal chains, the legal gaps, the debt ledger and the cash days, and runs the day-start jobs.
 /// lastInvoiceNumber, lastReceiptNumber: JSON {"<year>": {"seq": n, "date": "YYYY-MM-DD" or null}} of the hand-over, one entry per year whose counter is above 0.
+/// handover (added by 0006): JSON {"chains": {"<legal chain>": {"seq": n, "hash": "…"}}, "counts": {"SequenceGap" | "StaffDebtEntry" | "CashReconciliation": n}}: what the books held when they were handed over (or taken, or set up); the device that takes them writes none of them before it holds as much (src/lib/sync/books/guard.ts). Null on a row written before 0006's code.
 /// @check id = 'books'
 /// @check forced IN (0, 1)
 /// @check forced = 0 OR reason IS NOT NULL
@@ -3607,6 +3608,7 @@ model SyncBooks {
   forced              Boolean   @default(false) // taken from a lost laptop by the manager
   reason              String?   // typed; required when forced
   updatedAt           DateTime
+  handover            String?   // @json see above; added by 0006
 
   holder      SyncDevice  @relation(fields: [holderDeviceId], references: [id], onDelete: Restrict)
   requestedBy SyncDevice? @relation(fields: [requestedByDeviceId], references: [id], onDelete: Restrict)

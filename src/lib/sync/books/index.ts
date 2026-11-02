@@ -12,20 +12,40 @@ import { answerBlockClaims, topUpBlockClaims } from "@/lib/sync/blocks";
 import { syncDeviceIdOf } from "@/lib/sync/session";
 import type { LocalDate } from "@/lib/units";
 
-import { deviceOf, parseTops, readBooksRow, type LegalTops } from "./guard";
+import {
+  BOOKS_HELD_HERE,
+  BOOKS_STAY_ON_LAPTOPS,
+  booksHeldBack,
+  deviceOf,
+  isPhoneDevice,
+  parseTops,
+  readBooksRow,
+  readHandoverHeads,
+  type LegalTops,
+} from "./guard";
 
 export {
   BOOKS_ARRIVING,
   BOOKS_ELSEWHERE,
+  BOOKS_HELD_HERE,
+  BOOKS_STAY_ON_LAPTOPS,
+  booksHeldBack,
+  heldBooksRows,
+  isLegalIncident,
+  isPhoneDevice,
   BOOKS_LEFT_BEHIND,
   BOOKS_ON_ANOTHER_DEVICE,
   BOOKS_ON_DIRECTORS_LAPTOP,
   BOOKS_ON_DIRECTORS_PHONE,
   BOOKS_ON_SECOND_LAPTOP,
+  BOOKS_TABLES,
   booksElsewhere,
   CATCHING_UP,
   deviceOf,
   holdsBooks,
+  isCatchingUp,
+  JOINING,
+  LEGAL_CHAINS,
   leftDeviceOf,
   logChainOf,
   numberingDeviceOf,
@@ -33,6 +53,8 @@ export {
   requireBooks,
   requireCaughtUp,
   syncIsSetUp,
+  parseHandover,
+  type HandoverHeads,
   type LegalTops,
 } from "./guard";
 
@@ -55,20 +77,6 @@ export {
  *
  * Before sync is set up there is no row and nothing here refuses anything.
  */
-
-/** The tables only the holder writes. A row of these from a removed laptop that the database refused is a legal incident. */
-export const BOOKS_TABLES = [
-  "Invoice",
-  "InvoiceLine",
-  "InvoiceVisit",
-  "Receipt",
-  "Payment",
-  "PaymentAllocation",
-  "LegalEvent",
-  "SequenceGap",
-  "StaffDebtEntry",
-  "CashReconciliation",
-] as const;
 
 export const BOOKS_ALREADY_HERE = "The books are already on this device.";
 export const BOOKS_NOT_ON_THAT_LAPTOP = "The books are not on that device.";
@@ -127,6 +135,15 @@ export async function booksState(ex: Executor, ctx?: ServiceContext): Promise<Bo
   };
 }
 
+/**
+ * The heads of the books a hand-over writes in `handover`: every legal chain's head, and the rows of the debt
+ * ledger, the legal gaps and the cash days, so that the device that takes them writes nothing before it holds all of
+ * it (`requireBooks`).
+ */
+async function handoverHeads(ex: Executor): Promise<string> {
+  return JSON.stringify(await readHandoverHeads(ex));
+}
+
 /** The tops of a legal key, every year, as this database holds them. */
 async function legalTops(ex: Executor, key: "INVOICE" | "RECEIPT"): Promise<LegalTops> {
   const counters = await ex
@@ -161,6 +178,7 @@ export async function initBooks(ex: Executor, ctx: ServiceContext, deviceId: str
       requestedByDeviceId: null,
       requestedAt: null,
       lastInvoiceNumber: JSON.stringify(await legalTops(ex, "INVOICE")),
+      handover: await handoverHeads(ex),
       lastReceiptNumber: JSON.stringify(await legalTops(ex, "RECEIPT")),
       forced: 0,
       reason: null,
@@ -189,6 +207,8 @@ export async function requestBooks(ex: Executor, ctx: ServiceContext): Promise<{
   if (!BOOKS_WORK.some((capability) => can(ctx, capability)))
     throw new ServiceError("You do not have permission to do this.");
   const device = requireDevice(ctx);
+  // The books stay on the laptops (docs/phone/DECISION.md section 6).
+  if (await isPhoneDevice(ex)) throw new ServiceError(BOOKS_STAY_ON_LAPTOPS);
   const books = await readBooksRow(ex);
   if (!books) throw new Error("ledger: sync is set up but the books row is missing");
   if (books.holderDeviceId === device) throw new ServiceError(BOOKS_ALREADY_HERE);
@@ -221,11 +241,13 @@ export async function answerBooksRequest(ex: Executor, ctx: ServiceContext): Pro
   if (!row || row.holderDeviceId !== device) return { handedTo: null };
   const asker = row.requestedByDeviceId;
   if (!asker || asker === device) return { handedTo: null };
+  // Only to a laptop still in the centre: the books never go to the phone (docs/phone/DECISION.md section 6).
   const active = await ex
     .selectFrom("SyncDevice")
     .select("id")
     .where("id", "=", asker)
     .where("removedAt", "is", null)
+    .where("kind", "=", "LAPTOP")
     .executeTakeFirst();
   if (!active) return { handedTo: null };
 
@@ -238,6 +260,7 @@ export async function answerBooksRequest(ex: Executor, ctx: ServiceContext): Pro
       requestedByDeviceId: null,
       requestedAt: null,
       lastInvoiceNumber: JSON.stringify(await legalTops(ex, "INVOICE")),
+      handover: await handoverHeads(ex),
       lastReceiptNumber: JSON.stringify(await legalTops(ex, "RECEIPT")),
       forced: 0,
       reason: null,
@@ -292,6 +315,9 @@ export async function takeBooksFromLostLaptop(
     .executeTakeFirst();
   if (!books) throw new Error("ledger: sync is set up but the books row is missing");
   if (books.holderDeviceId !== input.deviceId) throw new ServiceError(BOOKS_NOT_ON_THAT_LAPTOP);
+  // A document of the lost device's books held here for a missing parent is still to join the chain: taken now, the
+  // next document would take its place (review-sync: a removed holder's held row).
+  if (await booksHeldBack(ex)) throw new ServiceError(BOOKS_HELD_HERE);
   for (const value of [input.lastInvoice, input.lastReceipt]) {
     if (value !== null && (!Number.isSafeInteger(value) || value < 0 || value > 999_999))
       throw new ServiceError(DECLARED_NUMBER_INVALID);
@@ -356,6 +382,7 @@ export async function takeBooksFromLostLaptop(
       requestedByDeviceId: null,
       requestedAt: null,
       lastInvoiceNumber: JSON.stringify(await legalTops(ex, "INVOICE")),
+      handover: await handoverHeads(ex),
       lastReceiptNumber: JSON.stringify(await legalTops(ex, "RECEIPT")),
       forced: 1,
       reason,

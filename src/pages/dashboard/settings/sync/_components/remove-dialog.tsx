@@ -1,6 +1,6 @@
 import * as React from "react";
 
-import { MonitorX, TriangleAlert } from "lucide-react";
+import { BookUp, MonitorX, TriangleAlert } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslations } from "use-intl";
 
@@ -32,8 +32,20 @@ function paperNumber(text: string): number | null {
  * reason typed. When the laptop held the books she declares the last invoice
  * and receipt numbers seen on paper, so that the numbers it may have issued
  * are never issued again here.
+ *
+ * «استرجاع الدفاتر» (`takeBack`): the same act on a device already removed
+ * that was left holding the books (they were handed to it while another
+ * device was removing it): she declares the numbers, and the books come here.
  */
-export function RemoveDialog({ device, onClose }: { device: SyncDeviceView | null; onClose: () => void }) {
+export function RemoveDialog({
+  device,
+  takeBack = false,
+  onClose,
+}: {
+  device: SyncDeviceView | null;
+  takeBack?: boolean;
+  onClose: () => void;
+}) {
   const t = useTranslations("Sync.Remove");
   const tCommon = useTranslations("Common");
   const errorMessage = useErrorMessage();
@@ -63,8 +75,10 @@ export function RemoveDialog({ device, onClose }: { device: SyncDeviceView | nul
         reason: reason.trim(),
         ...(heldBooks ? { lastInvoice: paperNumber(lastInvoice), lastReceipt: paperNumber(lastReceipt) } : {}),
       });
-      if (!result.success) return void toast.error(errorMessage(result.error, t("Failed")));
-      toast.success(t("Done"));
+      if (!result.success)
+        return void toast.error(errorMessage(result.error, t(takeBack ? "TakeBackFailed" : "Failed")));
+      // Every removal voids the centre's unused pairing codes on the mailbox, a code made just before included.
+      toast.success(t(takeBack ? "TakeBackDone" : "Done"), { description: t("CodesVoided") });
       setBusy(false);
       close();
     } finally {
@@ -76,14 +90,15 @@ export function RemoveDialog({ device, onClose }: { device: SyncDeviceView | nul
     <Dialog open={device !== null} onOpenChange={(open) => !open && close()}>
       <DialogContent data-sync-remove>
         <DialogHeader>
-          <DialogTitle>{t("Title")}</DialogTitle>
-          <DialogDescription>{t("Description")}</DialogDescription>
+          <DialogTitle>{t(takeBack ? "TakeBackTitle" : "Title")}</DialogTitle>
+          <DialogDescription>{t(takeBack ? "TakeBackDescription" : "Description")}</DialogDescription>
         </DialogHeader>
         {device && (
           <div className="flex min-w-0 flex-col gap-4">
             <p className="text-base">
               {t("Laptop")}: <span className="font-bold">{device.name}</span>
             </p>
+            {!takeBack && <p className="text-base leading-relaxed text-muted-foreground">{t("OfflineWarning")}</p>}
             {heldBooks && (
               <>
                 <div
@@ -135,8 +150,8 @@ export function RemoveDialog({ device, onClose }: { device: SyncDeviceView | nul
             {tCommon("Cancel")}
           </Button>
           <Button type="button" variant="destructive" loading={busy} disabled={!ready} onClick={() => void remove()}>
-            <MonitorX />
-            {t("Confirm")}
+            {takeBack ? <BookUp /> : <MonitorX />}
+            {t(takeBack ? "TakeBackConfirm" : "Confirm")}
           </Button>
         </DialogFooter>
       </DialogContent>

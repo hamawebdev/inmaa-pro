@@ -113,17 +113,37 @@ export async function sendFiles(env: FilesEnv): Promise<number> {
   return sent;
 }
 
-/** Fetches the bytes of every file applied here and not yet on this disk. */
-export async function fetchFiles(env: FilesEnv): Promise<{ received: number; missing: number }> {
+/**
+ * How many parts (1 MB each) one round fetches at most: a device that has just joined from a full copy (the phone
+ * above all) has every stored file to fetch, and each part is a request of the mailbox's daily allowance and a
+ * megabyte of the phone's data plan. The rest comes at the following rounds; a file is always fetched whole.
+ */
+export const FETCH_PARTS_PER_ROUND = 32;
+
+/** Fetches the bytes of the files applied here and not yet on this disk, up to `maxParts` parts this round. */
+export async function fetchFiles(
+  env: FilesEnv,
+  options: { maxParts?: number } = {},
+): Promise<{ received: number; missing: number; more: boolean }> {
+  const budget = options.maxParts ?? FETCH_PARTS_PER_ROUND;
   let received = 0;
   let missing = 0;
-  for (const file of await listFileStates(env.db, "FETCH")) {
+  let fetched = 0;
+  let more = false;
+  // The files tried least first: one whose parts are not on the mailbox yet never holds the others back.
+  const queue = (await listFileStates(env.db, "FETCH")).sort((x, y) => (x.tries ?? 0) - (y.tries ?? 0));
+  for (const file of queue) {
     const path = storagePathOf(file.url);
     const here = await env.files.info(path);
     if (here?.sha256 === file.sha256) {
       await writeFileState(env.db, { ...file, stage: "HERE" });
       continue;
     }
+    if (fetched > 0 && fetched + file.parts > budget) {
+      more = true;
+      continue;
+    }
+    fetched += file.parts;
     const tmp = tmpPathOf(file);
     let whole = true;
     for (let part = 0; part < file.parts; part++) {
@@ -165,5 +185,5 @@ export async function fetchFiles(env: FilesEnv): Promise<{ received: number; mis
     await writeFileState(env.db, { ...file, stage: "HERE" });
     received += 1;
   }
-  return { received, missing };
+  return { received, missing, more };
 }

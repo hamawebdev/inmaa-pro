@@ -14,6 +14,7 @@ export const ATTENTION_PROBLEMS: readonly SyncProblem[] = [
   "OUTDATED",
   "FULL",
   "REJOIN",
+  "REMOVAL_UNFINISHED",
   "CATCH_UP_OFFLINE",
   "CLOCK",
   "HELD",
@@ -80,6 +81,7 @@ export function problemTone(problem: SyncProblem): StatusTone {
     case "OUTDATED":
     case "FULL":
     case "REJOIN":
+    case "REMOVAL_UNFINISHED":
     case "CATCH_UP_OFFLINE":
       return "danger";
     case "CLOCK":

@@ -18,6 +18,9 @@ import type { SyncClockState, SyncDeviceIdentity, SyncDeviceKind, SyncSlot } fro
  * | copy           | `CopyState`: the last full copy this laptop put on the mailbox |
  * | left           | which laptop this was, once the manager took it out of sync (ledger keeps its books state by it) |
  * | mailboxDevices | `MailboxDevicesState`: the devices as the mailbox last listed them (last contact, last envelope) |
+ * | joining        | `JoiningState` from a join until the first receive reached the mailbox's newest envelope |
+ * | lines          | `LineIntents`: lines placed away from the number they were given (apply.ts, `placeLines`) |
+ * | deferredLog    | log rows written while catching up, appended to this device's chain once it has caught up |
  */
 
 export interface PendingSend {
@@ -93,7 +96,20 @@ export interface FileState {
 export interface MailboxDevicesState {
   at: string;
   devices: Array<{ id: string; lastSeenAt: string | null; lastSeq: number }>;
+  /**
+   * The removed devices whose replacement of the centre key the mailbox still owes (`keyAfter` null): a removal
+   * that revoked the token but never replaced the key. Left out by a listing older than the field.
+   */
+  keyOwed?: string[];
 }
+
+/** A device that has just joined from a full copy: it gives no number before it has received what the mailbox holds. */
+export interface JoiningState {
+  since: string;
+}
+
+/** Per line (`<table>:<id>`): the number its last change gave it, and the number it was placed at here. */
+export type LineIntents = Record<string, { intended: number; placed: number }>;
 
 export interface CopyState {
   at: string;
@@ -120,6 +136,9 @@ interface Keys {
   copy: CopyState;
   mailboxDevices: MailboxDevicesState;
   left: { deviceId: string; slot: SyncSlot; leftAt: string; kind?: SyncDeviceKind };
+  joining: JoiningState;
+  lines: LineIntents;
+  deferredLog: Array<Record<string, unknown>>;
 }
 
 export async function readState<K extends keyof Keys>(ex: Executor, key: K): Promise<Keys[K] | null> {
@@ -192,6 +211,12 @@ export async function listFileStates(ex: Executor, stage?: FileStage): Promise<F
 /** Whether this laptop must take back what the mailbox holds before anyone works (case 7): no number is taken meanwhile. */
 export async function catchUpPending(ex: Executor): Promise<boolean> {
   const row = await ex.selectFrom("SyncState").select("key").where("key", "=", "catchUp").executeTakeFirst();
+  return row !== undefined;
+}
+
+/** Whether this device has just joined and has not yet received what the mailbox holds: it gives no number meanwhile. */
+export async function joiningPending(ex: Executor): Promise<boolean> {
+  const row = await ex.selectFrom("SyncState").select("key").where("key", "=", "joining").executeTakeFirst();
   return row !== undefined;
 }
 

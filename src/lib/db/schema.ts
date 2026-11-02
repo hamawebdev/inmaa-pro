@@ -2403,6 +2403,7 @@ export interface SyncBooksTable {
   forced: Generated<number>;
   reason: string | null;
   updatedAt: string;
+  handover: string | null;
 }
 
 export interface NumberBlockTable {

@@ -111,6 +111,6 @@ export const COLUMN_TAGS: Record<string, Record<string, string>> = {
   SyncHeld: { change: "json", resolution: "code:SYNC_HELD_RESOLUTION" },
   SyncConflict: { keptValue: "json", otherValue: "json", resolution: "code:SYNC_CONFLICT_RESOLUTION" },
   SyncDevice: { kind: "code:SYNC_DEVICE_KIND" },
-  SyncBooks: { lastInvoiceNumber: "json", lastReceiptNumber: "json" },
+  SyncBooks: { lastInvoiceNumber: "json", lastReceiptNumber: "json", handover: "json" },
   NumberBlock: { key: "code:SEQUENCE_KEY", kind: "code:NUMBER_BLOCK_KIND", answer: "code:NUMBER_BLOCK_ANSWER" },
 };

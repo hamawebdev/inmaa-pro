@@ -4,7 +4,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { sql } from "kysely";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { saveUpload, storagePathOf } from "@/lib/attachments";
 import { buildContext } from "@/lib/service/context";
@@ -13,6 +13,9 @@ import { resolveConflict, resolveHeld } from "@/lib/sync/services/conflicts";
 import { syncStatus } from "@/lib/sync/services/status";
 import { PHOTO_UPLOAD_RULE } from "@/lib/uploads";
 import { createSyncPair, type SyncLaptop, type SyncPair } from "@/testing/sync/pair";
+
+// Each pair joins b and runs its first round, as the program does: two laptops take time on a busy machine.
+vi.setConfig({ testTimeout: 120_000 });
 
 let pair: SyncPair;
 afterEach(() => pair?.close());

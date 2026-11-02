@@ -2,7 +2,12 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import { verifyChains } from "@/lib/chain";
 import { buildContext } from "@/lib/service/context";
-import { BOOKS_ON_DIRECTORS_LAPTOP, BOOKS_ON_DIRECTORS_PHONE, requestBooks } from "@/lib/sync/books";
+import {
+  BOOKS_ON_DIRECTORS_LAPTOP,
+  BOOKS_ON_SECOND_LAPTOP,
+  BOOKS_STAY_ON_LAPTOPS,
+  requestBooks,
+} from "@/lib/sync/books";
 import { makeFullCopy, removeDevice, SYNC_ERRORS } from "@/lib/sync/centre";
 import { thisDeviceKind } from "@/lib/sync/device";
 import { makesFullCopy } from "@/lib/sync/round";
@@ -90,16 +95,15 @@ describe("three devices", () => {
     },
   );
 
-  it("move the books to the phone and back; each refusal says where they are", LONG, async () => {
+  it("the books stay on the laptops: the phone is refused; they move a → b and back", LONG, async () => {
     const t = (trio = await createSyncTrio());
-    await expect(issueReceipts(t.phone)).rejects.toThrow(BOOKS_ON_DIRECTORS_LAPTOP);
-    await t.phone.transact((ex, ctx) => requestBooks(ex, ctx));
-    await t.syncAll();
-    expect(await holder(t.a)).toBe(idOf(t.phone));
-    await issueReceipts(t.phone, 2);
-    await expect(issueReceipts(t.a)).rejects.toThrow(BOOKS_ON_DIRECTORS_PHONE);
-    await expect(issueReceipts(t.b)).rejects.toThrow(BOOKS_ON_DIRECTORS_PHONE);
-    // While the phone holds the books, the director's laptop makes the full copy; the phone never does.
+    // fix-sync (docs/phone/DECISION.md section 6, 2026-11-02): the phone never holds the books. This case moved them
+    // to the phone and back; it now checks the refusals there and moves them between the two laptops.
+    await expect(issueReceipts(t.phone)).rejects.toThrow(BOOKS_STAY_ON_LAPTOPS);
+    await expect(t.phone.transact((ex, ctx) => requestBooks(ex, ctx))).rejects.toThrow(BOOKS_STAY_ON_LAPTOPS);
+    await expect(issueReceipts(t.b)).rejects.toThrow(BOOKS_ON_DIRECTORS_LAPTOP);
+    await issueReceipts(t.a, 2);
+    // The phone never makes the full copy.
     expect(await makesFullCopy(t.a.env())).toBe(true);
     expect(await makesFullCopy(t.phone.env())).toBe(false);
     await expect(makeFullCopy(t.phone.env())).rejects.toThrow("a phone never makes the full copy");
@@ -107,6 +111,7 @@ describe("three devices", () => {
     await t.b.transact((ex, ctx) => requestBooks(ex, ctx));
     await t.syncAll();
     expect(await holder(t.b)).toBe(idOf(t.b));
+    await expect(issueReceipts(t.a)).rejects.toThrow(BOOKS_ON_SECOND_LAPTOP);
     await issueReceipts(t.b, 1);
     await t.syncAll();
     t.expectSame();

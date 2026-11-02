@@ -129,6 +129,39 @@ describe("the status the screens show", () => {
       lastReceipt: 2,
     });
     await p.a.sync();
+    // fix-sync (2026-11-02): the removal applies everything b sent before it decides, so these receipts join the
+    // chain. A removed device's legal row is still held where its parent was refused (case 12) when the device is
+    // removed: such a row, as the engine holds it, is a legal incident.
+    const receipt = await p.a.test.db
+      .selectFrom("Receipt")
+      .selectAll()
+      .orderBy("chainSeq", "desc")
+      .executeTakeFirstOrThrow();
+    const hlc = `${String(Date.parse(p.a.clock.now().toISOString())).padStart(13, "0")}.0000.${deviceIdOf(p.b)}`;
+    await p.a.test.db
+      .insertInto("SyncHeld")
+      .values({
+        id: `${hlc}:00000`,
+        originDeviceId: deviceIdOf(p.b),
+        txSeq: 999,
+        hlc,
+        tbl: "Receipt",
+        rowId: "held-receipt",
+        change: JSON.stringify({
+          t: "Receipt",
+          id: "held-receipt",
+          op: "I",
+          data: { ...receipt, id: "held-receipt" },
+          index: 0,
+        }),
+        reason: "UNIQUE constraint failed: Receipt.numberYear, Receipt.numberSeq",
+        firstAt: p.a.clock.now().toISOString(),
+        lastTriedAt: p.a.clock.now().toISOString(),
+        tries: 1,
+        resolvedAt: null,
+        resolution: null,
+      })
+      .execute();
     const status = await statusOf(p.a);
     expect(status.incidentCount).toBeGreaterThan(0);
     expect(status).toMatchObject({ problem: "LEGAL_INCIDENT", severity: "danger" });

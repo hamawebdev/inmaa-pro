@@ -3,14 +3,15 @@ import { sql, type Kysely } from "kysely";
 import { createAccount, giveAccountPassword } from "@/features/core/services/users";
 import { requireCapability } from "@/lib/access/session";
 import type { RoleCode } from "@/lib/access/catalogue";
-import { startOwnLogChain } from "@/lib/chain";
+import { appendDeferredLog, startOwnLogChain } from "@/lib/chain";
 import type { Clock } from "@/lib/clock";
 import type { DB } from "@/lib/db/schema";
 import { logSecurity } from "@/lib/log";
 import { buildContext, SYSTEM_SESSION, type Executor, type ServiceContext } from "@/lib/service/context";
 import { ServiceError } from "@/lib/service/errors";
 import { retireBlocks, startBlocks } from "@/lib/sync/blocks";
-import { initBooks, takeBooksFromLostLaptop } from "@/lib/sync/books";
+import { CATCHING_UP, initBooks, isCatchingUp, takeBooksFromLostLaptop } from "@/lib/sync/books";
+import { readBooksRow } from "@/lib/sync/books/guard";
 import {
   checkKeyRing,
   newKeyRing,
@@ -21,7 +22,6 @@ import {
   PART_BYTES,
   partCount,
   randomBytes,
-  rotateKeyRing,
   sealForTicket,
   sealPart,
   ticketIdFor,
@@ -34,7 +34,7 @@ import type { RelayClient } from "@/lib/sync/relay";
 import type { SyncEnv } from "./exchange";
 import { queueAllFiles, type FilesEnv, type SyncFiles } from "./files";
 import { mailboxFailureOf, refusalCodeOf } from "./mailbox";
-import { putRotation } from "./rotation";
+import { rotateCentreKey, RotationUnfinished, withRotations } from "./rotation";
 import type { NewAssistantAccount, PairDeviceInput, PairingCodeAnswer } from "./services/types";
 import {
   identityKind,
@@ -104,6 +104,9 @@ export const SYNC_ERRORS = {
   outdated: "This program is too old for the mailbox. Install the latest version on this device.",
   phoneSetUp: "A phone cannot set up sync. Set it up on the director's laptop, then add the phone from there.",
   phonePairs: "A phone cannot add a device. Add it from a laptop.",
+  phoneRemoves: "A phone cannot remove a device. Remove it from a laptop.",
+  keyNotReplaced:
+    "The device is refused by the mailbox, but the centre key is not replaced yet. Try the removal again from a laptop.",
   codeUnknown: "This code is not valid, or was already used, or has expired. Ask for a new code.",
   codeTypo: "This code is mistyped. Check each group of four characters.",
   hasWork: "This device already holds work. A device joins a centre only when it is freshly installed.",
@@ -114,6 +117,8 @@ export const SYNC_ERRORS = {
   deviceThis: "This device cannot remove itself. Remove it from another device of the centre.",
   reasonRequired: "A reason is required.",
   revoked: "This device was removed from the centre.",
+  syncFirst:
+    "This device has not yet received everything the mailbox holds. Check the internet connection, sync, and try again.",
 } as const;
 
 /** The mailbox's failure in the words of the screens: a ServiceError, or the error itself (a fault). */
@@ -344,6 +349,31 @@ export async function downloadFullCopy(
   return path;
 }
 
+// ─── Receiving before deciding ───────────────────────────────────────────────
+
+/**
+ * Applies everything the mailbox holds for this device before a decision that must see it all: the full copy made
+ * for a new device, and what a removal decides (the books, the blocks). With `upTo`, refuses unless that device's
+ * envelopes are applied up to `lastSeq` (its last one on the mailbox). Refuses when the mailbox cannot be reached,
+ * when an envelope is missing, or when this device is behind what the mailbox keeps: nothing is decided on a view
+ * that may be missing what another device did.
+ */
+async function receiveEverything(engine: FilesEnv, upTo?: { deviceId: string; lastSeq: number }): Promise<void> {
+  const { BehindMailbox, receiveEnvelopes } = await import("./exchange");
+  let waiting: boolean;
+  try {
+    ({ waiting } = await withRotations(engine, () => receiveEnvelopes(engine)));
+  } catch (error) {
+    if (error instanceof BehindMailbox) throw new ServiceError(SYNC_ERRORS.syncFirst);
+    throw mailboxError(error);
+  }
+  if (waiting) throw new ServiceError(SYNC_ERRORS.syncFirst);
+  if (upTo) {
+    const origin = (await readReceive(engine.db)).origins[upTo.deviceId];
+    if ((origin?.env ?? 0) < upTo.lastSeq) throw new ServiceError(SYNC_ERRORS.syncFirst);
+  }
+}
+
 // ─── Pairing the second laptop or the director's phone ─────────────────────
 
 /** What the pairing ticket carries beside the centre key. */
@@ -411,8 +441,12 @@ export async function pairDevice(
     await giveAccountPassword(ex, ctx, { userId: id, password: account.password });
     return id;
   });
+  if (await isCatchingUp(env.db)) throw new ServiceError(CATCHING_UP);
   const engine = envFor(env, vault);
   const { sendOutbox } = await import("./exchange");
+  // The copy holds everything the mailbox holds: a device removed before (a lost phone) numbered in the third the
+  // new one takes, and the new one must know every block it used (docs/phone/DECISION.md section 2).
+  await receiveEverything(engine);
   await onMailbox(() => sendOutbox(engine));
   await onMailbox(() => makeFullCopy(engine));
   const code = newPairingCode();
@@ -447,6 +481,8 @@ export interface InstallNote {
    * stamp, so a PC set a day wrong never stamps a day wrong (a hybrid clock never goes back).
    */
   offsetMs?: number | null;
+  /** CATCH_UP: the log rows written on the replaced database while it waited to catch up (they join its chain). */
+  deferredLog?: Array<Record<string, unknown>>;
 }
 
 /**
@@ -509,11 +545,15 @@ export async function redeemAndDownload(
 
 /**
  * The first start on a copy just installed: the database becomes this
- * laptop's. The other laptop's local state in it (outbox, held changes,
- * conflicts, backups, its own settings) is cleared; what it had applied and
- * sent becomes where this laptop starts receiving; capture is on under this
- * laptop's identity, with its own log chain. A laptop that is itself again
- * (after a restore) then takes back its own envelopes before anyone works.
+ * laptop's. The other laptop's local state in it (outbox, conflicts, backups,
+ * its own settings) is cleared; what it had applied and sent becomes where
+ * this laptop starts receiving; capture is on under this laptop's identity,
+ * with its own log chain. The changes the maker held stay held here: the copy's
+ * cursor is past the envelopes that carried them, so they are tried again here
+ * as they are there, and settle the same way. A new device gives no number
+ * before its first receive reached the mailbox's newest envelope ("joining");
+ * a laptop that is itself again (after a restore) takes back its own envelopes
+ * before anyone works.
  */
 export async function finishInstall(db: Kysely<DB>, clock: Clock, note: InstallNote): Promise<void> {
   const ctx = buildContext(SYSTEM_SESSION, clock);
@@ -544,9 +584,11 @@ export async function finishInstall(db: Kysely<DB>, clock: Clock, note: InstallN
     const own = origins[note.deviceId];
     delete origins[note.deviceId];
     if (!ownCopy) await trx.deleteFrom("SyncOutbox").execute();
-    await trx.deleteFrom("SyncHeld").execute();
     await trx.deleteFrom("SyncConflict").execute();
-    await trx.deleteFrom("SyncState").where("key", "in", ["exchange", "catchUp", "copy", "clock"]).execute();
+    await trx
+      .deleteFrom("SyncState")
+      .where("key", "in", ["exchange", "catchUp", "copy", "clock", "joining", "deferredLog", "mailboxDevices"])
+      .execute();
     if (!ownCopy) {
       await writeState(trx, "send", {
         nextEnvSeq: (own?.env ?? 0) + 1,
@@ -592,6 +634,9 @@ export async function finishInstall(db: Kysely<DB>, clock: Clock, note: InstallN
         done: 0,
         total: null,
       });
+      if (note.deferredLog?.length) await writeState(trx, "deferredLog", note.deferredLog);
+    } else {
+      await writeState(trx, "joining", { since: ctx.now });
     }
     const stamp = await stampTransaction(trx, ctx);
     await startOwnLogChain(trx, ctx, note.deviceId);
@@ -628,6 +673,20 @@ export async function removeDevice(
   return removeOtherLaptop(env, ctx, input);
 }
 
+/** Whether the mailbox still owes the key replacement after this device's removal, as the status reads it. */
+async function noteKeyOwed(db: Executor, deviceId: string, owed: boolean): Promise<void> {
+  const listed = await readState(db, "mailboxDevices");
+  const keyOwed = new Set(listed?.keyOwed ?? []);
+  if (owed === keyOwed.has(deviceId)) return;
+  if (owed) keyOwed.add(deviceId);
+  else keyOwed.delete(deviceId);
+  await writeState(db, "mailboxDevices", {
+    at: listed?.at ?? new Date(0).toISOString(),
+    devices: listed?.devices ?? [],
+    keyOwed: [...keyOwed],
+  });
+}
+
 /** 1.1.0's name for `removeDevice`. */
 export async function removeOtherLaptop(
   env: CentreEnv,
@@ -641,7 +700,14 @@ export async function removeOtherLaptop(
   const identity = await deviceIdentity(env.db);
   if (!vault || !identity) throw new ServiceError(SYNC_ERRORS.notSetUp);
   if (input.deviceId === identity.id) throw new ServiceError(SYNC_ERRORS.deviceThis);
-  const engine = envFor(env, vault);
+  // A lost phone must not put the laptops out: the mailbox takes a removal from a laptop only.
+  if (identityKind(identity) === "PHONE") throw new ServiceError(SYNC_ERRORS.phoneRemoves);
+  // A restored device does not know yet what it did after its backup: it decides nothing for the centre.
+  if (await isCatchingUp(env.db)) throw new ServiceError(CATCHING_UP);
+  let engine = envFor(env, vault);
+  const onTheMailbox = async () =>
+    (await onMailbox(() => engine.mailbox.devices())).devices.find((d) => d.id === input.deviceId) ?? null;
+  const listed = await onTheMailbox();
   let device = await env.db
     .selectFrom("SyncDevice")
     .select(["id", "name", "slot", "kind", "joinedAt", "removedAt"])
@@ -649,25 +715,66 @@ export async function removeOtherLaptop(
     .executeTakeFirst();
   if (!device) {
     // A device lost before its first exchange: the mailbox knows it, this database not yet.
-    const known = (await onMailbox(() => engine.mailbox.devices())).devices.find((d) => d.id === input.deviceId);
-    if (!known) throw new ServiceError(SYNC_ERRORS.deviceUnknown);
+    if (!listed) throw new ServiceError(SYNC_ERRORS.deviceUnknown);
     device = {
-      id: known.id,
-      name: known.name,
-      slot: known.slot,
-      kind: known.kind === "PHONE" ? "PHONE" : "LAPTOP",
-      joinedAt: new Date(known.joinedAt).toISOString(),
+      id: listed.id,
+      name: listed.name,
+      slot: listed.slot,
+      kind: listed.kind === "PHONE" ? "PHONE" : "LAPTOP",
+      joinedAt: new Date(listed.joinedAt).toISOString(),
       removedAt: null,
     };
   }
 
-  await onMailbox(() => engine.mailbox.removeDevice(input.deviceId));
-  const ring = await rotateKeyRing(vault.keyRing);
-  // The devices that stay take the new key from the mailbox, sealed under the one it replaces (rotation.ts); it is
-  // left there before anything is sealed under it, and after the removed device's token was revoked.
-  await onMailbox(() => putRotation(engine.mailbox, vault.centreId, vault.keyRing, ring));
-  await env.vault.write({ ...vault, keyRing: ring });
-  await onMailbox(() => engine.mailbox.rotateKey(ring.current));
+  // Already refused by the mailbox when it was removed from another device, or by an attempt here that could not
+  // finish. Taking back the books it was left holding goes on below.
+  // Whether this laptop revoked it (now, or at an earlier attempt): otherwise another laptop did, and decided too.
+  let revokedHere = listed?.removedBy === identity.id;
+  if (listed !== null && listed.removedAt === null) {
+    // Everything it sent so far is applied first: refused here, nothing has changed anywhere.
+    await receiveEverything(engine, { deviceId: input.deviceId, lastSeq: listed.lastSeq });
+    await onMailbox(() => engine.mailbox.removeDevice(input.deviceId));
+    revokedHere = true;
+  }
+  // A removal stays to be finished until the centre key is replaced: also when this database already shows the
+  // device removed (by the other laptop, whose replacement is still owed).
+  if (listed !== null && (!device.removedAt || (await onMailbox(() => engine.mailbox.keys())).owed)) {
+    // The key part is named after both keys and the mailbox records the chain (rotation.ts); a retry, or a removal
+    // made from two laptops, follows the chain instead of storing nothing, and no replacement is made twice.
+    let ring: KeyRing;
+    try {
+      ring = await onMailbox(() =>
+        rotateCentreKey(engine.mailbox, vault.centreId, vault.keyRing, { removed: input.deviceId }),
+      );
+    } catch (error) {
+      if (error instanceof RotationUnfinished) {
+        // Shown at once as «إزالة غير مكتملة» (the next listing of the devices says the same).
+        await noteKeyOwed(env.db, input.deviceId, true);
+        throw new ServiceError(SYNC_ERRORS.keyNotReplaced);
+      }
+      throw error;
+    }
+    await noteKeyOwed(env.db, input.deviceId, false);
+    await env.vault.write({ ...vault, keyRing: ring });
+    engine = envFor(env, { ...vault, keyRing: ring });
+  }
+
+  // Its token is refused now, so its last envelope on the mailbox is its last ever. The books and the blocks are
+  // decided on a view that holds all of it (a hand-over it wrote, the blocks it numbered in); otherwise refused, and
+  // the manager tries again once this device has synced (case 9; review: the books taken on a stale view).
+  const last = await onTheMailbox();
+  await receiveEverything(engine, { deviceId: input.deviceId, lastSeq: last?.lastSeq ?? 0 });
+  if (listed !== null && !revokedHere) {
+    // Removed from the other laptop, whose removal (and its take of the books, if it held them) has not reached this
+    // database yet: deciding the books here too would put them on two laptops (review-sync: two removers).
+    const here = await env.db
+      .selectFrom("SyncDevice")
+      .select("removedAt")
+      .where("id", "=", input.deviceId)
+      .executeTakeFirst();
+    const books = await readBooksRow(env.db);
+    if (!here?.removedAt && books?.holderDeviceId === input.deviceId) throw new ServiceError(SYNC_ERRORS.syncFirst);
+  }
 
   const lost = device;
   await withStampedTransaction(env.db, ctx, async (ex) => {
@@ -687,14 +794,12 @@ export async function removeOtherLaptop(
       })
       .onConflict((oc) => oc.column("id").doNothing())
       .execute();
-    if (!lost.removedAt) {
-      await ex
-        .updateTable("SyncDevice")
-        .set({ removedAt: ctx.now, removedReason: reason, updatedAt: ctx.now })
-        .where("id", "=", input.deviceId)
-        .where("removedAt", "is", null)
-        .execute();
-    }
+    await ex
+      .updateTable("SyncDevice")
+      .set({ removedAt: ctx.now, removedReason: reason, updatedAt: ctx.now })
+      .where("id", "=", input.deviceId)
+      .where("removedAt", "is", null)
+      .execute();
     await retireBlocks(ex, ctx, input.deviceId);
     const books = await ex
       .selectFrom("SyncBooks")
@@ -731,6 +836,9 @@ export async function leaveCentre(env: CentreEnv, ctx: ServiceContext, input: { 
   const reason = input.reason.trim();
   if (!reason) throw new ServiceError(SYNC_ERRORS.reasonRequired);
   await withStampedTransaction(env.db, ctx, async (ex) => {
+    // Leaving while it waited to catch up: what it logged meanwhile joins its chain now (it sends nothing more).
+    await writeState(ex, "catchUp", null);
+    await appendDeferredLog(ex, ctx);
     await logSecurity(ex, ctx, {
       owner: "FOUNDATION",
       action: "STATUS_CHANGE",
@@ -792,11 +900,13 @@ export async function downloadForRejoin(
   const engine = envFor(env, vault);
   const path = await downloadFullCopy(engine, onProgress);
   const { relayTime } = await onMailbox(() => engine.mailbox.time());
+  const deferredLog = (await readState(env.db, "deferredLog")) ?? [];
   return {
     path,
     note: {
       v: 1,
       offsetMs: Math.round(relayTime - env.clock.now().getTime()),
+      ...(deferredLog.length > 0 ? { deferredLog } : {}),
       mode,
       deviceId: vault.deviceId,
       slot: vault.slot,

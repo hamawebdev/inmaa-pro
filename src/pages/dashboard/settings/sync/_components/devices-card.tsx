@@ -1,6 +1,6 @@
 import * as React from "react";
 
-import { BookLock, Laptop, MonitorSmartphone, MonitorX, Smartphone } from "lucide-react";
+import { BookLock, BookUp, Laptop, MonitorSmartphone, MonitorX, Smartphone } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslations } from "use-intl";
 
@@ -46,6 +46,7 @@ export function DevicesCard({
   const errorMessage = useErrorMessage();
   const [confirm, confirmDialog] = useConfirm();
   const [removing, setRemoving] = React.useState<SyncDeviceView | null>(null);
+  const [takingBack, setTakingBack] = React.useState(false);
   const [asking, setAsking] = React.useState(false);
 
   const { isPhone } = useDevice();
@@ -59,6 +60,8 @@ export function DevicesCard({
   const addLaptop = mayAdd && laptops < 2;
   const addPhone = mayAdd && !hasPhone;
   const thisIsPhone = status.thisDevice?.kind === "PHONE";
+  // A device is removed from a laptop: the mailbox refuses a removal from the phone (the engine refuses it too).
+  const mayRemove = manages && !isPhone && !thisIsPhone;
 
   async function askForBooks() {
     if (!books?.holderName) return;
@@ -119,6 +122,11 @@ export function DevicesCard({
                         label={device.isThis ? t("HoldsBooks") : t("HoldsBooksThere")}
                       />
                     )}
+                    {/* The books handed to a device as it was being removed elsewhere: taken back here (case 9). */}
+                    {device.holdsBooks && device.removedAt !== null && (
+                      <StatusChip tone="danger" icon={BookLock} label={t("BooksOnRemoved")} />
+                    )}
+                    {device.removalUnfinished && <StatusChip tone="danger" label={t("RemovalUnfinished")} />}
                   </div>
                   <p className="text-base text-muted-foreground">
                     {t("LastExchange")}:{" "}
@@ -141,10 +149,46 @@ export function DevicesCard({
                     </p>
                   )}
                 </div>
-                {manages && !device.isThis && device.removedAt === null && (
-                  <Button variant="outline" className="narrow:w-full" onClick={() => setRemoving(device)}>
+                {mayRemove && !device.isThis && device.removedAt === null && (
+                  <Button
+                    variant="outline"
+                    className="narrow:w-full"
+                    onClick={() => {
+                      setTakingBack(false);
+                      setRemoving(device);
+                    }}
+                  >
                     <MonitorX />
                     {t("Remove")}
+                  </Button>
+                )}
+                {/* Refused by the mailbox, the centre key not replaced after it: the same removal again finishes it. */}
+                {mayRemove && !thisRevoked && !device.isThis && device.removalUnfinished && !device.holdsBooks && (
+                  <Button
+                    variant="outline"
+                    className="narrow:w-full"
+                    data-sync-retry-removal
+                    onClick={() => {
+                      setTakingBack(false);
+                      setRemoving(device);
+                    }}
+                  >
+                    <MonitorX />
+                    {t("RetryRemoval")}
+                  </Button>
+                )}
+                {mayRemove && !thisRevoked && !device.isThis && device.removedAt !== null && device.holdsBooks && (
+                  <Button
+                    variant="outline"
+                    className="narrow:w-full"
+                    data-sync-take-back
+                    onClick={() => {
+                      setTakingBack(true);
+                      setRemoving(device);
+                    }}
+                  >
+                    <BookUp />
+                    {t("TakeBackBooks")}
                   </Button>
                 )}
               </li>
@@ -209,7 +253,7 @@ export function DevicesCard({
           onOpenChange={(open) => onAddingChange(open ? adding : null)}
         />
       )}
-      {manages && <RemoveDialog device={removing} onClose={() => setRemoving(null)} />}
+      {mayRemove && <RemoveDialog device={removing} takeBack={takingBack} onClose={() => setRemoving(null)} />}
       {confirmDialog}
     </Card>
   );

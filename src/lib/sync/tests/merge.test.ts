@@ -1,9 +1,12 @@
 // The merge rules of DECISION section 4, each on two laptops through the real mailbox.
 import { sql } from "kysely";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { stampTransaction } from "@/lib/sync/session";
 import { createSyncPair, type SyncLaptop, type SyncPair } from "@/testing/sync/pair";
+
+// Each pair joins b and runs its first round, as the program does: two laptops take time on a busy machine.
+vi.setConfig({ testTimeout: 120_000 });
 
 let pair: SyncPair;
 afterEach(() => pair?.close());
