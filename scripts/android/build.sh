@@ -3,7 +3,8 @@
 #
 #   npm run android:dev          the program on a running emulator or a phone, with the dev server
 #   npm run android:build        the signed release APK for real phones (arm64-v8a + armeabi-v7a)
-#   npm run android:build:test   the same plus x86_64 (the emulator), with WebView debugging on
+#   npm run android:build:test   the same plus x86_64 (the emulator), with WebView debugging on, as another app
+#                                (com.hamawebdev.inmaa_pro.test, «إنماء برو (اختبار)») that cannot replace the program
 #
 # The APKs are copied to src-tauri/target/android/inmaa-pro-<version>.apk and
 # inmaa-pro-<version>-test.apk. Extra arguments go to `tauri android …`.
@@ -54,6 +55,26 @@ mkdir -p src-tauri/target/android
 out="src-tauri/target/android/inmaa-pro-${version}${suffix}.apk"
 cp "$built" "$out"
 
-apksigner="$(ls -d "$ANDROID_HOME"/build-tools/*/ | sort -V | tail -1)apksigner"
-"$apksigner" verify --print-certs "$out" | grep -E "Signer #1 certificate (DN|SHA-256)"
+tools="$(inmaa_build_tools)"
+"${tools}apksigner" verify --print-certs "$out" | grep -E "Signer #1 certificate (DN|SHA-256)"
+
+# What the built APK asks for, as Android will read it (docs/phone/DECISION.md section 7): its package, and the three
+# permissions plus the one androidx declares for its own receivers (signature level, held by this app only).
+badging="$("${tools}aapt2" dump badging "$out")"
+expected_package="$INMAA_PACKAGE"
+[ "$mode" = build-test ] && expected_package="$INMAA_TEST_PACKAGE"
+package="$(sed -n "s/^package: name='\([^']*\)'.*/\1/p" <<<"$badging")"
+if [ "$package" != "$expected_package" ]; then
+  echo "android: the APK's package is '$package', not $expected_package" >&2
+  exit 1
+fi
+asked="$(sed -n "s/^uses-permission: name='\([^']*\)'.*/\1/p" <<<"$badging" | sort)"
+allowed="$(printf '%s\n' android.permission.ACCESS_NETWORK_STATE android.permission.INTERNET \
+  android.permission.POST_NOTIFICATIONS "$package.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION" | sort)"
+if [ "$asked" != "$allowed" ]; then
+  echo "android: the APK asks for other permissions than the program's:" >&2
+  diff <(echo "$allowed") <(echo "$asked") >&2 || true
+  exit 1
+fi
+echo "android: package $package, permissions: $(echo "$asked" | tr '\n' ' ')"
 echo "android: $out"

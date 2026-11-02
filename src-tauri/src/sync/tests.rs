@@ -58,7 +58,7 @@ fn only_paths_under_v1_methods_and_headers_of_the_list_are_sent() {
     assert!(check_request(
         "POST",
         "/v1/centres",
-        &vec![("x-setup-key".to_string(), "s".to_string())],
+        &[("x-setup-key".to_string(), "s".to_string())],
         10
     )
     .is_ok());
@@ -228,6 +228,30 @@ fn a_folder_that_links_outside_is_refused() {
     let outside = temp_dir("link-outside");
     std::os::unix::fs::symlink(&outside, base.join("uploads")).expect("link");
     assert_eq!(confine(&base, "uploads/a.png", &[UPLOADS]), None);
+    // Deeper, below a folder that does not exist yet: still refused once it is a link.
+    assert_eq!(confine(&base, "uploads/new/deeper/a.png", &[UPLOADS]), None);
+    std::fs::remove_file(base.join("uploads")).unwrap();
+
+    // A link one level down, below a real folder.
+    std::fs::create_dir_all(base.join("sync-tmp")).unwrap();
+    std::os::unix::fs::symlink(&outside, base.join("sync-tmp/parts")).expect("link");
+    assert_eq!(confine(&base, "sync-tmp/parts/x", &[TMP]), None);
+    assert_eq!(confine(&base, "sync-tmp/parts/not/yet/x", &[TMP]), None);
+
+    // The file itself a link to the database.
+    std::fs::write(base.join(crate::db::DB_FILE), "db").unwrap();
+    std::os::unix::fs::symlink(base.join(crate::db::DB_FILE), base.join("sync-tmp/copy.db")).expect("link");
+    assert_eq!(confine(&base, "sync-tmp/copy.db", &[TMP]), None);
+
+    // Plain folders, existing or not: accepted.
+    assert!(confine(&base, "sync-tmp/plain.db", &[TMP]).is_some());
+    assert!(confine(&base, "sync-tmp/new/folder/x", &[TMP]).is_some());
+
+    // The base itself may be reached through a link (Android's /data/user/0 is one).
+    let linked_base = temp_dir("link-base-parent").join("base");
+    std::os::unix::fs::symlink(&base, &linked_base).expect("link");
+    assert!(confine(&linked_base, "sync-tmp/plain.db", &[TMP]).is_some());
+    let _ = std::fs::remove_dir_all(linked_base.parent().unwrap());
     let _ = std::fs::remove_dir_all(&base);
     let _ = std::fs::remove_dir_all(&outside);
 }

@@ -60,11 +60,15 @@ CONFIG
     ;;
   install)
     apk="${2:?an APK}"
+    # The package the APK holds: the program's, or the test build's beside it.
+    package="$("$(inmaa_build_tools)aapt2" dump badging "$apk" | sed -n "s/^package: name='\([^']*\)'.*/\1/p")"
     adb_e install -r "$apk"
-    adb_e shell monkey -p "$INMAA_PACKAGE" -c android.intent.category.LAUNCHER 1 >/dev/null
+    adb_e shell monkey -p "$package" -c android.intent.category.LAUNCHER 1 >/dev/null
+    echo "android: $package"
     ;;
   devtools)
-    pid="$(adb_e shell pidof "$INMAA_PACKAGE" | tr -d '\r')"
+    # The test build's window (only a test build can be debugged); INMAA_DEVTOOLS_PACKAGE names another.
+    pid="$(adb_e shell pidof "${INMAA_DEVTOOLS_PACKAGE:-$INMAA_TEST_PACKAGE}" | tr -d '\r')"
     [ -n "$pid" ] || { echo "android: the program is not running" >&2; exit 1; }
     adb_e forward tcp:9222 "localabstract:webview_devtools_remote_$pid"
     echo "android: http://127.0.0.1:9222/json"

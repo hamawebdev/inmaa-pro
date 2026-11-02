@@ -11,6 +11,8 @@ INMAA_AVD_IMAGE="system-images;android-35;google_apis;x86_64"
 # The Android package name: the identifier of tauri.conf.json, which has a
 # hyphen, with the hyphen made `_` (a Java package cannot hold one).
 INMAA_PACKAGE="com.hamawebdev.inmaa_pro"
+# The test build is another app beside it (build.gradle.kts: applicationIdSuffix), so it can never replace the program.
+INMAA_TEST_PACKAGE="$INMAA_PACKAGE.test"
 
 export ANDROID_HOME="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-$HOME/Android/sdk}}"
 export ANDROID_SDK_ROOT="${ANDROID_SDK_ROOT:-$ANDROID_HOME}"
@@ -44,4 +46,9 @@ inmaa_require_toolchain() {
 # The program's version, as package.json says it.
 inmaa_version() {
   node -p 'require("./package.json").version'
+}
+
+# The newest build-tools' folder, with a trailing slash (apksigner, aapt2).
+inmaa_build_tools() {
+  ls -d "$ANDROID_HOME"/build-tools/*/ | sort -V | tail -1
 }

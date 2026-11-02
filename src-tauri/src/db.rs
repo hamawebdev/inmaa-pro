@@ -43,23 +43,50 @@ use crate::CommandError;
 /// connection and the process restarts. Android cannot restart its own
 /// process, so there the program's `process` plugin (src/mobile.rs) opens a new
 /// connection on the installed file and reloads the window instead.
-pub struct Db(std::sync::RwLock<SqlitePool>);
+///
+/// On Android the new connection is not handed out at once: the old page is
+/// still running until the window's next page starts loading, and a statement
+/// it sends in between must not land in the database just installed
+/// (review-native 9). So the new connection is *held* ([`Db::hold`]) while the
+/// slot keeps the old, closed one, which refuses everything; the window's
+/// page-load hook ([`Db::promote`], `build_window` in lib.rs) puts it in place
+/// when the next page starts.
+pub struct Db {
+    live: std::sync::RwLock<SqlitePool>,
+    held: std::sync::Mutex<Option<SqlitePool>>,
+}
 
 impl Db {
     pub fn new(pool: SqlitePool) -> Self {
-        Self(std::sync::RwLock::new(pool))
+        Self {
+            live: std::sync::RwLock::new(pool),
+            held: std::sync::Mutex::new(None),
+        }
     }
 
     /// The connection, as it is now. A clone of the pool is the same connection.
     pub fn pool(&self) -> SqlitePool {
-        self.0.read().unwrap_or_else(|poisoned| poisoned.into_inner()).clone()
+        self.live.read().unwrap_or_else(|poisoned| poisoned.into_inner()).clone()
     }
 
-    /// Puts a newly opened connection in place of the old one, and answers the old one.
+    /// Keeps a newly opened connection aside until [`Db::promote`].
     #[cfg_attr(not(target_os = "android"), allow(dead_code))]
-    pub fn replace(&self, pool: SqlitePool) -> SqlitePool {
-        let mut slot = self.0.write().unwrap_or_else(|poisoned| poisoned.into_inner());
-        std::mem::replace(&mut *slot, pool)
+    pub fn hold(&self, pool: SqlitePool) {
+        let mut held = self.held.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+        *held = Some(pool);
+    }
+
+    /// Puts the held connection in place, if there is one; answers whether there was.
+    pub fn promote(&self) -> bool {
+        let fresh = self.held.lock().unwrap_or_else(|poisoned| poisoned.into_inner()).take();
+        match fresh {
+            Some(pool) => {
+                let mut slot = self.live.write().unwrap_or_else(|poisoned| poisoned.into_inner());
+                *slot = pool;
+                true
+            }
+            None => false,
+        }
     }
 }
 
@@ -112,9 +139,50 @@ pub(crate) fn database_path(app: &tauri::AppHandle) -> Result<PathBuf, CommandEr
 }
 
 /// Opens (creating if needed) the database, applies migrations, and returns the
-/// pool. Called once during `setup`.
-pub async fn init(app: &tauri::AppHandle) -> Result<SqlitePool, CommandError> {
-    open(&database_path(app)?).await
+/// pool. Called during `setup`, and on Android by the `process` plugin's
+/// `restart` after a full copy was installed.
+pub async fn init(app: &tauri::AppHandle) -> Result<Opened, CommandError> {
+    open_settled(&database_path(app)?).await
+}
+
+/// The database opened, and whether a swap had to be undone to open it.
+pub struct Opened {
+    pub pool: SqlitePool,
+    /// Why the database a restore or a full copy put in place was taken out
+    /// again, the one it replaced being open instead; `None` when nothing was undone.
+    pub undone: Option<String>,
+}
+
+/// [`open`], around a swap of the database file (a restore, a full copy):
+/// first finishes or undoes one that was interrupted (`backup::recover_swap`);
+/// then, when the database opens, drops what the swap replaced; when it does
+/// not and a replaced one is there, puts that one back and opens it
+/// (`backup::undo_swap`), so that a copy whose migrations fail cannot stop the
+/// program at every start (review-native 10).
+pub(crate) async fn open_settled(path: &std::path::Path) -> Result<Opened, CommandError> {
+    let dir = path
+        .parent()
+        .ok_or_else(|| CommandError::new("the database has no folder"))?;
+    crate::backup::recover_swap(dir);
+    match open(path).await {
+        Ok(pool) => {
+            crate::backup::settle_swap(dir);
+            Ok(Opened { pool, undone: None })
+        }
+        Err(error) => {
+            if !crate::backup::undo_swap(dir) {
+                return Err(error);
+            }
+            let pool = open(path).await?;
+            Ok(Opened {
+                pool,
+                undone: Some(format!(
+                    "the database put in place did not open ({}); the one it replaced was put back",
+                    error.message
+                )),
+            })
+        }
+    }
 }
 
 /// Opens the database at `path` and brings it up to date.
@@ -145,9 +213,11 @@ pub(crate) async fn open(path: &std::path::Path) -> Result<SqlitePool, CommandEr
         .connect_with(options)
         .await?;
 
-    sqlx::migrate!("./migrations").run(&pool).await.map_err(|error| {
-        CommandError::new(format!("database migration failed: {error}"))
-    })?;
+    if let Err(error) = sqlx::migrate!("./migrations").run(&pool).await {
+        // Closed before answering: the file may be set aside and another put in its place.
+        pool.close().await;
+        return Err(CommandError::new(format!("database migration failed: {error}")));
+    }
 
     Ok(pool)
 }

@@ -37,7 +37,10 @@ const PROTECTED: &str = "protected";
 /// The vault, in the application configuration folder.
 const VAULT_FILE: &str = "sync-vault.json";
 /// What an installed full copy leaves for the next start.
-const INSTALL_NOTE: &str = "sync-install-pending.json";
+pub(crate) const INSTALL_NOTE: &str = "sync-install-pending.json";
+/// The mailbox's address that last answered (`http::AddressMemory`), beside the
+/// vault: outside the database, so in no backup and never sent to another device.
+const ADDRESS_FILE: &str = "sync-address.json";
 
 /// The largest part read or written in one call.
 const MAX_PART: u64 = 4 * 1024 * 1024;
@@ -81,16 +84,19 @@ fn confine(base: &Path, relative: &str, roots: &[&str]) -> Option<PathBuf> {
     if segments.len() < 2 || !roots.contains(&segments[0]) || !segments.iter().all(|s| plain_segment(s)) {
         return None;
     }
+    // No segment may be a link, wherever it leads, the file itself included: a
+    // folder replaced by a link that leads out, a link made inside a folder that
+    // does not exist yet (the old check looked at the parent only when it
+    // existed), a file swapped for a link to the database (review-native 5).
+    // What does not exist yet is created by the program as a plain folder or file.
     let mut path = base.to_path_buf();
     for segment in segments {
         path.push(segment);
-    }
-    // A folder replaced by a link that leads out is refused too.
-    if let (Ok(real_base), Some(parent)) = (base.canonicalize(), path.parent()) {
-        if let Ok(real_parent) = parent.canonicalize() {
-            if !real_parent.starts_with(&real_base) {
-                return None;
-            }
+        match std::fs::symlink_metadata(&path) {
+            Ok(meta) if meta.file_type().is_symlink() => return None,
+            Ok(_) => {}
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+            Err(_) => return None,
         }
     }
     Some(path)
@@ -120,7 +126,7 @@ fn normalise_origin(typed: &str) -> Result<String, CommandError> {
     if !url.username().is_empty() || url.password().is_some() {
         return Err(refused("the mailbox address must not hold a name or a password"));
     }
-    if url.host_str().map_or(true, str::is_empty) {
+    if url.host_str().is_none_or(str::is_empty) {
         return Err(refused("the mailbox address has no host"));
     }
     if url.path() != "/" || url.query().is_some() || url.fragment().is_some() {
@@ -237,14 +243,18 @@ pub async fn sync_request(
     };
     check_request(&method, &path, &headers, body.len())?;
 
-    let origin = vault::origin(&app_config_dir(&app)?)?.ok_or_else(|| refused("no mailbox address is set"))?;
+    let config_dir = app_config_dir(&app)?;
+    let origin = vault::origin(&config_dir)?.ok_or_else(|| refused("no mailbox address is set"))?;
+    let memory = http::AddressMemory::in_file(config_dir.join(ADDRESS_FILE));
     let outgoing = http::Outgoing {
         method,
         path,
         headers,
         body,
     };
-    let answer = tauri::async_runtime::spawn_blocking(move || http::send(&origin, outgoing, http::TIMEOUT, true))
+    let answer = tauri::async_runtime::spawn_blocking(move || {
+        http::send(&origin, outgoing, &http::LIMITS, true, &memory)
+    })
         .await
         .map_err(|error| CommandError::new(format!("OFFLINE: {error}")))?
         .map_err(CommandError::new)?;
@@ -350,6 +360,8 @@ mod vault {
     }
 
     pub(super) fn clear(dir: &Path) -> Result<(), CommandError> {
+        // The address that last answered goes with the mailbox it belongs to.
+        let _ = std::fs::remove_file(dir.join(ADDRESS_FILE));
         match std::fs::remove_file(file(dir)) {
             Ok(()) => Ok(()),
             Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
@@ -640,8 +652,9 @@ fn utc_stamp(now: std::time::SystemTime) -> String {
 /// Steps: the copy is checked (`check_restore_source`: a SQLite file that
 /// passes its quick check, holds a database id, and only migrations this build
 /// carries); the live database is copied to `protected/` with `VACUUM INTO`;
-/// the copy is moved beside the live file; the note is written; the connection
-/// is closed; the files are swapped by renaming. An error after the connection
+/// the copy is moved beside the live file; the connection is closed; the files
+/// are swapped by renaming, and the note put in place after them
+/// (`backup::swap_in`). An error after the connection
 /// was closed starts with `RESTORE_RELAUNCH:`. Stored files are not touched:
 /// they arrive in parts. The window relaunches afterwards.
 async fn install_copy(
@@ -674,18 +687,11 @@ async fn install_copy(
         .or_else(|_| std::fs::copy(&source, &staged).map(|_| ()))
         .map_err(|error| CommandError::new(format!("could not stage the full copy: {error}")))?;
 
-    let note_path = base.join(INSTALL_NOTE);
-    if let Some(note) = note {
-        if let Err(error) = std::fs::write(&note_path, note) {
-            let _ = std::fs::remove_file(&staged);
-            return Err(CommandError::new(format!("could not leave the install note: {error}")));
-        }
-    }
-
+    // The note is put in place by the swap, once the copy is: a start never reads a note for a copy that was not
+    // installed (review-native 2).
     pool.close().await;
-    if let Err(error) = crate::backup::swap_in(base, &staged, None) {
+    if let Err(error) = crate::backup::swap_in(base, &staged, None, note.as_deref().map(|text| (INSTALL_NOTE, text))) {
         let _ = std::fs::remove_file(&staged);
-        let _ = std::fs::remove_file(&note_path);
         return Err(CommandError::new(format!("{}{error}", crate::backup::RELAUNCH)));
     }
     Ok(kept)

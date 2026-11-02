@@ -47,6 +47,7 @@ CREATE TABLE "SyncBooks__new" (
   "forced" INTEGER NOT NULL DEFAULT 0,
   "reason" TEXT,
   "updatedAt" TEXT NOT NULL,
+  "handover" TEXT,
   FOREIGN KEY ("holderDeviceId") REFERENCES "SyncDevice__new" ("id") ON DELETE RESTRICT,
   FOREIGN KEY ("requestedByDeviceId") REFERENCES "SyncDevice__new" ("id") ON DELETE RESTRICT,
   CHECK ("id" = 'books'),
@@ -165,7 +166,7 @@ WHEN (SELECT "capturing" = 1 AND "applying" = 0 FROM "SyncSession" WHERE "id" = 
 BEGIN
 SELECT RAISE(ABORT, 'SYNC_UNSTAMPED') WHERE (SELECT "txId" FROM "SyncSession" WHERE "id" = 'session') IS NULL;
 INSERT INTO "SyncOutbox" ("txId", "hlc", "tbl", "rowId", "op", "data")
-  SELECT "txId", "hlc", 'SyncBooks', NEW."id", 'I', json_object('id', NEW."id", 'holderDeviceId', NEW."holderDeviceId", 'epoch', NEW."epoch", 'handedAt', NEW."handedAt", 'requestedByDeviceId', NEW."requestedByDeviceId", 'requestedAt', NEW."requestedAt", 'lastInvoiceNumber', NEW."lastInvoiceNumber", 'lastReceiptNumber', NEW."lastReceiptNumber", 'forced', NEW."forced", 'reason', NEW."reason", 'updatedAt', NEW."updatedAt") FROM "SyncSession" WHERE "id" = 'session';
+  SELECT "txId", "hlc", 'SyncBooks', NEW."id", 'I', json_object('id', NEW."id", 'holderDeviceId', NEW."holderDeviceId", 'epoch', NEW."epoch", 'handedAt', NEW."handedAt", 'requestedByDeviceId', NEW."requestedByDeviceId", 'requestedAt', NEW."requestedAt", 'lastInvoiceNumber', NEW."lastInvoiceNumber", 'lastReceiptNumber', NEW."lastReceiptNumber", 'forced', NEW."forced", 'reason', NEW."reason", 'updatedAt', NEW."updatedAt", 'handover', NEW."handover") FROM "SyncSession" WHERE "id" = 'session';
 END;
 
 CREATE TRIGGER "SyncBooks_sync_update" AFTER UPDATE ON "SyncBooks"
@@ -180,7 +181,8 @@ WHEN (SELECT "capturing" = 1 AND "applying" = 0 FROM "SyncSession" WHERE "id" = 
     OR NEW."lastReceiptNumber" IS NOT OLD."lastReceiptNumber"
     OR NEW."forced" IS NOT OLD."forced"
     OR NEW."reason" IS NOT OLD."reason"
-    OR NEW."updatedAt" IS NOT OLD."updatedAt")
+    OR NEW."updatedAt" IS NOT OLD."updatedAt"
+    OR NEW."handover" IS NOT OLD."handover")
 BEGIN
 SELECT RAISE(ABORT, 'SYNC_UNSTAMPED') WHERE (SELECT "txId" FROM "SyncSession" WHERE "id" = 'session') IS NULL;
 INSERT INTO "SyncOutbox" ("txId", "hlc", "tbl", "rowId", "op", "data")
@@ -195,7 +197,8 @@ INSERT INTO "SyncOutbox" ("txId", "hlc", "tbl", "rowId", "op", "data")
     UNION ALL SELECT 'lastReceiptNumber', json_array(NEW."lastReceiptNumber", (SELECT "hlc" FROM "SyncCell" WHERE "tbl" = 'SyncBooks' AND "rowId" = NEW."id" AND "col" = 'lastReceiptNumber')) WHERE NEW."lastReceiptNumber" IS NOT OLD."lastReceiptNumber"
     UNION ALL SELECT 'forced', json_array(NEW."forced", (SELECT "hlc" FROM "SyncCell" WHERE "tbl" = 'SyncBooks' AND "rowId" = NEW."id" AND "col" = 'forced')) WHERE NEW."forced" IS NOT OLD."forced"
     UNION ALL SELECT 'reason', json_array(NEW."reason", (SELECT "hlc" FROM "SyncCell" WHERE "tbl" = 'SyncBooks' AND "rowId" = NEW."id" AND "col" = 'reason')) WHERE NEW."reason" IS NOT OLD."reason"
-    UNION ALL SELECT 'updatedAt', json_array(NEW."updatedAt", (SELECT "hlc" FROM "SyncCell" WHERE "tbl" = 'SyncBooks' AND "rowId" = NEW."id" AND "col" = 'updatedAt')) WHERE NEW."updatedAt" IS NOT OLD."updatedAt")) FROM "SyncSession" WHERE "id" = 'session';
+    UNION ALL SELECT 'updatedAt', json_array(NEW."updatedAt", (SELECT "hlc" FROM "SyncCell" WHERE "tbl" = 'SyncBooks' AND "rowId" = NEW."id" AND "col" = 'updatedAt')) WHERE NEW."updatedAt" IS NOT OLD."updatedAt"
+    UNION ALL SELECT 'handover', json_array(NEW."handover", (SELECT "hlc" FROM "SyncCell" WHERE "tbl" = 'SyncBooks' AND "rowId" = NEW."id" AND "col" = 'handover')) WHERE NEW."handover" IS NOT OLD."handover")) FROM "SyncSession" WHERE "id" = 'session';
 INSERT INTO "SyncCell" ("tbl", "rowId", "col", "hlc")
   SELECT 'SyncBooks', NEW."id", "k", (SELECT "hlc" FROM "SyncSession" WHERE "id" = 'session') FROM (
     SELECT 'id' AS "k" WHERE NEW."id" IS NOT OLD."id"
@@ -208,7 +211,8 @@ INSERT INTO "SyncCell" ("tbl", "rowId", "col", "hlc")
     UNION ALL SELECT 'lastReceiptNumber' WHERE NEW."lastReceiptNumber" IS NOT OLD."lastReceiptNumber"
     UNION ALL SELECT 'forced' WHERE NEW."forced" IS NOT OLD."forced"
     UNION ALL SELECT 'reason' WHERE NEW."reason" IS NOT OLD."reason"
-    UNION ALL SELECT 'updatedAt' WHERE NEW."updatedAt" IS NOT OLD."updatedAt")
+    UNION ALL SELECT 'updatedAt' WHERE NEW."updatedAt" IS NOT OLD."updatedAt"
+    UNION ALL SELECT 'handover' WHERE NEW."handover" IS NOT OLD."handover")
   WHERE true
   ON CONFLICT ("tbl", "rowId", "col") DO UPDATE SET "hlc" = excluded."hlc";
 END;

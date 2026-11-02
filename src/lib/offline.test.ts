@@ -76,15 +76,44 @@ const ANDROID_LIBRARIES = [
 /** The one HTTP library the program may use, and the one file that may use it (DECISION section 9). */
 const SYNC_HTTP_CRATE = "ureq";
 const SYNC_HTTP_FILE = "src-tauri/src/sync/http.rs";
+/**
+ * The two addresses the program may reach besides the mailbox: Cloudflare's resolver, asked over HTTPS for the
+ * mailbox's own addresses when the system's are filtered (docs/phone/DECISION.md section 10). In that file only.
+ */
+const RESOLVERS = ["1.1.1.1", "1.0.0.1"];
+/** Addresses of this machine, which a check of the dev server may name. */
+const LOCAL_ADDRESSES = ["127.0.0.1", "0.0.0.0"];
 
 /** The Tauri plugins the program uses. A new one is a decision, not a line: it must be added here too. */
 const PLUGINS = ["dialog", "fs", "log", "notification", "os", "process", "single-instance", "store", "window-state"];
 
-/** A Rust file's code without its tests: everything before the first `#[cfg(test)]`; nothing for a tests file. */
-function withoutTests(file: string, text: string): string {
+/**
+ * A Rust file's code without its tests: every item marked `#[cfg(test)]` taken out (a `mod tests;` line, a
+ * `mod tests { … }` block, a helper function in the middle of an `impl`), and the code after it kept; nothing for a
+ * tests file. The item ends at its first `;` when that comes before any `{`, else at the brace that closes its first.
+ */
+export function withoutTests(file: string, text: string): string {
   if (/\/tests\.rs$/.test(file)) return "";
-  const at = text.indexOf("#[cfg(test)]");
-  return at === -1 ? text : text.slice(0, at);
+  let out = "";
+  let from = 0;
+  for (;;) {
+    const at = text.indexOf("#[cfg(test)]", from);
+    if (at === -1) return out + text.slice(from);
+    out += text.slice(from, at);
+    let i = at + "#[cfg(test)]".length;
+    const semicolon = text.indexOf(";", i);
+    const brace = text.indexOf("{", i);
+    if (brace === -1 || (semicolon !== -1 && semicolon < brace)) {
+      from = semicolon === -1 ? text.length : semicolon + 1;
+      continue;
+    }
+    let depth = 0;
+    for (i = brace; i < text.length; i++) {
+      if (text[i] === "{") depth++;
+      else if (text[i] === "}" && --depth === 0) break;
+    }
+    from = i + 1;
+  }
 }
 
 /** Where a path ends inside the repository, for messages: `src-tauri/src/sync/http.rs`. */
@@ -256,14 +285,79 @@ describe("offline, by construction", () => {
       Object.entries(rustSources).find(([file]) => file.endsWith("/sync/mod.rs"))![1],
     );
     const sends = [...sync.matchAll(/http::send\(([^)]*)\)/g)].map((match) => match[1].replace(/\s+/g, " ").trim());
-    expect(sends).toEqual(["&origin, outgoing, http::TIMEOUT, true"]);
+    expect(sends).toEqual(["&origin, outgoing, &http::LIMITS, true, &memory"]);
     expect(sync).toMatch(/let origin = vault::origin\(/);
     const http = withoutTests(
       SYNC_HTTP_FILE,
       Object.entries(rustSources).find(([file]) => file.endsWith("/sync/http.rs"))![1],
     );
     expect(http).toMatch(/\.https_only\(https_only\)/);
-    expect(http).toMatch(/\.max_redirects\(0\)/);
+    // Every client the file builds (the mailbox's, the resolver's): no redirect followed, no proxy taken from the
+    // environment, HTTPS only.
+    const clients = (http.match(/config_builder\(\)/g) ?? []).length;
+    expect(clients).toBe(2);
+    expect((http.match(/\.max_redirects\(0\)/g) ?? []).length).toBe(clients);
+    expect((http.match(/\.proxy\(None\)/g) ?? []).length).toBe(clients);
+    expect((http.match(/\.https_only\((?:https_only|true)\)/g) ?? []).length).toBe(clients);
+  });
+
+  it("names no address but the resolver's two, in the sync's file only", () => {
+    const literals = Object.entries(rustSources).flatMap(([file, text]) =>
+      [...withoutTests(file, text).matchAll(/(?<![\d.])\d{1,3}(?:\.\d{1,3}){3}(?![\d.])/g)]
+        .map((match) => match[0])
+        .filter((address) => !LOCAL_ADDRESSES.includes(address))
+        .map((address) => `${repoPath(file)}: ${address}`),
+    );
+    expect([...new Set(literals)].sort()).toEqual(RESOLVERS.map((address) => `${SYNC_HTTP_FILE}: ${address}`).sort());
+    // Nor one built from its numbers.
+    const built = Object.entries(rustSources).flatMap(([file, text]) =>
+      [...withoutTests(file, text).matchAll(/\bIpv[46]Addr::new\(|\bSocketAddrV[46]::new\(/g)].map(
+        (match) => `${repoPath(file)}: ${match[0]}`,
+      ),
+    );
+    expect(built).toEqual([]);
+  });
+
+  it("opens no socket of its own: the HTTP client's connectors are the only ones", () => {
+    const sockets = Object.entries(rustSources).flatMap(([file, text]) =>
+      [
+        /\bTcpStream\b/,
+        /\bTcpListener\b/,
+        /\bUdpSocket\b/,
+        /\bUnixStream\b/,
+        /\btokio::net\b/,
+        /\bsocket2\b/,
+        /\bmio::/,
+      ]
+        .filter((pattern) => pattern.test(withoutTests(file, text)))
+        .map((pattern) => `${repoPath(file)}: ${pattern}`),
+    );
+    expect(sockets).toEqual([]);
+    // A name is looked up in the sync's file only, for the mailbox.
+    const lookups = Object.entries(rustSources)
+      .filter(([file, text]) => /\bto_socket_addrs\b|\bToSocketAddrs\b/.test(withoutTests(file, text)))
+      .map(([file]) => repoPath(file));
+    expect(lookups).toEqual([SYNC_HTTP_FILE]);
+  });
+
+  it("reads a Rust file without its tests, whatever follows them", () => {
+    const code = [
+      "fn kept_before() {}",
+      "#[cfg(test)]",
+      "fn helper() { let x = { 1 }; }",
+      "fn kept_after() {}",
+      "#[cfg(test)]",
+      "mod tests;",
+      "fn kept_last() {}",
+      "#[cfg(test)]",
+      "mod more { fn a() { if true { } } }",
+    ].join("\n");
+    const kept = withoutTests("src-tauri/src/x.rs", code);
+    expect(kept).toContain("kept_before");
+    expect(kept).toContain("kept_after");
+    expect(kept).toContain("kept_last");
+    expect(kept).not.toMatch(/helper|mod tests|mod more/);
+    expect(withoutTests("src-tauri/src/sync/http/tests.rs", code)).toBe("");
   });
 
   it("depends on no JavaScript package for those plugins either", () => {
@@ -442,6 +536,14 @@ describe("offline, by construction", () => {
     const activity = kotlin.find(([file]) => file.endsWith("/MainActivity.kt"))![1];
     expect(activity).toMatch(/if \(BuildConfig\.WEBVIEW_DEBUG\) \{\s*WebView\.setWebContentsDebuggingEnabled\(true\)/);
     expect(gradle).toMatch(/val webViewDebug = System\.getenv\("INMAA_ANDROID_TEST"\) == "1"/);
+    // And that build is another app, which can never replace the program on a phone (review-native 4).
+    expect(gradle).toMatch(/if \(webViewDebug\) \{\s*applicationIdSuffix = "\.test"/);
+  });
+
+  it("keeps the system WebView from reporting on the window", () => {
+    const manifest = androidFile("src-tauri/gen/android/app/src/main/AndroidManifest.xml");
+    expect(manifest).toMatch(/android:name="android\.webkit\.WebView\.MetricsOptOut"\s+android:value="true"/);
+    expect(manifest).toMatch(/android:name="android\.webkit\.WebView\.EnableSafeBrowsing"\s+android:value="false"/);
   });
 
   it("loads nothing remote from the HTML entry point", () => {

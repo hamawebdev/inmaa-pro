@@ -167,7 +167,12 @@ pub async fn anchor_write(record: String) -> Result<(), CommandError> {
                 continue;
             }
         }
-        if std::fs::write(&path, &sealed).is_ok() {
+        // Whole or not at all (review-native 7): a new file, flushed, renamed
+        // over the old one, so a power cut leaves the old anchor or the new one,
+        // never an empty or half-written one that would stop the next start.
+        // Where a rename cannot replace it (another user's file in %ProgramData%), written in place as before.
+        let whole = crate::backup::write_whole(&path, sealed.as_bytes());
+        if whole.is_ok() || std::fs::write(&path, &sealed).is_ok() {
             written += 1;
         }
     }

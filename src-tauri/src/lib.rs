@@ -88,6 +88,15 @@ fn build_window(app: &AppHandle, label: &str) -> Result<tauri::WebviewWindow, St
         // *going* anywhere, whatever a link or a stored value says.
         .on_navigation(is_app_url)
         .on_new_window(|_url, _features| tauri::webview::NewWindowResponse::Deny)
+        // A new page starting: the database a phone's restart opened is handed
+        // out now, never to the page before it (db::Db::hold, src/mobile.rs).
+        .on_page_load(|window, payload| {
+            if payload.event() == tauri::webview::PageLoadEvent::Started {
+                if let Some(db) = window.try_state::<db::Db>() {
+                    db.promote();
+                }
+            }
+        })
         .build()
         .map_err(|e| e.to_string())
 }
@@ -198,9 +207,12 @@ pub fn run() {
             // Open the database and run migrations before the webview can issue
             // any query. Failing here is fatal: without storage there is no app.
             let handle = app.handle().clone();
-            let pool = tauri::async_runtime::block_on(db::init(&handle))
+            let opened = tauri::async_runtime::block_on(db::init(&handle))
                 .expect("failed to initialise the database");
-            app.manage(db::Db::new(pool));
+            if let Some(undone) = &opened.undone {
+                eprintln!("inmaa-pro: {undone}");
+            }
+            app.manage(db::Db::new(opened.pool));
 
             // The program opens straight on its window: no licence, no trial.
             build_window(app.handle(), MAIN_WINDOW)?;

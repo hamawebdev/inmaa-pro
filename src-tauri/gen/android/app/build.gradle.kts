@@ -17,7 +17,9 @@ val keystoreProperties = Properties().apply {
     }
 }
 
-// A test build (npm run android:build:test) can be driven over Chrome DevTools Protocol.
+// A test build (npm run android:build:test) can be driven over Chrome DevTools Protocol. It is another app
+// (com.hamawebdev.inmaa_pro.test, «إنماء برو (اختبار)»): installed on a phone that has the program, it sits beside
+// it and can never replace it, nor read its data.
 val webViewDebug = System.getenv("INMAA_ANDROID_TEST") == "1"
 
 val tauriProperties = Properties().apply {
@@ -38,6 +40,11 @@ android {
         versionCode = tauriProperties.getProperty("tauri.android.versionCode", "1").toInt()
         versionName = tauriProperties.getProperty("tauri.android.versionName", "1.0")
         buildConfigField("boolean", "WEBVIEW_DEBUG", webViewDebug.toString())
+        if (webViewDebug) {
+            applicationIdSuffix = ".test"
+            versionNameSuffix = "-test"
+        }
+        manifestPlaceholders["appLabel"] = if (webViewDebug) "إنماء برو (اختبار)" else "إنماء برو"
     }
     signingConfigs {
         if (keystoreProperties.containsKey("storeFile")) {

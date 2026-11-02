@@ -191,7 +191,7 @@ fn synced_by(path: &Path, onedrive_roots: &[PathBuf]) -> Option<String> {
 fn onedrive_roots() -> Vec<PathBuf> {
     ["OneDrive", "OneDriveConsumer", "OneDriveCommercial"]
         .iter()
-        .filter_map(|name| std::env::var_os(name))
+        .filter_map(std::env::var_os)
         .map(PathBuf::from)
         .collect()
 }
@@ -358,49 +358,236 @@ pub(crate) async fn check_restore_source(path: &Path) -> Result<(), CommandError
     checked
 }
 
+/// The notes a swap leaves for the next start: a restore's and an installed
+/// full copy's. Each is written as `<note>.staged` before the swap and renamed
+/// to its name only once the new database is in place ([`swap_in`]), so a
+/// note never tells a start about a swap that did not happen.
+pub(crate) const SWAP_NOTES: [&str; 2] = [RESTORE_NOTE, crate::sync::INSTALL_NOTE];
+
+/// What a swap leaves beside the database until the new one has opened: the
+/// database and the uploads it replaced ([`settle_swap`], [`undo_swap`]).
+fn replaced_paths(dir: &Path) -> (PathBuf, PathBuf) {
+    (
+        dir.join(format!("{}.replaced", crate::db::DB_FILE)),
+        dir.join("uploads.replaced"),
+    )
+}
+
+fn staged_note(dir: &Path, note: &str) -> PathBuf {
+    dir.join(format!("{note}.staged"))
+}
+
+/// Flushes a file's bytes to the disk.
+fn sync_file(path: &Path) -> std::io::Result<()> {
+    std::fs::OpenOptions::new().write(true).open(path)?.sync_all()
+}
+
+/// Flushes a folder's entries (the renames inside it) to the disk. Windows
+/// cannot open a folder for this; there NTFS's own journal keeps renames.
+pub(crate) fn sync_dir(dir: &Path) {
+    #[cfg(unix)]
+    if let Ok(folder) = std::fs::File::open(dir) {
+        let _ = folder.sync_all();
+    }
+    #[cfg(not(unix))]
+    let _ = dir;
+}
+
+/// Writes a small file whole: a new file beside it, flushed, renamed over it.
+pub(crate) fn write_whole(target: &Path, bytes: &[u8]) -> std::io::Result<()> {
+    let partial = target.with_extension("partial");
+    let _ = std::fs::remove_file(&partial);
+    let written = (|| {
+        std::fs::write(&partial, bytes)?;
+        sync_file(&partial)?;
+        std::fs::rename(&partial, target)
+    })();
+    if written.is_err() {
+        let _ = std::fs::remove_file(&partial);
+    }
+    if let Some(dir) = target.parent() {
+        sync_dir(dir);
+    }
+    written
+}
+
 /// Puts the staged database and uploads in place of the live ones, the open
-/// connection already closed. Renames only, and undone when one fails, so the
-/// data folder never holds half of a restore.
-pub(crate) fn swap_in(dir: &Path, staged: &Path, staged_uploads: Option<&Path>) -> Result<(), String> {
+/// connection already closed, then the note (`note`: its file name and its
+/// text) for the next start. Renames only, and undone when one fails, so the
+/// data folder never holds half of a restore, nor a note for a swap that did
+/// not happen (review-native 2, 3).
+///
+/// The staged file is flushed to the disk before it is renamed, and the folder
+/// after, so that a power cut cannot leave an empty or partial database under
+/// the live name. What it replaced stays beside it (`inmaa.db.replaced`,
+/// `uploads.replaced`) until the new database has opened at the next start
+/// ([`crate::db::init`]): a copy that will not open is taken out again and the
+/// old one put back ([`undo_swap`]).
+pub(crate) fn swap_in(
+    dir: &Path,
+    staged: &Path,
+    staged_uploads: Option<&Path>,
+    note: Option<(&str, &str)>,
+) -> Result<(), String> {
     let db_path = dir.join(crate::db::DB_FILE);
-    let replaced = dir.join(format!("{}.replaced", crate::db::DB_FILE));
+    let (replaced, uploads_replaced) = replaced_paths(dir);
+    sync_file(staged).map_err(|error| format!("could not flush the staged database: {error}"))?;
+    let staged_note = match note {
+        Some((name, text)) => {
+            let path = staged_note(dir, name);
+            write_whole(&path, text.as_bytes()).map_err(|error| format!("could not leave the note: {error}"))?;
+            Some((path, dir.join(name)))
+        }
+        None => None,
+    };
+    let drop_note = || {
+        if let Some((staged, _)) = &staged_note {
+            let _ = std::fs::remove_file(staged);
+        }
+    };
     // The sidecars belong to the replaced file and would be replayed over the restored one.
     for suffix in ["-wal", "-shm"] {
         let sidecar = dir.join(format!("{}{suffix}", crate::db::DB_FILE));
         if sidecar.exists() {
-            std::fs::remove_file(&sidecar).map_err(|error| format!("could not clear {}: {error}", sidecar.display()))?;
+            if let Err(error) = std::fs::remove_file(&sidecar) {
+                drop_note();
+                return Err(format!("could not clear {}: {error}", sidecar.display()));
+            }
         }
     }
     let _ = std::fs::remove_file(&replaced);
-    std::fs::rename(&db_path, &replaced).map_err(|error| format!("could not set the database aside: {error}"))?;
+    let _ = std::fs::remove_dir_all(&uploads_replaced);
+    if let Err(error) = std::fs::rename(&db_path, &replaced) {
+        drop_note();
+        return Err(format!("could not set the database aside: {error}"));
+    }
     if let Err(error) = std::fs::rename(staged, &db_path) {
         let _ = std::fs::rename(&replaced, &db_path);
+        drop_note();
+        sync_dir(dir);
         return Err(format!("could not put the restored database in place: {error}"));
     }
+    sync_dir(dir);
+    let mut moved_uploads_aside = false;
     if let Some(staged_uploads) = staged_uploads {
         let uploads = dir.join("uploads");
-        let uploads_replaced = dir.join("uploads.replaced");
-        let _ = std::fs::remove_dir_all(&uploads_replaced);
-        let moved_aside = uploads.exists();
+        moved_uploads_aside = uploads.exists();
         let result = (|| {
-            if moved_aside {
+            if moved_uploads_aside {
                 std::fs::rename(&uploads, &uploads_replaced)?;
             }
             std::fs::rename(staged_uploads, &uploads)
         })();
         if let Err(error) = result {
             // Back as it was: the database and its files belong together.
-            if moved_aside && !uploads.exists() {
+            if moved_uploads_aside && !uploads.exists() {
                 let _ = std::fs::rename(&uploads_replaced, &uploads);
             }
             let _ = std::fs::remove_file(&db_path);
             let _ = std::fs::rename(&replaced, &db_path);
+            drop_note();
+            sync_dir(dir);
             return Err(format!("could not put the restored files in place: {error}"));
         }
-        let _ = std::fs::remove_dir_all(&uploads_replaced);
     }
-    let _ = std::fs::remove_file(&replaced);
+    if let Some((staged, final_note)) = &staged_note {
+        if let Err(error) = std::fs::rename(staged, final_note) {
+            let uploads = dir.join("uploads");
+            if staged_uploads.is_some() {
+                let _ = std::fs::remove_dir_all(&uploads);
+                if moved_uploads_aside {
+                    let _ = std::fs::rename(&uploads_replaced, &uploads);
+                }
+            }
+            let _ = std::fs::remove_file(&db_path);
+            let _ = std::fs::rename(&replaced, &db_path);
+            drop_note();
+            sync_dir(dir);
+            return Err(format!("could not leave the note: {error}"));
+        }
+    }
+    sync_dir(dir);
     Ok(())
+}
+
+/// Before the database is opened: finishes or undoes a swap that a power cut
+/// or a crash interrupted. A live database that is missing or empty while the
+/// one it replaced is still there means the swap stopped between its two
+/// renames: the replaced one is put back. A live database in place with its
+/// note still staged means it stopped just before the note: the note is put in
+/// place (the new database is whole, it was flushed before its rename). A
+/// staged note with no swap under way is dropped.
+pub(crate) fn recover_swap(dir: &Path) {
+    let db_path = dir.join(crate::db::DB_FILE);
+    let (replaced, uploads_replaced) = replaced_paths(dir);
+    let live_is_empty = std::fs::metadata(&db_path).map_or(true, |meta| meta.len() == 0);
+    if replaced.is_file() && live_is_empty {
+        for suffix in ["-wal", "-shm"] {
+            let _ = std::fs::remove_file(dir.join(format!("{}{suffix}", crate::db::DB_FILE)));
+        }
+        let _ = std::fs::remove_file(&db_path);
+        let _ = std::fs::rename(&replaced, &db_path);
+        let uploads = dir.join("uploads");
+        if uploads_replaced.is_dir() && !uploads.exists() {
+            let _ = std::fs::rename(&uploads_replaced, &uploads);
+        }
+        for note in SWAP_NOTES {
+            let _ = std::fs::remove_file(staged_note(dir, note));
+        }
+    } else {
+        for note in SWAP_NOTES {
+            let staged = staged_note(dir, note);
+            if !staged.exists() {
+                continue;
+            }
+            if replaced.is_file() {
+                let _ = std::fs::rename(&staged, dir.join(note));
+            } else {
+                let _ = std::fs::remove_file(&staged);
+            }
+        }
+    }
+    sync_dir(dir);
+}
+
+/// After the database opened: what a swap replaced is no longer needed.
+pub(crate) fn settle_swap(dir: &Path) {
+    let (replaced, uploads_replaced) = replaced_paths(dir);
+    let _ = std::fs::remove_file(&replaced);
+    let _ = std::fs::remove_dir_all(&uploads_replaced);
+}
+
+/// When the database a swap put in place does not open (its migrations fail):
+/// it is set aside as `inmaa.db.failed`, the one it replaced is put back with
+/// its uploads, and the notes go (nothing was installed). Answers whether
+/// there was anything to put back (review-native 10).
+pub(crate) fn undo_swap(dir: &Path) -> bool {
+    let db_path = dir.join(crate::db::DB_FILE);
+    let (replaced, uploads_replaced) = replaced_paths(dir);
+    if !replaced.is_file() {
+        return false;
+    }
+    for suffix in ["-wal", "-shm"] {
+        let _ = std::fs::remove_file(dir.join(format!("{}{suffix}", crate::db::DB_FILE)));
+    }
+    let failed = dir.join(format!("{}.failed", crate::db::DB_FILE));
+    let _ = std::fs::remove_file(&failed);
+    let _ = std::fs::rename(&db_path, &failed);
+    if std::fs::rename(&replaced, &db_path).is_err() {
+        let _ = std::fs::rename(&failed, &db_path);
+        return false;
+    }
+    if uploads_replaced.is_dir() {
+        let uploads = dir.join("uploads");
+        let _ = std::fs::rename(&uploads, dir.join("uploads.failed"));
+        let _ = std::fs::rename(&uploads_replaced, &uploads);
+    }
+    for note in SWAP_NOTES {
+        let _ = std::fs::remove_file(dir.join(note));
+        let _ = std::fs::remove_file(staged_note(dir, note));
+    }
+    sync_dir(dir);
+    true
 }
 
 /// Replaces the live database and uploads with the contents of a backup.
@@ -453,21 +640,17 @@ pub async fn restore_from(
         }
     }
 
-    // For the next start: what was restored, and where the replaced database is kept. Before the swap.
-    let note_path = dir.join(RESTORE_NOTE);
-    if let Some(note) = note {
-        if let Err(error) = std::fs::write(&note_path, note) {
-            clean();
-            return Err(CommandError::new(format!("could not leave the restore note: {error}")));
-        }
-    }
-
-    // From here the open connection is closed: whatever happens, the window starts again.
+    // From here the open connection is closed: whatever happens, the window starts again. The note for the next
+    // start (what was restored, and where the replaced database is kept) is put in place by the swap, once the
+    // restored database is: never for a restore that did not happen.
     db.pool().close().await;
-    if let Err(error) = swap_in(&dir, &staged, with_uploads.then_some(staged_uploads.as_path())) {
+    if let Err(error) = swap_in(
+        &dir,
+        &staged,
+        with_uploads.then_some(staged_uploads.as_path()),
+        note.as_deref().map(|text| (RESTORE_NOTE, text)),
+    ) {
         clean();
-        // Nothing was restored: the note would tell the next start a restore happened.
-        let _ = std::fs::remove_file(&note_path);
         return Err(CommandError::new(format!("{RELAUNCH}{error}")));
     }
     Ok(())
@@ -668,15 +851,22 @@ mod tests {
         std::fs::create_dir_all(&staged_uploads).expect("staged uploads");
         std::fs::write(staged_uploads.join("b.png"), "restored upload").expect("staged upload");
 
-        swap_in(&dir, &staged, Some(&staged_uploads)).expect("the swap");
+        swap_in(&dir, &staged, Some(&staged_uploads), Some((RESTORE_NOTE, "the note"))).expect("the swap");
         assert_eq!(std::fs::read_to_string(&live).unwrap(), "restored");
         assert!(dir.join("uploads/b.png").exists() && !dir.join("uploads/a.png").exists());
+        assert_eq!(std::fs::read_to_string(dir.join(RESTORE_NOTE)).unwrap(), "the note");
+        // What it replaced waits for the restored database to open.
+        assert!(dir.join("inmaa.db.replaced").exists() && dir.join("uploads.replaced/a.png").exists());
+        settle_swap(&dir);
         assert!(!dir.join("inmaa.db.replaced").exists() && !dir.join("uploads.replaced").exists());
+        std::fs::remove_file(dir.join(RESTORE_NOTE)).unwrap();
 
-        // A staged copy that is not there: the live database is put back as it was.
+        // A staged copy that is not there: the live database is put back as it was, and no note is left.
         let missing = dir.join("gone.restoring");
-        assert!(swap_in(&dir, &missing, None).is_err());
+        assert!(swap_in(&dir, &missing, None, Some((RESTORE_NOTE, "a note"))).is_err());
         assert_eq!(std::fs::read_to_string(&live).unwrap(), "restored");
+        assert!(!dir.join(RESTORE_NOTE).exists() && !dir.join(format!("{RESTORE_NOTE}.staged")).exists());
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]
@@ -724,5 +914,124 @@ mod tests {
         ] {
             assert_eq!(upload_path(uploads, &segments(&crafted)), None, "{crafted:?} must be refused");
         }
+    }
+
+    fn swap_dir(name: &str) -> PathBuf {
+        let dir = std::env::temp_dir().join(format!("inmaa-swap-{name}-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).expect("dir");
+        dir
+    }
+
+    #[test]
+    fn a_swap_cut_between_its_renames_is_undone_at_the_next_start() {
+        let dir = swap_dir("cut");
+        let live = dir.join(crate::db::DB_FILE);
+        // The live database set aside, the copy not yet in place; an empty file created since.
+        std::fs::write(dir.join("inmaa.db.replaced"), "old").unwrap();
+        std::fs::write(&live, "").unwrap();
+        std::fs::write(dir.join("sync-install-pending.json.staged"), "note").unwrap();
+        recover_swap(&dir);
+        assert_eq!(std::fs::read_to_string(&live).unwrap(), "old");
+        assert!(!dir.join("inmaa.db.replaced").exists());
+        assert!(!dir.join("sync-install-pending.json").exists());
+        assert!(!dir.join("sync-install-pending.json.staged").exists());
+
+        // The same with no live file at all.
+        std::fs::rename(&live, dir.join("inmaa.db.replaced")).unwrap();
+        recover_swap(&dir);
+        assert_eq!(std::fs::read_to_string(&live).unwrap(), "old");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn a_swap_cut_before_its_note_is_finished_and_a_stray_note_is_dropped() {
+        let dir = swap_dir("note");
+        let live = dir.join(crate::db::DB_FILE);
+        // The copy in place (whole: flushed before its rename), its note still staged.
+        std::fs::write(dir.join("inmaa.db.replaced"), "old").unwrap();
+        std::fs::write(&live, "copy").unwrap();
+        std::fs::write(dir.join("sync-install-pending.json.staged"), "note").unwrap();
+        recover_swap(&dir);
+        assert_eq!(std::fs::read_to_string(&live).unwrap(), "copy");
+        assert_eq!(std::fs::read_to_string(dir.join("sync-install-pending.json")).unwrap(), "note");
+        std::fs::remove_file(dir.join("sync-install-pending.json")).unwrap();
+        std::fs::remove_file(dir.join("inmaa.db.replaced")).unwrap();
+
+        // A staged note with no swap under way: the swap never happened.
+        std::fs::write(dir.join("restore-pending.json.staged"), "note").unwrap();
+        recover_swap(&dir);
+        assert!(!dir.join("restore-pending.json").exists());
+        assert!(!dir.join("restore-pending.json.staged").exists());
+        assert_eq!(std::fs::read_to_string(&live).unwrap(), "copy");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn a_copy_that_does_not_open_is_taken_out_and_the_old_database_opens() {
+        let dir = swap_dir("undo");
+        let live = dir.join(crate::db::DB_FILE);
+        // The database that was live: this program's, with its id.
+        std::fs::copy(program_database("undo-old", true), &live).unwrap();
+        // A copy whose migrations will not run here (a checksum this build does not carry).
+        let broken = program_database("undo-broken", false);
+        tauri::async_runtime::block_on(async {
+            let pool = crate::db::open(&broken).await.unwrap();
+            sqlx::query(r#"UPDATE "_sqlx_migrations" SET "checksum" = X'00' WHERE "version" = (SELECT MIN("version") FROM "_sqlx_migrations")"#)
+                .execute(&pool)
+                .await
+                .unwrap();
+            sqlx::query("PRAGMA wal_checkpoint(TRUNCATE)").execute(&pool).await.unwrap();
+            pool.close().await;
+        });
+        let staged = dir.join("inmaa.db.joining");
+        std::fs::copy(&broken, &staged).unwrap();
+        swap_in(&dir, &staged, None, Some((crate::sync::INSTALL_NOTE, "{}"))).expect("swapped");
+        assert!(dir.join(crate::sync::INSTALL_NOTE).exists());
+
+        let opened = tauri::async_runtime::block_on(crate::db::open_settled(&live)).expect("the old one opens");
+        assert!(opened.undone.is_some());
+        let id: String = tauri::async_runtime::block_on(
+            sqlx::query_scalar(r#"SELECT "value" FROM "Setting" WHERE "key" = 'system.databaseId'"#).fetch_one(&opened.pool),
+        )
+        .unwrap();
+        assert_eq!(id, "\"db-1\"");
+        tauri::async_runtime::block_on(opened.pool.close());
+        assert!(dir.join("inmaa.db.failed").exists(), "the copy is kept aside");
+        assert!(!dir.join(crate::sync::INSTALL_NOTE).exists(), "nothing was installed");
+        assert!(!dir.join("inmaa.db.replaced").exists());
+
+        // Opened again: nothing to undo, nothing left over.
+        let again = tauri::async_runtime::block_on(crate::db::open_settled(&live)).expect("opens");
+        assert!(again.undone.is_none());
+        tauri::async_runtime::block_on(again.pool.close());
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn a_copy_that_opens_drops_what_it_replaced() {
+        let dir = swap_dir("settle");
+        let live = dir.join(crate::db::DB_FILE);
+        std::fs::copy(program_database("settle-old", true), &live).unwrap();
+        let staged = dir.join("inmaa.db.joining");
+        std::fs::copy(program_database("settle-new", true), &staged).unwrap();
+        swap_in(&dir, &staged, None, None).expect("swapped");
+        assert!(dir.join("inmaa.db.replaced").exists());
+        let opened = tauri::async_runtime::block_on(crate::db::open_settled(&live)).expect("opens");
+        assert!(opened.undone.is_none());
+        tauri::async_runtime::block_on(opened.pool.close());
+        assert!(!dir.join("inmaa.db.replaced").exists());
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn a_small_file_is_written_whole_over_the_old_one() {
+        let dir = swap_dir("whole");
+        let file = dir.join("chain.dat");
+        write_whole(&file, b"first").unwrap();
+        write_whole(&file, b"second").unwrap();
+        assert_eq!(std::fs::read(&file).unwrap(), b"second");
+        assert_eq!(std::fs::read_dir(&dir).unwrap().count(), 1, "nothing partial left beside it");
+        let _ = std::fs::remove_dir_all(&dir);
     }
 }
