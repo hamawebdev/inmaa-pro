@@ -95,7 +95,7 @@ jobs:
       - name: Build the release APK (arm64-v8a and armeabi-v7a)
         run: |
           export NDK_HOME="$ANDROID_HOME/ndk/$INMAA_NDK_VERSION"
-          bash -x scripts/android/build.sh build
+          bash scripts/android/build.sh build
 
       - name: Build the test APK
         if: ${{ inputs.test }}

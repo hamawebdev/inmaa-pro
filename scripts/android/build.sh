@@ -61,7 +61,7 @@ signature="$("${tools}apksigner" verify --print-certs "$out" 2>&1)" || {
   echo "$signature" >&2
   exit 1
 }
-grep -E "Signer #1 certificate (DN|SHA-256)" <<<"$signature"
+grep -E "Signer( #1)?:? certificate (DN|SHA-256)" <<<"$signature"
 
 # What the built APK asks for, as Android will read it (docs/phone/DECISION.md section 7): its package, and the three
 # permissions plus the one androidx declares for its own receivers (signature level, held by this app only).
