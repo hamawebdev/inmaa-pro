@@ -1,5 +1,7 @@
 # The director's phone: what is left for you
 
+**Published 2026-11-02:** release v1.2.0, https://github.com/hamawebdev/inmaa-pro/releases/tag/v1.2.0 — `Inmaa.Pro_1.2.0_x64-setup.exe` (both laptops), `Inmaa.Pro_1.2.0_x64_en-US.msi` (the same as MSI) and `Inmaa.Pro_1.2.0_android.apk` (the director's phone, signed with the centre's key). The mailbox is deployed. What is left happens at the centre: install, set sync up on the director's laptop, pair the assistant's laptop and the phone (sections 3 and 4).
+
 For the developer. Everything else is built and checked (`docs/phone/VERIFY.md`). **The mailbox is deployed on your Cloudflare account** (section 1, done on 2026-11-02, and checked end to end with two laptop copies and the APK on the emulator). What is left needs the director's laptops and his real phone, which we do not have here:
 
 1. ~~Deploy the mailbox on Cloudflare.~~ Done: section 1.
