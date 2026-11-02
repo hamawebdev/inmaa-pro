@@ -67,7 +67,7 @@ On the **assistant's laptop**, freshly installed (nothing typed in it yet): the 
 - The phone: Android 7.0 or later, with **Android System WebView** up to date (Play Store › «Android System WebView» › Update; it must be version 111 or later, which any phone updated since 2023 has).
 - The signed release APK, from either place (both sign with the same key, so either can update the other):
   - **GitHub Actions** (about 10 minutes, nothing to install): every push to the branch `phone-app` runs «Android APK» (`.github/workflows/android-apk.yml`). Open the run in the repository's Actions tab and download `inmaa-pro-apk` under Artifacts (a zip holding `inmaa-pro-1.2.0.apk`; kept 30 days), or `gh run download <run id> -n inmaa-pro-apk`. The release key is in the repository's secrets (`ANDROID_KEYSTORE_BASE64` and three more); once the workflow file is on `main`, it can also be started by hand with a test APK beside it.
-  - **This PC:** `npm run android:build`, which `src-tauri/target/android/inmaa-pro-1.2.0.apk` (`docs/phone/ANDROID-BUILD.md`). It needs the release key in `~/.inmaa-android/`. **Never** install the `…-test.apk` on his phone: its window can be debugged over USB.
+  - **This PC:** `npm run android:build`, which makes `src-tauri/target/android/inmaa-pro-1.2.0.apk` (`docs/phone/ANDROID-BUILD.md`). It needs the release key in `~/.inmaa-android/`. **Never** install the `…-test.apk` on his phone: its window can be debugged over USB.
 - We recommend a screen lock on the phone (a PIN or a fingerprint). The program's own password protects the program; the screen lock protects everything else.
 
 ### Install it
